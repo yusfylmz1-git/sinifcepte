@@ -299,14 +299,41 @@ Kararınızın ("veli dersine giren diğer öğretmenlerle de etkileşim kursun"
 
 ---
 
+#### I. Sohbet ekranı tamamlandı ✅ (`fe1cdf9`)
+
+**Veli ve öğretmen artık uygulama içinde birebir yazışabiliyor** — telefon numarası hiçbir yöne paylaşılmadan.
+
+- `ParentTeacherChatModal` — tek bileşen iki taraftan da açılıyor; `asTeacher` bayrağı `authorRole`'ü belirliyor ve kural motoru doğruluyor.
+- Canlı dinleyici yok: açılışta tek okuma, elle yenileme. Gönderim sonrası liste **yerel olarak** büyüyor — içeriğini bildiğimiz mesaj için sunucuya ikinci kez gidilmiyor.
+- Veli tarafında öğretmen listesi artık **bulut kadrosundan** besleniyor; kadroya katılmamış öğretmenin mesaj butonu kapalı ve gerekçesi yazılı (sessiz hata yok).
+- Öğretmen tarafında bağlı veli satırlarına mesaj butonu; profil ekranına **"Sınıf Kadrosuna Katıl"** kartı.
+
+**Doğrulama:** `flutter analyze` 0 issue · Dart **115/115** · kurallar **55/55**.
+
+---
+
 ## 🎯 SIRADAKİ ADIM
 
-**Faz 3 kalanı:**
-- Mesajlaşma arayüzü (veri katmanı + kurallar + kadro hazır; sohbet ekranı kaldı)
-- Randevu ve durum bildirimi akışlarını buluta taşıma
+**Faz 3 kalanı (küçük parçalar):**
+- Randevu ve durum bildirimi akışlarını buluta taşıma (şu an hâlâ `SharedPreferences`)
 - Maliyet kararı **#5** (son 20 duyuruyu sınıf dokümanında toplama)
 
 Sonraki fazlar: **Faz 4** okul yöneticisi · **Faz 5** manifest (Remote Config) · **Faz 6** bütçe koruması · **Faz 7** reklam açılışı.
+
+---
+
+## ✅ ÇALIŞAN UÇTAN UCA AKIŞ
+
+Bugün itibarıyla iki ayrı cihazda şunlar çalışıyor:
+
+1. Öğretmen Google ile girer → okul seçer (zorunlu)
+2. Öğrenci için veli kodu üretir → kod **buluta** yazılır
+3. Veli kendi telefonunda Google ile girer → kodu + okul numarasını girer
+4. Bağ kurulur; veli çocuğunu görür (cihaz değiştirse de korunur)
+5. Öğretmen duyuru yayımlar → **veli kendi telefonunda görür**, okundu işaretler
+6. Öğretmen kadroya branş öğretmeni ekler → katılım kodu üretilir
+7. Branş öğretmeni kodu girer → **velilerle yazışma yetkisi açılır**
+8. Veli ↔ öğretmen birebir mesajlaşır
 
 ---
 
@@ -314,7 +341,7 @@ Sonraki fazlar: **Faz 4** okul yöneticisi · **Faz 5** manifest (Remote Config)
 
 | Takım | Sayı | Komut |
 | :--- | :--: | :--- |
-| Dart birim testleri | **107** | `flutter test` |
+| Dart birim testleri | **115** | `flutter test` |
 | Firestore kural testleri | **55** | `cd test_rules && .\run-tests.ps1` |
 | Statik analiz | 0 issue | `flutter analyze` |
 
