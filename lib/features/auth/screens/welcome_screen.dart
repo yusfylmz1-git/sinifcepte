@@ -12,6 +12,7 @@ import '../../auth_profile/data/services/teacher_auth_service.dart';
 import '../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../auth_profile/providers/user_role_provider.dart';
 import '../../auth_profile/presentation/views/school_bind_gate.dart';
+import '../../parent_portal/data/services/parent_auth_service.dart';
 import '../../parent_portal/presentation/screens/parent_dashboard_screen.dart';
 import '../../parent_portal/providers/parent_token_provider.dart';
 
@@ -26,6 +27,7 @@ class WelcomeScreen extends ConsumerStatefulWidget {
 class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
   bool _hasCheckedSavedRole = false;
   bool _teacherSigningIn = false;
+  bool _parentSigningIn = false;
 
   @override
   void initState() {
@@ -35,22 +37,36 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
     });
   }
 
-  /// Eğer önceden rol seçildiyse doğrudan ilgili panele geçiş yap
+  /// Eğer önceden rol seçildiyse doğrudan ilgili panele geçiş yap.
+  ///
+  /// Firebase oturumunun varlığı **rolü belirlemez**: hem öğretmen hem veli
+  /// aynı Google sağlayıcısıyla giriş yapar. Rol, kullanıcının daha önce
+  /// kaydettiği tercihten okunur; tercih yoksa karşılama ekranında kalınır.
   Future<void> _checkAutoLogin() async {
     if (_hasCheckedSavedRole) return;
     _hasCheckedSavedRole = true;
 
-    final roleState = ref.read(userRoleProvider);
+    // Kaydedilmiş rol tercihi henüz yüklenmemiş olabilir.
+    await ref.read(userRoleProvider.notifier).loadRole();
     if (!mounted) return;
+
+    final roleState = ref.read(userRoleProvider);
+    if (!roleState.hasSelectedRole) return;
 
     await FirebaseBootstrap.ensureInitialized();
     if (!mounted) return;
 
-    if (FirebaseBootstrap.ready && FirebaseAuth.instance.currentUser != null) {
-      final uid = FirebaseAuth.instance.currentUser!.uid;
-      await DatabaseHelper.instance.openForUid(uid);
-      await ref.read(teacherProfileProvider.notifier).ensureLoaded();
-      await ref.read(userRoleProvider.notifier).selectTeacherRole();
+    final signedIn =
+        FirebaseBootstrap.ready && FirebaseAuth.instance.currentUser != null;
+
+    if (roleState.isTeacher) {
+      if (signedIn) {
+        final uid = FirebaseAuth.instance.currentUser!.uid;
+        await DatabaseHelper.instance.openForUid(uid);
+        await ref.read(teacherProfileProvider.notifier).ensureLoaded();
+        // Yönetici yetkisi yalnızca sunucudaki claim'den okunur.
+        await ref.read(userRoleProvider.notifier).refreshClaims();
+      }
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const SchoolBindGate()),
@@ -58,11 +74,11 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
       return;
     }
 
-    if (roleState.isTeacher) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const SchoolBindGate()),
-      );
-    } else if (roleState.isParent) {
+    if (roleState.isParent) {
+      // Veli oturumu düşmüşse karşılama ekranında kalıp yeniden giriş ister:
+      // bulut bağlantısı olmadan çocuk verisi getirilemez.
+      if (!signedIn) return;
+
       final repo = ref.read(parentTokenRepositoryProvider);
       final children = await repo.getMyConnectedChildren();
       if (!mounted) return;
@@ -96,6 +112,8 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
         );
       }
       await ref.read(userRoleProvider.notifier).selectTeacherRole();
+      // Okul yöneticisi yetkisi varsa claim'den okunur (opsiyonel rol).
+      await ref.read(userRoleProvider.notifier).refreshClaims(forceRefresh: true);
       if (context.mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const SchoolBindGate()),
@@ -116,14 +134,44 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
     }
   }
 
-  /// Veli Olarak Giriş Yap
+  /// Veli Olarak Giriş Yap.
+  ///
+  /// Veli de öğretmen gibi Google ile giriş yapar: çocuk bağlantısı bulutta
+  /// `parent_links/{uid}_{studentCloudId}` olarak tutulduğu için kalıcı bir
+  /// Firebase UID gereklidir. Bu olmadan veli cihaz değiştirdiğinde
+  /// bağlantısını kaybederdi.
   Future<void> _handleParentLogin(BuildContext context) async {
-    await ref.read(userRoleProvider.notifier).selectParentRole();
-    if (!context.mounted) return;
+    if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Veli girişi Android / iOS uygulamasında yapılır.'),
+        ),
+      );
+      return;
+    }
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
-    );
+    setState(() => _parentSigningIn = true);
+    try {
+      await ParentAuthService().signInWithGoogle();
+      await ref.read(userRoleProvider.notifier).selectParentRole();
+      if (context.mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
+        );
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Veli Google girişi hatası: $e\n$stackTrace');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceFirst('ParentAuthException: ', '')),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _parentSigningIn = false);
+    }
   }
 
   @override
@@ -226,13 +274,13 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                           // 2. KART: VELİ GİRİŞİ
                           _buildRoleCard(
                             context,
-                            title: '👨‍👩‍👧 Veli Girişi',
-                            subtitle: 'Referans kodu ile öğrencinizi bağlayın; duyuru, randevu ve mesajları takip edin.',
+                            title: _parentSigningIn ? '👨‍👩‍👧 Google ile bağlanılıyor...' : '👨‍👩‍👧 Veli Girişi',
+                            subtitle: 'Google ile giriş yapın, ardından referans kodu ile öğrencinizi bağlayın.',
                             gradient: const LinearGradient(
                               colors: [Color(0xFF059669), Color(0xFF10B981)],
                             ),
                             icon: Icons.family_restroom_rounded,
-                            onTap: () => _handleParentLogin(context),
+                            onTap: _parentSigningIn ? () {} : () => _handleParentLogin(context),
                           ),
 
                           const SizedBox(height: 18),

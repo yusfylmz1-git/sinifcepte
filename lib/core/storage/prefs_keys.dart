@@ -24,4 +24,10 @@ class PrefsKeys {
   static const appointments = 'sinifcepte_parent_appointments';
   static const classMessages = 'sinifcepte_class_messages';
   static const pendingSchoolSubmissions = 'sinifcepte_pending_school_submissions';
+
+  /// Veli Google hesabının görünen adı (bağlantı kartlarında gösterilir).
+  static const parentDisplayName = 'sinifcepte_parent_display_name';
+
+  /// Reklam gösterimi için kullanıcı onayı ve yapılandırma durumu.
+  static const adsEnabled = 'sinifcepte_ads_enabled';
 }
