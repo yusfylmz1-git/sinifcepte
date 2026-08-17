@@ -211,14 +211,55 @@ Kullanıcı onayı beklemektedir — hiçbiri başlatılmadı.
 
 **Doğrulama:** `flutter analyze` 0 issue · `flutter test` **63/63** başarılı.
 
+#### D. Faz 2 tamamlandı ✅ (`8e6922c`) — **zincirin kopuk halkası kapandı**
+
+**Yeni dosyalar:**
+- `lib/core/cloud/cloud_ids.dart` — `cls_{uid}_{id}` / `stu_{uid}_{id}` şeması. Sahiplik kimlik deseninden okunur, kural motoru `get()` yapmaz (maliyet kararı).
+- `lib/core/cloud/firestore_client.dart` — kalıcı önbellek açık, **snapshot listener yok**, `WriteBatch` desteği.
+- `.../repositories/cloud_token_repository.dart` — doküman kimliği **`SHA-256(kod)`'un kendisi**. Düz kod buluta asla yazılmaz; doğrulama sorgu değil tek `get()`.
+- `.../services/parent_link_bridge.dart` — doğrulama sırası ucuzdan pahalıya; hatalı girişler tek bulut okuması bile harcamadan elenir.
+
+**Uygulanan maliyet kararları:** #6 (bağlantı sonrası token silme), #7 (toplu yazma).
+
+**Güvenlik düzeltmesi:** `parent_token_repository.dart`'ta kod ve okul numarası doğrulamasında **düz metin yedek karşılaştırmaları** vardı (satır 302-307 ve 325-326). Bulutta düz kod saklanmadığı için bu yollar iki depoyu farklı güvenlik seviyesinde bırakıyordu — kaldırıldı. Ayrıca veli telefonu artık buluta gönderilmiyor.
+
+**`firestore.rules` düzeltildi:** `parent_links`, `parent_class_access` ve `class_rooms` kurallarında **`allow write: if false`** vardı — yani istemci hiç yazamıyordu. Kurallar Cloud Functions ile yazımı varsayıyordu ama Spark planında Functions kısıtlı. Güvenli koşullarla istemci yazımına açıldı. Ayrıca `parent_tokens`, `school_admin_requests`, `content_reports` kuralları eklendi ve **yetki yükseltme koruması** kondu (öğretmen kendi başvurusunu onaylayamaz).
+
+**Doğrulama:** `flutter analyze` 0 issue · `flutter test` **82/82** başarılı.
+
+---
+
+## ⚠️ ÇALIŞTIRILAMAYAN TEST — DİKKAT
+
+`test_rules/` altında **34 Firestore kural testi** yazıldı (veli izolasyonu, yetki yükseltme, sahiplik senaryoları). Ancak:
+
+```
+Error: firebase-tools no longer supports Java version before 21.
+```
+
+Bu makinede **Java 8** kurulu; emülatör **JDK 21+** istiyor. Android Studio'nun `jbr` klasörü de eksik kurulmuş (`lib/jvm.cfg` yok).
+
+**Sonuç:** Kurallar yazıldı, sözdizimi/parantez dengesi doğrulandı, ama **kural motoruna karşı hiç çalıştırılmadı.** Yani veli izolasyonunun gerçekten çalıştığı henüz kanıtlanmadı.
+
+**Yapılması gereken:** [Eclipse Temurin JDK 21](https://adoptium.net/temurin/releases/?version=21) kurun (kurulumda "Set JAVA_HOME" işaretli olsun), sonra:
+```bash
+cd test_rules && npm test
+```
+Ayrıntılar: `test_rules/README.md`
+
 ---
 
 ## 🎯 SIRADAKİ ADIM
 
-**Faz 2 — Token köprüsü.** Projenin kilidini açan faz: öğretmenin ürettiği kod bulut üzerinden başka bir telefonda çocuğu bağlayacak.
+**Faz 3 — İletişim katmanı.** Duyuru, mesajlaşma, randevu ve durum bildirimini buluta taşıma.
 
-Uygulanacak maliyet kararları: token TTL + bağlantı sonrası silme (#6), toplu yazma (#7).
-Güvenlik: buluta **yalnızca `codeHash`** yazılacak, düz kod asla.
+Uygulanacak maliyet kararları (bu fazın çoğu tasarrufu burada):
+- **#1 Okundu bilgisi alt dokümana** — `readByParentUserIds` dizisi 30 velinin aynı dokümana yazmasına yol açıyor. `/announcements/{id}/reads/{uid}` yapısına geçilecek.
+- **#2 Delta sorgu** — `where('updatedAt', '>', sonSenkron)`.
+- **#4 Listener yasağı** — zaten `FirestoreClient` seviyesinde uygulandı.
+- **#5 Son 20 duyuru sınıf dokümanında toplanacak.**
+
+Ayrıca kararınız gereği **mesajlaşma ayrı yetki ekseni** olacak: duyuruyu yalnızca sınıf öğretmeni yapar, ama veli dersine giren tüm branş öğretmenleriyle mesajlaşabilir. Mevcut kurallarda `messages` alt koleksiyonu sınıf sahipliğine bağlı — bunu genişletmek gerekecek.
 
 ### Kesinleşen kararlar (tekrar sorulmayacak)
 | Konu | Karar |
