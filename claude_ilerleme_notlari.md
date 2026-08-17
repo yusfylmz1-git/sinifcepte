@@ -229,23 +229,25 @@ Kullanıcı onayı beklemektedir — hiçbiri başlatılmadı.
 
 ---
 
-## ⚠️ ÇALIŞTIRILAMAYAN TEST — DİKKAT
+#### E. Kural testleri çalıştırıldı ✅ (`6cb0b20`) — **33/33 geçiyor**
 
-`test_rules/` altında **34 Firestore kural testi** yazıldı (veli izolasyonu, yetki yükseltme, sahiplik senaryoları). Ancak:
+Faz 2'de yazılıp çalıştırılamayan güvenlik kuralı testleri artık **gerçek kural motoruna karşı** doğrulandı.
 
-```
-Error: firebase-tools no longer supports Java version before 21.
-```
+**Engel:** Emülatör JDK 21+ istiyor, makinede Java 8 kurulu. Üstelik Oracle'ın `java8path` kısayolu `PATH`'in başına sabitlenmiş, bu yüzden `JAVA_HOME` ayarlamak tek başına yetmiyor. (Android Studio'nun `jbr`'si de eksik kurulmuş — `lib/jvm.cfg` yok.)
 
-Bu makinede **Java 8** kurulu; emülatör **JDK 21+** istiyor. Android Studio'nun `jbr` klasörü de eksik kurulmuş (`lib/jvm.cfg` yok).
+**Çözüm:** `test_rules/run-tests.ps1` — JDK 21'i otomatik bulur, Java 8 girdilerini `PATH`'ten geçici ayıklar, **sisteme dokunmaz**. Tek komut: `.\run-tests.ps1`
 
-**Sonuç:** Kurallar yazıldı, sözdizimi/parantez dengesi doğrulandı, ama **kural motoruna karşı hiç çalıştırılmadı.** Yani veli izolasyonunun gerçekten çalıştığı henüz kanıtlanmadı.
+**Doğrulanan kritik senaryolar:**
+- Veli başka velinin çocuğunun bağını **okuyamıyor**
+- Veli başkası adına bağ **kuramıyor**, kendi kimliğiyle başka uid **yazamıyor**
+- Öğretmen kendi yönetici başvurusunu **onaylayamıyor** (yetki yükseltme koruması)
+- Başka öğretmen sınıf odasını **değiştiremiyor**, kod **yazamıyor**
+- Veli şikâyet kaydını **okuyamıyor ve silemiyor** (denetim izi bütünlüğü)
+- Manifesti **hiçbir istemci yazamıyor** (süper admin dahil)
 
-**Yapılması gereken:** [Eclipse Temurin JDK 21](https://adoptium.net/temurin/releases/?version=21) kurun (kurulumda "Set JAVA_HOME" işaretli olsun), sonra:
-```bash
-cd test_rules && npm test
-```
-Ayrıntılar: `test_rules/README.md`
+> ⚠️ Kullanılan JDK geçici klasörde (`scratchpad/jdk`) ve silinebilir. Kalıcı çözüm için [Temurin JDK 21](https://adoptium.net/temurin/releases/?version=21) kurulmalı ("Set JAVA_HOME" işaretli). Betik kalıcı kurulumu da otomatik bulur.
+
+**Düzeltme:** Önceki notta "34 test" yazmıştım; gerçek sayı **33**.
 
 ---
 

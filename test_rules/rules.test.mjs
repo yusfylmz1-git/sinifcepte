@@ -411,3 +411,240 @@ describe('7. Kimlik şeması bütünlüğü', () => {
     assert.ok(STUDENT_ID.startsWith(`stu_${TEACHER_UID}_`));
   });
 });
+
+// --- Faz 3: iletişim katmanı ---
+
+describe('8. Duyurular ve okundu bilgisi (maliyet kararı #1)', () => {
+  const ANN_ID = 'ann_1';
+
+  before(async () => {
+    await testEnv.clearFirestore();
+    await seed(async (db) => {
+      await setDoc(doc(db, 'class_rooms', CLASS_ID), {
+        classCloudId: CLASS_ID,
+        teacherUid: TEACHER_UID,
+      });
+      await setDoc(doc(db, 'parent_class_access', `${PARENT_UID}_${CLASS_ID}`), {
+        parentUid: PARENT_UID,
+        classCloudId: CLASS_ID,
+      });
+      await setDoc(doc(db, 'parent_links', `${PARENT_UID}_${STUDENT_ID}`), {
+        parentUid: PARENT_UID,
+        studentCloudId: STUDENT_ID,
+        status: 'active',
+      });
+      await setDoc(doc(db, 'class_rooms', CLASS_ID, 'announcements', ANN_ID), {
+        title: 'Veli toplantısı',
+        content: 'Cuma günü saat 14:00',
+        authorUid: TEACHER_UID,
+      });
+    });
+  });
+
+  it('sınıf öğretmeni duyuru yayımlayabilir', async () => {
+    await assertSucceeds(
+      setDoc(doc(teacherDb(), 'class_rooms', CLASS_ID, 'announcements', 'ann_2'), {
+        title: 'Gezi',
+        authorUid: TEACHER_UID,
+      }),
+    );
+  });
+
+  it('erişimi olan veli duyuruyu okuyabilir', async () => {
+    await assertSucceeds(
+      getDoc(doc(parentDb(), 'class_rooms', CLASS_ID, 'announcements', ANN_ID)),
+    );
+  });
+
+  it('KRİTİK: erişimi olmayan veli duyuruyu okuyamaz', async () => {
+    await assertFails(
+      getDoc(doc(otherParentDb(), 'class_rooms', CLASS_ID, 'announcements', ANN_ID)),
+    );
+  });
+
+  it('KRİTİK: veli duyuru içeriğini değiştiremez', async () => {
+    await assertFails(
+      updateDoc(doc(parentDb(), 'class_rooms', CLASS_ID, 'announcements', ANN_ID), {
+        title: 'Veli değiştirdi',
+      }),
+    );
+  });
+
+  it('veli KENDİ okundu kaydını yazabilir', async () => {
+    await assertSucceeds(
+      setDoc(
+        doc(parentDb(), 'class_rooms', CLASS_ID, 'announcements', ANN_ID, 'reads', PARENT_UID),
+        { readAt: '2026-08-18T10:00:00.000Z' },
+      ),
+    );
+  });
+
+  it('KRİTİK: veli BAŞKA velinin okundu kaydını yazamaz', async () => {
+    await assertFails(
+      setDoc(
+        doc(parentDb(), 'class_rooms', CLASS_ID, 'announcements', ANN_ID, 'reads', OTHER_PARENT_UID),
+        { readAt: '2026-08-18T10:00:00.000Z' },
+      ),
+    );
+  });
+
+  it('KRİTİK: sınıfa erişimi olmayan veli okundu kaydı yazamaz', async () => {
+    await assertFails(
+      setDoc(
+        doc(otherParentDb(), 'class_rooms', CLASS_ID, 'announcements', ANN_ID, 'reads', OTHER_PARENT_UID),
+        { readAt: '2026-08-18T10:00:00.000Z' },
+      ),
+    );
+  });
+
+  it('öğretmen okundu kayıtlarını okuyabilir (kaç kişi okudu)', async () => {
+    await assertSucceeds(
+      getDoc(
+        doc(teacherDb(), 'class_rooms', CLASS_ID, 'announcements', ANN_ID, 'reads', PARENT_UID),
+      ),
+    );
+  });
+});
+
+describe('9. Mesajlaşma — branş öğretmeni ekseni', () => {
+  // Kullanıcı kararı: duyuruyu yalnızca sınıf öğretmeni yapar, ancak veli
+  // çocuğunun dersine giren branş öğretmenleriyle de yazışabilmelidir.
+  const BRANCH_TEACHER_UID = 'teacherFizikSelin';
+  const STRANGER_TEACHER_UID = 'teacherYabanci';
+
+  before(async () => {
+    await testEnv.clearFirestore();
+    await seed(async (db) => {
+      await setDoc(doc(db, 'class_rooms', CLASS_ID), {
+        classCloudId: CLASS_ID,
+        teacherUid: TEACHER_UID,
+      });
+      // Selin öğretmen sınıfın branş kadrosunda
+      await setDoc(doc(db, 'class_rooms', CLASS_ID, 'staff', BRANCH_TEACHER_UID), {
+        teacherUid: BRANCH_TEACHER_UID,
+        teacherName: 'Selin Demir',
+        branch: 'Fizik',
+      });
+      await setDoc(doc(db, 'parent_links', `${PARENT_UID}_${STUDENT_ID}`), {
+        parentUid: PARENT_UID,
+        studentCloudId: STUDENT_ID,
+        status: 'active',
+      });
+      await setDoc(doc(db, 'parent_class_access', `${PARENT_UID}_${CLASS_ID}`), {
+        parentUid: PARENT_UID,
+        classCloudId: CLASS_ID,
+      });
+      await setDoc(doc(db, 'class_rooms', CLASS_ID, 'messages', 'msg_1'), {
+        studentCloudId: STUDENT_ID,
+        parentUserId: PARENT_UID,
+        authorRole: 'teacher',
+        authorUid: TEACHER_UID,
+        body: 'Merhaba',
+      });
+    });
+  });
+
+  const branchTeacherDb = () =>
+    testEnv.authenticatedContext(BRANCH_TEACHER_UID).firestore();
+  const strangerTeacherDb = () =>
+    testEnv.authenticatedContext(STRANGER_TEACHER_UID).firestore();
+
+  it('sınıf öğretmeni mesaj gönderebilir', async () => {
+    await assertSucceeds(
+      setDoc(doc(teacherDb(), 'class_rooms', CLASS_ID, 'messages', 'msg_t'), {
+        studentCloudId: STUDENT_ID,
+        parentUserId: PARENT_UID,
+        authorRole: 'teacher',
+        authorUid: TEACHER_UID,
+        body: 'Sınıf öğretmeninden',
+      }),
+    );
+  });
+
+  it('KADRODAKİ branş öğretmeni mesaj gönderebilir', async () => {
+    await assertSucceeds(
+      setDoc(doc(branchTeacherDb(), 'class_rooms', CLASS_ID, 'messages', 'msg_b'), {
+        studentCloudId: STUDENT_ID,
+        parentUserId: PARENT_UID,
+        authorRole: 'teacher',
+        authorUid: BRANCH_TEACHER_UID,
+        body: 'Fizik öğretmeninden',
+      }),
+    );
+  });
+
+  it('KRİTİK: kadroda OLMAYAN öğretmen mesaj gönderemez', async () => {
+    await assertFails(
+      setDoc(doc(strangerTeacherDb(), 'class_rooms', CLASS_ID, 'messages', 'msg_x'), {
+        studentCloudId: STUDENT_ID,
+        parentUserId: PARENT_UID,
+        authorRole: 'teacher',
+        authorUid: STRANGER_TEACHER_UID,
+        body: 'Yabancı öğretmen',
+      }),
+    );
+  });
+
+  it('KRİTİK: kadroda olmayan öğretmen mesajları okuyamaz', async () => {
+    await assertFails(
+      getDoc(doc(strangerTeacherDb(), 'class_rooms', CLASS_ID, 'messages', 'msg_1')),
+    );
+  });
+
+  it('veli kendi çocuğu hakkında mesaj gönderebilir', async () => {
+    await assertSucceeds(
+      setDoc(doc(parentDb(), 'class_rooms', CLASS_ID, 'messages', 'msg_p'), {
+        studentCloudId: STUDENT_ID,
+        parentUserId: PARENT_UID,
+        authorRole: 'parent',
+        body: 'Veliden bilgi',
+      }),
+    );
+  });
+
+  it('KRİTİK: veli öğretmen kimliğiyle mesaj gönderemez', async () => {
+    await assertFails(
+      setDoc(doc(parentDb(), 'class_rooms', CLASS_ID, 'messages', 'msg_sahte'), {
+        studentCloudId: STUDENT_ID,
+        parentUserId: PARENT_UID,
+        authorRole: 'teacher', // kimlik taklidi denemesi
+        authorUid: TEACHER_UID,
+        body: 'Sahte öğretmen mesajı',
+      }),
+    );
+  });
+
+  it('KRİTİK: bağı olmayan veli mesaj gönderemez', async () => {
+    await assertFails(
+      setDoc(doc(otherParentDb(), 'class_rooms', CLASS_ID, 'messages', 'msg_y'), {
+        studentCloudId: STUDENT_ID,
+        parentUserId: OTHER_PARENT_UID,
+        authorRole: 'parent',
+        body: 'İlgisiz veli',
+      }),
+    );
+  });
+
+  it('KRİTİK: gönderilmiş mesaj sonradan değiştirilemez', async () => {
+    await assertFails(
+      updateDoc(doc(teacherDb(), 'class_rooms', CLASS_ID, 'messages', 'msg_1'), {
+        body: 'Geçmişe müdahale',
+      }),
+    );
+  });
+
+  it('veli kadro listesini okuyabilir (dersine giren öğretmenler)', async () => {
+    await assertSucceeds(
+      getDoc(doc(parentDb(), 'class_rooms', CLASS_ID, 'staff', BRANCH_TEACHER_UID)),
+    );
+  });
+
+  it('KRİTİK: branş öğretmeni kendini kadroya ekleyemez', async () => {
+    await assertFails(
+      setDoc(doc(strangerTeacherDb(), 'class_rooms', CLASS_ID, 'staff', STRANGER_TEACHER_UID), {
+        teacherUid: STRANGER_TEACHER_UID,
+        branch: 'Kendi kendine eklendi',
+      }),
+    );
+  });
+});

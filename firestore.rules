@@ -42,6 +42,22 @@ service cloud.firestore {
       return request.auth != null && id.matches(request.auth.uid + '_.*');
     }
 
+    // Sınıfın branş öğretmeni kadrosunda mı?
+    //
+    // Duyuru yetkisi sahipliğe bağlıdır (yalnızca sınıf öğretmeni), ancak
+    // MESAJLAŞMA farklı bir eksendir: veli, çocuğunun dersine giren branş
+    // öğretmenleriyle de yazışabilmelidir. Kadro üyeliği sınıf öğretmeni
+    // tarafından yönetilir.
+    //
+    // Bu fonksiyon exists() ile doküman okur — kimlik deseninden
+    // çıkarılamayan tek yetkidir. Yalnızca mesajlaşma yollarında kullanılır,
+    // sık çağrılan duyuru/okuma yollarında değil.
+    function isClassStaff(classCloudId) {
+      return request.auth != null && exists(
+        /databases/$(database)/documents/class_rooms/$(classCloudId)/staff/$(request.auth.uid)
+      );
+    }
+
     // Token dokümanının hâlâ kullanılabilir olduğunu doğrular.
     // Veli, süresi dolmuş veya kotası dolmuş bir kodla bağ kuramaz.
     function tokenUsable(codeHash) {
@@ -161,11 +177,30 @@ service cloud.firestore {
         && request.resource.data.teacherUid == request.auth.uid;
       allow delete: if ownsClassRoom(classCloudId);
 
+      // Duyuru: yalnızca sınıf öğretmeni yayımlar (kullanıcı kararı).
+      // Veli duyuruyu okur ama dokümanın kendisine YAZAMAZ — okundu bilgisi
+      // ayrı bir alt koleksiyona düşer (aşağıya bakınız).
       match /announcements/{id} {
         allow read: if ownsClassRoom(classCloudId) || parentHasClass(classCloudId);
         allow create, update, delete: if ownsClassRoom(classCloudId);
-        allow update: if isParent() && parentHasClass(classCloudId)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']);
+
+        // Okundu bilgisi (maliyet kararı #1).
+        // Eskiden duyuru dokümanı içinde readBy[] dizisiydi: 30 velinin her
+        // biri aynı dokümanı okuyup diziye kendini ekleyip geri yazıyordu —
+        // 30 okuma + 30 yazma + eşzamanlılık çakışması. Artık her veli
+        // yalnızca kendi küçük dokümanını yazar; öğretmen sayıyı count()
+        // toplama sorgusuyla alır (1000 dokümana kadar tek okuma).
+        match /reads/{parentUid} {
+          allow read: if ownsClassRoom(classCloudId)
+            || (request.auth != null && request.auth.uid == parentUid);
+
+          // Veli yalnızca kendi okundu kaydını yazabilir.
+          allow create, update: if request.auth != null
+            && request.auth.uid == parentUid
+            && parentHasClass(classCloudId);
+
+          allow delete: if ownsClassRoom(classCloudId);
+        }
       }
 
       match /appointments/{id} {
@@ -177,22 +212,49 @@ service cloud.firestore {
         allow update: if ownsClassRoom(classCloudId);
       }
 
+      // Mesajlaşma: duyurudan FARKLI bir yetki eksenidir (kullanıcı kararı).
+      // Duyuruyu yalnızca sınıf öğretmeni yapar, ancak veli çocuğunun
+      // dersine giren BRANŞ öğretmenleriyle de yazışabilmelidir. Bu yüzden
+      // burada sınıf sahipliği tek yeterli koşul değildir: sınıf kadrosunda
+      // kayıtlı olan öğretmen de yazışabilir.
       match /messages/{id} {
         allow read: if ownsClassRoom(classCloudId)
+          || isClassStaff(classCloudId)
           || (isParent() && parentHasStudent(resource.data.studentCloudId));
-        allow create: if (ownsClassRoom(classCloudId))
-          || (isParent()
-              && parentHasStudent(request.resource.data.studentCloudId)
-              && request.resource.data.parentUserId == request.auth.uid);
+
+        allow create: if (
+            (ownsClassRoom(classCloudId) || isClassStaff(classCloudId))
+            && request.resource.data.authorRole == 'teacher'
+            && request.resource.data.authorUid == request.auth.uid
+          ) || (
+            isParent()
+            && parentHasStudent(request.resource.data.studentCloudId)
+            && request.resource.data.parentUserId == request.auth.uid
+            && request.resource.data.authorRole == 'parent'
+          );
+
+        // Mesaj gönderildikten sonra içeriği değiştirilemez.
+        allow update: if false;
+        allow delete: if ownsClassRoom(classCloudId);
+      }
+
+      // Sınıfın branş öğretmeni kadrosu. Sınıf öğretmeni yönetir; veli
+      // "çocuğumun dersine kimler giriyor" listesini buradan okur.
+      match /staff/{teacherUid} {
+        allow read: if ownsClassRoom(classCloudId)
+          || isClassStaff(classCloudId)
+          || parentHasClass(classCloudId);
+        allow create, update, delete: if ownsClassRoom(classCloudId);
       }
 
       match /status_reports/{id} {
         allow read: if ownsClassRoom(classCloudId)
+          || isClassStaff(classCloudId)
           || (isParent() && parentHasStudent(resource.data.studentCloudId));
         allow create: if isParent()
           && parentHasStudent(request.resource.data.studentCloudId)
           && request.resource.data.parentUserId == request.auth.uid;
-        allow update: if ownsClassRoom(classCloudId);
+        allow update: if ownsClassRoom(classCloudId) || isClassStaff(classCloudId);
       }
     }
   }
