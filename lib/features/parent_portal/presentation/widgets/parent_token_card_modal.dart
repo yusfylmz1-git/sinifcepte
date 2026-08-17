@@ -9,6 +9,7 @@ import 'package:printing/printing.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../../core/cloud/cloud_ids.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../data/models/class_model.dart';
 import '../../../../data/models/student_model.dart';
@@ -16,6 +17,7 @@ import '../../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../data/models/parent_link_model.dart';
 import '../../data/models/parent_token_model.dart';
 import '../../providers/parent_token_provider.dart';
+import 'parent_teacher_chat_modal.dart';
 
 /// SınıfCepte - Öğrenci Veli Bağlantı Kartı & QR Modalı
 class ParentTokenCardModal extends ConsumerStatefulWidget {
@@ -153,6 +155,32 @@ class _ParentTokenCardModalState extends ConsumerState<ParentTokenCardModal> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  /// Öğretmen tarafından veliyle birebir yazışma ekranını açar.
+  ///
+  /// Sınıfın sahibi olduğu için kural motoru yazma iznini doğrudan verir;
+  /// kadro üyeliği gerekmez.
+  void _openChatWithParent(ParentLinkModel link) {
+    final teacher = ref.read(teacherProfileProvider);
+
+    ParentTeacherChatModal.show(
+      context,
+      classCloudId: CloudIds.classId(
+        teacherUid: teacher.id,
+        localClassId: widget.classModel.id ?? 0,
+      ),
+      studentCloudId: CloudIds.studentId(
+        teacherUid: teacher.id,
+        localStudentId: widget.student.id ?? 0,
+      ),
+      studentName: widget.student.fullName,
+      parentUserId: link.parentUserId,
+      selfName: teacher.fullName,
+      selfUid: teacher.id,
+      asTeacher: true,
+      counterpartName: '${link.relation}: ${link.parentName}',
+    );
   }
 
   void _shareViaWhatsApp(ParentTokenModel token) {
@@ -620,6 +648,17 @@ Sayın Velimiz,
                       Text(
                         DateFormat('dd.MM').format(lp.linkedAt),
                         style: const TextStyle(fontSize: 10, color: Colors.grey),
+                      ),
+                      // Öğretmen veliyle birebir yazışabilir. Telefon
+                      // numarası paylaşılmaz; iletişim uygulama içinde kalır.
+                      IconButton(
+                        onPressed: () => _openChatWithParent(lp),
+                        icon: const Icon(Icons.forum_rounded, size: 18),
+                        color: AppColors.primary,
+                        tooltip: 'Mesaj Gönder',
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                       ),
                     ],
                   ),

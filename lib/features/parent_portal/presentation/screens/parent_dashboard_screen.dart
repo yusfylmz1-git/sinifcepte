@@ -9,16 +9,17 @@ import '../../../../shared/widgets/glass_card.dart';
 import '../../../auth/screens/welcome_screen.dart';
 import '../../../auth_profile/providers/user_role_provider.dart';
 import '../../../auth_profile/presentation/views/school_bind_gate.dart';
-import '../../data/models/class_teacher_contact_model.dart';
 import '../../data/models/parent_appointment_model.dart';
 import '../../data/models/parent_link_model.dart';
 import '../../data/models/parent_status_report_model.dart';
 import '../../data/services/kvkk_consent_service.dart';
 import '../../data/services/parent_lifecycle_service.dart';
+import '../../data/repositories/cloud_communication_repository.dart';
 import '../../providers/cloud_communication_provider.dart';
 import '../../providers/parent_portal_provider.dart';
 import '../../providers/parent_token_provider.dart';
 import '../widgets/help_support_modal.dart';
+import '../widgets/parent_teacher_chat_modal.dart';
 
 /// Türkiye Telefon Numarası Maskeleme Formatlayıcısı
 class _TurkishPhoneInputFormatter extends TextInputFormatter {
@@ -1363,7 +1364,9 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => Consumer(
         builder: (context, modalRef, _) {
-          final teachersAsync = modalRef.watch(classTeacherContactsProvider(child.classId));
+          // Kadro buluttan gelir: hangi branş öğretmeninin bu sınıfa
+          // girdiğini ve kiminle yazışılabileceğini orası belirler.
+          final teachersAsync = modalRef.watch(cloudClassStaffProvider(child));
 
           return Container(
             height: MediaQuery.of(context).size.height * 0.75,
@@ -1423,33 +1426,73 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                                     children: [
                                       Row(
                                         children: [
-                                          Text(t.teacherName, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13)),
+                                          Flexible(
+                                            child: Text(
+                                              t.teacherName,
+                                              style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
                                           const SizedBox(width: 4),
-                                          const Icon(Icons.verified_rounded, color: Colors.blueAccent, size: 14),
+                                          if (t.isHomeroom)
+                                            const Icon(Icons.star_rounded, color: Colors.amber, size: 14),
                                         ],
                                       ),
-                                      Text(t.branch, style: GoogleFonts.outfit(fontSize: 11.5, color: isDark ? Colors.white70 : Colors.black87)),
+                                      if (t.branch.isNotEmpty)
+                                        Text(
+                                          t.branch,
+                                          style: GoogleFonts.outfit(fontSize: 11.5, color: isDark ? Colors.white70 : Colors.black87),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       const SizedBox(height: 2),
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.schedule_rounded, size: 12, color: Colors.grey),
-                                          const SizedBox(width: 4),
-                                          Text('${t.meetingDay} ${t.meetingTime}', style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey)),
-                                        ],
-                                      ),
+                                      if (t.meetingDay.isNotEmpty || t.meetingTime.isNotEmpty)
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.schedule_rounded, size: 12, color: Colors.grey),
+                                            const SizedBox(width: 4),
+                                            Flexible(
+                                              child: Text(
+                                                '${t.meetingDay} ${t.meetingTime}'.trim(),
+                                                style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      // Kadroya henüz katılmamış öğretmenle yazışılamaz.
+                                      if (t.isPending)
+                                        Text(
+                                          'Henüz mesajlaşmaya açık değil',
+                                          style: GoogleFonts.outfit(fontSize: 10.5, color: Colors.orange),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                     ],
                                   ),
                                 ),
-                                ElevatedButton(
-                                  onPressed: () => _openAppointmentRequestDialog(context, child, t),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF3B82F6),
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    visualDensity: VisualDensity.compact,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                  ),
-                                  child: const Text('Randevu Al', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                // Mesaj: yalnızca kadroya katılmış öğretmenle.
+                                IconButton(
+                                  onPressed: t.isPending
+                                      ? null
+                                      : () => _openChatWithTeacher(context, child, t),
+                                  icon: const Icon(Icons.forum_rounded, size: 20),
+                                  color: AppColors.primary,
+                                  tooltip: t.isPending
+                                      ? 'Öğretmen henüz kadroya katılmadı'
+                                      : 'Mesaj Gönder',
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                // Randevu: görüşme saati tanımlıysa anlamlı.
+                                IconButton(
+                                  onPressed: () =>
+                                      _openAppointmentRequestDialog(context, child, t),
+                                  icon: const Icon(Icons.event_available_rounded, size: 20),
+                                  color: const Color(0xFF3B82F6),
+                                  tooltip: 'Randevu Al',
+                                  visualDensity: VisualDensity.compact,
                                 ),
                               ],
                             ),
@@ -1467,7 +1510,40 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
     );
   }
 
-  void _openAppointmentRequestDialog(BuildContext context, ParentLinkModel child, ClassTeacherContactModel teacher) {
+  /// Veli tarafından öğretmenle birebir yazışma ekranını açar.
+  ///
+  /// Yalnızca kadroya katılmış öğretmenler için çağrılır: katılmamış
+  /// öğretmenin UID'si bilinmediğinden kural motoru mesajı reddederdi.
+  void _openChatWithTeacher(
+    BuildContext context,
+    ParentLinkModel child,
+    CloudStaffMember teacher,
+  ) {
+    final identity = ref.read(parentAuthServiceProvider).currentIdentity;
+    if (identity == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Mesaj göndermek için Google ile giriş yapmalısınız.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    ParentTeacherChatModal.show(
+      context,
+      classCloudId: child.classCloudId,
+      studentCloudId: child.studentCloudId,
+      studentName: child.studentName,
+      parentUserId: identity.uid,
+      selfName: child.parentName,
+      selfUid: identity.uid,
+      asTeacher: false,
+      counterpartName: teacher.displayTitle,
+    );
+  }
+
+  void _openAppointmentRequestDialog(BuildContext context, ParentLinkModel child, CloudStaffMember teacher) {
     final topicCtrl = TextEditingController(text: 'Ders gelişimi ve akademik değerlendirme');
     final isDark = Theme.of(context).brightness == Brightness.dark;
 

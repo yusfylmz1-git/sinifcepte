@@ -8,6 +8,7 @@ import '../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../auth_profile/providers/user_role_provider.dart';
 import '../../parent_portal/presentation/screens/parent_dashboard_screen.dart';
 import '../../parent_portal/presentation/screens/parent_student_connect_screen.dart';
+import '../../parent_portal/presentation/widgets/staff_join_modal.dart';
 import '../../parent_portal/providers/parent_token_provider.dart';
 import '../../settings/screens/settings_screen.dart';
 
@@ -296,6 +297,56 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                   subtitle: Text(
                     'Veritabanı yedekleme, dışa aktarma',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark
+                          ? AppColors.textSecondaryDark
+                          : AppColors.textSecondaryLight,
+                    ),
+                  ),
+                  trailing: Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 16,
+                    color: isDark
+                        ? AppColors.textSecondaryDark
+                        : AppColors.textSecondaryLight,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Sınıf Kadrosuna Katılma Kartı
+              //
+              // Branş öğretmeni, başka bir öğretmenin sınıfına derse
+              // giriyorsa katılım koduyla o sınıfın kadrosuna dahil olur ve
+              // velilerle yazışma yetkisi kazanır. Duyuru yayınlama yetkisi
+              // yalnızca sınıf öğretmeninde kalır.
+              GlassCard(
+                padding: EdgeInsets.zero,
+                child: ListTile(
+                  onTap: () => StaffJoinModal.show(context),
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.group_add_rounded,
+                      color: Color(0xFF3B82F6),
+                    ),
+                  ),
+                  title: Text(
+                    'Sınıf Kadrosuna Katıl',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: isDark
+                          ? AppColors.textPrimaryDark
+                          : AppColors.textPrimaryLight,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Derse girdiğiniz sınıfın velileriyle yazışın',
                     style: TextStyle(
                       fontSize: 12,
                       color: isDark
