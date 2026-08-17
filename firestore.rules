@@ -12,6 +12,25 @@ service cloud.firestore {
     function isParent() {
       return request.auth != null && request.auth.token.role == 'parent';
     }
+
+    // Onaylı okul yöneticisi mi?
+    //
+    // Yetkiyi veren şey custom claim'dir; claim yalnızca Admin SDK ile
+    // (scripts/admin/approve_school_admin.mjs) yazılır. Firestore'daki
+    // başvuru kaydının 'approved' olması TEK BAŞINA yetki vermez —
+    // başvuran kendi kaydını onaylayamadığı gibi, onaylayabilseydi bile
+    // buradan geçemezdi.
+    function isApprovedSchoolAdmin() {
+      return request.auth != null
+        && request.auth.token.schoolAdminStatus == 'approved';
+    }
+
+    // Yönetici yetkisi kendi okuluyla sınırlıdır: bir okulun yöneticisi
+    // başka okulun şikâyetlerini göremez.
+    function isSchoolAdminOf(schoolId) {
+      return isApprovedSchoolAdmin()
+        && request.auth.token.schoolId == schoolId;
+    }
     function ownsClassRoom(classCloudId) {
       return request.auth != null
         && classCloudId.matches('cls_' + request.auth.uid + '_.*');
@@ -161,13 +180,28 @@ service cloud.firestore {
     }
 
     // Veli şikâyetleri. Veli oluşturur, okul yöneticisi ve moderatör okur.
+    // Veli şikâyetleri.
+    //
+    // Okuma yetkisi iki gruba açıktır:
+    //  - Moderatör/süper admin: tüm şikâyetler
+    //  - Onaylı okul yöneticisi: YALNIZCA kendi okulunun şikâyetleri
+    //
+    // Yöneticinin işi tam olarak budur (kullanıcı kurgusu), ama yetkisi
+    // kendi okuluyla sınırlıdır. Şikâyeti gönderen veli bile sonradan
+    // okuyamaz: denetim izi tek yönlüdür.
     match /content_reports/{id} {
-      allow read: if isAdmin();
+      allow read: if isAdmin() || isSchoolAdminOf(resource.data.schoolId);
 
       allow create: if request.auth != null
-        && request.resource.data.reporterUid == request.auth.uid;
+        && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.status == 'open';
 
-      // Şikâyet kaydı sonradan değiştirilemez (denetim izi bütünlüğü).
+      // Okul yöneticisi şikâyeti "incelendi" olarak işaretleyebilir;
+      // içeriğine dokunamaz (denetim izi bütünlüğü).
+      allow update: if isSchoolAdminOf(resource.data.schoolId)
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'reviewNote', 'reviewedAt']);
+
       allow update, delete: if isSuper();
     }
 

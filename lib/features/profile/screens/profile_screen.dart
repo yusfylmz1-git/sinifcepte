@@ -5,6 +5,8 @@ import '../../../core/theme/theme_provider.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../auth_profile/presentation/views/teacher_profile_setup_view.dart';
 import '../../auth_profile/providers/teacher_profile_provider.dart';
+import '../../auth_profile/presentation/views/school_admin_panel_view.dart';
+import '../../auth_profile/presentation/views/school_admin_request_view.dart';
 import '../../auth_profile/providers/user_role_provider.dart';
 import '../../parent_portal/presentation/screens/parent_dashboard_screen.dart';
 import '../../parent_portal/presentation/screens/parent_student_connect_screen.dart';
@@ -21,6 +23,8 @@ class ProfileScreen extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final themeMode = ref.watch(themeModeProvider);
     final teacherProfile = ref.watch(teacherProfileProvider);
+    // Yönetici yetkisi custom claim'den gelir; yerel tercihten değil.
+    final roleState = ref.watch(userRoleProvider);
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : Colors.white,
@@ -85,17 +89,39 @@ class ProfileScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              teacherProfile.fullName.isNotEmpty
-                                  ? teacherProfile.fullName
-                                  : 'Öğretmen Profili',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: isDark
-                                    ? AppColors.textPrimaryDark
-                                    : AppColors.textPrimaryLight,
-                              ),
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    teacherProfile.fullName.isNotEmpty
+                                        ? teacherProfile.fullName
+                                        : 'Öğretmen Profili',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark
+                                          ? AppColors.textPrimaryDark
+                                          : AppColors.textPrimaryLight,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                // Okul idaresince doğrulanmış öğretmen rozeti.
+                                // Bir KAPI değil, ROZET: doğrulanmamış
+                                // öğretmen de tüm özellikleri kullanır.
+                                if (teacherProfile.isVerifiedBySchoolAdmin) ...[
+                                  const SizedBox(width: 5),
+                                  Tooltip(
+                                    message: 'Okul idaresince doğrulandı',
+                                    child: Icon(
+                                      Icons.verified_rounded,
+                                      size: 17,
+                                      color: Colors.blue.shade400,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -297,6 +323,75 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                   subtitle: Text(
                     'Veritabanı yedekleme, dışa aktarma',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark
+                          ? AppColors.textSecondaryDark
+                          : AppColors.textSecondaryLight,
+                    ),
+                  ),
+                  trailing: Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 16,
+                    color: isDark
+                        ? AppColors.textSecondaryDark
+                        : AppColors.textSecondaryLight,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Okul Yöneticiliği Kartı
+              //
+              // Yönetici rolü opsiyoneldir: yöneticisi olmayan okullarda
+              // uygulamanın tamamı normal çalışır. Kart, kullanıcının
+              // durumuna göre başvuru veya panel açar.
+              GlassCard(
+                padding: EdgeInsets.zero,
+                child: ListTile(
+                  onTap: () {
+                    if (roleState.isSchoolAdmin) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SchoolAdminPanelView(),
+                        ),
+                      );
+                    } else {
+                      SchoolAdminRequestView.show(context);
+                    }
+                  },
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: (roleState.isSchoolAdmin
+                              ? const Color(0xFF10B981)
+                              : AppColors.primary)
+                          .withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.admin_panel_settings_rounded,
+                      color: roleState.isSchoolAdmin
+                          ? const Color(0xFF10B981)
+                          : AppColors.primary,
+                    ),
+                  ),
+                  title: Text(
+                    roleState.isSchoolAdmin
+                        ? 'Okul Yönetim Paneli'
+                        : 'Okul Yöneticiliği Başvurusu',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: isDark
+                          ? AppColors.textPrimaryDark
+                          : AppColors.textPrimaryLight,
+                    ),
+                  ),
+                  subtitle: Text(
+                    roleState.isSchoolAdmin
+                        ? 'Öğretmen onayı ve veli şikâyetleri'
+                        : 'İsteğe bağlı — onay olmadan da tüm özellikler açık',
                     style: TextStyle(
                       fontSize: 12,
                       color: isDark

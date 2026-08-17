@@ -8,6 +8,7 @@ import '../../../../core/cloud/delta_sync_tracker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/glass_card.dart';
 import '../../../auth/screens/welcome_screen.dart';
+import '../../../auth_profile/data/repositories/school_admin_repository.dart';
 import '../../../auth_profile/providers/user_role_provider.dart';
 import '../../../auth_profile/presentation/views/school_bind_gate.dart';
 import '../../data/models/parent_link_model.dart';
@@ -1331,6 +1332,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
               final reason = reasonCtrl.text.trim();
               if (reason.isNotEmpty) {
                 Navigator.of(ctx).pop();
+                // Yerel denetim kaydı (KVKK izi)
                 await KvkkConsentService.reportContent(
                   reportedByUserId: child.parentUserId,
                   reportedRole: 'parent',
@@ -1339,11 +1341,31 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                   contentSnippet: contentSnippet,
                   reason: reason,
                 );
+
+                // Buluta da gönder: okul yöneticisi şikâyeti ancak orada
+                // görebilir. Yalnızca yerele yazmak, "idareye iletildi"
+                // mesajını gerçek dışı kılardı.
+                final delivered = await SchoolAdminRepository().submitContentReport(
+                  reportId: 'rep_${DateTime.now().millisecondsSinceEpoch}',
+                  reporterUid: child.parentUserId,
+                  schoolId: child.schoolId,
+                  contentId: contentId,
+                  contentType: 'Duyuru',
+                  contentSnippet: contentSnippet,
+                  reason: reason,
+                );
+
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('✅ Şikayetiniz okul idaresine iletildi.'),
-                      backgroundColor: Color(0xFF10B981),
+                    SnackBar(
+                      content: Text(
+                        delivered
+                            ? '✅ Şikayetiniz okul idaresine iletildi.'
+                            : '⚠️ Şikayetiniz cihazınıza kaydedildi ancak gönderilemedi. '
+                                'İnternet bağlantısı gelince tekrar deneyin.',
+                      ),
+                      backgroundColor:
+                          delivered ? const Color(0xFF10B981) : Colors.orange,
                     ),
                   );
                 }

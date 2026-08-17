@@ -351,10 +351,13 @@ describe('5. Veli şikâyetleri (content_reports)', () => {
   });
 
   it('veli kendi adına şikâyet oluşturabilir', async () => {
+    // Yeni şikâyet 'open' durumunda başlamalıdır; kural bunu şart koşar
+    // ki veli kaydı doğrudan "incelendi" olarak açamasın.
     await assertSucceeds(
       setDoc(doc(parentDb(), 'content_reports', 'rep_2'), {
         reporterUid: PARENT_UID,
         reason: 'Test',
+        status: 'open',
       }),
     );
   });
@@ -934,6 +937,140 @@ describe('10. Durum bildirimleri ve randevular', () => {
       updateDoc(doc(branchDb(), 'class_rooms', CLASS_ID, 'appointments', 'apt_1'), {
         status: 'confirmed',
       }),
+    );
+  });
+});
+
+describe('11. Okul yöneticisi yetkisi', () => {
+  const SCHOOL_A = 'meb_16_111';
+  const SCHOOL_B = 'meb_34_222';
+  const ADMIN_A_UID = 'adminOkulA';
+
+  // Onaylı okul yöneticisi: claim'leri Admin SDK betiği yazar.
+  const schoolAdminA = () =>
+    testEnv
+      .authenticatedContext(ADMIN_A_UID, {
+        schoolAdminStatus: 'approved',
+        schoolId: SCHOOL_A,
+      })
+      .firestore();
+
+  // Başvurusu beklemede olan öğretmen
+  const pendingAdmin = () =>
+    testEnv
+      .authenticatedContext('teacherBekleyen', {
+        schoolAdminStatus: 'pending',
+        schoolId: SCHOOL_A,
+      })
+      .firestore();
+
+  before(async () => {
+    await testEnv.clearFirestore();
+    await seed(async (db) => {
+      await setDoc(doc(db, 'content_reports', 'rep_okulA'), {
+        reporterUid: PARENT_UID,
+        schoolId: SCHOOL_A,
+        contentType: 'Duyuru',
+        reason: 'Uygunsuz',
+        status: 'open',
+      });
+      await setDoc(doc(db, 'content_reports', 'rep_okulB'), {
+        reporterUid: OTHER_PARENT_UID,
+        schoolId: SCHOOL_B,
+        contentType: 'Duyuru',
+        reason: 'Uygunsuz',
+        status: 'open',
+      });
+    });
+  });
+
+  it('okul yöneticisi KENDİ okulunun şikâyetini okuyabilir', async () => {
+    await assertSucceeds(
+      getDoc(doc(schoolAdminA(), 'content_reports', 'rep_okulA')),
+    );
+  });
+
+  it('KRİTİK: okul yöneticisi BAŞKA okulun şikâyetini okuyamaz', async () => {
+    await assertFails(
+      getDoc(doc(schoolAdminA(), 'content_reports', 'rep_okulB')),
+    );
+  });
+
+  it('KRİTİK: onaylanmamış başvuru sahibi şikâyet okuyamaz', async () => {
+    // Claim 'pending' ise yetki yoktur; onay yalnızca Admin SDK ile verilir.
+    await assertFails(
+      getDoc(doc(pendingAdmin(), 'content_reports', 'rep_okulA')),
+    );
+  });
+
+  it('KRİTİK: sıradan öğretmen şikâyet okuyamaz', async () => {
+    await assertFails(
+      getDoc(doc(teacherDb(), 'content_reports', 'rep_okulA')),
+    );
+  });
+
+  it('KRİTİK: şikâyeti gönderen veli bile sonradan okuyamaz', async () => {
+    await assertFails(
+      getDoc(doc(parentDb(), 'content_reports', 'rep_okulA')),
+    );
+  });
+
+  it('okul yöneticisi şikâyeti incelendi işaretleyebilir', async () => {
+    await assertSucceeds(
+      updateDoc(doc(schoolAdminA(), 'content_reports', 'rep_okulA'), {
+        status: 'reviewed',
+        reviewNote: 'Öğretmenle görüşüldü',
+      }),
+    );
+  });
+
+  it('KRİTİK: okul yöneticisi şikâyet içeriğini değiştiremez', async () => {
+    // Denetim izi bütünlüğü: gerekçe sonradan yeniden yazılamaz.
+    await assertFails(
+      updateDoc(doc(schoolAdminA(), 'content_reports', 'rep_okulA'), {
+        reason: 'Gerekçe değiştirildi',
+      }),
+    );
+  });
+
+  it('KRİTİK: okul yöneticisi başka okulun şikâyetini işaretleyemez', async () => {
+    await assertFails(
+      updateDoc(doc(schoolAdminA(), 'content_reports', 'rep_okulB'), {
+        status: 'reviewed',
+      }),
+    );
+  });
+
+  it('KRİTİK: veli şikâyeti kapalı durumda oluşturamaz', async () => {
+    await assertFails(
+      setDoc(doc(parentDb(), 'content_reports', 'rep_hile'), {
+        reporterUid: PARENT_UID,
+        schoolId: SCHOOL_A,
+        contentType: 'Duyuru',
+        reason: 'test',
+        status: 'reviewed',
+      }),
+    );
+  });
+
+  it('KRİTİK: okul yöneticisi öğrenci verisine erişemez', async () => {
+    // Yöneticinin yetkisi öğretmen doğrulama ve şikâyetle sınırlıdır;
+    // sınıf odası, mesaj veya bağ kayıtlarına erişimi yoktur.
+    await seed(async (db) => {
+      await setDoc(doc(db, 'class_rooms', CLASS_ID), {
+        classCloudId: CLASS_ID,
+        teacherUid: TEACHER_UID,
+      });
+      await setDoc(doc(db, 'parent_links', `${PARENT_UID}_${STUDENT_ID}`), {
+        parentUid: PARENT_UID,
+        studentCloudId: STUDENT_ID,
+        status: 'active',
+      });
+    });
+
+    await assertFails(getDoc(doc(schoolAdminA(), 'class_rooms', CLASS_ID)));
+    await assertFails(
+      getDoc(doc(schoolAdminA(), 'parent_links', `${PARENT_UID}_${STUDENT_ID}`)),
     );
   });
 });
