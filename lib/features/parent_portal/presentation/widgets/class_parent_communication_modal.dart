@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/cloud/cloud_ids.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../data/models/class_model.dart';
 import '../../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../data/models/class_announcement_model.dart';
+import '../../providers/cloud_communication_provider.dart';
 import '../../providers/parent_portal_provider.dart';
 
 /// SınıfCepte - Öğretmen Veli İletişim, Duyuru & Randevu Merkezi Modalı
@@ -318,6 +320,49 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                   final repo = ref.read(parentPortalRepositoryProvider);
                   await repo.createAnnouncement(newAnn);
                   ref.invalidate(classAnnouncementsProvider(widget.classModel.id!));
+
+                  // Buluta da yayımla: veliler duyuruyu ancak buradan görür.
+                  // Öğretmenin cihazındaki kayıt yalnızca kendi arşividir.
+                  final cloudRepo =
+                      ref.read(cloudCommunicationRepositoryProvider);
+                  final classCloudId = CloudIds.classId(
+                    teacherUid: teacher.id,
+                    localClassId: widget.classModel.id!,
+                  );
+
+                  // Sınıf odası yoksa duyuru yazılamaz (kurallar bu dokümanın
+                  // varlığına dayanır).
+                  await cloudRepo.ensureClassRoom(
+                    classCloudId: classCloudId,
+                    className: widget.classModel.name,
+                    teacherUid: teacher.id,
+                    teacherName: teacher.fullName,
+                    schoolId: teacher.schoolId ?? '',
+                    schoolName: teacher.schoolName,
+                  );
+
+                  final published = await cloudRepo.publishAnnouncement(
+                    classCloudId: classCloudId,
+                    announcementId: newAnn.id,
+                    title: title,
+                    content: content,
+                    authorName: teacher.fullName,
+                    authorUid: teacher.id,
+                    priority: priority,
+                  );
+
+                  if (context.mounted && !published) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Duyuru cihazınıza kaydedildi ancak velilere gönderilemedi. '
+                          'İnternet bağlantısı gelince tekrar yayınlayın.',
+                        ),
+                        backgroundColor: Colors.orange,
+                        duration: Duration(seconds: 6),
+                      ),
+                    );
+                  }
                 }
               },
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),

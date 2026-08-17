@@ -9,13 +9,13 @@ import '../../../../shared/widgets/glass_card.dart';
 import '../../../auth/screens/welcome_screen.dart';
 import '../../../auth_profile/providers/user_role_provider.dart';
 import '../../../auth_profile/presentation/views/school_bind_gate.dart';
-import '../../data/models/class_announcement_model.dart';
 import '../../data/models/class_teacher_contact_model.dart';
 import '../../data/models/parent_appointment_model.dart';
 import '../../data/models/parent_link_model.dart';
 import '../../data/models/parent_status_report_model.dart';
 import '../../data/services/kvkk_consent_service.dart';
 import '../../data/services/parent_lifecycle_service.dart';
+import '../../providers/cloud_communication_provider.dart';
 import '../../providers/parent_portal_provider.dart';
 import '../../providers/parent_token_provider.dart';
 import '../widgets/help_support_modal.dart';
@@ -595,6 +595,13 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
         relation: _quickRelation,
       );
 
+      // Bağ kurulduysa yerele önbellekle: ağ yokken de çocuk listesi görünsün.
+      if (bridgeResult.success && bridgeResult.link != null) {
+        await ref
+            .read(parentTokenRepositoryProvider)
+            .cacheParentLinkLocally(bridgeResult.link!);
+      }
+
       final result = <String, dynamic>{
         'success': bridgeResult.success,
         'message': bridgeResult.message,
@@ -1093,6 +1100,11 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                             parentName: parentName,
                             relation: relation,
                           );
+                  if (res.success && res.link != null) {
+                    await ref
+                        .read(parentTokenRepositoryProvider)
+                        .cacheParentLinkLocally(res.link!);
+                  }
                   ref.invalidate(myConnectedChildrenProvider);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -1128,7 +1140,10 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => Consumer(
         builder: (context, modalRef, _) {
-          final announcementsAsync = modalRef.watch(classAnnouncementsProvider(child.classId));
+          // Duyurular buluttan gelir: öğretmenin yayımladığı duyuru bu
+          // cihazda bulunmaz. Delta senkron sayesinde çoğu açılış sıfır
+          // doküman okur.
+          final announcementsAsync = modalRef.watch(cloudAnnouncementsProvider(child));
 
           return Container(
             height: MediaQuery.of(context).size.height * 0.75,
@@ -1169,7 +1184,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                         itemCount: announcements.length,
                         itemBuilder: (context, idx) {
                           final a = announcements[idx];
-                          final isRead = a.isReadBy(child.parentUserId);
+                          final isRead = a.readByMe;
                           final dateStr = DateFormat('dd.MM.yyyy').format(a.createdAt);
 
                           return Container(
@@ -1208,9 +1223,16 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                                       onTap: isRead
                                           ? null
                                           : () async {
-                                              final repo = ref.read(parentPortalRepositoryProvider);
-                                              await repo.markAnnouncementAsRead(a.id, child.parentUserId);
-                                              ref.invalidate(classAnnouncementsProvider(child.classId));
+                                              // Veli yalnızca kendi okundu
+                                              // kaydını yazar; duyuru
+                                              // dokümanına dokunulmaz
+                                              // (maliyet kararı #1).
+                                              await ref.read(
+                                                markAnnouncementReadProvider,
+                                              )(
+                                                link: child,
+                                                announcementId: a.id,
+                                              );
                                             },
                                       child: Row(
                                         children: [
@@ -1227,7 +1249,13 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                                     IconButton(
                                       icon: const Icon(Icons.flag_outlined, size: 16, color: Colors.grey),
                                       tooltip: 'Uygunsuz İçerik Bildir',
-                                      onPressed: () => _showReportContentDialog(context, child, a),
+                                      onPressed: () => _showReportContentDialog(
+                                        context,
+                                        child,
+                                        contentId: a.id,
+                                        contentTitle: a.title,
+                                        contentSnippet: a.content,
+                                      ),
                                       visualDensity: VisualDensity.compact,
                                     ),
                                   ],
@@ -1248,7 +1276,18 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
     );
   }
 
-  void _showReportContentDialog(BuildContext context, ParentLinkModel child, ClassAnnouncementModel announcement) {
+  /// İçerik şikâyeti dialogu.
+  ///
+  /// Belirli bir duyuru modeline bağlı değildir: yalnızca kimlik, başlık ve
+  /// içerik parçası alır. Böylece yerel ve bulut duyuru modellerinin ikisiyle
+  /// de çalışır.
+  void _showReportContentDialog(
+    BuildContext context,
+    ParentLinkModel child, {
+    required String contentId,
+    required String contentTitle,
+    required String contentSnippet,
+  }) {
     final reasonCtrl = TextEditingController();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -1268,7 +1307,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Duyuru: "${announcement.title}"', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            Text('Duyuru: "$contentTitle"', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
             TextField(
               controller: reasonCtrl,
@@ -1291,9 +1330,9 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                 await KvkkConsentService.reportContent(
                   reportedByUserId: child.parentUserId,
                   reportedRole: 'parent',
-                  contentId: announcement.id,
+                  contentId: contentId,
                   contentType: 'Duyuru',
-                  contentSnippet: announcement.content,
+                  contentSnippet: contentSnippet,
                   reason: reason,
                 );
                 if (context.mounted) {

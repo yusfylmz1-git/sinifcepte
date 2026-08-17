@@ -480,10 +480,39 @@ class ParentTokenRepository {
     }
   }
 
-  /// Bu Cihazdaki Velinin Bağlı Tüm Çocuklarını Getirme
-  Future<List<ParentLinkModel>> getMyConnectedChildren() async {
-    final parentId = await getOrCreateLocalParentUserId();
+  /// Bu Cihazdaki Velinin Bağlı Tüm Çocuklarını Getirme.
+  ///
+  /// [parentUid] verilirse (Google girişi yapmış veli) o kimliğe ait bağlar
+  /// döner. Verilmezse eski cihaz-yerel kimliğe düşer — Faz 1 öncesinde
+  /// kurulmuş bağların kaybolmaması için.
+  Future<List<ParentLinkModel>> getMyConnectedChildren({String? parentUid}) async {
+    final parentId = (parentUid != null && parentUid.isNotEmpty)
+        ? parentUid
+        : await getOrCreateLocalParentUserId();
     return getParentLinksForParent(parentId);
+  }
+
+  /// Veli tarafında, bulut doğrulaması başarılı olduktan sonra bağı yerele
+  /// yazar.
+  ///
+  /// Bu kayıt bir **önbellektir**: yetkinin kaynağı buluttaki
+  /// `parent_links` dokümanıdır ve kural motoru tarafından korunur. Yerel
+  /// kopya yalnızca ağ yokken çocuk listesinin görünmesini sağlar.
+  Future<void> cacheParentLinkLocally(ParentLinkModel link) async {
+    try {
+      final links = await _loadLinks();
+
+      // Aynı bağ zaten varsa güncelle (kimlik deterministiktir).
+      final index = links.indexWhere((l) => l.id == link.id);
+      if (index != -1) {
+        links[index] = link;
+      } else {
+        links.add(link);
+      }
+      await _saveLinks(links);
+    } catch (e, stackTrace) {
+      debugPrint('cacheParentLinkLocally hatası: $e\n$stackTrace');
+    }
   }
 
   /// Veli Bağlantısını Kaldırma (Sadece Öğretmen veya Veli Kendisi)

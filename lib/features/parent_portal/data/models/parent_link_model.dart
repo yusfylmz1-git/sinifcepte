@@ -16,6 +16,20 @@ class ParentLinkModel {
   final String linkedViaTokenCode;
   final String status; // 'active', 'archived', 'graduated', 'transferred'
 
+  /// Bulut sınıf kimliği (`cls_{teacherUid}_{localId}`).
+  ///
+  /// Veli ekranı duyuru ve mesajları bu kimlik üzerinden okur; yerel
+  /// `classId` yalnızca öğretmenin cihazında anlamlıdır. Faz 2 öncesinde
+  /// kurulmuş bağlarda boş olabilir — o durumda bulut akışları devre dışı
+  /// kalır ve velinin yeniden bağlanması gerekir.
+  final String classCloudId;
+
+  /// Bulut öğrenci kimliği (`stu_{teacherUid}_{localId}`).
+  final String studentCloudId;
+
+  /// Sınıfın sahibi öğretmenin Firebase UID'si.
+  final String teacherUid;
+
   const ParentLinkModel({
     required this.id,
     required this.parentUserId,
@@ -32,7 +46,14 @@ class ParentLinkModel {
     required this.linkedAt,
     required this.linkedViaTokenCode,
     this.status = 'active',
+    this.classCloudId = '',
+    this.studentCloudId = '',
+    this.teacherUid = '',
   });
+
+  /// Bulut akışları (duyuru, mesaj, kadro) bu bağ için kullanılabilir mi?
+  bool get hasCloudBinding =>
+      classCloudId.isNotEmpty && studentCloudId.isNotEmpty;
 
   Map<String, dynamic> toMap() {
     return {
@@ -51,6 +72,9 @@ class ParentLinkModel {
       'linked_at': linkedAt.toIso8601String(),
       'linked_via_token_code': linkedViaTokenCode,
       'status': status,
+      'class_cloud_id': classCloudId,
+      'student_cloud_id': studentCloudId,
+      'teacher_uid': teacherUid,
     };
   }
 
@@ -71,6 +95,10 @@ class ParentLinkModel {
       linkedAt: DateTime.parse(map['linked_at'] as String),
       linkedViaTokenCode: map['linked_via_token_code'] as String? ?? '',
       status: map['status'] as String? ?? 'active',
+      // Faz 2 öncesi kayıtlarda bu alanlar bulunmaz; boş kalırlar.
+      classCloudId: map['class_cloud_id'] as String? ?? '',
+      studentCloudId: map['student_cloud_id'] as String? ?? '',
+      teacherUid: map['teacher_uid'] as String? ?? '',
     );
   }
 
@@ -90,6 +118,9 @@ class ParentLinkModel {
     DateTime? linkedAt,
     String? linkedViaTokenCode,
     String? status,
+    String? classCloudId,
+    String? studentCloudId,
+    String? teacherUid,
   }) {
     return ParentLinkModel(
       id: id ?? this.id,
@@ -107,6 +138,9 @@ class ParentLinkModel {
       linkedAt: linkedAt ?? this.linkedAt,
       linkedViaTokenCode: linkedViaTokenCode ?? this.linkedViaTokenCode,
       status: status ?? this.status,
+      classCloudId: classCloudId ?? this.classCloudId,
+      studentCloudId: studentCloudId ?? this.studentCloudId,
+      teacherUid: teacherUid ?? this.teacherUid,
     );
   }
 }

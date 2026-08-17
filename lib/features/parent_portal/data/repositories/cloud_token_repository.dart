@@ -294,6 +294,9 @@ class CloudTokenRepository {
       linkedAt: DateTime.tryParse(data['linkedAt'] as String? ?? '') ?? DateTime.now(),
       linkedViaTokenCode: '',
       status: data['status'] as String? ?? 'active',
+      classCloudId: data['classCloudId'] as String? ?? '',
+      studentCloudId: studentCloudId,
+      teacherUid: data['teacherUid'] as String? ?? '',
     );
   }
 }

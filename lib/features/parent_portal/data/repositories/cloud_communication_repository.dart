@@ -1,17 +1,27 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import '../../../../core/cloud/firestore_client.dart';
 
-/// Bulut duyurusu (yalın taşıma modeli).
+/// Bulut duyurusu.
+///
+/// Görsel yardımcıları (`priorityIcon`, `priorityColor`) yerel
+/// `ClassAnnouncementModel` ile aynı sözleşmeyi izler; böylece arayüz
+/// kodu iki model arasında geçişte değişmek zorunda kalmaz.
 class CloudAnnouncement {
   final String id;
   final String title;
   final String content;
-  final String priority;
+  final String priority; // 'normal' | 'urgent' | 'event'
   final String authorName;
   final DateTime createdAt;
   final DateTime updatedAt;
   final int readCount;
+
+  /// Bu velinin duyuruyu okuyup okumadığı.
+  ///
+  /// Okundu bilgisi artık duyuru dokümanında değil, ayrı bir alt
+  /// koleksiyonda tutulur (maliyet kararı #1); bu alan o kayıttan
+  /// doldurulur.
   final bool readByMe;
 
   const CloudAnnouncement({
@@ -25,6 +35,47 @@ class CloudAnnouncement {
     this.readCount = 0,
     this.readByMe = false,
   });
+
+  bool get isUrgent => priority == 'urgent';
+  bool get isEvent => priority == 'event';
+
+  CloudAnnouncement copyWith({bool? readByMe, int? readCount}) {
+    return CloudAnnouncement(
+      id: id,
+      title: title,
+      content: content,
+      priority: priority,
+      authorName: authorName,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      readCount: readCount ?? this.readCount,
+      readByMe: readByMe ?? this.readByMe,
+    );
+  }
+
+  IconData get priorityIcon {
+    switch (priority) {
+      case 'urgent':
+        return Icons.notification_important_rounded;
+      case 'event':
+        return Icons.event_available_rounded;
+      case 'normal':
+      default:
+        return Icons.campaign_rounded;
+    }
+  }
+
+  Color get priorityColor {
+    switch (priority) {
+      case 'urgent':
+        return const Color(0xFFEF4444);
+      case 'event':
+        return const Color(0xFF8B5CF6);
+      case 'normal':
+      default:
+        return const Color(0xFFF59E0B);
+    }
+  }
 }
 
 /// Bulut mesajı.
@@ -149,6 +200,34 @@ class CloudCommunicationRepository {
       debugPrint('fetchAnnouncements hatası: $e\n$stackTrace');
       return const [];
     }
+  }
+
+  /// Sınıf odasının bulutta var olduğundan emin olur.
+  ///
+  /// Duyuru ve mesajlar sınıf odasının alt koleksiyonlarıdır; ayrıca veli
+  /// erişim kuralları bu dokümanın varlığına dayanır. Kod üretimi sırasında
+  /// zaten yazılır, ancak öğretmen kod üretmeden duyuru yayımlayabileceği
+  /// için burada da güvenceye alınır.
+  ///
+  /// Yalnızca sınıfın kimliği, adı ve öğretmeni yazılır — öğrenci listesi
+  /// buluta çıkmaz.
+  Future<bool> ensureClassRoom({
+    required String classCloudId,
+    required String className,
+    required String teacherUid,
+    required String teacherName,
+    String schoolId = '',
+    String schoolName = '',
+  }) {
+    return _client.setDoc('$_classRooms/$classCloudId', {
+      'classCloudId': classCloudId,
+      'className': className,
+      'teacherUid': teacherUid,
+      'teacherName': teacherName,
+      'schoolId': schoolId,
+      'schoolName': schoolName,
+      'updatedAt': DateTime.now().toIso8601String(),
+    });
   }
 
   /// Öğretmen duyuru yayımlar.

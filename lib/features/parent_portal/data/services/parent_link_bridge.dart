@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import '../../../../core/cloud/cloud_ids.dart';
+import '../models/parent_link_model.dart';
 import '../models/parent_token_model.dart';
 import '../repositories/cloud_token_repository.dart';
 
@@ -13,6 +15,13 @@ class BridgeLinkResult {
   final String? className;
   final String? schoolName;
 
+  /// Velinin cihazında saklanacak bağ kaydı.
+  ///
+  /// Bulut kimliklerini taşır; veli ekranı duyuru ve mesajları bunun
+  /// üzerinden okur. Ağ kesildiğinde de çocuk listesi görünmeye devam
+  /// etsin diye yerelde tutulur.
+  final ParentLinkModel? link;
+
   const BridgeLinkResult({
     required this.success,
     required this.message,
@@ -20,6 +29,7 @@ class BridgeLinkResult {
     this.studentName,
     this.className,
     this.schoolName,
+    this.link,
   });
 
   factory BridgeLinkResult.failure(String message) =>
@@ -139,14 +149,40 @@ class ParentLinkBridge {
         );
       }
 
+      final studentCloudId = token.studentCloudId!;
+      final link = ParentLinkModel(
+        id: CloudIds.parentLinkId(
+          parentUid: parentUid,
+          studentCloudId: studentCloudId,
+        ),
+        parentUserId: parentUid,
+        parentName: parentName.trim().isNotEmpty ? parentName.trim() : 'Veli',
+        studentId: CloudIds.localIdOf(studentCloudId) ?? 0,
+        studentName: token.studentName ?? '',
+        studentNumber: token.studentNumber,
+        schoolId: token.schoolId ?? '',
+        schoolName: token.schoolName ?? '',
+        classId: CloudIds.localIdOf(token.classCloudId ?? '') ?? 0,
+        className: token.className ?? '',
+        relation: relation,
+        linkedAt: DateTime.now(),
+        // Düz kod saklanmaz; bağ kurulduktan sonra gereği de kalmaz.
+        linkedViaTokenCode: '',
+        status: 'active',
+        classCloudId: token.classCloudId ?? '',
+        studentCloudId: studentCloudId,
+        teacherUid: token.teacherUid ?? '',
+      );
+
       return BridgeLinkResult(
         success: true,
         message:
             '${token.studentName} (${token.className}) başarıyla bağlandı!',
-        studentCloudId: token.studentCloudId,
+        studentCloudId: studentCloudId,
         studentName: token.studentName,
         className: token.className,
         schoolName: token.schoolName,
+        link: link,
       );
     } catch (e, stackTrace) {
       debugPrint('---------------- HATA DETAYI (ParentLinkBridge.verifyAndLink) ----------------');

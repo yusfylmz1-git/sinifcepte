@@ -44,10 +44,14 @@ final parentConnectedChildrenProvider = FutureProvider.family<List<ParentLinkMod
   return repo.getParentLinksForParent(parentUserId);
 });
 
-/// Bu Cihazdaki Velinin Bağlı Tüm Çocukları Provider'ı
+/// Bu Cihazdaki Velinin Bağlı Tüm Çocukları Provider'ı.
+///
+/// Google girişi yapılmışsa Firebase UID kullanılır; böylece veli cihaz
+/// değiştirdiğinde de aynı çocuklara ulaşır.
 final myConnectedChildrenProvider = FutureProvider<List<ParentLinkModel>>((ref) async {
   final repo = ref.watch(parentTokenRepositoryProvider);
-  return repo.getMyConnectedChildren();
+  final uid = ref.watch(parentAuthServiceProvider).currentIdentity?.uid;
+  return repo.getMyConnectedChildren(parentUid: uid);
 });
 
 /// Aktif Seçili Çocuk İndeksi Provider'ı
