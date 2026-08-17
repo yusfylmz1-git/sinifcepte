@@ -181,4 +181,55 @@ Kullanıcı onayı beklemektedir — hiçbiri başlatılmadı.
 - **Yapılan:** Salt-okunur tam proje analizi. Kod değişikliği yapılmadı.
 - **Doğrulandı:** `flutter analyze` (0 issue) ve `flutter test` (48/48) bizzat çalıştırıldı.
 - **Çıktı:** Bu dosya oluşturuldu; K1–K6 kritik tespitleri kayda geçirildi.
-- **Sıradaki:** Kullanıcının §6'daki maddelerden birini seçmesi bekleniyor.
+
+### Oturum 2 — 17 Ağustos 2026 (aynı gün, devam)
+
+#### A. Git tabanı alındı ✅
+- `feat/full-project-baseline` dalı açıldı, **343 dosya** tek commit'te sürüm kontrolüne alındı (`7896bb5`).
+- Sızmış kimlik bilgisi yok; 283 MB'lık `windows/flutter/ephemeral/` doğru şekilde dışarıda. Repo 4.3 MB.
+- **K5 kapandı.**
+
+#### B. Bulut mimarisi planlandı (kod yazılmadan)
+İki belge üretildi:
+- **Bulut Köprüsü planı:** https://claude.ai/code/artifact/f2d2dde5-7ada-4047-92c7-3e2a27af1896
+- **Ölçek ve Maliyet planı:** https://claude.ai/code/artifact/c021b533-2a1a-4114-85e4-ee636e549f83
+
+**En kritik tespit:** Veli portalı `SharedPreferences`'ta olduğu için öğretmenin ürettiği kod velinin telefonunda **yok**. Testlerin geçmesi bunu yakalamıyor (tek hafızada iki rol simüle ediliyor). Kod doğru, **taşıyıcı yok**. Bu yüzden Firestore bir iyileştirme değil, **ön koşul**.
+
+**Maliyet düzeltmesi:** Oturum 1'deki "15-20 okul" hesabı tek okul içindi, 10M kullanıcı hedefini yansıtmıyordu. Gerçek: ham fatura ~$2.400/ay; yedi şema kararıyla **~$260/ay (%89 azalma)**. Spark'ta okul sayısı ~20 → **~190**.
+
+#### C. Faz 1 tamamlandı ✅ (`b3d48bc`)
+- `ParentAuthService` — veli Google girişi (yalnızca Google kararı uygulandı).
+- `SchoolAdminStatus` + `AuthClaimsService` — yetki artık **custom claim**'den okunuyor, yerelden değil.
+- `SchoolAdminRequestModel` — yönetici başvuru → süper admin onayı akışının modeli.
+- `AdGate` + `AdSlotWidget` — reklam altyapısı kuruldu, **kapalı**. SDK bilinçli olarak eklenmedi (~2 MB yük, kapalıyken boşa gider); çağrı yüzeyi sabit, Faz 7'de tek dosya doldurulacak.
+- `test/auth_roles_and_ads_test.dart` (15 test) eklendi.
+
+**Bu fazda bulunan ve düzeltilen iki gerçek hata:**
+1. `welcome_screen.dart`: Firebase oturumu olan **herkes öğretmen sayılıyordu** — veli Google ile girince öğretmen paneline düşerdi.
+2. `user_role_provider.dart`: Yapıcıdaki `loadRole()`, sonradan yapılan rol seçimini **eziyordu**. Uygulama açılır açılmaz rol seçen kullanıcının seçimi kayboluyordu. (Yazdığım testin başarısız olmasıyla yakalandı.)
+
+**Doğrulama:** `flutter analyze` 0 issue · `flutter test` **63/63** başarılı.
+
+---
+
+## 🎯 SIRADAKİ ADIM
+
+**Faz 2 — Token köprüsü.** Projenin kilidini açan faz: öğretmenin ürettiği kod bulut üzerinden başka bir telefonda çocuğu bağlayacak.
+
+Uygulanacak maliyet kararları: token TTL + bağlantı sonrası silme (#6), toplu yazma (#7).
+Güvenlik: buluta **yalnızca `codeHash`** yazılacak, düz kod asla.
+
+### Kesinleşen kararlar (tekrar sorulmayacak)
+| Konu | Karar |
+| :--- | :--- |
+| Veli girişi | Yalnızca Google |
+| Duyuru yetkisi | Yalnızca sınıf öğretmeni |
+| Mesajlaşma yetkisi | Veli, dersine giren **tüm** öğretmenlerle konuşabilir (ayrı yetki ekseni) |
+| Öğretmen doğrulaması | Rozet, kapı değil — onaysız da veli bağlanabilir |
+| Reklam | Altyapı Faz 1'de kuruldu (kapalı), açılışı Faz 7 |
+
+### Açık riskler
+- `firestore.rules` hiç test edilmedi. Faz 2 ile birlikte emülatör tabanlı kural testi eklenmeli — yanlış kural sessizce veri sızdırır.
+- Yerel `int studentId` → bulut `stu_{uid}_{yerelId}` eşlemesi Faz 2'de kurulacak; **geri dönüşü zor**, baştan doğru yapılmalı.
+- Blaze'e geçilirse Firebase varsayılan harcama tavanı koymaz; bütçe alarmı Faz 6.
