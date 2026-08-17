@@ -269,15 +269,39 @@ Faz 2'de yazılıp çalıştırılamayan güvenlik kuralı testleri artık **ger
 
 ---
 
+#### G. Faz 3 — 2. yarı tamamlandı ✅ (`164c68c`)
+
+**Duyurular artık gerçekten iki cihaz arasında akıyor.**
+
+**Bulunan eksik halka:** `ParentLinkModel` bulut kimliklerini taşımıyordu — veli ekranı hangi bulut sınıfından okuyacağını bilemiyordu. `classCloudId`, `studentCloudId`, `teacherUid` eklendi; Faz 2 öncesi kayıtlarla geriye uyumlu (`hasCloudBinding` false döner).
+
+**Veli tarafı:** Duyuru listesi buluta bağlandı (delta senkron). Okundu işaretleme kendi `reads/{uid}` dokümanını yazıyor. Bağ kurulunca yerele önbellekleniyor — ağ yokken de çocuk listesi görünüyor. `myConnectedChildrenProvider` artık Firebase UID kullanıyor, yani **veli cihaz değiştirse de çocuklarına ulaşıyor**.
+
+**Öğretmen tarafı:** Duyuru yayımlama buluta yazıyor; başarısız olursa **açıkça uyarıyor** (yerelde görünüp velilere ulaşmama durumu sessiz geçilmiyor). `ensureClassRoom` eklendi.
+
+**Doğrulama:** `flutter analyze` 0 issue · Dart **97/97** · kural testleri **51/51**.
+
+---
+
 ## 🎯 SIRADAKİ ADIM
 
-**Faz 3 — 2. yarı: arayüz bağlantısı.** Bulut veri katmanı hazır ama ekranlar hâlâ `SharedPreferences`'tan okuyor. Yapılacaklar:
-- Veli ekranındaki duyuru/mesaj listelerini `CloudCommunicationRepository`'ye bağlamak
-- Öğretmen tarafında duyuru yayımlama ve kadro yönetimi ekranı
-- `parent_portal_repository.dart`'ı bulut + yerel önbellek olarak yeniden kurgulamak
-- Maliyet kararı **#5** (son 20 duyuruyu sınıf dokümanında toplama) — arayüz bağlanınca ölçülüp uygulanacak
+**Faz 3 kalanı (küçük):**
+- Mesajlaşma arayüzü — veri katmanı ve kurallar hazır, ekran bağlanacak
+- Kadro yönetimi ekranı (öğretmen branş öğretmeni ekler → mesajlaşma yetkisi verir)
+- Randevu ve durum bildirimi akışları
+- Maliyet kararı **#5** (son 20 duyuruyu sınıf dokümanında toplama)
 
 Sonraki fazlar: **Faz 4** okul yöneticisi · **Faz 5** manifest (Remote Config) · **Faz 6** bütçe koruması · **Faz 7** reklam açılışı.
+
+---
+
+## 🧪 TEST DURUMU ÖZETİ
+
+| Takım | Sayı | Komut |
+| :--- | :--: | :--- |
+| Dart birim testleri | **97** | `flutter test` |
+| Firestore kural testleri | **51** | `cd test_rules && .\run-tests.ps1` |
+| Statik analiz | 0 issue | `flutter analyze` |
 
 ### Kesinleşen kararlar (tekrar sorulmayacak)
 | Konu | Karar |
