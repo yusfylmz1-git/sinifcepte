@@ -251,17 +251,33 @@ Faz 2'de yazılıp çalıştırılamayan güvenlik kuralı testleri artık **ger
 
 ---
 
+#### F. Faz 3 — 1. yarı tamamlandı ✅ (`e5cfa7c`)
+
+**Mesajlaşma yetki ekseni çözüldü.** Kararınız gereği duyuru ile mesajlaşma ayrıldı:
+- Duyuru → **yalnızca sınıf öğretmeni** (mevcut `cls_{uid}_{id}` sahipliği yeterli)
+- Mesajlaşma → yeni **`class_rooms/{id}/staff/{teacherUid}`** kadrosu + `isClassStaff()` kural yardımcısı. Veli, çocuğunun dersine giren branş öğretmenleriyle yazışabiliyor; kadroda olmayan öğretmen giremiyor.
+
+**Yeni dosyalar:**
+- `lib/core/cloud/delta_sync_tracker.dart` — 5 dk saat kayması payı, 30 günlük bayatlama sınırı, hata durumunda tam çekime düşer.
+- `.../repositories/cloud_communication_repository.dart` — duyuru, mesaj, kadro erişimi.
+
+**Uygulanan maliyet kararları:** #1 (okundu alt dokümana), #2 (delta sorgu), #4 (dinleyici yok).
+
+**Kural sıkılaştırmaları:** Mesaj gönderildikten sonra değiştirilemiyor; veli `'teacher'` rolüyle mesaj gönderemiyor (kimlik taklidi koruması); branş öğretmeni kendini kadroya ekleyemiyor.
+
+**Doğrulama:** `flutter analyze` 0 issue · `flutter test` **90/90** · kural testleri **51/51** (33'ten yükseldi).
+
+---
+
 ## 🎯 SIRADAKİ ADIM
 
-**Faz 3 — İletişim katmanı.** Duyuru, mesajlaşma, randevu ve durum bildirimini buluta taşıma.
+**Faz 3 — 2. yarı: arayüz bağlantısı.** Bulut veri katmanı hazır ama ekranlar hâlâ `SharedPreferences`'tan okuyor. Yapılacaklar:
+- Veli ekranındaki duyuru/mesaj listelerini `CloudCommunicationRepository`'ye bağlamak
+- Öğretmen tarafında duyuru yayımlama ve kadro yönetimi ekranı
+- `parent_portal_repository.dart`'ı bulut + yerel önbellek olarak yeniden kurgulamak
+- Maliyet kararı **#5** (son 20 duyuruyu sınıf dokümanında toplama) — arayüz bağlanınca ölçülüp uygulanacak
 
-Uygulanacak maliyet kararları (bu fazın çoğu tasarrufu burada):
-- **#1 Okundu bilgisi alt dokümana** — `readByParentUserIds` dizisi 30 velinin aynı dokümana yazmasına yol açıyor. `/announcements/{id}/reads/{uid}` yapısına geçilecek.
-- **#2 Delta sorgu** — `where('updatedAt', '>', sonSenkron)`.
-- **#4 Listener yasağı** — zaten `FirestoreClient` seviyesinde uygulandı.
-- **#5 Son 20 duyuru sınıf dokümanında toplanacak.**
-
-Ayrıca kararınız gereği **mesajlaşma ayrı yetki ekseni** olacak: duyuruyu yalnızca sınıf öğretmeni yapar, ama veli dersine giren tüm branş öğretmenleriyle mesajlaşabilir. Mevcut kurallarda `messages` alt koleksiyonu sınıf sahipliğine bağlı — bunu genişletmek gerekecek.
+Sonraki fazlar: **Faz 4** okul yöneticisi · **Faz 5** manifest (Remote Config) · **Faz 6** bütçe koruması · **Faz 7** reklam açılışı.
 
 ### Kesinleşen kararlar (tekrar sorulmayacak)
 | Konu | Karar |
