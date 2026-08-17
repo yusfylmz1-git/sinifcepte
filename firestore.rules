@@ -1,0 +1,105 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && (request.auth.token.adminRole == 'super'
+            || request.auth.token.adminRole == 'moderator');
+    }
+    function isSuper() {
+      return request.auth != null && request.auth.token.adminRole == 'super';
+    }
+    function isParent() {
+      return request.auth != null && request.auth.token.role == 'parent';
+    }
+    function ownsClassRoom(classCloudId) {
+      return request.auth != null
+        && classCloudId.matches('cls_' + request.auth.uid + '_.*');
+    }
+    function parentHasClass(classCloudId) {
+      return request.auth != null && exists(
+        /databases/$(database)/documents/parent_class_access/$(request.auth.uid + '_' + classCloudId)
+      );
+    }
+    function parentHasStudent(studentCloudId) {
+      return request.auth != null && exists(
+        /databases/$(database)/documents/parent_links/$(request.auth.uid + '_' + studentCloudId)
+      );
+    }
+
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /admin_users/{uid} {
+      allow read: if isAdmin();
+      allow write: if isSuper();
+    }
+
+    match /audit_logs/{id} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /school_merge_queue/{id} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /sync/manifest {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /parent_links/{id} {
+      allow read: if request.auth != null && id.matches(request.auth.uid + '_.*');
+      allow write: if false;
+    }
+
+    match /parent_class_access/{id} {
+      allow read: if request.auth != null && id.matches(request.auth.uid + '_.*');
+      allow write: if false;
+    }
+
+    match /class_rooms/{classCloudId} {
+      allow read: if ownsClassRoom(classCloudId) || parentHasClass(classCloudId);
+      allow write: if false;
+
+      match /announcements/{id} {
+        allow read: if ownsClassRoom(classCloudId) || parentHasClass(classCloudId);
+        allow create, update, delete: if ownsClassRoom(classCloudId);
+        allow update: if isParent() && parentHasClass(classCloudId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']);
+      }
+
+      match /appointments/{id} {
+        allow read: if ownsClassRoom(classCloudId)
+          || (isParent() && parentHasStudent(resource.data.studentCloudId));
+        allow create: if isParent()
+          && parentHasStudent(request.resource.data.studentCloudId)
+          && request.resource.data.parentUserId == request.auth.uid;
+        allow update: if ownsClassRoom(classCloudId);
+      }
+
+      match /messages/{id} {
+        allow read: if ownsClassRoom(classCloudId)
+          || (isParent() && parentHasStudent(resource.data.studentCloudId));
+        allow create: if (ownsClassRoom(classCloudId))
+          || (isParent()
+              && parentHasStudent(request.resource.data.studentCloudId)
+              && request.resource.data.parentUserId == request.auth.uid);
+      }
+
+      match /status_reports/{id} {
+        allow read: if ownsClassRoom(classCloudId)
+          || (isParent() && parentHasStudent(resource.data.studentCloudId));
+        allow create: if isParent()
+          && parentHasStudent(request.resource.data.studentCloudId)
+          && request.resource.data.parentUserId == request.auth.uid;
+        allow update: if ownsClassRoom(classCloudId);
+      }
+    }
+  }
+}

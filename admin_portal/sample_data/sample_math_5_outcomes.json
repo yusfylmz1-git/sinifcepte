@@ -1,0 +1,44 @@
+[
+  {
+    "id": "out_5_MAT_w1",
+    "gradeLevel": 5,
+    "subjectCode": "MAT",
+    "subjectName": "Matematik",
+    "weekNumber": 1,
+    "unitTitle": "1. Ünite: Doğal Sayılar",
+    "topicTitle": "Çok Basamaklı Doğal Sayılar",
+    "outcomeCode": "M.5.1.1.1",
+    "outcomeDescription": "En çok dokuz basamaklı doğal sayıları okur ve yazar.",
+    "isHolidayWeek": false,
+    "holidayNote": null,
+    "academicYear": "2025-2026"
+  },
+  {
+    "id": "out_5_MAT_w2",
+    "gradeLevel": 5,
+    "subjectCode": "MAT",
+    "subjectName": "Matematik",
+    "weekNumber": 2,
+    "unitTitle": "1. Ünite: Doğal Sayılar",
+    "topicTitle": "Basamak ve Sayı Değerleri",
+    "outcomeCode": "M.5.1.1.2",
+    "outcomeDescription": "En çok dokuz basamaklı doğal sayıların bölüklerini, basamaklarını ve basamak değerlerini belirtir.",
+    "isHolidayWeek": false,
+    "holidayNote": null,
+    "academicYear": "2025-2026"
+  },
+  {
+    "id": "out_5_MAT_w9",
+    "gradeLevel": 5,
+    "subjectCode": "MAT",
+    "subjectName": "Matematik",
+    "weekNumber": 9,
+    "unitTitle": "1. Dönem Ara Tatili",
+    "topicTitle": "Kasım Ara Tatil Haftası",
+    "outcomeCode": "TATIL",
+    "outcomeDescription": "1. Dönem Ara Tatil Haftası (Dinlenme ve Sosyal Etkinlikler)",
+    "isHolidayWeek": true,
+    "holidayNote": "1. Dönem Ara Tatili 🎉",
+    "academicYear": "2025-2026"
+  }
+]

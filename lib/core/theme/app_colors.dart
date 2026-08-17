@@ -5,8 +5,8 @@ abstract class AppColors {
   // Arka Planlar (Backgrounds)
   static const Color darkBackground = Color(0xFF0F172A); // Deep Slate
   static const Color darkCardBackground = Color(0xFF1E293B); // Slate Navy
-  static const Color lightBackground = Color(0xFFF8FAFC); // Clean Ice White
-  static const Color lightCardBackground = Color(0xFFFFFFFF);
+  static const Color lightBackground = Color(0xFFFFFFFF); // Clean Pure White
+  static const Color lightCardBackground = Color(0xFFF8FAFC); // Soft White Surface
 
   // Ana Renkler (Primary & Secondary)
   static const Color primary = Color(0xFF6366F1); // Indigo Moru

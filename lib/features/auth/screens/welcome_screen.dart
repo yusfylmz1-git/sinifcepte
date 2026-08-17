@@ -1,0 +1,370 @@
+import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../../../core/database/database_helper.dart';
+import '../../../core/firebase/firebase_bootstrap.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../shared/widgets/glass_card.dart';
+import '../../auth_profile/data/services/teacher_auth_service.dart';
+import '../../auth_profile/providers/teacher_profile_provider.dart';
+import '../../auth_profile/providers/user_role_provider.dart';
+import '../../auth_profile/presentation/views/school_bind_gate.dart';
+import '../../parent_portal/presentation/screens/parent_dashboard_screen.dart';
+import '../../parent_portal/providers/parent_token_provider.dart';
+
+/// SınıfCepte - Rol Seçim & Giriş Ekranı (Öğretmen / Veli)
+class WelcomeScreen extends ConsumerStatefulWidget {
+  const WelcomeScreen({super.key});
+
+  @override
+  ConsumerState<WelcomeScreen> createState() => _WelcomeScreenState();
+}
+
+class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
+  bool _hasCheckedSavedRole = false;
+  bool _teacherSigningIn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAutoLogin();
+    });
+  }
+
+  /// Eğer önceden rol seçildiyse doğrudan ilgili panele geçiş yap
+  Future<void> _checkAutoLogin() async {
+    if (_hasCheckedSavedRole) return;
+    _hasCheckedSavedRole = true;
+
+    final roleState = ref.read(userRoleProvider);
+    if (!mounted) return;
+
+    await FirebaseBootstrap.ensureInitialized();
+    if (!mounted) return;
+
+    if (FirebaseBootstrap.ready && FirebaseAuth.instance.currentUser != null) {
+      final uid = FirebaseAuth.instance.currentUser!.uid;
+      await DatabaseHelper.instance.openForUid(uid);
+      await ref.read(teacherProfileProvider.notifier).ensureLoaded();
+      await ref.read(userRoleProvider.notifier).selectTeacherRole();
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const SchoolBindGate()),
+      );
+      return;
+    }
+
+    if (roleState.isTeacher) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const SchoolBindGate()),
+      );
+    } else if (roleState.isParent) {
+      final repo = ref.read(parentTokenRepositoryProvider);
+      final children = await repo.getMyConnectedChildren();
+      if (!mounted) return;
+
+      if (children.isNotEmpty) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
+        );
+      }
+    }
+  }
+
+  /// Öğretmen Olarak Giriş Yap
+  Future<void> _handleTeacherLogin(BuildContext context) async {
+    if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Öğretmen Google girişi Android / iOS uygulamasında yapılır.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _teacherSigningIn = true);
+    try {
+      await FirebaseBootstrap.ensureInitialized();
+      if (FirebaseBootstrap.ready) {
+        await TeacherAuthService().signInWithGoogle(
+          profileNotifier: ref.read(teacherProfileProvider.notifier),
+          current: ref.read(teacherProfileProvider),
+        );
+      }
+      await ref.read(userRoleProvider.notifier).selectTeacherRole();
+      if (context.mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const SchoolBindGate()),
+        );
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Öğretmen Google girişi hatası: $e\n$stackTrace');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceFirst('TeacherAuthException: ', '')),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _teacherSigningIn = false);
+    }
+  }
+
+  /// Veli Olarak Giriş Yap
+  Future<void> _handleParentLogin(BuildContext context) async {
+    await ref.read(userRoleProvider.notifier).selectParentRole();
+    if (!context.mounted) return;
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF0F172A),
+              Color(0xFF1E1E38),
+              Color(0xFF0F172A),
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Spacer(),
+
+                          // Proje Dairesel Logosu
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: AppColors.primaryGradient,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(alpha: 0.5),
+                                  blurRadius: 30,
+                                  spreadRadius: 4,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.school_rounded,
+                              size: 48,
+                              color: Colors.white,
+                            ),
+                          ),
+
+                          const SizedBox(height: 18),
+
+                          // Başlık & Alt Başlık
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              'SınıfCepte',
+                              style: theme.textTheme.displayLarge?.copyWith(
+                                letterSpacing: 1.2,
+                                fontSize: 32,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Öğretmen ve Veliler İçin Dijital Eğitim Köprüsü',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.outfit(
+                              fontSize: 14,
+                              color: Colors.white70,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+
+                          const Spacer(),
+                          const SizedBox(height: 16),
+
+                          // 1. KART: ÖĞRETMEN GİRİŞİ
+                          _buildRoleCard(
+                            context,
+                            title: _teacherSigningIn ? '👨‍🏫 Google ile bağlanılıyor...' : '👨‍🏫 Öğretmen Girişi',
+                            subtitle: 'Google ile giriş, ardından okulunuzu seçin. Sınıf ve katılım cihazınızda kalır.',
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
+                            ),
+                            icon: Icons.school_rounded,
+                            onTap: _teacherSigningIn ? () {} : () => _handleTeacherLogin(context),
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // 2. KART: VELİ GİRİŞİ
+                          _buildRoleCard(
+                            context,
+                            title: '👨‍👩‍👧 Veli Girişi',
+                            subtitle: 'Referans kodu ile öğrencinizi bağlayın; duyuru, randevu ve mesajları takip edin.',
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF059669), Color(0xFF10B981)],
+                            ),
+                            icon: Icons.family_restroom_rounded,
+                            onTap: () => _handleParentLogin(context),
+                          ),
+
+                          const SizedBox(height: 18),
+
+                          // Bilgilendirme Rozeti (Offline-First)
+                          GlassCard(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.accent.withValues(alpha: 0.15),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.bolt_rounded,
+                                    color: AppColors.accent,
+                                    size: 18,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'İnternet paketi gerektirmez! %100 yerel ve güvenli mimariyle çalışır.',
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 11.5,
+                                      color: Colors.white70,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const Spacer(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRoleCard(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required LinearGradient gradient,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: gradient,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: gradient.colors.first.withValues(alpha: 0.4),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Icon(icon, color: Colors.white, size: 28),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.outfit(
+                      fontSize: 16.5,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      color: Colors.white70,
+                      height: 1.3,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: Colors.white54,
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

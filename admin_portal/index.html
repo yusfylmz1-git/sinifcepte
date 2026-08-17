@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SınıfCepte - Web Yönetim & İçerik Portalı</title>
+  
+  <!-- Fontlar & İkonlar -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- SheetJS (Excel .xlsx Okuyucu) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <link rel="stylesheet" href="css/admin_styles.css">
+  <script src="js/auth_gate.js"></script>
+</head>
+<body>
+
+  <!-- Toast Bildirim Konteyneri -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <div class="admin-layout">
+    
+    <!-- SOL MENÜ (SIDEBAR) -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="app-logo">SC</div>
+        <div class="app-title">
+          <h2>SınıfCepte</h2>
+          <span>YÖNETİM PORTALI</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a href="#" class="menu-item active" data-tab="dashboard">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Genel Bakış
+        </a>
+
+        <a href="#" class="menu-item" data-tab="calendar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          MEB Takvimi
+        </a>
+
+        <a href="#" class="menu-item" data-tab="outcomes">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Kazanım Kütüphanesi
+        </a>
+
+        <a href="#" class="menu-item" data-tab="exams">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          MEB & ÖSYM Sınavları
+        </a>
+
+        <a href="#" class="menu-item" data-tab="manifest">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          Versiyon & Senkronizasyon
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <span>v1.0.0 Admin Portal</span>
+        <span class="badge badge-period" style="background: rgba(16, 185, 129, 0.1); color: #10B981;">• Canlı</span>
+      </div>
+    </aside>
+
+    <!-- SAĞ ANA İÇERİK ALANI -->
+    <main class="main-content">
+      
+      <!-- ÜST BAŞLIK BARI -->
+      <header class="top-header">
+        <div class="header-left">
+          <h1 id="page-title">Genel Bakış & İstatistikler</h1>
+          <p id="page-subtitle">SınıfCepte Bulut Yönetim Merkezi</p>
+        </div>
+
+        <div class="header-right">
+          <button class="btn btn-secondary" onclick="CloudExporter.exportAllBundle(window.adminApp.calendarManager, window.adminApp.outcomesManager, window.adminApp.manifestManager)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Tüm Veriyi İndir (JSON)
+          </button>
+          
+          <button id="theme-toggle" class="theme-toggle-btn" title="Temayı Değiştir">
+            🌓
+          </button>
+        </div>
+      </header>
+
+      <!-- İÇERİK GÖVDESİ (SEKMELER) -->
+      <div class="content-body">
+        
+        <!-- TAB 1: GENEL BAKIŞ (DASHBOARD) -->
+        <section id="tab-dashboard" class="tab-content active">
+          <!-- İstatistik Kartları -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon" style="background: var(--primary-light); color: var(--primary);">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              </div>
+              <div class="stat-info">
+                <h3 id="stat-total-events">13</h3>
+                <p>MEB Takvim Olayı</p>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon" style="background: var(--accent-light); color: var(--accent);">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              </div>
+              <div class="stat-info">
+                <h3 id="stat-total-outcomes">36</h3>
+                <p>Yüklü Haftalık Kazanım</p>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon" style="background: var(--warning-light); color: var(--warning);">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              </div>
+              <div class="stat-info">
+                <h3 id="stat-manifest-version">v1.1</h3>
+                <p>Aktif Bulut Sürümü</p>
+              </div>
+            </div>
+
+            <div class="stat-card" style="cursor: pointer;" onclick="window.adminApp.switchTab('exams')">
+              <div class="stat-icon" style="background: rgba(147, 51, 234, 0.12); color: #9333EA;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </div>
+              <div class="stat-info">
+                <h3 id="stat-total-exams">8</h3>
+                <p>Resmî Sınav Takvimi</p>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon" style="background: var(--info-light); color: var(--info);">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </div>
+              <div class="stat-info">
+                <h3 id="stat-active-year">2026-2027</h3>
+                <p>Aktif Eğitim Yılı</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hızlı İşlemler Kartı -->
+          <div class="panel-card">
+            <div class="panel-header">
+              <h2 class="panel-title">⚡ Hızlı İşlemler</h2>
+            </div>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+              <button class="btn btn-primary" onclick="window.adminApp.switchTab('calendar'); window.adminApp.openCalendarWizardModal();">
+                🪄 MEB Takvim Sihirbazını Aç
+              </button>
+              <button class="btn btn-secondary" onclick="window.adminApp.switchTab('calendar'); window.adminApp.openSmartParserModal();">
+                📋 Akıllı Genelge Yapıştır
+              </button>
+              <button class="btn btn-secondary" onclick="window.adminApp.switchTab('outcomes'); window.adminApp.openCurriculumPresetsModal();">
+                📦 Hazır TTKB Kazanım Paketleri
+              </button>
+              <button class="btn btn-secondary" onclick="window.adminApp.switchTab('manifest'); window.adminApp.openAddAnnouncementModal();">
+                📢 Yeni Sistem Duyurusu Yayınla
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 2: MEB AKADEMİK TAKVİM -->
+        <section id="tab-calendar" class="tab-content">
+          <div class="panel-card">
+            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <span style="font-size: 16px; font-weight: 700; color: var(--text-main);">📅 MEB Çalışma Takvimi</span>
+                
+                <!-- Yıl Seçici Dropdown -->
+                <select id="calendar-year-filter" class="form-control" style="width: auto; font-weight: 700; color: var(--primary); padding: 8px 14px; border-radius: 8px;" onchange="window.adminApp.handleCalendarYearChange(this.value)">
+                  <!-- Dinamik doldurulur -->
+                </select>
+              </div>
+
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="btn btn-secondary" style="background: var(--warning-light); color: var(--warning); border-color: var(--warning); font-weight: 700;" onclick="window.adminApp.openCalendarWizardModal()">
+                  🪄 Takvim Sihirbazı
+                </button>
+                <button class="btn btn-secondary" style="background: var(--info-light); color: var(--info); border-color: var(--info); font-weight: 700;" onclick="window.adminApp.openSmartParserModal()">
+                  📋 Akıllı Genelge Yapıştır
+                </button>
+                <button class="btn btn-secondary" onclick="CloudExporter.exportCalendar(window.adminApp.calendarManager)">
+                  JSON İndir
+                </button>
+                <button class="btn btn-primary" onclick="window.adminApp.openAddCalendarModal()">
+                  + Yeni Olay Ekle
+                </button>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Olay / Başlık</th>
+                    <th>Kategori</th>
+                    <th>Başlangıç</th>
+                    <th>Bitiş</th>
+                    <th>Süre</th>
+                    <th style="text-align: right;">İşlemler</th>
+                  </tr>
+                </thead>
+                <tbody id="calendar-tbody">
+                  <!-- Dinamik JavaScript ile doldurulur -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 3: KAZANIM KÜTÜPHANESİ -->
+        <section id="tab-outcomes" class="tab-content">
+          <div class="panel-card">
+            <div class="panel-header">
+              <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                <!-- Sınıf Kademe Seçici -->
+                <div>
+                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block;">Kademe / Sınıf:</label>
+                  <select id="outcomes-grade-select" class="form-control" style="width: 140px; padding: 6px 10px;">
+                    <option value="1">1. Sınıf</option>
+                    <option value="2">2. Sınıf</option>
+                    <option value="3">3. Sınıf</option>
+                    <option value="4">4. Sınıf</option>
+                    <option value="5" selected>5. Sınıf</option>
+                    <option value="6">6. Sınıf</option>
+                    <option value="7">7. Sınıf</option>
+                    <option value="8">8. Sınıf</option>
+                    <option value="9">9. Sınıf</option>
+                    <option value="10">10. Sınıf</option>
+                    <option value="11">11. Sınıf</option>
+                    <option value="12">12. Sınıf</option>
+                  </select>
+                </div>
+
+                <!-- Ders Branş Seçici -->
+                <div>
+                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block;">Ders / Branş:</label>
+                  <select id="outcomes-subject-select" class="form-control" style="min-width: 190px; padding: 6px 10px;">
+                    <option value="ALL">🌟 Tüm Branşlar</option>
+                    <option value="BILISIM">💻 Bilişim Teknolojileri ve Yazılım</option>
+                    <option value="TURKCE">📚 Türkçe</option>
+                    <option value="MAT" selected>📐 Matematik</option>
+                    <option value="FEN">🔬 Fen Bilimleri</option>
+                    <option value="SOSYAL">🌍 Sosyal Bilgiler</option>
+                    <option value="INKILAP">🏛️ T.C. İnkılap Tarihi ve Atatürkçülük</option>
+                    <option value="HAYAT">🌱 Hayat Bilgisi</option>
+                    <option value="INGILIZCE">🇬🇧 İngilizce</option>
+                    <option value="ALMANCA">🇩🇪 Almanca</option>
+                    <option value="BEDEN">🏃 Beden Eğitimi ve Spor</option>
+                    <option value="GORSEL">🎨 Görsel Sanatlar</option>
+                    <option value="MUZIK">🎵 Müzik</option>
+                    <option value="DIN">🕌 Din Kültürü ve Ahlak Bilgisi</option>
+                    <option value="TEKNOLOJI_TASARIM">⚙️ Teknoloji ve Tasarım</option>
+                    <option value="TRAFIK">🚦 Trafik Güvenliği</option>
+                    <option value="INSAN_HAKLARI">⚖️ İnsan Hakları ve Demokrasi</option>
+                    <option value="REHBERLIK">🧭 Rehberlik ve Yönlendirme</option>
+                  </select>
+                </div>
+
+                <!-- Yayınevi / Plan Seçici -->
+                <div>
+                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block;">Yayın / Program:</label>
+                  <select id="outcomes-publisher-select" class="form-control" style="min-width: 170px; padding: 6px 10px;">
+                    <option value="ALL" selected>Tüm Yayınlar</option>
+                    <option value="TYMM (Maarif Modeli)">TYMM (Maarif Modeli)</option>
+                    <option value="MEB Yayınları">MEB Yayınları</option>
+                    <option value="İYDEM (Maarif Modeli)">İYDEM (Maarif Modeli)</option>
+                    <option value="Özgün Yayınları">Özgün Yayınları</option>
+                    <option value="Hecce Yayıncılık">Hecce Yayıncılık</option>
+                    <option value="Ada Yayıncılık">Ada Yayıncılık</option>
+                    <option value="İlke Yayınları">İlke Yayınları</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="btn btn-primary" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); border: none; font-weight: 700; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);" onclick="window.adminApp.openExcelImportModal()">
+                  📂 Excel Dosyası Yükle (.xlsx)
+                </button>
+                <button class="btn btn-secondary" style="background: var(--accent-light); color: var(--accent); border-color: var(--accent);" onclick="window.adminApp.openCurriculumPresetsModal()">
+                  📦 Hazır TTKB Paketleri
+                </button>
+                <button class="btn btn-secondary" onclick="window.adminApp.openBulkImportModal()">
+                  📋 Metin Yapıştır
+                </button>
+                <button class="btn btn-secondary" onclick="CloudExporter.exportOutcomes(window.adminApp.outcomesManager)">
+                  JSON İndir
+                </button>
+                <button class="btn btn-secondary" onclick="window.adminApp.fillSampleOutcomes()">
+                  ⚡ 36 Haftalık Taslak
+                </button>
+              </div>
+            </div>
+
+            <!-- Hızlı Excel Yükleme Dropzone Alanı -->
+            <div id="outcomes-quick-dropzone" class="quick-dropzone" style="border: 2px dashed var(--primary); border-radius: 12px; padding: 14px 18px; text-align: center; background: rgba(79, 70, 229, 0.04); margin-bottom: 16px; cursor: pointer; transition: all 0.2s;" onclick="window.adminApp.openExcelImportModal()">
+              <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <span style="font-size: 24px;">📊</span>
+                <div style="text-align: left;">
+                  <strong style="color: var(--primary); font-size: 13.5px; display: block;">MEB Yıllık Plan Excel Dosyasını (.xlsx) Buraya Yükleyin veya Tıklayın</strong>
+                  <span style="font-size: 11.5px; color: var(--text-muted);">
+                    Ham MEB Excel Planları veya MERKEZ_BOT tabloları otomatik analiz edilir, temiz ünite ve kazanım kodları canlı önizleme ile sisteme aktarılır.
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Hafta</th>
+                    <th>Ünite / Tema Adı</th>
+                    <th>Konu / Öğrenme Alanı</th>
+                    <th>MEB Kazanım Kodu & Açıklaması</th>
+                    <th style="text-align: right;">İşlem</th>
+                  </tr>
+                </thead>
+                <tbody id="outcomes-tbody">
+                  <!-- Dinamik doldurulur -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 4: MEB & ÖSYM RESMÎ SINAV TAKVİMİ -->
+        <section id="tab-exams" class="tab-content">
+          <div class="panel-card" style="margin-bottom: 20px;">
+            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <div>
+                <h2 class="panel-title" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                  🏛️ MEB & ÖSYM Resmî Sınav Takvimi
+                </h2>
+                <p style="font-size: 12.5px; color: var(--text-muted); margin: 4px 0 0 0;">
+                  MEB Ortak Sınavlar, LGS, YKS, MTSK, e-Sınav, İOKBS, EKYS ve ALES takvimini canlı yönetin
+                </p>
+              </div>
+
+              <!-- İşlem Butonları -->
+              <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <input type="file" id="exams-file-input" accept=".json" style="display: none;" onchange="window.adminApp.importExamsJSON(event)">
+                
+                <button class="btn btn-secondary" title="Orijinal MEB & ÖSYM resmî tohum takvimini geri yükler" onclick="window.adminApp.resetExamsToDefault()">
+                  🔄 Orijinal Takvimi Yükle
+                </button>
+
+                <button class="btn btn-secondary" title="Dışarıdan official_exams.json dosyası yükleyin" onclick="document.getElementById('exams-file-input').click()">
+                  📂 JSON İçe Aktar
+                </button>
+
+                <button class="btn btn-secondary" title="Sınav takvimini official_exams.json olarak indirin" onclick="window.adminApp.exportExamsJSON()">
+                  📥 JSON İndir
+                </button>
+
+                <button class="btn btn-primary" onclick="window.adminApp.openAddExamModal()">
+                  ➕ Yeni Sınav Ekle
+                </button>
+              </div>
+            </div>
+
+            <!-- Filtreleme & Arama Çubuğu -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color, #E2E8F0);">
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <!-- Kurum Filtresi Açılır Menüsü (Dropdown) -->
+                <select id="exam-institution-select" class="form-control" style="width: auto; font-weight: 600; padding: 6px 12px; border-radius: 8px;" onchange="window.adminApp.filterExamsByInstitution(this.value, null)">
+                  <option value="all">🌟 Tüm Kurumlar</option>
+                  <option value="MEB">🏛️ MEB Sınavları (LGS, Ortak, İOKBS)</option>
+                  <option value="ÖSYM">🎓 ÖSYM Sınavları (YKS, KPSS, ALES, YDS)</option>
+                  <option value="MTSK">🚗 MTSK (Ehliyet & Direksiyon)</option>
+                  <option value="e-Sınav">💻 e-Sınavlar (AÖK, MESEM, e-YDS)</option>
+                  <option value="MSÜ">🎖️ MSÜ Sınavları</option>
+                  <option value="BİLSEM">💡 BİLSEM Sınavları</option>
+                  <option value="AÖF">📚 AÖF & Üniversite Sınavları</option>
+                  <option value="EKYS">💼 EKYS (Müdürlük & Kariyer)</option>
+                  <option value="AGS">🏫 MEB-AGS (Milli Eğitim Akademisi)</option>
+                </select>
+
+                <span id="exams-count-badge" class="badge" style="background: var(--primary-light); color: var(--primary); font-weight: 700;">13 Sınav</span>
+              </div>
+
+              <!-- Arama Kutusu -->
+              <div style="min-width: 240px;">
+                <input type="text" id="exam-search-input" class="form-control" placeholder="🔍 Sınav veya kurum ara..." oninput="window.adminApp.handleExamsSearch(this.value)">
+              </div>
+            </div>
+          </div>
+
+          <!-- Sınavlar Tablosu -->
+          <div class="panel-card">
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th style="width: 40px;">#</th>
+                    <th style="width: 110px;">Kurum</th>
+                    <th>Sınav Adı & Açıklama</th>
+                    <th style="width: 190px;">Sınav Tarihi & Kalan Süre</th>
+                    <th style="width: 140px;">Son Başvuru</th>
+                    <th style="text-align: right; width: 100px;">İşlemler</th>
+                  </tr>
+                </thead>
+                <tbody id="exams-table-body">
+                  <!-- Dinamik JavaScript ile doldurulur -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 5: VERSİYON MANİFESTİ & DUYURULAR -->
+        <section id="tab-manifest" class="tab-content">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-info">
+                <p>Takvim Sürümü</p>
+                <h3 id="manifest-cal-ver">v1</h3>
+                <button class="btn btn-secondary" style="margin-top: 8px; font-size: 11px; padding: 4px 8px;" onclick="window.adminApp.incrementCalendarVersionManual()">Sürümü Artır +1</button>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-info">
+                <p>Kazanım Sürümü</p>
+                <h3 id="manifest-out-ver">v1</h3>
+                <button class="btn btn-secondary" style="margin-top: 8px; font-size: 11px; padding: 4px 8px;" onclick="window.adminApp.incrementOutcomesVersionManual()">Sürümü Artır +1</button>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-info">
+                <p>Duyuru Sürümü</p>
+                <h3 id="manifest-ann-ver">v1</h3>
+                <button class="btn btn-primary" style="margin-top: 8px; font-size: 11px; padding: 4px 8px;" onclick="window.adminApp.openAddAnnouncementModal()">+ Yeni Duyuru</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Manifest Ayarları Kartı -->
+          <div class="panel-card" style="margin-bottom: 24px;">
+            <div class="panel-header">
+              <h2 class="panel-title">⚙️ Mobil Senkronizasyon & Sistem Ayarları</h2>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+              <div class="form-group">
+                <label>Minimum Zorunlu Mobil Uygulama Sürümü:</label>
+                <input type="text" id="manifest-min-app" class="form-control" value="1.0.0" placeholder="1.0.0">
+              </div>
+
+              <div class="form-group">
+                <label>Sistem Bakım Modu (Mobil Erişimi Durdur):</label>
+                <div style="display: flex; align-items: center; gap: 10px; margin-top: 8px;">
+                  <input type="checkbox" id="manifest-maint-switch" style="width: 20px; height: 20px;">
+                  <span>Bakım Modunu Aktif Et</span>
+                </div>
+              </div>
+
+              <div class="form-group" style="grid-column: 1 / -1;">
+                <label>Bakım Modu Mesajı:</label>
+                <input type="text" id="manifest-maint-msg" class="form-control" value="Sistemlerimizde planlı bakım çalışması yapılmaktadır. Lütfen daha sonra tekrar deneyiniz.">
+              </div>
+            </div>
+
+            <div style="margin-top: 16px; text-align: right;">
+              <button class="btn btn-primary" onclick="window.adminApp.saveManifestSettings()">Ayarları Kaydet</button>
+              <button class="btn btn-secondary" onclick="CloudExporter.exportManifest(window.adminApp.manifestManager)">Manifest JSON İndir</button>
+            </div>
+          </div>
+
+          <!-- Sistem Duyuruları Tablosu -->
+          <div class="panel-card">
+            <div class="panel-header">
+              <h2 class="panel-title">📢 Mobil Uygulama Sistem Duyuruları</h2>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Başlık & Mesaj</th>
+                    <th>Tür</th>
+                    <th>Tarih</th>
+                    <th style="text-align: right;">İşlem</th>
+                  </tr>
+                </thead>
+                <tbody id="announcements-tbody">
+                  <!-- Dinamik doldurulur -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- ==================== MODALLAR ==================== -->
+
+  <!-- Modal 1: Manuel Takvim Olayı Ekle / Düzenle -->
+  <div id="modal-calendar" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-cal-title">Yeni MEB Takvim Olayı Ekle</h3>
+        <button class="btn" style="background:none; border:none; font-size: 18px;" onclick="window.adminApp.closeModal('modal-calendar')">✕</button>
+      </div>
+      <form id="calendar-form">
+        <input type="hidden" id="cal-event-id">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Olay Başlığı:</label>
+            <input type="text" id="cal-title" class="form-control" placeholder="Örn: 1. Dönem Ara Tatili" required>
+          </div>
+
+          <div class="form-group">
+            <label>Açıklama (Opsiyonel):</label>
+            <input type="text" id="cal-description" class="form-control" placeholder="Örn: Kasım Ara Tatili">
+          </div>
+
+          <div class="form-group">
+            <label>Kategori:</label>
+            <select id="cal-category" class="form-control" required>
+              <option value="period">🚩 Dönem Başlangıç / Bitiş</option>
+              <option value="breakHoliday">🏖️ Ara Tatil / Sömestr Tatili</option>
+              <option value="officialHoliday">🇹🇷 Resmî Tatil & Bayram</option>
+              <option value="examPeriod">📝 Ortak Sınav Dönemi</option>
+              <option value="specialDay">🎉 Özel Gün & Hafta</option>
+            </select>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div class="form-group">
+              <label>Başlangıç Tarihi:</label>
+              <input type="date" id="cal-start-date" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label>Bitiş Tarihi:</label>
+              <input type="date" id="cal-end-date" class="form-control" required>
+            </div>
+          </div>
+
+          <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="cal-is-holiday" style="width: 18px; height: 18px;">
+            <label for="cal-is-holiday" style="margin-bottom: 0; cursor: pointer;">Bu tarih resmî tatil günüdür (Ders işlenmez)</label>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="window.adminApp.closeModal('modal-calendar')">İptal</button>
+          <button type="submit" class="btn btn-primary">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 2: Excel ile Toplu Kazanım İçe Aktarma -->
+  <div id="modal-bulk-import" class="modal-backdrop">
+    <div class="modal-box" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3>📋 Excel / Metinden Toplu Kazanım İçe Aktar</h3>
+        <button class="btn" style="background:none; border:none; font-size: 18px;" onclick="window.adminApp.closeModal('modal-bulk-import')">✕</button>
+      </div>
+      <form id="bulk-import-form">
+        <div class="modal-body">
+          <p style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 12px;">
+            Excel veya Word tablonuzdaki 36 haftalık kazanımları kopyalayıp aşağıdaki alana yapıştırınız.
+            Format: <strong>Hafta [TAB veya Noktalı Virgül] Ünite Adı [TAB] Konu [TAB] Kazanım Kodu & Açıklaması</strong>
+          </p>
+
+          <div class="form-group">
+            <label>İçerik Metni (Excel'den Kopyala/Yapıştır):</label>
+            <textarea id="bulk-import-text" class="form-control" style="min-height: 180px; font-family: monospace; font-size: 12px;" placeholder="1&#9;Doğal Sayılar&#9;Milyonlar&#9;M.5.1.1.1. En çok dokuz basamaklı doğal sayıları okur ve yazar.&#10;2&#9;Doğal Sayılar&#9;Basamak Değeri&#9;M.5.1.1.2. En çok dokuz basamaklı doğal sayıların bölüklerini ve basamaklarını belirtir."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="window.adminApp.closeModal('modal-bulk-import')">İptal</button>
+          <button type="submit" class="btn btn-primary">Kazanımları İçe Aktar (36 Hafta)</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3: Sistem Duyurusu Ekle -->
+  <div id="modal-announcement" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>📢 Yeni Sistem Duyurusu Yayınla</h3>
+        <button class="btn" style="background:none; border:none; font-size: 18px;" onclick="window.adminApp.closeModal('modal-announcement')">✕</button>
+      </div>
+      <form id="announcement-form">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Duyuru Başlığı:</label>
+            <input type="text" id="ann-title" class="form-control" placeholder="Örn: Ortak Sınav Kılavuzu Yayınlandı" required>
+          </div>
+
+          <div class="form-group">
+            <label>Duyuru Türü:</label>
+            <select id="ann-type" class="form-control">
+              <option value="general">📢 Genel MEB Bilgilendirmesi</option>
+              <option value="exam">📝 Sınav & Değerlendirme Takvimi</option>
+              <option value="app">⚡ SınıfCepte Güncellemesi</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Duyuru Metni:</label>
+            <textarea id="ann-body" class="form-control" rows="3" placeholder="Öğretmenlere iletilecek mesaj içeriği..." required></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="window.adminApp.closeModal('modal-announcement')">İptal</button>
+          <button type="submit" class="btn btn-primary">Duyuruyu Yayınla</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 4: Akıllı Genelge Ayrıştırıcı & Eksik Kontrolü -->
+  <div id="modal-smart-parser" class="modal-backdrop">
+    <div class="modal-box" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3>📋 Akıllı MEB Genelge Ayrıştırıcı & Eksik Kontrolü</h3>
+        <button class="btn" style="background:none; border:none; font-size: 18px;" onclick="window.adminApp.closeModal('modal-smart-parser')">✕</button>
+      </div>
+      <form id="smart-parser-form">
+        <div class="modal-body">
+          <p style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 12px;">
+            MEB resmî duyuru / genelge metnini yapıştırın. Sistem tarihleri, tatil isimlerini ve dönemleri otomatik çıkarır ve eksik olan ana dönüm noktalarını size bildirir.
+          </p>
+
+          <div class="form-group">
+            <label>Eğitim Öğretim Yılı (Yönetici Girişi):</label>
+            <input type="text" id="circular-year" class="form-control" value="2026-2027" style="width: 160px; font-weight: 700; color: var(--primary);">
+          </div>
+
+          <div class="form-group">
+            <label>Genelge / Duyuru Metni:</label>
+            <textarea id="circular-raw-text" class="form-control" style="min-height: 120px; font-size: 12.5px;" placeholder="MEB genelge metnini buraya yapıştırınız..."></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-secondary" style="width: 100%; justify-content: center; margin-bottom: 14px; font-weight: 700; background: var(--primary-light); color: var(--primary); border-color: var(--primary);">
+            🔍 Metni Ayrıştır & Eksik Kontrolü Yap
+          </button>
+
+          <!-- Ayrıştırılan Olaylar & Eksik Uyarı Alanı -->
+          <div id="parser-preview-area" style="display: none;">
+            <!-- Eksik Uyarı Kutusu -->
+            <div id="parser-warnings-box"></div>
+
+            <label style="font-size: 13px; font-weight: 700; color: var(--primary); display: block; margin-bottom: 8px;">
+              Tespit Edilen Takvim Olayları (Tarihleri Canlı Düzenleyebilirsiniz):
+            </label>
+            <div id="parser-results-list" style="max-height: 250px; overflow-y: auto; padding-right: 4px;"></div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="window.adminApp.closeModal('modal-smart-parser')">İptal</button>
+          <button type="button" class="btn btn-primary" onclick="window.adminApp.applyParsedCircularEvents()">🚀 Tespit Edilenleri Bu Yılın Takvimine Aktar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 5: MEB Takvim Sihirbazı (Standart Şablon & Canlı Düzenleme) -->
+  <div id="modal-wizard" class="modal-backdrop">
+    <div class="modal-box" style="max-width: 820px;">
+      <div class="modal-header">
+        <h3>🪄 MEB Eğitim Yılı Takvim Sihirbazı (Standart Şablon)</h3>
+        <button class="btn" style="background:none; border:none; font-size: 18px;" onclick="window.adminApp.closeModal('modal-wizard')">✕</button>
+      </div>
+      <form id="wizard-form">
+        <div class="modal-body">
+          <p style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 14px;">
+            Eğitim öğretim yılını ve okulların açılış tarihini girin. MEB standart şablonuna göre <strong>6 Ana Dönüm Noktası</strong>, <strong>Dini Bayramlar</strong> ve <strong>Sabit Resmî Tatiller</strong> otomatik hesaplanır. Aşağıdaki kutulardan dilediğiniz tarihi değiştirebilirsiniz.
+          </p>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: flex-end; margin-bottom: 16px; background: var(--bg-main); padding: 14px; border-radius: 12px; border: 1px solid var(--border-color);">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label>1. Eğitim Öğretim Yılı:</label>
+              <input type="text" id="wizard-year" class="form-control" value="2026-2027" style="font-weight: 700; color: var(--primary);" required>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label>2. 1. Dönem Başlangıç Tarihi:</label>
+              <input type="date" id="wizard-start-date" class="form-control" value="2026-09-14" required>
+            </div>
+
+            <div>
+              <button type="button" class="btn btn-secondary" style="font-weight: 700;" onclick="window.adminApp.previewWizardCalendar()">
+                ⚡ Şablonu Hesapla
+              </button>
+            </div>
+          </div>
+
+          <!-- Canlı Düzenlenebilir Standart Liste -->
+          <div id="wizard-preview-container">
+            <label style="font-size: 13px; font-weight: 700; color: var(--primary); display: block; margin-bottom: 8px;">
+              Otomatik Hesaplanmış Standart MEB Takvimi:
+            </label>
+            <div id="wizard-events-list" style="max-height: 280px; overflow-y: auto; padding-right: 4px;"></div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="window.adminApp.closeModal('modal-wizard')">İptal</button>
+          <button type="submit" class="btn btn-primary">🚀 Bu Yılın Takvimini Temizce Oluştur & Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 6: Hazır TTKB Müfredat Paketleri -->
+  <div id="modal-presets" class="modal-backdrop">
+    <div class="modal-box" style="max-width: 860px;">
+      <div class="modal-header">
+        <h3>📦 Resmî MEB / Türkiye Yüzyılı Maarif Modeli Müfredat Kütüphanesi</h3>
+        <button class="btn" style="background:none; border:none; font-size: 18px;" onclick="window.adminApp.closeModal('modal-presets')">✕</button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- Büyük Full Kütüphane Kartı -->
+        <div style="background: linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(124, 58, 237, 0.15)); border: 2px solid var(--primary); border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 22px;">🌟</span>
+              <strong style="font-size: 16px; color: var(--primary);">Tüm Resmî MEB & Maarif Modeli Kütüphanesini Yükle</strong>
+            </div>
+            <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 4px;">
+              1-8. Sınıflar arası <strong>59 ders planı ve 2.301 resmî kazanım satırını</strong> (Bilişim, Fen, Matematik, Türkçe, Sosyal, vb.) tek tıkla sisteme aktarır.
+            </p>
+          </div>
+          <button class="btn btn-primary" style="padding: 10px 18px; font-weight: 700; font-size: 13.5px;" onclick="window.adminApp.handleApplyPreset('full_maarif_library')">
+            🚀 Tüm Kütüphaneyi Yükle (59 Plan / 2.301 Hafta)
+          </button>
+        </div>
+
+        <p style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">
+          Veya Branş / Kademe Bazında Yükleyin:
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; max-height: 360px; overflow-y: auto; padding-right: 4px;">
+          
+          <!-- Paket 0: Bilişim Teknolojileri -->
+          <div style="padding: 12px 14px; background: rgba(79, 70, 229, 0.05); border: 1.5px solid var(--primary); border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <strong style="color: var(--primary); font-size: 13px;">💻 Bilişim Teknolojileri ve Yazılım (5, 6. Sınıf)</strong>
+              <p style="font-size: 11.5px; color: var(--text-muted); margin: 4px 0;">5 ve 6. Sınıf TYMM (Maarif Modeli) 72 haftalık resmî Bilişim planı.</p>
+            </div>
+            <button class="btn btn-primary" style="padding: 5px 10px; font-size: 11.5px; align-self: flex-start; margin-top: 6px;" onclick="window.adminApp.handleApplyPreset('bilisim_full')">
+              Bu Paketi Yükle
+            </button>
+          </div>
+          
+          <!-- Paket 1: Ortaokul Matematik -->
+          <div style="padding: 12px 14px; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <strong style="color: var(--primary); font-size: 13px;">📐 Ortaokul Matematik (5-8. Sınıf)</strong>
+              <p style="font-size: 11.5px; color: var(--text-muted); margin: 4px 0;">5, 6, 7, 8. Sınıf 36'şar haftalık resmî MEB Matematik planları.</p>
+            </div>
+            <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 11.5px; align-self: flex-start; margin-top: 6px;" onclick="window.adminApp.handleApplyPreset('ortaokul_matematik')">
+              Bu Paketi Yükle
+            </button>
+          </div>
+
+          <!-- Paket 2: İlkokul Matematik -->
+          <div style="padding: 12px 14px; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <strong style="color: var(--primary); font-size: 13px;">🔢 İlkokul Matematik (1-4. Sınıf)</strong>
+              <p style="font-size: 11.5px; color: var(--text-muted); margin: 4px 0;">1, 2, 3, 4. Sınıf 36'şar haftalık resmî MEB Matematik planları.</p>
+            </div>
+            <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 11.5px; align-self: flex-start; margin-top: 6px;" onclick="window.adminApp.handleApplyPreset('ilkokul_matematik')">
+              Bu Paketi Yükle
+            </button>
+          </div>
+
+          <!-- Paket 3: Fen Bilimleri -->
+          <div style="padding: 12px 14px; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <strong style="color: var(--primary); font-size: 13px;">🔬 Fen Bilimleri (3-8. Sınıf)</strong>
+              <p style="font-size: 11.5px; color: var(--text-muted); margin: 4px 0;">3, 4, 5, 6, 7, 8. Sınıf resmî MEB Fen Bilimleri planları.</p>
+            </div>
+            <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 11.5px; align-self: flex-start; margin-top: 6px;" onclick="window.adminApp.handleApplyPreset('ortaokul_fen')">
+              Bu Paketi Yükle
+            </button>
+          </div>
+
+          <!-- Paket 4: Türkçe -->
+          <div style="padding: 12px 14px; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <strong style="color: var(--primary); font-size: 13px;">📚 Türkçe (1-8. Sınıf Tüm Kademeler)</strong>
+              <p style="font-size: 11.5px; color: var(--text-muted); margin: 4px 0;">1'den 8'e kadar tüm sınıfların resmî Türkçe yıllık planları.</p>
+            </div>
+            <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 11.5px; align-self: flex-start; margin-top: 6px;" onclick="window.adminApp.handleApplyPreset('turkce_full')">
+              Bu Paketi Yükle
+            </button>
+          </div>
+
+          <!-- Paket 5: Sosyal & İnkılap -->
+          <div style="padding: 12px 14px; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <strong style="color: var(--primary); font-size: 13px;">🌍 Sosyal Bilgiler & İnkılap Tarihi</strong>
+              <p style="font-size: 11.5px; color: var(--text-muted); margin: 4px 0;">4-7. Sınıf Sosyal Bilgiler ve 8. Sınıf T.C. İnkılap Tarihi planları.</p>
+            </div>
+            <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 11.5px; align-self: flex-start; margin-top: 6px;" onclick="window.adminApp.handleApplyPreset('sosyal_inkilap')">
+              Bu Paketi Yükle
+            </button>
+          </div>
+
+          <!-- Paket 6: Yabancı Dil -->
+          <div style="padding: 12px 14px; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <strong style="color: var(--primary); font-size: 13px;">🇬🇧 İngilizce & Almanca (2-8. Sınıf)</strong>
+              <p style="font-size: 11.5px; color: var(--text-muted); margin: 4px 0;">İngilizce ve Almanca İYDEM / TYMM çerçeve yıllık planları.</p>
+            </div>
+            <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 11.5px; align-self: flex-start; margin-top: 6px;" onclick="window.adminApp.handleApplyPreset('ingilizce_full')">
+              Bu Paketi Yükle
+            </button>
+          </div>
+
+          <!-- Paket 7: Hayat Bilgisi -->
+          <div style="padding: 12px 14px; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <strong style="color: var(--primary); font-size: 13px;">🌱 Hayat Bilgisi (1, 2, 3. Sınıf)</strong>
+              <p style="font-size: 11.5px; color: var(--text-muted); margin: 4px 0;">1, 2, 3. Sınıf resmî Hayat Bilgisi yıllık planları.</p>
+            </div>
+            <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 11.5px; align-self: flex-start; margin-top: 6px;" onclick="window.adminApp.handleApplyPreset('hayat_bilgisi')">
+              Bu Paketi Yükle
+            </button>
+          </div>
+
+          <!-- Paket 8: Beden, Müzik, Görsel, Bilişim -->
+          <div style="padding: 12px 14px; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <strong style="color: var(--primary); font-size: 13px;">🎨 Sanat, Spor & Bilişim</strong>
+              <p style="font-size: 11.5px; color: var(--text-muted); margin: 4px 0;">Görsel Sanatlar, Müzik, Beden Eğitimi ve Bilişim planları.</p>
+            </div>
+            <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 11.5px; align-self: flex-start; margin-top: 6px;" onclick="window.adminApp.handleApplyPreset('beden_muzik_gorsel')">
+              Bu Paketi Yükle
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="window.adminApp.closeModal('modal-presets')">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Modal 7: Akıllı Excel Yıllık Plan İçe Aktarıcı & Canlı Önizleme -->
+  <div id="modal-excel-import" class="modal-backdrop">
+    <div class="modal-box" style="max-width: 1000px; width: 95vw;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 22px;">📂</span>
+          <div>
+            <h3 style="margin: 0; font-size: 17px;">Akıllı Excel Yıllık Plan İçe Aktarma & Canlı Düzenleyici</h3>
+            <span style="font-size: 11.5px; color: var(--text-muted);">MEB Ham Excel veya MERKEZ_BOT Master Tablosunu Otomatik Ayrıştırır</span>
+          </div>
+        </div>
+        <button class="btn" style="background:none; border:none; font-size: 18px;" onclick="window.adminApp.closeModal('modal-excel-import')">✕</button>
+      </div>
+
+      <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+        
+        <!-- Sürükle & Bırak Alanı -->
+        <div id="excel-modal-dropzone" style="border: 2px dashed var(--primary); border-radius: 14px; padding: 24px; text-align: center; background: rgba(79, 70, 229, 0.03); cursor: pointer; transition: all 0.2s; margin-bottom: 16px;">
+          <input type="file" id="excel-file-input" accept=".xlsx, .xlsm, .xls" style="display: none;">
+          <div style="font-size: 32px; margin-bottom: 8px;">📑</div>
+          <strong style="color: var(--primary); font-size: 15px; display: block;">Excel Dosyasını (.xlsx, .xlsm) Buraya Sürükleyip Bırakın veya Seçmek İçin Tıklayın</strong>
+          <p style="font-size: 12px; color: var(--text-muted); margin: 6px 0 0 0;">
+            Tek bir dersin planı (Örn: 5. Sınıf Bilişim) veya 59 sekmeli Master Excel dosyası desteklenir.
+          </p>
+        </div>
+
+        <!-- Analiz ve Önizleme Alanı (Dosya seçilince görünür) -->
+        <div id="excel-analysis-area" style="display: none;">
+          
+          <!-- Üst Özet Kartları & Sekme Seçici -->
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; background: var(--bg-main); padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border-color); margin-bottom: 14px;">
+            <div>
+              <span id="excel-file-name-badge" class="badge" style="background: var(--primary-light); color: var(--primary); font-weight: 700; padding: 4px 10px; font-size: 12px;">📄 Dosya</span>
+              <span id="excel-plans-count-badge" class="badge" style="background: var(--accent-light); color: var(--accent); font-weight: 700; padding: 4px 10px; font-size: 12px; margin-left: 6px;">0 Plan Bulundu</span>
+            </div>
+
+            <!-- Sekme Seçici -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <label style="font-size: 12px; font-weight: 600; color: var(--text-muted);">İncelenen Plan / Sekme:</label>
+              <select id="excel-sheet-selector" class="form-control" style="width: auto; min-width: 240px; font-weight: 600; padding: 5px 10px;" onchange="window.adminApp.handleExcelSheetChange(this.value)">
+                <!-- Dinamik Dolar -->
+              </select>
+            </div>
+          </div>
+
+          <!-- Canlı Önizleme Tablosu -->
+          <div class="table-responsive" style="max-height: 380px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 10px;">
+            <table class="data-table" style="font-size: 12px;">
+              <thead style="position: sticky; top: 0; background: var(--bg-card); z-index: 2;">
+                <tr>
+                  <th style="width: 45px;">Sıra</th>
+                  <th style="width: 70px;">Tür</th>
+                  <th style="width: 60px;">Hafta</th>
+                  <th style="width: 140px;">Sınıf / Branş</th>
+                  <th style="width: 200px;">Ünite / Tema (Tıkla Düzenle)</th>
+                  <th>Kazanım Kodu & Metni (Tıkla Düzenle)</th>
+                </tr>
+              </thead>
+              <tbody id="excel-preview-tbody">
+                <!-- Dinamik Satırlar -->
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="modal-footer" style="justify-content: space-between;">
+        <button type="button" class="btn btn-secondary" onclick="window.adminApp.closeModal('modal-excel-import')">Kapat</button>
+        
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button id="btn-export-excel-json" class="btn btn-secondary" style="display: none;" onclick="window.adminApp.exportParsedExcelJson()">
+            📋 JSON İndir
+          </button>
+          <button id="btn-apply-single-sheet" class="btn btn-secondary" style="display: none; background: var(--accent-light); color: var(--accent); border-color: var(--accent); font-weight: 700;" onclick="window.adminApp.applySelectedExcelSheet()">
+            ✅ Yalnızca Bu Planı Sisteme Aktar
+          </button>
+          <button id="btn-apply-all-sheets" class="btn btn-primary" style="display: none; background: linear-gradient(135deg, #4f46e5, #7c3aed); border: none; font-weight: 700; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);" onclick="window.adminApp.applyAllParsedExcelPlans()">
+            🚀 Tüm Planları Toplu Canlıya Al
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- MODAL: YENİ / DÜZENLE RESMÎ SINAV -->
+  <div id="modal-exam" class="modal-backdrop">
+    <div class="modal-card" style="max-width: 540px;">
+      <div class="modal-header">
+        <h3 id="modal-exam-title">➕ Yeni Resmî Sınav Ekle</h3>
+        <button class="modal-close-btn" onclick="window.adminApp.closeModal('modal-exam')">&times;</button>
+      </div>
+
+      <form id="exam-form">
+        <input type="hidden" id="exam-doc-id">
+
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Sınav Adı *</label>
+            <input type="text" id="exam-title" class="form-control" required placeholder="Örn: LGS - Liselere Geçiş Sistemi Sınavı">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label>Düzenleyen Kurum *</label>
+              <select id="exam-institution" class="form-control" required>
+                <option value="MEB">MEB (Milli Eğitim Bakanlığı)</option>
+                <option value="ÖSYM">ÖSYM</option>
+                <option value="MTSK">🚗 MTSK (Ehliyet & Direksiyon)</option>
+                <option value="e-Sınav">💻 e-Sınav (AÖK, MESEM, e-YDS)</option>
+                <option value="MSÜ">MSÜ (Milli Savunma Ünv.)</option>
+                <option value="BİLSEM">BİLSEM</option>
+                <option value="DİĞER">Diğer Kurumsal</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Sınav Tarihi & Saati *</label>
+              <input type="datetime-local" id="exam-date" class="form-control" required>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label>Son Başvuru Tarihi</label>
+              <input type="datetime-local" id="exam-deadline" class="form-control">
+            </div>
+
+            <div class="form-group">
+              <label>Resmî Başvuru Linki</label>
+              <input type="url" id="exam-url" class="form-control" placeholder="https://ais.osym.gov.tr">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Açıklama / Detay</label>
+            <textarea id="exam-desc" class="form-control" rows="2" placeholder="Sınav oturumları, hedef sınıf düzeyi ve kapsam bilgisi..."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="window.adminApp.closeModal('modal-exam')">İptal</button>
+          <button type="submit" class="btn btn-primary">Kaydet & Canlıya Al</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT MODÜLLERİ -->
+  <script src="js/smart_circular_parser.js"></script>
+  <script src="js/smart_excel_importer.js"></script>
+  <script src="js/calendar_wizard.js"></script>
+  <script src="js/curriculum_presets.js"></script>
+  <script src="js/calendar_manager.js"></script>
+  <script src="js/outcomes_manager.js"></script>
+  <script src="js/exams_manager.js"></script>
+  <script src="js/manifest_manager.js"></script>
+  <script src="js/cloud_exporter.js"></script>
+  <script src="js/admin_app.js"></script>
+</body>
+</html>

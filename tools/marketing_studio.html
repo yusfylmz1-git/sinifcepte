@@ -1,0 +1,3777 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SınıfCepte - Master Creative Studio Pro (Desktop UI)</title>
+  
+  <!-- Fonts & Libraries -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Outfit:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&family=Roboto:wght@500;700;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+  <style>
+    :root {
+      --bg-darkest: #090b10;
+      --panel-bg: #10141e;
+      --sidebar-rail: #0b0e17;
+      --card-bg: #151b28;
+      --card-hover: #1c2436;
+      --border-color: #1e2638;
+      --border-focus: #6366f1;
+      --border-light: rgba(255, 255, 255, 0.07);
+      
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --accent-pink: #ec4899;
+      --accent-cyan: #06b6d4;
+      --accent-green: #22c55e;
+      
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --text-muted: #64748b;
+      
+      --header-height: 52px;
+      --rail-width: 72px;
+      --inspector-width: 380px;
+      --timeline-height: 84px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--bg-darkest);
+      color: var(--text-main);
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    input, textarea, select {
+      user-select: text;
+    }
+
+    /* ================================================================
+       1. TOP APP BAR / TITLE BAR (CapCut / Premiere Window Chrome)
+    ================================================================ */
+    .app-topbar {
+      height: var(--header-height);
+      background: #0d1017;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 1000;
+      flex-shrink: 0;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .app-icon-badge {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
+    }
+
+    .app-title-text {
+      font-family: 'Outfit', sans-serif;
+      font-size: 15px;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .app-title-text span.project-pill {
+      font-size: 11px;
+      font-weight: 600;
+      color: #94a3b8;
+      background: #171d2b;
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+
+    /* Mode Switcher (Center Tabs) */
+    .topbar-center {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #080a0f;
+      padding: 3px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+    }
+
+    .mode-tab-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-family: 'Outfit', sans-serif;
+      font-size: 12.5px;
+      font-weight: 700;
+      padding: 6px 16px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .mode-tab-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .mode-tab-btn.active {
+      background: #1a2234;
+      color: #fff;
+      border: 1px solid rgba(99, 102, 241, 0.4);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 12px rgba(99, 102, 241, 0.2);
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #4ade80;
+      background: rgba(74, 222, 128, 0.08);
+      border: 1px solid rgba(74, 222, 128, 0.2);
+      padding: 4px 9px;
+      border-radius: 6px;
+    }
+
+    .btn-export-primary {
+      background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+      color: #fff;
+      border: none;
+      padding: 7px 16px;
+      border-radius: 8px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 12.5px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 2px 10px rgba(236, 72, 153, 0.35);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .btn-export-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(236, 72, 153, 0.5);
+    }
+
+    /* ================================================================
+       2. DOCKED STUDIO BODY (3-COLUMN DESKTOP WORKSPACE)
+    ================================================================ */
+    .app-workspace {
+      flex: 1;
+      display: flex;
+      height: calc(100vh - var(--header-height));
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* 2.1 Tool Shelf (Leftmost Icon Rail) */
+    .tool-rail {
+      width: var(--rail-width);
+      background: var(--sidebar-rail);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 0;
+      gap: 6px;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
+    .rail-btn {
+      width: 56px;
+      height: 56px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      color: #94a3b8;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-size: 18px;
+      transition: all 0.2s;
+    }
+
+    .rail-btn span.label {
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: -0.1px;
+    }
+
+    .rail-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .rail-btn.active {
+      background: #171d2c;
+      border-color: rgba(99, 102, 241, 0.4);
+      color: #818cf8;
+      box-shadow: inset 0 0 10px rgba(99, 102, 241, 0.2);
+    }
+
+    /* 2.2 Docked Property Inspector Panel (Left Sidebar) */
+    .inspector-panel {
+      width: var(--inspector-width);
+      background: var(--panel-bg);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow-y: auto;
+      z-index: 5;
+    }
+
+    .inspector-panel::-webkit-scrollbar { width: 4px; }
+    .inspector-panel::-webkit-scrollbar-thumb { background: #232d3f; border-radius: 4px; }
+
+    .inspector-header {
+      padding: 14px 18px;
+      background: #0d111a;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .inspector-header h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 13.5px;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .inspector-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .inspector-tab-content {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .inspector-tab-content.active {
+      display: flex;
+    }
+
+    /* Section Cards inside Inspector */
+    .setting-group {
+      background: var(--card-bg);
+      border: 1px solid var(--border-light);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .setting-group-title {
+      font-size: 11px;
+      font-weight: 800;
+      color: #cbd5e1;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 5px;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    label { font-size: 11px; font-weight: 700; color: var(--text-sub); }
+
+    input, textarea, select {
+      background: #090c14;
+      border: 1px solid var(--border-color);
+      color: #fff;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+    }
+
+    textarea { resize: vertical; min-height: 48px; }
+
+    /* Button Grids */
+    .grid-options {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+
+    .dock-btn {
+      background: #090c14;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 8px 10px;
+      cursor: pointer;
+      color: #94a3b8;
+      font-size: 11px;
+      font-weight: 600;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      text-align: left;
+      transition: all 0.15s;
+    }
+
+    .dock-btn span.title { color: #fff; font-weight: 700; font-size: 11.5px; display: flex; align-items: center; gap: 5px; }
+    .dock-btn span.sub { font-size: 9.5px; color: #64748b; }
+    .dock-btn:hover, .dock-btn.active { border-color: #818cf8; background: rgba(99, 102, 241, 0.15); }
+    .dock-btn.active span.title { color: #818cf8; }
+
+    .file-btn {
+      background: #171f2e;
+      border: 1px dashed #3a4760;
+      color: #cbd5e1;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .file-btn:hover { background: #202b3f; border-color: #818cf8; color: #fff; }
+
+    .del-bullet-btn {
+      background: #1a2232;
+      color: #94a3b8;
+      border: none;
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .del-bullet-btn:hover { background: #ef4444; color: #fff; }
+
+    .add-bullet-btn {
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px dashed #6366f1;
+      color: #a5b4fc;
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .add-bullet-btn:hover { background: rgba(99, 102, 241, 0.25); color: #fff; }
+
+    /* ================================================================
+       CANVA-STYLE UPLOADS / MEDIA ASSETS POOL CSS
+    ================================================================ */
+    .uploads-dropzone {
+      background: rgba(99, 102, 241, 0.05);
+      border: 2px dashed rgba(99, 102, 241, 0.4);
+      border-radius: 12px;
+      padding: 14px 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .uploads-dropzone:hover, .uploads-dropzone.drag-active {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: #818cf8;
+      box-shadow: 0 0 16px rgba(99, 102, 241, 0.25);
+    }
+
+    .uploads-dropzone span.icon { font-size: 22px; }
+    .uploads-dropzone span.title { font-size: 11.5px; font-weight: 700; color: #fff; }
+    .uploads-dropzone span.sub { font-size: 10px; color: #94a3b8; }
+
+    .uploads-tab-bar {
+      display: flex;
+      background: #090c14;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 2px;
+      gap: 2px;
+      margin-top: 4px;
+    }
+
+    .uploads-tab-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 6px 4px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+
+    .uploads-tab-btn:hover { color: #fff; background: rgba(255,255,255,0.05); }
+    .uploads-tab-btn.active { background: #1e293b; color: #a5b4fc; border: 1px solid rgba(129, 140, 248, 0.3); }
+
+    .media-asset-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 6px;
+      max-height: 420px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
+    .media-asset-card {
+      background: #0c1017;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      cursor: grab;
+      transition: all 0.2s;
+    }
+
+    .media-asset-card:hover {
+      border-color: #818cf8;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.5);
+    }
+
+    .media-asset-card.is-dragging {
+      opacity: 0.5;
+      border: 2px dashed #ec4899;
+    }
+
+    .media-thumb-box {
+      width: 100%;
+      height: 90px;
+      background: #05070a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .media-thumb-box img, .media-thumb-box video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .media-badge-tag {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(4px);
+      color: #a5b4fc;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .media-del-btn {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: rgba(0,0,0,0.75);
+      border: none;
+      color: #ef4444;
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .media-asset-card:hover .media-del-btn { opacity: 1; }
+    .media-del-btn:hover { background: #ef4444; color: #fff; }
+
+    .media-info-box {
+      padding: 6px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: #090c14;
+    }
+
+    .media-name {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #e2e8f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .media-actions-row {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .media-action-chip {
+      background: #171f2e;
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #94a3b8;
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 3px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      flex: 1;
+      text-align: center;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    .media-action-chip:hover {
+      background: #6366f1;
+      color: #fff;
+      border-color: #818cf8;
+    }
+
+    /* Stage Drop Highlight */
+    .reels-screen-stage.stage-drag-over, #graphicCardTarget.stage-drag-over {
+      outline: 3px dashed #ec4899 !important;
+      outline-offset: 4px;
+      box-shadow: 0 0 40px rgba(236, 72, 153, 0.5) !important;
+    }
+
+    /* Floating Studio Toast */
+    .studio-toast {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid #818cf8;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 30px;
+      font-size: 12.5px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 20px rgba(99, 102, 241, 0.4);
+      backdrop-filter: blur(12px);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      z-index: 999999;
+    }
+
+    .studio-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ================================================================
+       2.3 CENTER DESIGN CANVAS / MONITOR VIEWPORT (The Stage)
+    ================================================================ */
+    .viewport-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #06080c;
+      background-image: 
+        radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.05) 0%, transparent 60%),
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 100% 100%, 32px 32px, 32px 32px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Viewport Stage Bar */
+    .viewport-topbar {
+      height: 36px;
+      background: rgba(13, 17, 26, 0.7);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      font-size: 11px;
+      color: #64748b;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .viewport-stage {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Phone Reels Stage */
+    .reels-screen-stage {
+      width: 320px;
+      height: 568px;
+      border-radius: 32px;
+      border: 3.5px solid #232c3d;
+      background: #000;
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.85), 0 0 40px rgba(99, 102, 241, 0.2);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #reelsCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* ================================================================
+       2.4 BOTTOM CAPCUT-STYLE TIMELINE & TRANSPORT BAR
+    ================================================================ */
+    .timeline-dock {
+      height: var(--timeline-height);
+      background: #0d1017;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
+    .timeline-transport {
+      height: 38px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+    }
+
+    .stepper-btn {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: #1e293b;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      line-height: 1;
+      padding: 0;
+    }
+    .stepper-btn:hover {
+      background: #334155;
+      border-color: #818cf8;
+      color: #38bdf8;
+    }
+
+    .dur-num-input {
+      width: 48px;
+      height: 20px;
+      background: #090d16;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+      color: #fff;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+      text-align: center;
+      padding: 0 2px;
+      font-size: 11px;
+      outline: none;
+      transition: all 0.2s;
+    }
+    .dur-num-input:focus {
+      border-color: #818cf8;
+      background: #111827;
+      box-shadow: 0 0 8px rgba(99, 102, 241, 0.35);
+    }
+
+    .project-selector-dropdown {
+      background: #111622;
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      color: #cbd5e1;
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.2s;
+    }
+    .project-selector-dropdown:hover, .project-selector-dropdown:focus {
+      border-color: #818cf8;
+      background: #1a2234;
+      color: #fff;
+    }
+
+    .transport-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .transport-btn {
+      background: #171e2c;
+      border: 1px solid var(--border-color);
+      color: #fff;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+
+    .transport-btn:hover { background: #232d42; border-color: #818cf8; }
+
+    .play-master-btn {
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+    }
+
+    .timecode-display {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      color: #a5b4fc;
+      background: #090c14;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+
+    /* Scene Blocks / Tracks */
+    .timeline-tracks {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 6px;
+      background: #080a0f;
+    }
+
+    .scene-block {
+      flex: 1;
+      height: 32px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: 1px solid transparent;
+      gap: 6px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .scene-block span.time {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      opacity: 0.7;
+    }
+
+    .scene-1 { background: rgba(99, 102, 241, 0.25); border-color: rgba(99, 102, 241, 0.5); }
+    .scene-2 { background: rgba(14, 165, 233, 0.25); border-color: rgba(14, 165, 233, 0.5); }
+    .scene-3 { background: rgba(236, 72, 153, 0.25); border-color: rgba(236, 72, 153, 0.5); }
+    .scene-4 { background: rgba(34, 197, 94, 0.25); border-color: rgba(34, 197, 94, 0.5); }
+
+    .scene-block:hover, .scene-block.active-scene {
+      filter: brightness(1.25);
+      border-color: #fff;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+    }
+
+    /* ================================================================
+       3. STATİK GÖRSEL POST KARTI (HTML2CANVAS)
+    ================================================================ */
+    .insta-card {
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.3s;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7);
+    }
+
+    .insta-card.fmt-square { width: 440px; height: 440px; padding: 30px; border-radius: 24px; }
+    .insta-card.fmt-portrait { width: 380px; height: 475px; padding: 32px; border-radius: 24px; }
+    .insta-card.fmt-tiktok { width: 320px; height: 568px; padding: 38px 24px; border-radius: 32px; }
+    .insta-card.fmt-banner { width: 540px; height: 304px; padding: 24px 28px; border-radius: 20px; }
+
+    /* Static Themes */
+    .theme-glass { background: linear-gradient(145deg, #181c32 0%, #0d1120 50%, #080b14 100%); border: 1px solid rgba(255, 255, 255, 0.12); }
+    .theme-glass .glow-circle-1 { position: absolute; width: 220px; height: 220px; background: rgba(99, 102, 241, 0.2); border-radius: 50%; top: -50px; right: -50px; filter: blur(35px); }
+    .theme-glass .glow-circle-2 { position: absolute; width: 200px; height: 200px; background: rgba(168, 85, 247, 0.15); border-radius: 50%; bottom: -30px; left: -30px; filter: blur(35px); }
+    .theme-glass .badge { background: rgba(99, 102, 241, 0.25); border: 1px solid rgba(129, 140, 248, 0.5); color: #c7d2fe; padding: 5px 12px; border-radius: 30px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; }
+    .theme-glass .app-brand { color: #ffffff; font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 16px; display: flex; align-items: center; gap: 7px; }
+    .theme-glass .question-title { font-family: 'Outfit', sans-serif; font-size: 19px; font-weight: 800; line-height: 1.3; color: #ffffff; }
+    .theme-glass .glass-box { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; padding: 11px 13px; display: flex; flex-direction: column; gap: 7px; }
+    .theme-glass .bullet-item { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 600; color: #e2e8f0; line-height: 1.3; }
+    .theme-glass .check-icon { width: 16px; height: 16px; background: #6366f1; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 9px; font-weight: 800; flex-shrink: 0; }
+    .theme-glass .card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+    .theme-glass .cta-text { font-size: 11px; color: #94a3b8; font-weight: 600; }
+    .theme-glass .social-tag { font-size: 11.5px; color: #a5b4fc; font-weight: 700; }
+
+    .theme-google-light { background: #f8fafd; border: 1px solid #e1e7ef; }
+    .theme-google-light .glow-circle-1, .theme-google-light .glow-circle-2 { display: none; }
+    .theme-google-light .badge { background: #e8f0fe; border: 1px solid #d2e3fc; color: #1a73e8; padding: 4px 10px; border-radius: 100px; font-family: 'Roboto', sans-serif; font-size: 10.5px; font-weight: 700; }
+    .theme-google-light .app-brand { color: #1f1f1f; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 6px; }
+    .theme-google-light .question-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 19px; font-weight: 800; line-height: 1.3; color: #1f1f1f; }
+    .theme-google-light .glass-box { background: #ffffff; border: 1px solid #e1e7ef; border-radius: 16px; padding: 11px 13px; display: flex; flex-direction: column; gap: 7px; box-shadow: 0 4px 14px rgba(0,0,0,0.04); }
+    .theme-google-light .bullet-item { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 600; color: #3c4043; line-height: 1.3; }
+    .theme-google-light .check-icon { width: 16px; height: 16px; background: #1a73e8; border-radius: 50%; color: #ffffff; font-size: 9px; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .theme-google-light .card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid #e1e7ef; }
+    .theme-google-light .cta-text { font-size: 10.5px; color: #5f6368; font-weight: 600; }
+    .theme-google-light .social-tag { font-size: 11.5px; color: #1a73e8; font-weight: 700; }
+
+    .theme-google-dark { background: #1e1f20; border: 1px solid #333538; }
+    .theme-google-dark .glow-circle-1, .theme-google-dark .glow-circle-2 { display: none; }
+    .theme-google-dark .badge { background: #282a2c; border: 1px solid #3c4043; color: #8ab4f8; padding: 4px 10px; border-radius: 100px; font-family: 'Roboto', sans-serif; font-size: 10.5px; font-weight: 700; }
+    .theme-google-dark .app-brand { color: #e3e3e3; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 6px; }
+    .theme-google-dark .question-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 19px; font-weight: 800; line-height: 1.3; color: #e3e3e3; }
+    .theme-google-dark .glass-box { background: #28292a; border: 1px solid #3c4043; border-radius: 16px; padding: 11px 13px; display: flex; flex-direction: column; gap: 7px; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+    .theme-google-dark .bullet-item { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 600; color: #c4c7c5; line-height: 1.3; }
+    .theme-google-dark .check-icon { width: 16px; height: 16px; background: #34a853; border-radius: 50%; color: #ffffff; font-size: 9px; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .theme-google-dark .card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid #333538; }
+    .theme-google-dark .cta-text { font-size: 10.5px; color: #9aa0a6; font-weight: 600; }
+    .theme-google-dark .social-tag { font-size: 11.5px; color: #8ab4f8; font-weight: 700; }
+
+    .theme-aurora { background: linear-gradient(135deg, #4c0519 0%, #1e1b4b 50%, #064e3b 100%); border: 1px solid rgba(255, 255, 255, 0.2); }
+    .theme-aurora .glow-circle-1 { position: absolute; width: 240px; height: 240px; background: rgba(244, 63, 94, 0.3); border-radius: 50%; top: -50px; left: -50px; filter: blur(40px); }
+    .theme-aurora .glow-circle-2 { position: absolute; width: 220px; height: 220px; background: rgba(168, 85, 247, 0.25); border-radius: 50%; bottom: -30px; right: -30px; filter: blur(40px); }
+    .theme-aurora .badge { background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.3); color: #ffffff; padding: 4px 10px; border-radius: 30px; font-size: 10.5px; font-weight: 700; }
+    .theme-aurora .app-brand { color: #ffffff; font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 16px; display: flex; align-items: center; gap: 6px; }
+    .theme-aurora .question-title { font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 800; line-height: 1.25; color: #ffffff; }
+    .theme-aurora .glass-box { background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 16px; padding: 11px 13px; display: flex; flex-direction: column; gap: 7px; }
+    .theme-aurora .bullet-item { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 600; color: #ffffff; line-height: 1.3; }
+    .theme-aurora .check-icon { width: 16px; height: 16px; background: #ffffff; border-radius: 50%; color: #000000; font-size: 9px; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .theme-aurora .card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.15); }
+    .theme-aurora .cta-text { font-size: 11px; color: #cbd5e1; font-weight: 600; }
+    .theme-aurora .social-tag { font-size: 11.5px; color: #ffffff; font-weight: 800; }
+
+    .theme-onyx { background: linear-gradient(150deg, #18181b 0%, #111113 50%, #09090b 100%); border: 1px solid #27272a; }
+    .theme-onyx .glow-circle-1 { position: absolute; width: 180px; height: 180px; background: rgba(255, 255, 255, 0.04); border-radius: 50%; top: -30px; right: -30px; filter: blur(35px); }
+    .theme-onyx .glow-circle-2 { position: absolute; width: 170px; height: 170px; background: rgba(255, 255, 255, 0.03); border-radius: 50%; bottom: -20px; left: -20px; filter: blur(35px); }
+    .theme-onyx .badge { background: #27272a; border: 1px solid #3f3f46; color: #e4e4e7; padding: 4px 10px; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 10.5px; font-weight: 700; }
+    .theme-onyx .app-brand { color: #f4f4f5; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 6px; }
+    .theme-onyx .question-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 19px; font-weight: 800; line-height: 1.3; color: #ffffff; }
+    .theme-onyx .glass-box { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 11px 13px; display: flex; flex-direction: column; gap: 7px; }
+    .theme-onyx .bullet-item { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 600; color: #d4d4d8; line-height: 1.3; }
+    .theme-onyx .check-icon { width: 16px; height: 16px; background: #3f3f46; border-radius: 4px; color: #ffffff; font-size: 9px; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .theme-onyx .card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid #27272a; }
+    .theme-onyx .cta-text { font-size: 10.5px; color: #a1a1aa; font-weight: 600; }
+    .theme-onyx .social-tag { font-size: 11.5px; color: #e4e4e7; font-weight: 700; }
+
+    /* Google Background Elements */
+    .google-bg-elements { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; z-index: 1; }
+    .theme-google-light .google-bg-elements, .theme-google-dark .google-bg-elements { display: block; }
+    .g-orb { position: absolute; border-radius: 50%; pointer-events: none; }
+    .theme-google-light .g-blue { width: 180px; height: 180px; background: rgba(66, 133, 244, 0.16); top: -40px; right: -30px; filter: blur(35px); }
+    .theme-google-light .g-red { width: 140px; height: 140px; background: rgba(234, 67, 53, 0.12); top: 45%; left: -40px; filter: blur(30px); }
+    .theme-google-light .g-yellow { width: 150px; height: 150px; background: rgba(251, 188, 5, 0.16); bottom: -30px; left: 20%; filter: blur(35px); }
+    .theme-google-light .g-green { width: 160px; height: 160px; background: rgba(52, 168, 83, 0.16); bottom: -30px; right: -20px; filter: blur(35px); }
+    .theme-google-dark .g-blue { width: 200px; height: 200px; background: rgba(66, 133, 244, 0.18); top: -40px; right: -30px; filter: blur(40px); }
+    .theme-google-dark .g-red { width: 150px; height: 150px; background: rgba(234, 67, 53, 0.14); top: 45%; left: -40px; filter: blur(35px); }
+    .theme-google-dark .g-yellow { width: 160px; height: 160px; background: rgba(251, 188, 5, 0.14); bottom: -30px; left: 20%; filter: blur(40px); }
+    .theme-google-dark .g-green { width: 180px; height: 180px; background: rgba(52, 168, 83, 0.18); bottom: -30px; right: -20px; filter: blur(40px); }
+
+    .card-body-wrapper { position: relative; z-index: 2; display: flex; gap: 12px; align-items: center; width: 100%; }
+    .card-content { flex: 1; display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+    .custom-logo-img { width: 24px; height: 24px; object-fit: contain; border-radius: 6px; display: none; }
+
+    .dual-image-container { display: none; align-items: center; gap: 8px; flex-shrink: 0; }
+    .mockup-frame { width: 95px; height: 160px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.25); background: #020617; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.35); display: none; position: relative; }
+    .mockup-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    /* ================================================================
+       4. PROGRESS / RENDER MODAL
+    ================================================================ */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.85);
+      z-index: 99999;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(12px);
+    }
+
+    .modal-card {
+      background: #131926;
+      border: 1px solid #2d3748;
+      padding: 32px;
+      border-radius: 24px;
+      width: 440px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 12px;
+      background: #0a0e17;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #2d3748;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #ec4899, #8b5cf6, #3b82f6);
+      transition: width 0.05s linear;
+    }
+    /* ================================================================
+       WIZARD STEPPER BAR (Adım Adım Hiyerarşi)
+    ================================================================ */
+    .wizard-steps-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #090c14;
+      border-bottom: 1px solid var(--border-color);
+      padding: 6px 16px;
+      gap: 6px;
+      overflow-x: auto;
+    }
+
+    .wizard-step-item {
+      flex: 1;
+      min-width: 140px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      color: #64748b;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+    }
+
+    .wizard-step-item:hover {
+      background: rgba(99, 102, 241, 0.08);
+      border-color: rgba(99, 102, 241, 0.25);
+      color: #cbd5e1;
+    }
+
+    .wizard-step-item.active {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(236, 72, 153, 0.12));
+      border-color: #818cf8;
+      color: #ffffff;
+      box-shadow: 0 0 14px rgba(99, 102, 241, 0.2);
+    }
+
+    .wizard-step-item.completed {
+      border-color: rgba(34, 197, 94, 0.35);
+      color: #cbd5e1;
+    }
+
+    .step-num-badge {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #1e293b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 800;
+      color: #94a3b8;
+      flex-shrink: 0;
+    }
+
+    .wizard-step-item.active .step-num-badge {
+      background: linear-gradient(135deg, #6366f1, #ec4899);
+      color: #fff;
+    }
+
+    .wizard-step-item.completed .step-num-badge {
+      background: #22c55e;
+      color: #fff;
+    }
+
+    .step-title-wrap {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.15;
+    }
+
+    .step-title-wrap .step-lbl {
+      font-size: 8.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      opacity: 0.6;
+    }
+
+    .step-title-wrap .step-name {
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    /* Wizard Step Footer Navigation */
+    .wizard-footer-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-top: 1px solid var(--border-color);
+      background: #090c14;
+      margin-top: 12px;
+      border-radius: 8px;
+    }
+
+    .btn-step-prev {
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #cbd5e1;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-step-prev:hover {
+      background: #334155;
+      color: #fff;
+    }
+
+    .btn-step-next {
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      border: none;
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-step-next:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(99, 102, 241, 0.5);
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- ================================================================
+       1. DESKTOP TITLEBAR / WINDOW CHROME
+  ================================================================ -->
+  <header class="app-topbar">
+    <div class="topbar-left">
+      <div class="app-icon-badge">🚀</div>
+      <div class="app-title-text">
+        <span>App Studio</span>
+        <select id="projectPresetSelector" class="project-selector-dropdown" onchange="loadProjectPreset(this.value)">
+          <optgroup label="🎓 SınıfCepte (Eğitim & Öğretmen)">
+            <option value="sinifcepte_defter">🎓 SınıfCepte: Ders Defteri Kancası</option>
+            <option value="sinifcepte_sozlu">🎓 SınıfCepte: Hızlı Sözlü Notu</option>
+            <option value="sinifcepte_veli">🎓 SınıfCepte: Veli WhatsApp Raporu</option>
+          </optgroup>
+          <optgroup label="🏡 İlandaHizmet (Pazaryeri & Usta)">
+            <option value="ilandahizmet_musteri">🏡 İlandaHizmet: Güvenilir Usta Bul (Müşteri)</option>
+            <option value="ilandahizmet_usta">🔨 İlandaHizmet: Usta Kazanma & Ek Gelir</option>
+            <option value="ilandahizmet_temizlik">🧹 İlandaHizmet: Ev Temizliği & Nakliyat</option>
+            <option value="ilandahizmet_tadilat">🎨 İlandaHizmet: Boya Badana & Tadilat</option>
+          </optgroup>
+          <optgroup label="🛒 Diğer Sektörler & Şablonlar">
+            <option value="eticaret">🛒 E-Ticaret: İndirim & Hızlı Kargo</option>
+            <option value="fitness">🏋️ Fitness: Antrenman & Kalori Takibi</option>
+            <option value="custom_empty">✨ Sıfırdan Yeni / Boş Proje</option>
+          </optgroup>
+        </select>
+        <button class="dock-btn" style="padding:4px 8px; font-size:11px; margin-left:4px;" onclick="exportProjectJSON()" title="Projeyi JSON olarak bilgisayara kaydet">💾 Kaydet</button>
+        <label class="dock-btn" style="padding:4px 8px; font-size:11px; cursor:pointer;" title="Kayıtlı JSON projesini yükle">
+          📂 Yükle
+          <input type="file" accept=".json" style="display:none;" onchange="importProjectJSON(event)">
+        </label>
+      </div>
+    </div>
+
+    <!-- Mode Selector -->
+    <div class="topbar-center">
+      <button id="modeBtnVideo" class="mode-tab-btn active" onclick="switchStudioMode('video')">
+        🎬 Canlı Reels & TikTok Stüdyosu
+      </button>
+      <button id="modeBtnGraphic" class="mode-tab-btn" onclick="switchStudioMode('graphic')">
+        📸 Statik Görsel & Post Tasarımı
+      </button>
+    </div>
+
+    <div class="topbar-right">
+      <div class="status-badge">
+        <span>●</span>
+        <span>60 FPS Active</span>
+      </div>
+      <button id="mainExportBtn" class="btn-export-primary" onclick="triggerMainExport()">
+        🎬 1080x1920 Video İndir
+      </button>
+    </div>
+  </header>
+
+  <!-- ================================================================
+       STEPPER WIZARD BAR (5 ADIMLI REELS ÜRETİM HATTI)
+  ================================================================ -->
+  <div class="wizard-steps-nav" id="wizardStepsNav">
+    <div class="wizard-step-item active" id="wizardStepBtn1" onclick="goToWizardStep(1)">
+      <div class="step-num-badge">1</div>
+      <div class="step-title-wrap">
+        <span class="step-lbl">1. ADIM</span>
+        <span class="step-name">🪝 Marka & Kanca</span>
+      </div>
+    </div>
+    <div class="wizard-step-item" id="wizardStepBtn2" onclick="goToWizardStep(2)">
+      <div class="step-num-badge">2</div>
+      <div class="step-title-wrap">
+        <span class="step-lbl">2. ADIM</span>
+        <span class="step-name">📋 Özellik Maddeleri</span>
+      </div>
+    </div>
+    <div class="wizard-step-item" id="wizardStepBtn3" onclick="goToWizardStep(3)">
+      <div class="step-num-badge">3</div>
+      <div class="step-title-wrap">
+        <span class="step-lbl">3. ADIM</span>
+        <span class="step-name">🎥 Ekran Videosu</span>
+      </div>
+    </div>
+    <div class="wizard-step-item" id="wizardStepBtn4" onclick="goToWizardStep(4)">
+      <div class="step-num-badge">4</div>
+      <div class="step-title-wrap">
+        <span class="step-lbl">4. ADIM</span>
+        <span class="step-name">🏁 Kapanış & Ses</span>
+      </div>
+    </div>
+    <div class="wizard-step-item" id="wizardStepBtn5" onclick="goToWizardStep(5)">
+      <div class="step-num-badge">5</div>
+      <div class="step-title-wrap">
+        <span class="step-lbl">5. ADIM</span>
+        <span class="step-name">🎉 Şaheser & İndir</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       2. WORKSPACE
+  ================================================================ -->
+  <main class="app-workspace">
+
+    <!-- 2.1 LEFT TOOL RAIL (CapCut Tool Shelf) -->
+    <nav class="tool-rail">
+      <button class="rail-btn active" id="railBtn1" onclick="goToWizardStep(1)" title="1. Adım: Marka & Kanca">
+        <span>1️⃣</span>
+        <span class="label">Kanca</span>
+      </button>
+      <button class="rail-btn" id="railBtn2" onclick="goToWizardStep(2)" title="2. Adım: Maddeler">
+        <span>2️⃣</span>
+        <span class="label">Maddeler</span>
+      </button>
+      <button class="rail-btn" id="railBtn3" onclick="goToWizardStep(3)" title="3. Adım: Ekran Videosu">
+        <span>3️⃣</span>
+        <span class="label">Video</span>
+      </button>
+      <button class="rail-btn" id="railBtn4" onclick="goToWizardStep(4)" title="4. Adım: Kapanış & Ses">
+        <span>4️⃣</span>
+        <span class="label">Kapanış</span>
+      </button>
+      <button class="rail-btn" id="railBtn5" onclick="goToWizardStep(5)" title="5. Adım: Şaheser & İndir">
+        <span>🎉</span>
+        <span class="label">Final</span>
+      </button>
+      <div style="height:1px; background:rgba(255,255,255,0.08); margin:4px 0;"></div>
+      <button class="rail-btn" id="railBtnUploads" onclick="switchRailTab('uploads')" title="Medya Havuzu & Yüklemeler">
+        <span>📁</span>
+        <span class="label">Havuz</span>
+      </button>
+      <button class="rail-btn" id="railBtnTheme" onclick="switchRailTab('theme')" title="Tüm Temalar & Süreler">
+        <span>🎨</span>
+        <span class="label">Stil</span>
+      </button>
+    </nav>
+
+    <!-- 2.2 DOCKED PROPERTY INSPECTOR -->
+    <aside class="inspector-panel">
+      <div class="inspector-header">
+        <h2 id="inspectorTitle">🪝 1. Adım: Marka & Kanca Sorusu</h2>
+        <span style="font-size:11px; color:#64748b; font-family:'JetBrains Mono',monospace;">PROPERTIES</span>
+      </div>
+
+      <div class="inspector-body">
+
+        <!-- TAB 0: YÜKLEMELER & MEDYA HAVUZU (CANVA STYLE) -->
+        <div id="inspectorTabUploads" class="inspector-tab-content">
+          <div class="setting-group">
+            <div class="setting-group-title">
+              <span>📁 Medya Havuzu & Dosya Yükle</span>
+              <span style="color:#ec4899; font-size:10px;">ASSETS</span>
+            </div>
+
+            <!-- Drag Drop Upload Area -->
+            <label class="uploads-dropzone" for="globalMediaUploadInput" 
+                   ondragover="handleDropzoneDragOver(event)" 
+                   ondragleave="handleDropzoneDragLeave(event)" 
+                   ondrop="handleDropzoneFileDrop(event)">
+              <span class="icon">☁️</span>
+              <span class="title">Dosyaları Buraya Sürükleyin veya Seçin</span>
+              <span class="sub">PNG, JPG, MP4, WEBM, MP3, WAV (Çoklu Seçim)</span>
+            </label>
+            <input type="file" id="globalMediaUploadInput" multiple accept="image/*,video/*,audio/*" style="display:none;" onchange="handleGlobalFileInput(event)">
+
+            <!-- Media Category Filter Tabs -->
+            <div class="uploads-tab-bar">
+              <button class="uploads-tab-btn active" id="mediaFilterAll" onclick="filterMediaPool('all', this)">
+                Tümü (<span id="countAll">0</span>)
+              </button>
+              <button class="uploads-tab-btn" id="mediaFilterImages" onclick="filterMediaPool('images', this)">
+                🖼️ Görseller (<span id="countImages">0</span>)
+              </button>
+              <button class="uploads-tab-btn" id="mediaFilterVideos" onclick="filterMediaPool('videos', this)">
+                🎥 Videolar (<span id="countVideos">0</span>)
+              </button>
+              <button class="uploads-tab-btn" id="mediaFilterAudios" onclick="filterMediaPool('audios', this)">
+                🎵 Sesler (<span id="countAudios">0</span>)
+              </button>
+            </div>
+
+            <!-- Media Asset Gallery Grid -->
+            <div id="mediaAssetGrid" class="media-asset-grid">
+              <!-- Dynamically populated via JS -->
+            </div>
+            
+            <div style="font-size:10px; color:#64748b; margin-top:6px; line-height:1.4; background:rgba(255,255,255,0.02); padding:6px 8px; border-radius:6px;">
+              💡 <b>İpucu:</b> Bir görseli veya videoyu tutup doğrudan ortadaki ekrana sürükleyip bırakabilirsiniz!
+            </div>
+          </div>
+        </div>
+        
+        <!-- TAB 1: TEMA & STİL -->
+        <div id="inspectorTabTheme" class="inspector-tab-content active">
+          <!-- Video Süresi & Sahne Zamanlaması Ayarı -->
+          <div class="setting-group" id="videoDurationSection">
+            <div class="setting-group-title">
+              <span>⏱️ Video & Sahne Süreleri</span>
+              <span id="currentDurationTag" style="color:#ec4899; font-size:11px; font-weight:800;">18.0 SN</span>
+            </div>
+            
+            <div class="grid-options" style="grid-template-columns: repeat(4, 1fr); gap: 4px;">
+              <button class="dock-btn" id="durPreset10" onclick="applyDurationPreset(10.5, this)" style="padding:6px 4px; text-align:center; align-items:center;">
+                <span class="title" style="font-size:11px;">⚡ 10s</span>
+                <span class="sub">Hızlı</span>
+              </button>
+              <button class="dock-btn" id="durPreset15" onclick="applyDurationPreset(15, this)" style="padding:6px 4px; text-align:center; align-items:center;">
+                <span class="title" style="font-size:11px;">🔥 15s</span>
+                <span class="sub">Reels</span>
+              </button>
+              <button class="dock-btn active" id="durPreset18" onclick="applyDurationPreset(18, this)" style="padding:6px 4px; text-align:center; align-items:center;">
+                <span class="title" style="font-size:11px;">✨ 18s</span>
+                <span class="sub">Dengeli</span>
+              </button>
+              <button class="dock-btn" id="durPreset30" onclick="applyDurationPreset(30, this)" style="padding:6px 4px; text-align:center; align-items:center;">
+                <span class="title" style="font-size:11px;">🎬 30s</span>
+                <span class="sub">Detaylı</span>
+              </button>
+            </div>
+
+            <!-- Toplam Süre Bilgisi -->
+            <div style="display:flex; justify-content:space-between; font-size:11px; color:#94a3b8; margin-top:6px; padding:6px 8px; background:rgba(255,255,255,0.03); border-radius:6px; border:1px solid rgba(255,255,255,0.06);">
+              <span>Toplam Video Süresi:</span>
+              <span id="sliderValueText" style="color:#ec4899; font-weight:800;">18.0 Saniye</span>
+            </div>
+
+            <!-- 4 Ayrı Sahne Süresi Ayar Kartları -->
+            <div class="scene-duration-list" style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
+              
+              <!-- 1. Giriş Kancası -->
+              <div class="scene-dur-card" style="background:#111622; border:1px solid rgba(99,102,241,0.3); border-radius:8px; padding:6px 8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px;">
+                  <span style="color:#a5b4fc; font-weight:700;">🪝 1. Giriş Kancası</span>
+                  <div style="display:flex; align-items:center; gap:4px;">
+                    <button class="stepper-btn" onclick="stepSceneDuration('s1', -0.5)">-</button>
+                    <input type="number" id="durVal_s1" class="dur-num-input" min="1" max="60" step="0.5" value="3.0" oninput="setSceneDuration('s1', this.value)" onchange="setSceneDuration('s1', this.value)">
+                    <span style="font-size:10px; color:#64748b; font-weight:700;">sn</span>
+                    <button class="stepper-btn" onclick="stepSceneDuration('s1', 0.5)">+</button>
+                  </div>
+                </div>
+                <input type="range" id="slider_s1" min="1.0" max="15" step="0.5" value="3.0" oninput="setSceneDuration('s1', this.value)" style="width:100%; accent-color:#6366f1; margin-top:4px;">
+              </div>
+
+              <!-- 2. Özellik Maddeleri (Detaylar) -->
+              <div class="scene-dur-card" style="background:#111622; border:1px solid rgba(14,165,233,0.3); border-radius:8px; padding:6px 8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px;">
+                  <span style="color:#38bdf8; font-weight:700;">📋 2. Özellik Maddeleri</span>
+                  <div style="display:flex; align-items:center; gap:4px;">
+                    <button class="stepper-btn" onclick="stepSceneDuration('s2', -0.5)">-</button>
+                    <input type="number" id="durVal_s2" class="dur-num-input" min="1" max="60" step="0.5" value="5.5" oninput="setSceneDuration('s2', this.value)" onchange="setSceneDuration('s2', this.value)">
+                    <span style="font-size:10px; color:#64748b; font-weight:700;">sn</span>
+                    <button class="stepper-btn" onclick="stepSceneDuration('s2', 0.5)">+</button>
+                  </div>
+                </div>
+                <input type="range" id="slider_s2" min="1.0" max="30" step="0.5" value="5.5" oninput="setSceneDuration('s2', this.value)" style="width:100%; accent-color:#0ea5e9; margin-top:4px;">
+              </div>
+
+              <!-- 3. Ekran Videosu -->
+              <div class="scene-dur-card" style="background:#111622; border:1px solid rgba(236,72,153,0.3); border-radius:8px; padding:6px 8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px;">
+                  <span style="color:#f472b6; font-weight:700;">🎥 3. Ekran Videosu</span>
+                  <div style="display:flex; align-items:center; gap:4px;">
+                    <button class="stepper-btn" onclick="stepSceneDuration('s3', -0.5)">-</button>
+                    <input type="number" id="durVal_s3" class="dur-num-input" min="1" max="120" step="0.5" value="6.0" oninput="setSceneDuration('s3', this.value)" onchange="setSceneDuration('s3', this.value)">
+                    <span style="font-size:10px; color:#64748b; font-weight:700;">sn</span>
+                    <button class="stepper-btn" onclick="stepSceneDuration('s3', 0.5)">+</button>
+                  </div>
+                </div>
+                <input type="range" id="slider_s3" min="1.0" max="60" step="0.5" value="6.0" oninput="setSceneDuration('s3', this.value)" style="width:100%; accent-color:#ec4899; margin-top:4px;">
+              </div>
+
+              <!-- 4. Kapanış Sloganı & CTA -->
+              <div class="scene-dur-card" style="background:#111622; border:1px solid rgba(34,197,94,0.3); border-radius:8px; padding:6px 8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px;">
+                  <span style="color:#4ade80; font-weight:700;">🏁 4. Kapanış & CTA</span>
+                  <div style="display:flex; align-items:center; gap:4px;">
+                    <button class="stepper-btn" onclick="stepSceneDuration('s4', -0.5)">-</button>
+                    <input type="number" id="durVal_s4" class="dur-num-input" min="1" max="60" step="0.5" value="3.5" oninput="setSceneDuration('s4', this.value)" onchange="setSceneDuration('s4', this.value)">
+                    <span style="font-size:10px; color:#64748b; font-weight:700;">sn</span>
+                    <button class="stepper-btn" onclick="stepSceneDuration('s4', 0.5)">+</button>
+                  </div>
+                </div>
+                <input type="range" id="slider_s4" min="1.0" max="20" step="0.5" value="3.5" oninput="setSceneDuration('s4', this.value)" style="width:100%; accent-color:#22c55e; margin-top:4px;">
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Video Temaları -->
+          <div class="setting-group" id="videoThemeSection">
+            <div class="setting-group-title">
+              <span>Video Arka Plan Teması</span>
+              <span style="color:#818cf8; font-size:10px;">MOTION</span>
+            </div>
+            <div class="grid-options">
+              <button class="dock-btn active" onclick="setVideoTheme('cyber', this)">
+                <span class="title">🌌 Cyber Glass</span>
+                <span class="sub">Siber Cam & Mor</span>
+              </button>
+              <button class="dock-btn" onclick="setVideoTheme('google', this)">
+                <span class="title">🔵 Google 4-Renk</span>
+                <span class="sub">Canlı Tonal Işıklar</span>
+              </button>
+              <button class="dock-btn" onclick="setVideoTheme('aurora', this)">
+                <span class="title">🌅 Canlı Aurora</span>
+                <span class="sub">Pembe & Mor Degrade</span>
+              </button>
+              <button class="dock-btn" onclick="setVideoTheme('onyx', this)">
+                <span class="title">💎 Platin & Karbon</span>
+                <span class="sub">Minimal Koyu</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Statik Görsel Format & Temaları -->
+          <div class="setting-group" id="graphicFormatSection" style="display:none;">
+            <div class="setting-group-title">
+              <span>Platform Boyut Formatı</span>
+              <span style="color:#818cf8; font-size:10px;">CANVAS</span>
+            </div>
+            <div class="grid-options">
+              <button class="dock-btn active" onclick="setGraphicFormat('square', this)">
+                <span class="title">⏹️ Instagram Kare</span>
+                <span class="sub">1:1 (1080x1080)</span>
+              </button>
+              <button class="dock-btn" onclick="setGraphicFormat('portrait', this)">
+                <span class="title">📱 Dikey Akış</span>
+                <span class="sub">4:5 (1080x1350)</span>
+              </button>
+              <button class="dock-btn" onclick="setGraphicFormat('tiktok', this)">
+                <span class="title">🎵 TikTok / Reels</span>
+                <span class="sub">9:16 (1080x1920)</span>
+              </button>
+              <button class="dock-btn" onclick="setGraphicFormat('banner', this)">
+                <span class="title">🖼️ Web Banner</span>
+                <span class="sub">16:9 (1200x675)</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="setting-group" id="graphicThemeSection" style="display:none;">
+            <div class="setting-group-title">
+              <span>Görsel Stil Şablonu</span>
+              <span style="color:#818cf8; font-size:10px;">STYLE</span>
+            </div>
+            <div class="grid-options">
+              <button class="dock-btn active" onclick="setGraphicTheme('glass', this)">
+                <span class="title">🌌 Dark Glass</span>
+                <span class="sub">Cam Mor</span>
+              </button>
+              <button class="dock-btn" onclick="setGraphicTheme('google-light', this)">
+                <span class="title">🔵 Google Light</span>
+                <span class="sub">Açık 4 Renk</span>
+              </button>
+              <button class="dock-btn" onclick="setGraphicTheme('google-dark', this)">
+                <span class="title">🟢 Google Dark</span>
+                <span class="sub">Koyu 4 Renk</span>
+              </button>
+              <button class="dock-btn" onclick="setGraphicTheme('aurora', this)">
+                <span class="title">🌅 Aurora</span>
+                <span class="sub">Canlı Degrade</span>
+              </button>
+              <button class="dock-btn" onclick="setGraphicTheme('onyx', this)">
+                <span class="title">💎 Onyx Karbon</span>
+                <span class="sub">Platin Koyu</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================================
+             1. ADIM: MARKA & AÇILIŞ KANCASI
+        ======================================================== -->
+        <div id="inspectorTabText" class="inspector-tab-content active">
+          <div class="setting-group">
+            <div class="setting-group-title">
+              <span>Marka & Logo Bilgisi</span>
+              <span style="color:#6366f1; font-size:10px; font-weight:800;">1. ADIM</span>
+            </div>
+            <div class="form-group">
+              <label>Proje / Uygulama Adı:</label>
+              <input type="text" id="brandNameInput" value="SınıfCepte" oninput="syncField('name', this.value)" placeholder="Örn: SınıfCepte">
+            </div>
+            
+            <div style="margin-top:8px;">
+              <label class="file-btn" for="logoUploadInput" style="padding:8px 10px; font-size:11.5px;">
+                🏷️ PNG Logo Yükle (Şeffaf / Transparan)
+              </label>
+              <input type="file" id="logoUploadInput" accept="image/*" style="display:none;" onchange="handleLogoUpload(event)">
+            </div>
+          </div>
+
+          <div class="setting-group">
+            <div class="setting-group-title">
+              <span>Giriş Kanca Sorusu (Hook)</span>
+              <span style="color:#ec4899; font-size:10px;">AÇILIŞ</span>
+            </div>
+            <div class="form-group">
+              <label>İzleyiciyi Yakalayan Soru / Başlık:</label>
+              <textarea id="introTitleInput" rows="3" oninput="syncField('title', this.value)">Ders Defterini Doldurmak Kaç Dakikanızı Alıyor?</textarea>
+            </div>
+
+            <!-- Sahne 1 Süresi -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; background:rgba(255,255,255,0.02); padding:6px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+              <span style="font-size:11px; color:#94a3b8;">⏱️ Giriş Sahnesi Süresi:</span>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <button class="stepper-btn" onclick="stepSceneDuration('s1', -0.5)">-</button>
+                <input type="number" id="stepDur_s1" class="dur-num-input" min="1" max="60" step="0.5" value="3.0" oninput="setSceneDuration('s1', this.value)" onchange="setSceneDuration('s1', this.value)">
+                <span style="font-size:10px; color:#64748b; font-weight:700;">sn</span>
+                <button class="stepper-btn" onclick="stepSceneDuration('s1', 0.5)">+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Wizard Footer Nav (1. Adım) -->
+          <div class="wizard-footer-nav">
+            <button class="btn-step-prev" onclick="resetToCleanEmpty()">🔄 Boş Başla</button>
+            <button class="btn-step-next" onclick="goToWizardStep(2)">
+              2. Adım: Maddeleri Ekle ➔
+            </button>
+          </div>
+        </div>
+
+        <!-- ========================================================
+             2. ADIM: ÖZELLİK MADDELERİ
+        ======================================================== -->
+        <div id="inspectorTabBullets" class="inspector-tab-content">
+          <div class="setting-group">
+            <div class="setting-group-title">
+              <span>Öne Çıkan Özellikler (Maks 4)</span>
+              <span style="color:#22c55e; font-size:10px; font-weight:800;">2. ADIM</span>
+            </div>
+            <p style="font-size:11px; color:#94a3b8; margin-bottom:8px;">
+              Uygulamanızın en güçlü 3-4 özelliğini yazın. Ekranda sırayla belirip rahatça okunacaktır:
+            </p>
+            <div id="bulletsContainer" style="display:flex; flex-direction:column; gap:8px;"></div>
+            <button class="add-bullet-btn" onclick="addBulletItem('')">➕ Yeni Madde Ekle</button>
+
+            <!-- Sahne 2 Süresi -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; background:rgba(255,255,255,0.02); padding:6px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+              <span style="font-size:11px; color:#94a3b8;">⏱️ Maddelerin Okunma Süresi:</span>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <button class="stepper-btn" onclick="stepSceneDuration('s2', -0.5)">-</button>
+                <input type="number" id="stepDur_s2" class="dur-num-input" min="1" max="60" step="0.5" value="5.5" oninput="setSceneDuration('s2', this.value)" onchange="setSceneDuration('s2', this.value)">
+                <span style="font-size:10px; color:#64748b; font-weight:700;">sn</span>
+                <button class="stepper-btn" onclick="stepSceneDuration('s2', 0.5)">+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Wizard Footer Nav (2. Adım) -->
+          <div class="wizard-footer-nav">
+            <button class="btn-step-prev" onclick="goToWizardStep(1)">⬅ 1. Adım: Kanca</button>
+            <button class="btn-step-next" onclick="goToWizardStep(3)">
+              3. Adım: Video Ekle ➔
+            </button>
+          </div>
+        </div>
+
+        <!-- ========================================================
+             3. ADIM: TELEFON EKRAN VİDEOSU
+        ======================================================== -->
+        <div id="inspectorTabMedia" class="inspector-tab-content">
+          <div class="setting-group">
+            <div class="setting-group-title">
+              <span>3. Sahne: Telefon Ekran Kaydı Videosu</span>
+              <span style="color:#ec4899; font-size:10px; font-weight:800;">3. ADIM</span>
+            </div>
+            <label class="file-btn" for="screenVideoInput">
+              🎥 Ekran Kaydı Videosu Seç (.mp4)
+            </label>
+            <input type="file" id="screenVideoInput" accept="video/*,image/*" style="display:none;" onchange="handleScreenVideoUpload(event)">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+              <span id="videoLoadedLabel" style="font-size:11px; color:#4ade80; display:none;">✓ Video başarıyla yüklendi!</span>
+              <button id="removeVideoBtn" class="del-bullet-btn" style="display:none; width:auto; padding:2px 8px; font-size:10px;" onclick="removeScreenVideo()">Kaldır</button>
+            </div>
+
+            <!-- Video Fit / Yerleşim Modu -->
+            <div style="margin-top:8px;">
+              <label style="font-size:11px; color:#94a3b8; font-weight:700; display:block; margin-bottom:4px;">
+                📐 Video Görünüm / Oturtma Formatı:
+              </label>
+              <div class="grid-options" style="grid-template-columns: repeat(4, 1fr); gap:4px;">
+                <button class="dock-btn active" id="btnFitFill" onclick="setVideoFitMode('fill', this)" style="padding:6px 3px; text-align:center; align-items:center;">
+                  <span class="title" style="font-size:10px;">🎯 Tam Oturt</span>
+                  <span class="sub" style="font-size:8.5px;">Kesme/Boşluk Yok</span>
+                </button>
+                <button class="dock-btn" id="btnFitCover" onclick="setVideoFitMode('cover', this)" style="padding:6px 3px; text-align:center; align-items:center;">
+                  <span class="title" style="font-size:10px;">🖼️ Doldur</span>
+                  <span class="sub" style="font-size:8.5px;">Cover Kırp</span>
+                </button>
+                <button class="dock-btn" id="btnFitContain" onclick="setVideoFitMode('contain', this)" style="padding:6px 3px; text-align:center; align-items:center;">
+                  <span class="title" style="font-size:10px;">📱 Sığdır</span>
+                  <span class="sub" style="font-size:8.5px;">Çerçeveli</span>
+                </button>
+                <button class="dock-btn" id="btnFitMockup" onclick="setVideoFitMode('mockup', this)" style="padding:6px 3px; text-align:center; align-items:center;">
+                  <span class="title" style="font-size:10px;">📲 Mockup</span>
+                  <span class="sub" style="font-size:8.5px;">Kasa İçi</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Dikey Konum & Zoom Kaydırıcıları -->
+            <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px; background:rgba(255,255,255,0.02); padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+              <div style="display:flex; justify-content:space-between; font-size:10.5px; color:#94a3b8;">
+                <span>↕️ Dikey Konum (Yukarı/Aşağı):</span>
+                <span id="videoYOffsetLabel" style="color:#a5b4fc; font-weight:700;">0 px</span>
+              </div>
+              <input type="range" id="videoYOffsetSlider" min="-300" max="300" step="10" value="0" oninput="setVideoYOffset(this.value)" style="width:100%; accent-color:#818cf8; cursor:pointer;">
+
+              <div style="display:flex; justify-content:space-between; font-size:10.5px; color:#94a3b8; margin-top:2px;">
+                <span>🔍 Boyut Ölçeği (Zoom):</span>
+                <span id="videoZoomLabel" style="color:#a5b4fc; font-weight:700;">%100</span>
+              </div>
+              <input type="range" id="videoZoomSlider" min="70" max="130" step="1" value="100" oninput="setVideoCustomZoom(this.value)" style="width:100%; accent-color:#ec4899; cursor:pointer;">
+            </div>
+
+            <!-- Sahne 3 Süresi -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; background:rgba(255,255,255,0.02); padding:6px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+              <span style="font-size:11px; color:#94a3b8;">⏱️ Video Sahnesi Süresi:</span>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <button class="stepper-btn" onclick="stepSceneDuration('s3', -0.5)">-</button>
+                <input type="number" id="stepDur_s3" class="dur-num-input" min="1" max="120" step="0.5" value="6.0" oninput="setSceneDuration('s3', this.value)" onchange="setSceneDuration('s3', this.value)">
+                <span style="font-size:10px; color:#64748b; font-weight:700;">sn</span>
+                <button class="stepper-btn" onclick="stepSceneDuration('s3', 0.5)">+</button>
+              </div>
+            </div>
+
+            <!-- Video Sessize Alma Seçeneği -->
+            <div style="display:flex; align-items:center; gap:8px; margin-top:6px; background:rgba(255,255,255,0.03); padding:8px 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
+              <input type="checkbox" id="muteVideoSoundCheckbox" checked onchange="toggleVideoMuteSetting()" style="width:16px; height:16px; cursor:pointer;">
+              <label for="muteVideoSoundCheckbox" style="color:#cbd5e1; cursor:pointer; font-size:11.5px; font-weight:600;">
+                🔇 Ekran videosunun kendi sesini kapat (Sessize al)
+              </label>
+            </div>
+          </div>
+
+          <!-- Statik Mockup (Fotoğraf modu için) -->
+          <div class="setting-group" id="mockupUploadSection" style="display:none;">
+            <div class="setting-group-title">
+              <span>Statik Ekran Görüntüsü (Fotoğraf Postu İçin)</span>
+            </div>
+            <label class="file-btn" for="mockupUploadInput">
+              🖼️ Ekran Görüntüsü PNG Seç
+            </label>
+            <input type="file" id="mockupUploadInput" accept="image/*" style="display:none;" onchange="handleMockupUpload(event)">
+          </div>
+
+          <!-- Wizard Footer Nav (3. Adım) -->
+          <div class="wizard-footer-nav">
+            <button class="btn-step-prev" onclick="goToWizardStep(2)">⬅ 2. Adım: Maddeler</button>
+            <button class="btn-step-next" onclick="goToWizardStep(4)">
+              4. Adım: Kapanış & Ses ➔
+            </button>
+          </div>
+        </div>
+
+        <!-- ========================================================
+             4. ADIM: KAPANIŞ, SLOGAN & SES
+        ======================================================== -->
+        <div id="inspectorTabAudio" class="inspector-tab-content">
+          <div class="setting-group">
+            <div class="setting-group-title">
+              <span>Kapanış Sloganı & Eylem Çağrısı (CTA)</span>
+              <span style="color:#a855f7; font-size:10px; font-weight:800;">4. ADIM</span>
+            </div>
+            <div class="form-group">
+              <label>Kapanış Sloganı:</label>
+              <input type="text" id="outroSloganInput" value="Zamanınız Eğitime Kalsın!" oninput="syncField('slogan', this.value)">
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label>Eylem Çağrısı (CTA):</label>
+                <input type="text" id="outroCtaInput" value="Profildeki linkten hemen ücretsiz indirin" oninput="syncField('cta', this.value)">
+              </div>
+              <div class="form-group">
+                <label>Sosyal Medya:</label>
+                <input type="text" id="outroSocialInput" value="@sinifcepte" oninput="syncField('social', this.value)">
+              </div>
+            </div>
+
+            <!-- Sahne 4 Süresi -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; background:rgba(255,255,255,0.02); padding:6px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+              <span style="font-size:11px; color:#94a3b8;">⏱️ Kapanış Sahnesi Süresi:</span>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <button class="stepper-btn" onclick="stepSceneDuration('s4', -0.5)">-</button>
+                <input type="number" id="stepDur_s4" class="dur-num-input" min="1" max="60" step="0.5" value="3.5" oninput="setSceneDuration('s4', this.value)" onchange="setSceneDuration('s4', this.value)">
+                <span style="font-size:10px; color:#64748b; font-weight:700;">sn</span>
+                <button class="stepper-btn" onclick="stepSceneDuration('s4', 0.5)">+</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="setting-group">
+            <div class="setting-group-title">
+              <span>Arka Plan Seslendirme / Fon Müziği</span>
+              <span style="color:#a855f7; font-size:10px;">AUDIO</span>
+            </div>
+            <label class="file-btn" for="audioFileInput">
+              🎵 Ses Dosyası Yükle (.mp3 / .wav)
+            </label>
+            <input type="file" id="audioFileInput" accept="audio/*" style="display:none;" onchange="handleAudioUpload(event)">
+            <div id="audioControlsRow" style="display:none; align-items:center; gap:8px; margin-top:4px;">
+              <span id="audioLoadedLabel" style="font-size:11px; color:#4ade80; flex:1;">✓ Ses dosyası yüklendi</span>
+              <button class="del-bullet-btn" style="width:auto; padding:4px 8px; font-size:11px;" onclick="removeAudio()">Kaldır</button>
+            </div>
+
+            <div style="margin-top:10px;">
+              <button id="micRecordBtn" class="dock-btn" style="justify-content:center; padding:9px 12px; background:#1e293b;" onclick="toggleMicRecording()">
+                🎙️ Mikrofonla Canlı Seslendir
+              </button>
+              <span id="micStatusLabel" style="font-size:11px; color:#f472b6; display:none; margin-top:4px;">● Mikrofon kaydediyor... Video oynarken konuşabilirsiniz!</span>
+            </div>
+          </div>
+
+          <!-- Wizard Footer Nav (4. Adım) -->
+          <div class="wizard-footer-nav">
+            <button class="btn-step-prev" onclick="goToWizardStep(3)">⬅ 3. Adım: Video</button>
+            <button class="btn-step-next" onclick="goToWizardStep(5)" style="background:linear-gradient(135deg,#ec4899,#8b5cf6);">
+              🎉 Şaheseri Tamamla & Önizle ➔
+            </button>
+          </div>
+        </div>
+
+        <!-- ========================================================
+             5. ADIM: ŞAHESERİNİZ HAZIR & İNDİR (SHOWROOM)
+        ======================================================== -->
+        <div id="inspectorTabFinal" class="inspector-tab-content">
+          <div class="setting-group">
+            <div class="setting-group-title">
+              <span>🎉 Tebrikler! Reels Videonuz Hazır</span>
+              <span style="color:#22c55e; font-size:10px; font-weight:800;">5. ADIM</span>
+            </div>
+            
+            <!-- Video Özet Kartı -->
+            <div style="display:flex; flex-direction:column; gap:6px; background:rgba(255,255,255,0.03); padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); font-size:11.5px;">
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:#94a3b8;">🪝 Kanca Başlığı:</span>
+                <span id="summaryIntroTitle" style="color:#fff; font-weight:700; max-width:180px; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Soru Başlığı</span>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:#94a3b8;">📋 Özellikler:</span>
+                <span id="summaryBulletsCount" style="color:#38bdf8; font-weight:700;">3 Madde</span>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:#94a3b8;">🎥 Ekran Videosu:</span>
+                <span id="summaryVideoStatus" style="color:#4ade80; font-weight:700;">Hazır</span>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:#94a3b8;">🎙️ Seslendirme:</span>
+                <span id="summaryAudioStatus" style="color:#c084fc; font-weight:700;">Hazır</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; border-top:1px solid rgba(255,255,255,0.06); padding-top:6px; margin-top:2px;">
+                <span style="color:#94a3b8;">⏱️ Toplam Video Süresi:</span>
+                <span id="summaryTotalDuration" style="color:#ec4899; font-weight:800; font-family:'JetBrains Mono',monospace;">18.0 SN</span>
+              </div>
+            </div>
+
+            <!-- Tema Seçici -->
+            <div style="margin-top:10px;">
+              <label style="font-size:11px; color:#94a3b8; font-weight:700; display:block; margin-bottom:4px;">
+                🎨 Video Arka Plan Teması:
+              </label>
+              <div class="grid-options" style="grid-template-columns:repeat(2, 1fr); gap:6px;">
+                <button class="dock-btn active" onclick="setVideoTheme('cyber', this)" style="padding:6px;">
+                  <span class="title" style="font-size:11px;">🌌 Cyber Glass</span>
+                </button>
+                <button class="dock-btn" onclick="setVideoTheme('google', this)" style="padding:6px;">
+                  <span class="title" style="font-size:11px;">🔵 Google 4-Renk</span>
+                </button>
+                <button class="dock-btn" onclick="setVideoTheme('aurora', this)" style="padding:6px;">
+                  <span class="title" style="font-size:11px;">🌅 Canlı Aurora</span>
+                </button>
+                <button class="dock-btn" onclick="setVideoTheme('onyx', this)" style="padding:6px;">
+                  <span class="title" style="font-size:11px;">💎 Karbon Onyx</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Büyük İndir Butonları -->
+            <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
+              <button onclick="triggerMainExport()" style="background:linear-gradient(135deg,#6366f1,#ec4899); border:none; color:#fff; font-size:13px; font-weight:800; padding:12px; border-radius:10px; cursor:pointer; box-shadow:0 6px 20px rgba(236,72,153,0.4); display:flex; align-items:center; justify-content:center; gap:8px;">
+                🎬 1080x1920 Full HD Video İndir
+              </button>
+              <button onclick="exportGraphicPNG()" style="background:#1e293b; border:1px solid rgba(255,255,255,0.1); color:#cbd5e1; font-size:12px; font-weight:700; padding:9px; border-radius:8px; cursor:pointer;">
+                📸 HD Statik Post Görseli İndir
+              </button>
+            </div>
+          </div>
+
+          <!-- Wizard Footer Nav (5. Adım) -->
+          <div class="wizard-footer-nav">
+            <button class="btn-step-prev" onclick="goToWizardStep(1)">✏️ 1. Adıma Dön</button>
+            <button class="btn-step-next" onclick="resetToCleanEmpty()" style="background:#334155;">
+              🔄 Yeni Video Başlat
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- 2.3 CENTER DESIGN CANVAS / MONITOR VIEWPORT -->
+    <div class="viewport-container" 
+         ondragover="handleStageDragOver(event)" 
+         ondragleave="handleStageDragLeave(event)" 
+         ondrop="handleStageDrop(event)">
+      <div class="viewport-topbar">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span>VIEWPORT:</span>
+          <span style="color:#a5b4fc;" id="viewportResolutionBadge">1080 x 1920 (9:16 Reels)</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span>FIT: AUTO 100%</span>
+          <span style="color:#4ade80;">● ACTIVE</span>
+        </div>
+      </div>
+
+      <div class="viewport-stage">
+        
+        <!-- Video Canvas Sahnesi -->
+        <div id="videoCanvasContainer" class="reels-screen-stage">
+          <canvas id="reelsCanvas" width="1080" height="1920"></canvas>
+        </div>
+
+        <!-- Statik Kart Sahnesi (Fotoğraf Modu) -->
+        <div id="graphicCardContainer" style="display:none;">
+          <div id="graphicCardTarget" class="insta-card fmt-square theme-glass">
+            <div class="glow-circle-1"></div>
+            <div class="glow-circle-2"></div>
+            
+            <div class="google-bg-elements">
+              <div class="g-orb g-blue"></div>
+              <div class="g-orb g-red"></div>
+              <div class="g-orb g-yellow"></div>
+              <div class="g-orb g-green"></div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; position:relative; z-index:2;">
+              <div class="app-brand">
+                <img id="cardLogoImg" class="custom-logo-img" alt="Logo">
+                <span id="cardBrandText">SınıfCepte</span>
+              </div>
+              <div class="badge" id="cardBadge">Öğretmenler İçin Tasarlandı</div>
+            </div>
+
+            <div class="card-body-wrapper">
+              <div class="card-content">
+                <div class="question-title" id="cardQuestion">Ders Defterini Doldurmak Kaç Dakikanızı Alıyor?</div>
+                <div class="glass-box" id="cardBulletContainer"></div>
+              </div>
+
+              <div class="dual-image-container" id="mockupContainer">
+                <div class="mockup-frame" id="mockupFrame">
+                  <img id="mockupImg" alt="App Screen">
+                </div>
+              </div>
+            </div>
+
+            <div class="card-footer" style="position:relative; z-index:2;">
+              <div class="cta-text" id="cardCta">Profildeki linkten hemen ücretsiz indirin</div>
+              <div class="social-tag" id="cardSocial">@sinifcepte</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 2.4 BOTTOM TIMELINE DOCK (CapCut Style) -->
+      <footer class="timeline-dock" id="timelineDock">
+        <div class="timeline-transport">
+          <div class="transport-controls">
+            <button class="transport-btn" title="Başa Sar" onclick="seekToTime(0)">⏮</button>
+            <button class="play-master-btn" id="playBtn" onclick="togglePlayPause()">▶</button>
+            <button class="transport-btn" title="Durdur" onclick="pausePlayback()">⏹</button>
+            <div class="timecode-display" id="timecodeDisplay">00:00.0 / 00:10.5</div>
+          </div>
+
+          <div style="font-size:11px; color:#64748b; font-weight:700;">
+            🎬 Sahneleri seçerek ilgili ana atlayabilirsiniz:
+          </div>
+        </div>
+
+        <div class="timeline-tracks">
+          <div class="scene-block scene-1" onclick="seekToTime(0)">
+            <span>1. Giriş Kancası</span>
+            <span class="time">0.0s - 2.8s</span>
+          </div>
+          <div class="scene-block scene-2" onclick="seekToTime(3.0)">
+            <span>2. Özellik Maddeleri</span>
+            <span class="time">2.8s - 5.4s</span>
+          </div>
+          <div class="scene-block scene-3" onclick="seekToTime(5.5)">
+            <span>3. Tam Ekran Video</span>
+            <span class="time">5.4s - 8.8s</span>
+          </div>
+          <div class="scene-block scene-4" onclick="seekToTime(8.8)">
+            <span>4. Kapanış Sloganı</span>
+            <span class="time">8.8s - 10.5s</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+  </main>
+
+  <!-- Progress Render Modal -->
+  <div id="progressModal" class="modal-overlay">
+    <div class="modal-card">
+      <h3 style="color:#fff; font-size:18px;">🎬 Full HD Reels Render Ediliyor...</h3>
+      <p style="color:#94a3b8; font-size:13px;" id="renderStatus">
+        60 FPS Full HD kareler ve ses miksleniyor...
+      </p>
+      <div class="progress-bar">
+        <div id="renderFill" class="progress-fill"></div>
+      </div>
+      <span id="renderPercent" style="color:#ec4899; font-weight:800; font-size:14px;">%0</span>
+    </div>
+  </div>
+
+  <!-- Floating Quick Toast Notification -->
+  <div id="studioToast" class="studio-toast">✨ Varlık güncellendi</div>
+
+  <!-- Gizli Medya Elementleri -->
+  <video id="userScreenVideo" loop muted playsinline style="display:none;"></video>
+  <audio id="userAudio" preload="auto" style="display:none;"></audio>
+  <img id="sharedLogoImg" style="display:none;" alt="Shared Logo">
+
+  <!-- ================================================================
+       JAVASCRIPT STUDIO CONTROLLER
+  ================================================================ -->
+  <script>
+    /* Global Shared State */
+    const project = {
+      mode: 'video', // 'video' | 'graphic'
+      activeRailTab: 'theme',
+      icon: "📱",
+      name: "SınıfCepte",
+      title: "Ders Defterini Doldurmak Kaç Dakikanızı Alıyor?",
+      slogan: "Zamanınız Eğitime Kalsın!",
+      cta: "Profildeki linkten hemen ücretsiz indirin",
+      social: "@sinifcepte",
+      bullets: [
+        "MEB müfredatına tam uyumlu kazanım listesi",
+        "%100 Çevrimdışı (İnternetsiz) çalışma mimarisi",
+        "Tek tıkla sözlü & ders içi katılım puanlama"
+      ]
+    };
+
+    let customLogoLoaded = false;
+    let videoFileLoaded = false;
+    let audioFileLoaded = false;
+    let mockupImageLoaded = false;
+
+    /* ================================================================
+       CANVA-STYLE MEDIA POOL & ASSETS LIBRARY (YÜKLEMELER)
+    ================================================================ */
+    let currentMediaFilter = 'all';
+    const mediaPool = [
+      {
+        id: 'sample_icon_1',
+        name: 'SınıfCepte App Logo',
+        type: 'image',
+        url: '',
+        isIcon: true,
+        iconChar: '📱',
+        date: 'Varsayılan'
+      }
+    ];
+
+    function showStudioToast(msg) {
+      const toast = document.getElementById("studioToast");
+      if (!toast) return;
+      toast.innerHTML = msg;
+      toast.classList.add("show");
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => {
+        toast.classList.remove("show");
+      }, 2400);
+    }
+
+    function handleGlobalFileInput(e) {
+      if (e.target.files && e.target.files.length > 0) {
+        addFilesToMediaLibrary(Array.from(e.target.files));
+        e.target.value = "";
+      }
+    }
+
+    function handleDropzoneDragOver(e) {
+      e.preventDefault();
+      e.currentTarget.classList.add("drag-active");
+    }
+
+    function handleDropzoneDragLeave(e) {
+      e.currentTarget.classList.remove("drag-active");
+    }
+
+    function handleDropzoneFileDrop(e) {
+      e.preventDefault();
+      e.currentTarget.classList.remove("drag-active");
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        addFilesToMediaLibrary(Array.from(e.dataTransfer.files));
+      }
+    }
+
+    function addFilesToMediaLibrary(files) {
+      files.forEach(file => {
+        const url = URL.createObjectURL(file);
+        let type = 'image';
+        if (file.type.startsWith('video/')) type = 'video';
+        else if (file.type.startsWith('audio/')) type = 'audio';
+
+        const item = {
+          id: 'media_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          name: file.name,
+          type: type,
+          url: url,
+          file: file,
+          date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+
+        mediaPool.unshift(item);
+      });
+
+      renderMediaLibrary();
+      showStudioToast(`📁 ${files.length} dosya Yüklemeler havuzuna eklendi!`);
+    }
+
+    function filterMediaPool(filter, btn) {
+      currentMediaFilter = filter;
+      document.querySelectorAll(".uploads-tab-btn").forEach(b => b.classList.remove("active"));
+      if (btn) btn.classList.add("active");
+      renderMediaLibrary();
+    }
+
+    function renderMediaLibrary() {
+      const grid = document.getElementById("mediaAssetGrid");
+      if (!grid) return;
+
+      const imgCount = mediaPool.filter(m => m.type === 'image').length;
+      const vidCount = mediaPool.filter(m => m.type === 'video').length;
+      const audCount = mediaPool.filter(m => m.type === 'audio').length;
+
+      document.getElementById("countAll").innerText = mediaPool.length;
+      document.getElementById("countImages").innerText = imgCount;
+      document.getElementById("countVideos").innerText = vidCount;
+      document.getElementById("countAudios").innerText = audCount;
+
+      let filtered = mediaPool;
+      if (currentMediaFilter === 'images') filtered = mediaPool.filter(m => m.type === 'image');
+      else if (currentMediaFilter === 'videos') filtered = mediaPool.filter(m => m.type === 'video');
+      else if (currentMediaFilter === 'audios') filtered = mediaPool.filter(m => m.type === 'audio');
+
+      grid.innerHTML = "";
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `
+          <div style="grid-column: span 2; text-align:center; padding:24px 10px; color:#64748b; font-size:11px;">
+            Henüz bu kategoride dosya yok.<br>Yukarıdaki alana sürükleyip bırakabilirsiniz.
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach(item => {
+        const card = document.createElement("div");
+        card.className = "media-asset-card";
+        card.draggable = true;
+        card.ondragstart = e => handleMediaCardDragStart(e, item.id);
+        card.ondragend = e => e.currentTarget.classList.remove("is-dragging");
+
+        let thumbHtml = '';
+        let badgeText = item.type === 'image' ? 'PNG/JPG' : (item.type === 'video' ? 'VIDEO' : 'AUDIO');
+        let actionChips = '';
+
+        if (item.type === 'image') {
+          if (item.isIcon) {
+            thumbHtml = `<div style="font-size:38px; display:flex; align-items:center; justify-content:center; width:100%; height:100%;">${item.iconChar}</div>`;
+          } else {
+            thumbHtml = `<img src="${item.url}" alt="${item.name}" loading="lazy">`;
+          }
+          actionChips = `
+            <button class="media-action-chip" onclick="applyMediaItem('${item.id}', 'logo')">🏷️ Logo Yap</button>
+            <button class="media-action-chip" onclick="applyMediaItem('${item.id}', 'mockup')">📱 Mockup</button>
+          `;
+        } else if (item.type === 'video') {
+          thumbHtml = `<video src="${item.url}" muted preload="metadata" style="pointer-events:none;"></video>`;
+          actionChips = `
+            <button class="media-action-chip" onclick="applyMediaItem('${item.id}', 'video')" style="flex:1;">🎥 Sahne 3 Videosu Yap</button>
+          `;
+        } else if (item.type === 'audio') {
+          thumbHtml = `<div style="font-size:32px; color:#a855f7; display:flex; align-items:center; justify-content:center; width:100%; height:100%;">🎵</div>`;
+          actionChips = `
+            <button class="media-action-chip" onclick="applyMediaItem('${item.id}', 'audio')" style="flex:1;">🎙️ Fon Sesi Yap</button>
+          `;
+        }
+
+        card.innerHTML = `
+          <div class="media-thumb-box">
+            ${thumbHtml}
+            <span class="media-badge-tag">${badgeText}</span>
+            <button class="media-del-btn" title="Sil" onclick="deleteMediaItem('${item.id}', event)">✕</button>
+          </div>
+          <div class="media-info-box">
+            <span class="media-name" title="${item.name}">${item.name}</span>
+            <div class="media-actions-row">
+              ${actionChips}
+            </div>
+          </div>
+        `;
+
+        grid.appendChild(card);
+      });
+    }
+
+    function handleMediaCardDragStart(e, id) {
+      e.currentTarget.classList.add("is-dragging");
+      e.dataTransfer.setData("text/plain", id);
+      e.dataTransfer.setData("mediaPoolId", id);
+      e.dataTransfer.effectAllowed = "copyMove";
+    }
+
+    function handleStageDragOver(e) {
+      e.preventDefault();
+      const stage = project.mode === 'video' ? document.getElementById("videoCanvasContainer") : document.getElementById("graphicCardTarget");
+      if (stage) stage.classList.add("stage-drag-over");
+    }
+
+    function handleStageDragLeave(e) {
+      const stage = project.mode === 'video' ? document.getElementById("videoCanvasContainer") : document.getElementById("graphicCardTarget");
+      if (stage) stage.classList.remove("stage-drag-over");
+    }
+
+    function handleStageDrop(e) {
+      e.preventDefault();
+      const stage = project.mode === 'video' ? document.getElementById("videoCanvasContainer") : document.getElementById("graphicCardTarget");
+      if (stage) stage.classList.remove("stage-drag-over");
+
+      // 1. Direct file drop from desktop / file explorer
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        const file = e.dataTransfer.files[0];
+        const url = URL.createObjectURL(file);
+        let type = 'image';
+        if (file.type.startsWith('video/')) type = 'video';
+        else if (file.type.startsWith('audio/')) type = 'audio';
+
+        const item = {
+          id: 'media_' + Date.now(),
+          name: file.name,
+          type: type,
+          url: url,
+          file: file,
+          date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        mediaPool.unshift(item);
+        renderMediaLibrary();
+
+        // Auto apply dropped file
+        if (type === 'video') applyMediaItem(item.id, 'video');
+        else if (type === 'image') applyMediaItem(item.id, project.mode === 'graphic' ? 'mockup' : 'logo');
+        else if (type === 'audio') applyMediaItem(item.id, 'audio');
+        return;
+      }
+
+      // 2. Dragged from internal Media Pool
+      const poolId = e.dataTransfer.getData("mediaPoolId") || e.dataTransfer.getData("text/plain");
+      if (poolId) {
+        const item = mediaPool.find(m => m.id === poolId);
+        if (item) {
+          if (item.type === 'video') {
+            applyMediaItem(item.id, 'video');
+          } else if (item.type === 'image') {
+            applyMediaItem(item.id, project.mode === 'graphic' ? 'mockup' : 'logo');
+          } else if (item.type === 'audio') {
+            applyMediaItem(item.id, 'audio');
+          }
+        }
+      }
+    }
+
+    function applyMediaItem(id, slot) {
+      const item = mediaPool.find(m => m.id === id);
+      if (!item) return;
+
+      if (slot === 'logo') {
+        sharedLogo.src = item.url;
+        customLogoLoaded = true;
+        document.getElementById("cardLogoImg").src = item.url;
+        document.getElementById("cardLogoImg").style.display = "inline-block";
+        showStudioToast(`🏷️ "${item.name}" Logo olarak ayarlandı!`);
+        requestRender();
+        updateGraphicCard();
+      } 
+      else if (slot === 'mockup') {
+        document.getElementById("mockupImg").src = item.url;
+        document.getElementById("mockupContainer").style.display = "flex";
+        document.getElementById("mockupFrame").style.display = "block";
+        mockupImageLoaded = true;
+        showStudioToast(`📱 "${item.name}" Mockup görseli olarak ayarlandı!`);
+        updateGraphicCard();
+      }
+      else if (slot === 'video') {
+        userVideo.src = item.url;
+        userVideo.load();
+        userVideo.onloadedmetadata = () => {
+          if (userVideo.duration && isFinite(userVideo.duration) && userVideo.duration > 0) {
+            const autoDur = Math.max(1, Math.round(userVideo.duration * 10) / 10);
+            setSceneDuration('s3', autoDur);
+            showStudioToast(`🎥 Video süresi algılandı: ${autoDur} sn (Sahne 3 süresi otomatik eşitlendi)`);
+          }
+        };
+        userVideo.play();
+        userVideo.muted = document.getElementById("muteVideoSoundCheckbox").checked;
+        videoFileLoaded = true;
+        document.getElementById("videoLoadedLabel").style.display = "block";
+        document.getElementById("removeVideoBtn").style.display = "inline-block";
+        
+        // Jump to video scene start
+        const { t2 } = getSceneTimings();
+        seekToTime(t2 + 0.1);
+        showStudioToast(`🎥 "${item.name}" Sahne 3 Videosu olarak ayarlandı!`);
+        requestRender();
+      }
+      else if (slot === 'audio') {
+        userAudio.src = item.url;
+        userAudio.load();
+        audioFileLoaded = true;
+        document.getElementById("audioControlsRow").style.display = "flex";
+        document.getElementById("audioLoadedLabel").innerText = `✓ ${item.name}`;
+        showStudioToast(`🎵 "${item.name}" Fon Müziği olarak ayarlandı!`);
+      }
+    }
+
+    function deleteMediaItem(id, e) {
+      if (e) e.stopPropagation();
+      const idx = mediaPool.findIndex(m => m.id === id);
+      if (idx !== -1) {
+        mediaPool.splice(idx, 1);
+        renderMediaLibrary();
+        showStudioToast("🗑️ Varlık silindi.");
+      }
+    }
+
+    // 1. Studio Mode Switcher
+    function switchStudioMode(mode) {
+      project.mode = mode;
+      document.getElementById("modeBtnVideo").classList.toggle("active", mode === 'video');
+      document.getElementById("modeBtnGraphic").classList.toggle("active", mode === 'graphic');
+
+      const vCanvas = document.getElementById("videoCanvasContainer");
+      const gCard = document.getElementById("graphicCardContainer");
+      const timeline = document.getElementById("timelineDock");
+      const resBadge = document.getElementById("viewportResolutionBadge");
+      const mainExportBtn = document.getElementById("mainExportBtn");
+      const wizardNav = document.getElementById("wizardStepsNav");
+
+      // Inspector element toggles
+      const vTheme = document.getElementById("videoThemeSection");
+      const vDur = document.getElementById("videoDurationSection");
+      const gFmt = document.getElementById("graphicFormatSection");
+      const gTheme = document.getElementById("graphicThemeSection");
+      const gMockup = document.getElementById("mockupUploadSection");
+
+      if (vTheme) vTheme.style.display = mode === 'video' ? 'block' : 'none';
+      if (vDur) vDur.style.display = mode === 'video' ? 'block' : 'none';
+      if (gFmt) gFmt.style.display = mode === 'graphic' ? 'block' : 'none';
+      if (gTheme) gTheme.style.display = mode === 'graphic' ? 'block' : 'none';
+      if (gMockup) gMockup.style.display = mode === 'graphic' ? 'block' : 'none';
+
+      // Left Tool Rail button adjustments
+      const railVideo = document.getElementById("railBtn3");
+      const railAudio = document.getElementById("railBtn4");
+      const railFinal = document.getElementById("railBtn5");
+      if (railVideo) railVideo.style.display = mode === 'video' ? 'flex' : 'none';
+      if (railAudio) railAudio.style.display = mode === 'video' ? 'flex' : 'none';
+      if (railFinal) railFinal.style.display = mode === 'video' ? 'flex' : 'none';
+
+      if (mode === 'video') {
+        if (wizardNav) wizardNav.style.display = "flex";
+        vCanvas.style.display = "flex";
+        gCard.style.display = "none";
+        timeline.style.display = "flex";
+        resBadge.innerText = "1080 x 1920 (9:16 Reels / TikTok)";
+        mainExportBtn.innerText = "🎬 1080x1920 Video İndir";
+        goToWizardStep(currentWizardStep || 1);
+        requestRender();
+      } else {
+        if (wizardNav) wizardNav.style.display = "none";
+        vCanvas.style.display = "none";
+        gCard.style.display = "flex";
+        timeline.style.display = "none";
+        resBadge.innerText = "Statik Post Tasarımı (HD PNG)";
+        mainExportBtn.innerText = "📸 HD PNG Görsel İndir";
+        switchRailTab('theme');
+        updateGraphicCard();
+      }
+    }
+
+    /* ================================================================
+       EVRENSEL PROJE ŞABLONLARI (SınıfCepte, İlandaHizmet, vb.)
+    ================================================================ */
+    const PROJECT_PRESETS = {
+      sinifcepte_defter: {
+        name: "SınıfCepte",
+        title: "Ders Defterini Doldurmak Kaç Dakikanızı Alıyor?",
+        slogan: "Zamanınız Eğitime Kalsın!",
+        cta: "Profildeki linkten hemen ücretsiz indirin",
+        social: "@sinifcepte",
+        bullets: [
+          "MEB müfredatına tam uyumlu kazanım listesi",
+          "%100 Çevrimdışı (İnternetsiz) çalışma mimarisi",
+          "Tek tıkla sözlü & ders içi katılım puanlama"
+        ],
+        theme: "cyber"
+      },
+      sinifcepte_sozlu: {
+        name: "SınıfCepte",
+        title: "Sözlü Notu Verirken Öğrenci Listesinde Kaybolmaktan Yoruldunuz mu?",
+        slogan: "Not Verme Çilesine Son Verin!",
+        cta: "Hemen indirin, ders içi katılımı tek tıkla puanlayın",
+        social: "@sinifcepte",
+        bullets: [
+          "Tek dokunuşla artı/eksi ve sözlü puanlama",
+          "Tüm sınıflar ve dersler tek ekranda organize",
+          "İnternetsiz ve anında veli rapor çıktısı"
+        ],
+        theme: "cyber"
+      },
+      sinifcepte_veli: {
+        name: "SınıfCepte",
+        title: "Velilere Tek Tek Durum Raporu Yazmakla Uğraşmayın!",
+        slogan: "Şeffaf, Profesyonel ve Hızlı İletişim!",
+        cta: "Profildeki linkten hemen ücretsiz deneyin",
+        social: "@sinifcepte",
+        bullets: [
+          "Tek tıkla hazır WhatsApp öğrenci gelişim raporu",
+          "Ödev, sözlü ve devam durumunu otomatik özetleme",
+          "Öğretmene saatler kazandıran akıllı bildirimler"
+        ],
+        theme: "cyber"
+      },
+      ilandahizmet_musteri: {
+        name: "İlandaHizmet",
+        title: "Evinize Güvenilir Usta Bulmak Kaç Gününüzü Alıyor?",
+        slogan: "İhtiyacın Olan Hizmet Bir Tıkla Kapında!",
+        cta: "Uygulamayı hemen indir, ücretsiz teklif al",
+        social: "@ilandahizmet",
+        bullets: [
+          "Temizlikten tadilata 50+ kategoride uzman hizmet",
+          "Ücretsiz fiyat tekliflerini anında karşılaştırın",
+          "Onaylı ustalar ve gerçek müşteri puanlamaları",
+          "Konumunuza en yakın profesyoneller dakikalar içinde"
+        ],
+        theme: "google"
+      },
+      ilandahizmet_usta: {
+        name: "İlandaHizmet",
+        title: "Boş Zamanlarınızda Ek Gelir Kazanmak İster misiniz?",
+        slogan: "Uzmanlığınız Kazanca Dönüşsün!",
+        cta: "Hemen kaydolun, iş fırsatlarına teklif verin",
+        social: "@ilandahizmet",
+        bullets: [
+          "Çevrenizdeki yüzlerce yeni müşteriye anında ulaşın",
+          "Kendi çalışma saatlerinizi ve fiyatınızı belirleyin",
+          "Sıfır sabit maliyetle işinizi ve kazancınızı büyütün",
+          "Komisyonsuz ve güvenli ödeme altyapısı"
+        ],
+        theme: "aurora"
+      },
+      ilandahizmet_temizlik: {
+        name: "İlandaHizmet",
+        title: "Ev Temizliği ve Nakliyatta Güvenilir Hizmet Arayanlara Müjde!",
+        slogan: "Pırıl Pırıl Evler, Sorunsuz Taşınmalar!",
+        cta: "Hemen indirin, en uygun fiyat teklifini seçin",
+        social: "@ilandahizmet",
+        bullets: [
+          "Detaylı ev & ofis temizliğinde sigortalı hizmet",
+          "Asansörlü ve marangozlu profesyonel nakliyat",
+          "Yorumları inceleyin, güvenle randevu oluşturun"
+        ],
+        theme: "google"
+      },
+      ilandahizmet_tadilat: {
+        name: "İlandaHizmet",
+        title: "Evinizi Yenilemek İçin Günlerce Usta Aramaya Son!",
+        slogan: "Eviniz Hayal Ettiğiniz Gibi Olsun!",
+        cta: "Ücretsiz keşif ve teklif için uygulamayı indirin",
+        social: "@ilandahizmet",
+        bullets: [
+          "Boya badana, tesisat, elektrik ve komple tadilat",
+          "Usta portfolyolarını ve önceki işleri inceleyin",
+          "Sabit fiyat garantisi ve güvenli ödeme"
+        ],
+        theme: "onyx"
+      },
+      eticaret: {
+        name: "AlışverişSepetim",
+        title: "Aradığınız Ürünü En Uygun Fiyata Bulmak Neden Bu Kadar Zor?",
+        slogan: "Akıllı Alışverişin En Kolay Yolu!",
+        cta: "Hemen indirin, indirimleri kaçırmayın",
+        social: "@alisveris",
+        bullets: [
+          "Binlerce mağazada anlık fiyat karşılaştırma",
+          "Aynı gün kargo ve kapıda güvenli ödeme",
+          "Kullanıcı yorumları ve gerçek değerlendirmeler"
+        ],
+        theme: "google"
+      },
+      fitness: {
+        name: "FitYaşam",
+        title: "Pazartesi Başlayıp Bıraktığınız Diyetlerden Sıkılmadınız mı?",
+        slogan: "Hedeflediğiniz Forma Ulaşmak Artık Çok Kolay!",
+        cta: "Kişiselleştirilmiş planınız için hemen indirin",
+        social: "@fityasam",
+        bullets: [
+          "Size özel antrenman ve egzersiz planı",
+          "Günlük kalori, makro ve su içme takibi",
+          "Evde veya salonda ekipmansız egzersizler"
+        ],
+        theme: "aurora"
+      },
+      custom_empty: {
+        name: "Uygulama Adı",
+        title: "İzleyiciyi yakalayan soru veya kanca başlığınızı yazın...",
+        slogan: "Kapanış sloganınızı buraya yazın...",
+        cta: "Hemen ücretsiz indirin",
+        social: "@uygulama",
+        bullets: [
+          "1. Öne çıkan en güçlü özellik",
+          "2. İkinci kolaylık ve avantaj",
+          "3. Üçüncü dikkat çekici detay"
+        ],
+        theme: "cyber"
+      }
+    };
+
+    function loadProjectPreset(presetKey) {
+      const p = PROJECT_PRESETS[presetKey];
+      if (!p) return;
+
+      project.name = p.name;
+      project.title = p.title;
+      project.slogan = p.slogan;
+      project.cta = p.cta;
+      project.social = p.social;
+      project.bullets = [...p.bullets];
+
+      document.getElementById("brandNameInput").value = p.name;
+      document.getElementById("introTitleInput").value = p.title;
+      document.getElementById("outroSloganInput").value = p.slogan;
+      document.getElementById("outroCtaInput").value = p.cta;
+      document.getElementById("outroSocialInput").value = p.social;
+
+      currentVideoTheme = p.theme || 'cyber';
+      document.querySelectorAll("#videoThemeSection .dock-btn").forEach(b => b.classList.remove("active"));
+      
+      renderBullets();
+      updateGraphicCard();
+      requestRender();
+      goToWizardStep(1);
+      showStudioToast(`🚀 "${p.name}" (${presetKey}) Şablonu Yüklendi!`);
+    }
+
+    // 2. Left Tool Rail Tab Switcher & Step Controller
+    let currentWizardStep = 1;
+
+    function goToWizardStep(step) {
+      currentWizardStep = step;
+
+      // 1. Update Top Stepper Progress Bar & Tool Rail
+      for (let i = 1; i <= 5; i++) {
+        const stepBtn = document.getElementById(`wizardStepBtn${i}`);
+        if (stepBtn) {
+          stepBtn.classList.remove("active", "completed");
+          if (i === step) stepBtn.classList.add("active");
+          else if (i < step) stepBtn.classList.add("completed");
+        }
+        const railBtn = document.getElementById(`railBtn${i}`);
+        if (railBtn) {
+          railBtn.classList.toggle("active", i === step);
+        }
+      }
+
+      // Reset extra rail buttons
+      document.getElementById("railBtnUploads")?.classList.remove("active");
+      document.getElementById("railBtnTheme")?.classList.remove("active");
+
+      // Hide all inspector contents
+      document.querySelectorAll(".inspector-tab-content").forEach(el => el.classList.remove("active"));
+
+      const titleEl = document.getElementById("inspectorTitle");
+      const timings = getSceneTimings();
+
+      if (step === 1) {
+        document.getElementById("inspectorTabText")?.classList.add("active");
+        if (titleEl) titleEl.innerText = "🪝 1. Adım: Marka & Kanca Sorusu";
+        pausePlayback();
+        seekToTime(0.5);
+      } 
+      else if (step === 2) {
+        document.getElementById("inspectorTabBullets")?.classList.add("active");
+        if (titleEl) titleEl.innerText = "📋 2. Adım: Öne Çıkan Maddeler";
+        pausePlayback();
+        seekToTime(timings.t1 + 1.2);
+      } 
+      else if (step === 3) {
+        document.getElementById("inspectorTabMedia")?.classList.add("active");
+        if (titleEl) titleEl.innerText = "🎥 3. Adım: Telefon Ekran Videosu";
+        pausePlayback();
+        seekToTime(timings.t2 + 0.5);
+      } 
+      else if (step === 4) {
+        document.getElementById("inspectorTabAudio")?.classList.add("active");
+        if (titleEl) titleEl.innerText = "🏁 4. Adım: Kapanış, Slogan & Ses";
+        pausePlayback();
+        seekToTime(timings.t3 + 0.5);
+      } 
+      else if (step === 5) {
+        document.getElementById("inspectorTabFinal")?.classList.add("active");
+        if (titleEl) titleEl.innerText = "🎉 5. Adım: Şaheseriniz Hazır & İndir";
+        updateFinalStepSummary();
+        seekToTime(0);
+        togglePlayPause();
+        showStudioToast("🎬 Şaheseriniz hazır! Baştan sona oynatılıyor...");
+      }
+    }
+
+    function updateFinalStepSummary() {
+      const sTitle = document.getElementById("summaryIntroTitle");
+      if (sTitle) sTitle.innerText = project.title || "Başlık Girilmedi";
+      const sBullets = document.getElementById("summaryBulletsCount");
+      if (sBullets) sBullets.innerText = `${project.bullets.length} Madde Eklendi`;
+      const sVideo = document.getElementById("summaryVideoStatus");
+      if (sVideo) sVideo.innerText = videoFileLoaded ? "✓ Ekran Videosu Yüklendi" : "⚠️ Video Henüz Seçilmedi";
+      const sAudio = document.getElementById("summaryAudioStatus");
+      if (sAudio) sAudio.innerText = audioFileLoaded ? "✓ Ses Dosyası Aktif" : "Sessiz / Varsayılan";
+      const sDur = document.getElementById("summaryTotalDuration");
+      if (sDur) sDur.innerText = `${TOTAL_DURATION.toFixed(1)} SN`;
+    }
+
+    function resetToCleanEmpty() {
+      project.name = "Uygulama Adı";
+      project.title = "Buraya izleyiciyi yakalayacak soru veya kanca başlığınızı yazın...";
+      project.slogan = "Buraya kapanış sloganınızı yazın...";
+      project.cta = "Hemen indirin";
+      project.social = "@kullaniciadi";
+      project.bullets = [
+        "1. Öne çıkan harika özellik",
+        "2. İkinci kolaylık ve avantaj",
+        "3. Üçüncü dikkat çekici detay"
+      ];
+      
+      document.getElementById("brandNameInput").value = project.name;
+      document.getElementById("introTitleInput").value = project.title;
+      document.getElementById("outroSloganInput").value = project.slogan;
+      document.getElementById("outroCtaInput").value = project.cta;
+      document.getElementById("outroSocialInput").value = project.social;
+      
+      renderBullets();
+      goToWizardStep(1);
+      showStudioToast("✨ Sıfırdan temiz bir tasarıma başlandı!");
+    }
+
+    function switchRailTab(tab) {
+      // Clear 1-5 active states
+      for (let i = 1; i <= 5; i++) {
+        document.getElementById(`railBtn${i}`)?.classList.remove("active");
+        document.getElementById(`wizardStepBtn${i}`)?.classList.remove("active");
+      }
+      document.getElementById("railBtnUploads")?.classList.toggle("active", tab === 'uploads');
+      document.getElementById("railBtnTheme")?.classList.toggle("active", tab === 'theme');
+
+      document.querySelectorAll(".inspector-tab-content").forEach(el => el.classList.remove("active"));
+
+      if (tab === 'uploads') {
+        document.getElementById("inspectorTabUploads")?.classList.add("active");
+        document.getElementById("inspectorTitle").innerText = "📁 Medya Havuzu & Yüklemeler";
+      } else if (tab === 'theme') {
+        document.getElementById("inspectorTabTheme")?.classList.add("active");
+        document.getElementById("inspectorTitle").innerText = "🎨 Temalar & Süre Kontrolleri";
+      }
+    }
+
+    function capitalize(s) {
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+
+    // 3. Field Synchronizer
+    function syncField(key, value) {
+      project[key] = value;
+      if (key === 'name') {
+        document.getElementById("topbarProjectName").innerText = value;
+      }
+      requestRender();
+      updateGraphicCard();
+    }
+
+    // 4. Bullets Management
+    function renderBullets() {
+      const container = document.getElementById("bulletsContainer");
+      container.innerHTML = "";
+      project.bullets.forEach((text, i) => {
+        const row = document.createElement("div");
+        row.style.display = "flex";
+        row.style.gap = "6px";
+        row.style.alignItems = "center";
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.value = text;
+        input.style.flex = "1";
+        input.placeholder = `${i+1}. Özellik maddesi...`;
+        input.oninput = e => {
+          project.bullets[i] = e.target.value;
+          requestRender();
+          updateGraphicCard();
+        };
+
+        const del = document.createElement("button");
+        del.className = "del-bullet-btn";
+        del.innerText = "✕";
+        del.onclick = () => {
+          project.bullets.splice(i, 1);
+          renderBullets();
+          requestRender();
+          updateGraphicCard();
+        };
+
+        row.appendChild(input);
+        row.appendChild(del);
+        container.appendChild(row);
+      });
+      requestRender();
+      updateGraphicCard();
+    }
+
+    function addBulletItem(text = "") {
+      if (project.bullets.length >= 4) {
+        alert("En fazla 4 madde ekleyebilirsiniz.");
+        return;
+      }
+      project.bullets.push(text);
+      renderBullets();
+    }
+
+    /* ================================================================
+       VIDEO CANVAS MOTORU (1080 x 1920)
+    ================================================================ */
+    const canvas = document.getElementById("reelsCanvas");
+    const ctx = canvas.getContext("2d");
+    const userVideo = document.getElementById("userScreenVideo");
+    const userAudio = document.getElementById("userAudio");
+    const sharedLogo = document.getElementById("sharedLogoImg");
+
+    let currentVideoTheme = 'cyber';
+    let isPlaying = false;
+    let isExporting = false;
+    let animTime = 0;
+    let lastTimestamp = 0;
+    let isMicRecording = false;
+    let micMediaRecorder = null;
+    let micAudioChunks = [];
+
+    // Video Fit & Position State
+    let videoFitMode = 'fill'; // 'fill' (Tam Ekrana Oturt) | 'cover' (Cover Doldur) | 'contain' (Sığdır) | 'mockup' (Telefon Çerçevesi)
+    let videoYOffset = 0;
+    let videoCustomZoom = 100;
+
+    function setVideoFitMode(mode, btn) {
+      videoFitMode = mode;
+      document.querySelectorAll("#inspectorTabMedia .grid-options .dock-btn").forEach(b => b.classList.remove("active"));
+      if (btn) btn.classList.add("active");
+      requestRender();
+      const msgs = {
+        fill: "🎯 Video 1080x1920 Ekrana Tam Oturtuldu (Kesme Yok, Boşluk Yok)",
+        cover: "🖼️ Orijinal Oranla Dolduruldu (Cover)",
+        contain: "📱 Orantılı Çerçeveli Sığdırıldı",
+        mockup: "📲 Telefon Kasası Mockup Uygulandı"
+      };
+      showStudioToast(msgs[mode] || "✨ Görünüm güncellendi");
+    }
+
+    function setVideoYOffset(val) {
+      videoYOffset = parseInt(val) || 0;
+      document.getElementById("videoYOffsetLabel").innerText = `${videoYOffset > 0 ? '+' : ''}${videoYOffset} px`;
+      requestRender();
+    }
+
+    function setVideoCustomZoom(val) {
+      videoCustomZoom = parseInt(val) || 100;
+      document.getElementById("videoZoomLabel").innerText = `%${videoCustomZoom}`;
+      requestRender();
+    }
+
+    const videoThemes = {
+      cyber: {
+        bg1: '#090d16', bg2: '#05070a',
+        accent1: '#6366f1', accent2: '#ec4899',
+        cardBg: 'rgba(255, 255, 255, 0.06)',
+        cardBorder: 'rgba(255, 255, 255, 0.15)',
+        textMain: '#ffffff', textSub: '#94a3b8',
+        checkBg: '#6366f1'
+      },
+      google: {
+        bg1: '#f8fafd', bg2: '#e9f1fb',
+        accent1: '#4285F4', accent2: '#EA4335', accent3: '#FBBC05', accent4: '#34A853',
+        cardBg: '#ffffff',
+        cardBorder: '#d2e3fc',
+        textMain: '#1f1f1f', textSub: '#444746',
+        checkBg: '#1a73e8'
+      },
+      aurora: {
+        bg1: '#2e0854', bg2: '#05192d',
+        accent1: '#f43f5e', accent2: '#a855f7',
+        cardBg: 'rgba(0, 0, 0, 0.35)',
+        cardBorder: 'rgba(255, 255, 255, 0.25)',
+        textMain: '#ffffff', textSub: '#e2e8f0',
+        checkBg: '#f43f5e'
+      },
+      onyx: {
+        bg1: '#121214', bg2: '#080809',
+        accent1: '#e4e4e7', accent2: '#71717a',
+        cardBg: '#18181b',
+        cardBorder: '#27272a',
+        textMain: '#ffffff', textSub: '#a1a1aa',
+        checkBg: '#3f3f46'
+      }
+    };
+
+    function setVideoTheme(t, btn) {
+      currentVideoTheme = t;
+      btn.parentElement.querySelectorAll(".dock-btn").forEach(b => b.classList.remove("active"));
+      if (btn) btn.classList.add("active");
+      requestRender();
+    }
+
+    function handleScreenVideoUpload(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const url = URL.createObjectURL(file);
+        userVideo.src = url;
+        userVideo.load();
+        userVideo.onloadedmetadata = () => {
+          if (userVideo.duration && isFinite(userVideo.duration) && userVideo.duration > 0) {
+            const autoDur = Math.max(1, Math.round(userVideo.duration * 10) / 10);
+            setSceneDuration('s3', autoDur);
+            showStudioToast(`🎥 Video süresi algılandı: ${autoDur} sn (Sahne 3 süresi otomatik eşitlendi)`);
+          }
+        };
+        userVideo.play();
+        userVideo.muted = document.getElementById("muteVideoSoundCheckbox").checked;
+        videoFileLoaded = true;
+        document.getElementById("videoLoadedLabel").style.display = "block";
+        document.getElementById("removeVideoBtn").style.display = "inline-block";
+        requestRender();
+      }
+    }
+
+    function removeScreenVideo() {
+      userVideo.pause();
+      userVideo.src = "";
+      videoFileLoaded = false;
+      document.getElementById("videoLoadedLabel").style.display = "none";
+      document.getElementById("removeVideoBtn").style.display = "none";
+      document.getElementById("screenVideoInput").value = "";
+      requestRender();
+    }
+
+    function toggleVideoMuteSetting() {
+      const isMuted = document.getElementById("muteVideoSoundCheckbox").checked;
+      userVideo.muted = isMuted;
+    }
+
+    function handleLogoUpload(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = evt => {
+          sharedLogo.src = evt.target.result;
+          customLogoLoaded = true;
+          document.getElementById("cardLogoImg").src = evt.target.result;
+          document.getElementById("cardLogoImg").style.display = "inline-block";
+          document.getElementById("cardLogoIcon").style.display = "none";
+          requestRender();
+          updateGraphicCard();
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function handleAudioUpload(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const url = URL.createObjectURL(file);
+        userAudio.src = url;
+        userAudio.load();
+        audioFileLoaded = true;
+        document.getElementById("audioControlsRow").style.display = "flex";
+        document.getElementById("audioLoadedLabel").innerText = `✓ ${file.name}`;
+      }
+    }
+
+    function removeAudio() {
+      userAudio.src = "";
+      audioFileLoaded = false;
+      document.getElementById("audioControlsRow").style.display = "none";
+      document.getElementById("audioFileInput").value = "";
+    }
+
+    async function toggleMicRecording() {
+      const btn = document.getElementById("micRecordBtn");
+      const label = document.getElementById("micStatusLabel");
+
+      if (!isMicRecording) {
+        try {
+          const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          micAudioChunks = [];
+          micMediaRecorder = new MediaRecorder(micStream);
+          
+          micMediaRecorder.ondataavailable = e => {
+            if (e.data.size > 0) micAudioChunks.push(e.data);
+          };
+
+          micMediaRecorder.onstop = () => {
+            const audioBlob = new Blob(micAudioChunks, { type: 'audio/webm' });
+            userAudio.src = URL.createObjectURL(audioBlob);
+            userAudio.load();
+            audioFileLoaded = true;
+            document.getElementById("audioControlsRow").style.display = "flex";
+            document.getElementById("audioLoadedLabel").innerText = "✓ Mikrofon kaydı eklendi";
+            micStream.getTracks().forEach(track => track.stop());
+          };
+
+          micMediaRecorder.start();
+          isMicRecording = true;
+          btn.innerText = "⏹️ Kaydı Bitir";
+          btn.style.background = "#ef4444";
+          label.style.display = "block";
+
+          seekToTime(0);
+          startPreviewPlayback();
+        } catch (err) {
+          alert("Mikrofon izni alınamadı: " + err.message);
+        }
+      } else {
+        if (micMediaRecorder && micMediaRecorder.state !== 'inactive') {
+          micMediaRecorder.stop();
+        }
+        isMicRecording = false;
+        btn.innerText = "🎙️ Mikrofonla Ses Kaydı Başlat";
+        btn.style.background = "#1e293b";
+        label.style.display = "none";
+      }
+    }
+
+    /* ================================================================
+       DİNAMİK SAHNE SÜRELERİ & ZAMANLAMA YÖNETİMİ
+    ================================================================ */
+    const sceneDurations = {
+      s1: 3.0,  // 1. Giriş Kancası
+      s2: 5.5,  // 2. Özellik Maddeleri (Geniş okuma süresi)
+      s3: 6.0,  // 3. Ekran Videosu
+      s4: 3.5   // 4. Kapanış Sloganı & CTA
+    };
+
+    let TOTAL_DURATION = 18.0;
+
+    function getSceneTimings() {
+      const t1 = sceneDurations.s1;
+      const t2 = t1 + sceneDurations.s2;
+      const t3 = t2 + sceneDurations.s3;
+      const t4 = t3 + sceneDurations.s4;
+      TOTAL_DURATION = Math.round(t4 * 10) / 10;
+      return { t1, t2, t3, t4 };
+    }
+
+    function setSceneDuration(key, val) {
+      const num = parseFloat(val);
+      if (isNaN(num) || num <= 0) return;
+      sceneDurations[key] = Math.max(0.5, Math.round(num * 10) / 10);
+      
+      const durValEl = document.getElementById(`durVal_${key}`);
+      const stepDurEl = document.getElementById(`stepDur_${key}`);
+      const sliderEl = document.getElementById(`slider_${key}`);
+
+      if (durValEl) {
+        if (durValEl.tagName === 'INPUT') durValEl.value = sceneDurations[key];
+        else durValEl.innerText = `${sceneDurations[key].toFixed(1)}s`;
+      }
+      if (stepDurEl) {
+        if (stepDurEl.tagName === 'INPUT') stepDurEl.value = sceneDurations[key];
+        else stepDurEl.innerText = `${sceneDurations[key].toFixed(1)}s`;
+      }
+      if (sliderEl) sliderEl.value = sceneDurations[key];
+
+      const { t4 } = getSceneTimings();
+      const tag = document.getElementById("currentDurationTag");
+      if (tag) tag.innerText = `${t4.toFixed(1)} SN`;
+      const sliderTxt = document.getElementById("sliderValueText");
+      if (sliderTxt) sliderTxt.innerText = `${t4.toFixed(1)} Saniye`;
+      const finalDur = document.getElementById("summaryTotalDuration");
+      if (finalDur) finalDur.innerText = `${t4.toFixed(1)} SN`;
+
+      // Preset button highlight update
+      document.querySelectorAll("#videoDurationSection .dock-btn").forEach(b => b.classList.remove("active"));
+      if (Math.abs(t4 - 10.5) < 0.2) document.getElementById("durPreset10")?.classList.add("active");
+      else if (Math.abs(t4 - 15) < 0.2) document.getElementById("durPreset15")?.classList.add("active");
+      else if (Math.abs(t4 - 18) < 0.2) document.getElementById("durPreset18")?.classList.add("active");
+      else if (Math.abs(t4 - 30) < 0.2) document.getElementById("durPreset30")?.classList.add("active");
+
+      updateTimelineTrackUI();
+      updateTimecodeDisplay();
+      requestRender();
+    }
+
+    function stepSceneDuration(key, step) {
+      const current = sceneDurations[key] || 3.0;
+      const newVal = Math.max(0.5, Math.round((current + step) * 10) / 10);
+      setSceneDuration(key, newVal);
+      showStudioToast(`⏱️ ${key.toUpperCase()} sahne süresi: ${newVal}s`);
+    }
+
+    function applyDurationPreset(totalTarget, btn) {
+      if (totalTarget === 10.5) {
+        sceneDurations.s1 = 2.5;
+        sceneDurations.s2 = 3.5;
+        sceneDurations.s3 = 2.5;
+        sceneDurations.s4 = 2.0;
+      } else if (totalTarget === 15) {
+        sceneDurations.s1 = 3.0;
+        sceneDurations.s2 = 4.5;
+        sceneDurations.s3 = 4.5;
+        sceneDurations.s4 = 3.0;
+      } else if (totalTarget === 18) {
+        sceneDurations.s1 = 3.0;
+        sceneDurations.s2 = 5.5;
+        sceneDurations.s3 = 6.0;
+        sceneDurations.s4 = 3.5;
+      } else if (totalTarget === 30) {
+        sceneDurations.s1 = 3.5;
+        sceneDurations.s2 = 7.0;
+        sceneDurations.s3 = 15.5;
+        sceneDurations.s4 = 4.0;
+      }
+      
+      ['s1', 's2', 's3', 's4'].forEach(k => setSceneDuration(k, sceneDurations[k]));
+      if (btn) btn.classList.add("active");
+      showStudioToast(`⏱️ Video süresi ${totalTarget}s olarak ayarlandı!`);
+    }
+
+    function updateTimelineTrackUI() {
+      const { t1, t2, t3, t4 } = getSceneTimings();
+      const tracks = document.querySelector(".timeline-tracks");
+      if (!tracks) return;
+
+      tracks.innerHTML = `
+        <div class="scene-block scene-1" style="flex: ${sceneDurations.s1};" onclick="seekToTime(0)">
+          <div style="display:flex; flex-direction:column; line-height:1.2;">
+            <span>1. Giriş (${sceneDurations.s1.toFixed(1)}s)</span>
+            <span class="time">0.0s - ${t1.toFixed(1)}s</span>
+          </div>
+          <div style="margin-left:auto; display:flex; gap:2px;">
+            <button class="stepper-btn" style="width:16px; height:16px; font-size:10px;" onclick="event.stopPropagation(); stepSceneDuration('s1', -0.5);">-</button>
+            <button class="stepper-btn" style="width:16px; height:16px; font-size:10px;" onclick="event.stopPropagation(); stepSceneDuration('s1', 0.5);">+</button>
+          </div>
+        </div>
+
+        <div class="scene-block scene-2" style="flex: ${sceneDurations.s2};" onclick="seekToTime(${t1 + 0.1})">
+          <div style="display:flex; flex-direction:column; line-height:1.2;">
+            <span style="color:#7dd3fc;">📋 2. Maddeler (${sceneDurations.s2.toFixed(1)}s)</span>
+            <span class="time">${t1.toFixed(1)}s - ${t2.toFixed(1)}s</span>
+          </div>
+          <div style="margin-left:auto; display:flex; gap:2px;">
+            <button class="stepper-btn" style="width:16px; height:16px; font-size:10px;" onclick="event.stopPropagation(); stepSceneDuration('s2', -0.5);">-</button>
+            <button class="stepper-btn" style="width:16px; height:16px; font-size:10px;" onclick="event.stopPropagation(); stepSceneDuration('s2', 0.5);">+</button>
+          </div>
+        </div>
+
+        <div class="scene-block scene-3" style="flex: ${sceneDurations.s3};" onclick="seekToTime(${t2 + 0.1})">
+          <div style="display:flex; flex-direction:column; line-height:1.2;">
+            <span style="color:#f472b6;">🎥 3. Ekran Videosu (${sceneDurations.s3.toFixed(1)}s)</span>
+            <span class="time">${t2.toFixed(1)}s - ${t3.toFixed(1)}s</span>
+          </div>
+          <div style="margin-left:auto; display:flex; gap:2px;">
+            <button class="stepper-btn" style="width:16px; height:16px; font-size:10px;" onclick="event.stopPropagation(); stepSceneDuration('s3', -0.5);">-</button>
+            <button class="stepper-btn" style="width:16px; height:16px; font-size:10px;" onclick="event.stopPropagation(); stepSceneDuration('s3', 0.5);">+</button>
+          </div>
+        </div>
+
+        <div class="scene-block scene-4" style="flex: ${sceneDurations.s4};" onclick="seekToTime(${t3 + 0.1})">
+          <div style="display:flex; flex-direction:column; line-height:1.2;">
+            <span>4. Kapanış (${sceneDurations.s4.toFixed(1)}s)</span>
+            <span class="time">${t3.toFixed(1)}s - ${t4.toFixed(1)}s</span>
+          </div>
+          <div style="margin-left:auto; display:flex; gap:2px;">
+            <button class="stepper-btn" style="width:16px; height:16px; font-size:10px;" onclick="event.stopPropagation(); stepSceneDuration('s4', -0.5);">-</button>
+            <button class="stepper-btn" style="width:16px; height:16px; font-size:10px;" onclick="event.stopPropagation(); stepSceneDuration('s4', 0.5);">+</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function drawFrame(t) {
+      const W = 1080;
+      const H = 1920;
+      const theme = videoThemes[currentVideoTheme];
+      const { t1, t2, t3, t4 } = getSceneTimings();
+
+      const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+      bgGrad.addColorStop(0, theme.bg1);
+      bgGrad.addColorStop(1, theme.bg2);
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, W, H);
+
+      const orbShiftX = 50 * Math.sin(t * 1.5);
+      const orbShiftY = 40 * Math.cos(t * 1.2);
+
+      if (currentVideoTheme === 'google') {
+        drawGlowCircle(W * 0.8 + orbShiftX, H * 0.15 + orbShiftY, 400, 'rgba(66, 133, 244, 0.18)');
+        drawGlowCircle(W * 0.2 - orbShiftX, H * 0.4 - orbShiftY, 350, 'rgba(234, 67, 53, 0.14)');
+        drawGlowCircle(W * 0.3 + orbShiftY, H * 0.8 + orbShiftX, 380, 'rgba(251, 188, 5, 0.16)');
+        drawGlowCircle(W * 0.85 - orbShiftY, H * 0.85 - orbShiftX, 420, 'rgba(52, 168, 83, 0.16)');
+      } else {
+        drawGlowCircle(W * 0.8 + orbShiftX, H * 0.2 + orbShiftY, 500, 'rgba(99, 102, 241, 0.25)');
+        drawGlowCircle(W * 0.2 - orbShiftX, H * 0.8 - orbShiftY, 500, 'rgba(236, 72, 153, 0.22)');
+      }
+
+      // TEKİL LOGO GEÇİŞİ (0.0s - Sahne 2 Bitişi t2)
+      if (t < t2 + 0.2) {
+        const startX = W / 2;
+        const startY = H * 0.35;
+        const endX = W - 220;
+        const endY = 160;
+
+        let moveProgress = 0;
+        const logoMoveStart = Math.max(1.5, t1 - 0.8);
+        if (t >= logoMoveStart) {
+          moveProgress = easeInOutCubic(Math.min(1, (t - logoMoveStart) / (t1 - logoMoveStart)));
+        }
+
+        const curX = lerp(startX, endX, moveProgress);
+        const curY = lerp(startY, endY, moveProgress);
+        const curScale = lerp(1.0, 0.42, moveProgress);
+
+        let logoAlpha = 1;
+        if (t > t2 - 0.4) logoAlpha = Math.max(0, 1 - (t - (t2 - 0.4)) / 0.4);
+
+        ctx.save();
+        ctx.globalAlpha = logoAlpha;
+        ctx.translate(curX, curY);
+        ctx.scale(curScale, curScale);
+
+        if (customLogoLoaded && sharedLogo.complete && sharedLogo.naturalWidth) {
+          let logoW = 160;
+          let logoH = 160;
+          const aspect = sharedLogo.naturalWidth / sharedLogo.naturalHeight;
+          if (aspect > 1) {
+            logoW = 180;
+            logoH = 180 / aspect;
+          } else {
+            logoH = 180;
+            logoW = 180 * aspect;
+          }
+          ctx.drawImage(sharedLogo, -logoW / 2, -100 - logoH / 2, logoW, logoH);
+
+          ctx.font = "800 68px 'Outfit', sans-serif";
+          ctx.fillStyle = theme.textMain;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(project.name, 0, 85);
+        } else {
+          // Şık Monogram Cam Rozet (Emoji yerine)
+          const badgeSize = 130;
+          const initChar = (project.name && project.name.trim().length > 0) ? project.name.trim()[0].toUpperCase() : 'S';
+          drawRoundedRect(ctx, -badgeSize / 2, -110 - badgeSize / 2, badgeSize, badgeSize, 32, theme.cardBg, theme.accent1, 4);
+          
+          ctx.font = "900 64px 'Outfit', sans-serif";
+          ctx.fillStyle = theme.accent1;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(initChar, 0, -108);
+
+          ctx.font = "800 68px 'Outfit', sans-serif";
+          ctx.fillStyle = theme.textMain;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(project.name, 0, 85);
+        }
+
+        ctx.restore();
+      }
+
+      // SAHNE 1: KANCA BAŞLIK (0.0s - t1)
+      if (t < t1) {
+        const titleEnter = easeOutBack(Math.min(1, t / 0.7));
+        let titleFadeOut = 1;
+        if (t > t1 - 0.5) titleFadeOut = Math.max(0, 1 - (t - (t1 - 0.5)) / 0.4);
+
+        ctx.save();
+        ctx.globalAlpha = titleFadeOut;
+        ctx.font = "800 64px 'Plus Jakarta Sans', sans-serif";
+        ctx.fillStyle = theme.textMain;
+        ctx.textAlign = "center";
+        wrapText(ctx, project.title, W / 2, H * 0.58 + (1 - titleEnter) * 60, W * 0.82, 85);
+        ctx.restore();
+      }
+
+      // SAHNE 2: MADDELER (t1 - t2) -> Adaptif Okuma Süresi!
+      if (t >= t1 && t < t2 + 0.3) {
+        const scene2Dur = t2 - t1;
+        const miniTitleProgress = easeOutBack(Math.min(1, (t - t1) / 0.5));
+        let exitAlpha = 1;
+        if (t > t2 - 0.4) exitAlpha = Math.max(0, 1 - (t - (t2 - 0.4)) / 0.4);
+
+        ctx.save();
+        ctx.globalAlpha = miniTitleProgress * exitAlpha;
+        ctx.font = "800 36px 'Outfit', sans-serif";
+        ctx.fillStyle = theme.accent1;
+        ctx.textAlign = "left";
+        ctx.fillText("✨ ÖNE ÇIKAN ÖZELLİKLER", 100, 180);
+        ctx.restore();
+
+        const numBullets = Math.max(1, project.bullets.length);
+        const bulletStartY = 360;
+        const bulletSpacing = 240;
+        // Maddelerin sahneye girişini yayıyoruz; son 1.5 saniye ise ekranda tamamen sabit kalıp okunuyor!
+        const availableEntryTime = Math.max(1.2, scene2Dur - 1.5);
+        const bulletInterval = availableEntryTime / numBullets;
+
+        project.bullets.forEach((text, idx) => {
+          const itemStartTime = t1 + 0.2 + (idx * bulletInterval);
+          if (t >= itemStartTime) {
+            const itemProgress = easeOutBack(Math.min(1, (t - itemStartTime) / 0.55));
+            const itemY = bulletStartY + (idx * bulletSpacing);
+            const itemX = 100 + (1 - itemProgress) * -120;
+
+            ctx.save();
+            ctx.globalAlpha = itemProgress * exitAlpha;
+
+            drawRoundedRect(ctx, itemX, itemY, W - 200, 190, 32, theme.cardBg, theme.cardBorder);
+
+            ctx.fillStyle = theme.checkBg;
+            ctx.beginPath();
+            ctx.arc(itemX + 70, itemY + 95, 34, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "900 36px sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("✓", itemX + 70, itemY + 97);
+
+            ctx.fillStyle = theme.textMain;
+            ctx.font = "700 40px 'Plus Jakarta Sans', sans-serif";
+            ctx.textAlign = "left";
+            wrapText(ctx, text, itemX + 135, itemY + 75, W - 380, 52);
+            ctx.restore();
+          }
+        });
+      }
+
+      // SAHNE 3: TELEFON VİDEOSU (t2 - t3) -> Kesilme Korumalı & Adaptif Fit!
+      if (t >= t2 - 0.1 && t < t3 + 0.3) {
+        let enterAlpha = Math.min(1, (t - (t2 - 0.1)) / 0.6);
+        let exitAlpha = 1;
+        if (t > t3 - 0.5) exitAlpha = Math.max(0, 1 - (t - (t3 - 0.5)) / 0.5);
+
+        ctx.save();
+        ctx.globalAlpha = enterAlpha * exitAlpha;
+
+        if (videoFileLoaded && userVideo.readyState >= 2) {
+          const vw = userVideo.videoWidth || W;
+          const vh = userVideo.videoHeight || H;
+
+          if (videoFitMode === 'fill') {
+            // 1. 🎯 Tam Ekrana Oturt (Edge-to-Edge - Kesilme Yok, Boşluk Yok)
+            const zoomMul = (videoCustomZoom / 100);
+            const dw = W * zoomMul;
+            const dh = H * zoomMul;
+            const dx = (W - dw) / 2;
+            const dy = (H - dh) / 2 + videoYOffset;
+            ctx.drawImage(userVideo, dx, dy, dw, dh);
+          }
+          else if (videoFitMode === 'contain') {
+            // 2. 📱 Orantılı Sığdır (Contain) -> Şık Cam Çerçeveli
+            const zoomMul = (videoCustomZoom / 100);
+            const scale = Math.min((W * 0.94) / vw, (H * 0.94) / vh) * zoomMul;
+            const dw = vw * scale;
+            const dh = vh * scale;
+            const dx = (W - dw) / 2;
+            const dy = (H - dh) / 2 + videoYOffset;
+
+            // Şık cam çerçeve & gölge
+            drawRoundedRect(ctx, dx - 10, dy - 10, dw + 20, dh + 20, 32, 'rgba(0,0,0,0.6)', 'rgba(255,255,255,0.15)', 3);
+
+            // Yuvarlatılmış köşelerle videoyu çiz
+            ctx.save();
+            ctx.beginPath();
+            ctx.roundRect(dx, dy, dw, dh, 24);
+            ctx.clip();
+            ctx.drawImage(userVideo, dx, dy, dw, dh);
+            ctx.restore();
+          }
+          else if (videoFitMode === 'mockup') {
+            // 3. 📲 Gerçekçi Akıllı Telefon Kasası İçinde
+            const frameW = 880;
+            const frameH = 1760;
+            const frameX = (W - frameW) / 2;
+            const frameY = (H - frameH) / 2 + videoYOffset;
+
+            // Kasa gövdesi
+            drawRoundedRect(ctx, frameX, frameY, frameW, frameH, 58, '#0f172a', '#334155', 6);
+
+            // Ekran alanı
+            const screenX = frameX + 24;
+            const screenY = frameY + 24;
+            const screenW = frameW - 48;
+            const screenH = frameH - 48;
+
+            const scale = Math.min(screenW / vw, screenH / vh) * (videoCustomZoom / 100);
+            const dw = vw * scale;
+            const dh = vh * scale;
+            const dx = screenX + (screenW - dw) / 2;
+            const dy = screenY + (screenH - dh) / 2;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.roundRect(screenX, screenY, screenW, screenH, 40);
+            ctx.clip();
+            ctx.drawImage(userVideo, dx, dy, dw, dh);
+            ctx.restore();
+
+            // Üst Dynamic Island / Kamera Çentiği
+            drawRoundedRect(ctx, W / 2 - 85, frameY + 38, 170, 34, 17, '#020617', 'rgba(255,255,255,0.12)', 1);
+          }
+          else {
+            // 4. 🖼️ Tam Ekran Doldur (Cover)
+            const zoomMul = (videoCustomZoom / 100);
+            const scale = Math.max(W / vw, H / vh) * zoomMul;
+            const dw = vw * scale;
+            const dh = vh * scale;
+            const dx = (W - dw) / 2;
+            const dy = (H - dh) / 2 + videoYOffset;
+            ctx.drawImage(userVideo, dx, dy, dw, dh);
+          }
+        } else {
+          ctx.fillStyle = "#0c1017";
+          ctx.fillRect(0, 0, W, H);
+          ctx.font = "800 54px 'Plus Jakarta Sans', sans-serif";
+          ctx.fillStyle = "#94a3b8";
+          ctx.textAlign = "center";
+          ctx.fillText("🎥 Ekran Kaydı Videosu", W / 2, H / 2 - 30);
+          ctx.font = "600 36px 'Plus Jakarta Sans', sans-serif";
+          ctx.fillStyle = "#64748b";
+          ctx.fillText("Sol 'Medya' veya 'Yüklemeler' sekmesinden video seçin", W / 2, H / 2 + 40);
+        }
+        ctx.restore();
+      }
+
+      // SAHNE 4: KAPANIŞ & SLOGAN (t3 - t4)
+      if (t >= t3) {
+        const outroEnter = easeOutBack(Math.min(1, (t - t3) / 0.7));
+
+        ctx.save();
+        ctx.globalAlpha = outroEnter;
+        ctx.translate(W / 2, H * 0.38 + (1 - outroEnter) * 60);
+
+        if (customLogoLoaded && sharedLogo.complete && sharedLogo.naturalWidth) {
+          let logoW = 160;
+          let logoH = 160;
+          const aspect = sharedLogo.naturalWidth / sharedLogo.naturalHeight;
+          if (aspect > 1) {
+            logoW = 180;
+            logoH = 180 / aspect;
+          } else {
+            logoH = 180;
+            logoW = 180 * aspect;
+          }
+          ctx.drawImage(sharedLogo, -logoW / 2, -140 - logoH / 2, logoW, logoH);
+        } else {
+          // Şık Monogram Cam Rozet (Outro)
+          const badgeSize = 140;
+          const initChar = (project.name && project.name.trim().length > 0) ? project.name.trim()[0].toUpperCase() : 'S';
+          drawRoundedRect(ctx, -badgeSize / 2, -140 - badgeSize / 2, badgeSize, badgeSize, 36, theme.cardBg, theme.accent1, 4);
+          ctx.font = "900 72px 'Outfit', sans-serif";
+          ctx.fillStyle = theme.accent1;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(initChar, 0, -138);
+        }
+
+        ctx.font = "900 68px 'Outfit', sans-serif";
+        ctx.fillStyle = theme.textMain;
+        ctx.textAlign = "center";
+        wrapText(ctx, project.slogan, 0, 70, W * 0.85, 85);
+
+        const btnW = W * 0.84;
+        const btnH = 130;
+        drawRoundedRect(ctx, -btnW / 2, 280, btnW, btnH, 65, theme.accent1, 'transparent');
+
+        ctx.font = "800 42px 'Plus Jakarta Sans', sans-serif";
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(project.cta, 0, 345);
+
+        ctx.font = "700 44px 'Outfit', sans-serif";
+        ctx.fillStyle = theme.accent2;
+        ctx.fillText(project.social, 0, 490);
+        ctx.restore();
+      }
+    }
+
+    function drawGlowCircle(x, y, r, color) {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, color);
+      g.addColorStop(1, 'transparent');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawRoundedRect(context, x, y, w, h, r, fillColor, strokeColor, lineWidth = 2) {
+      context.beginPath();
+      context.roundRect(x, y, w, h, r);
+      if (fillColor && fillColor !== 'transparent') {
+        context.fillStyle = fillColor;
+        context.fill();
+      }
+      if (strokeColor && strokeColor !== 'transparent') {
+        context.strokeStyle = strokeColor;
+        context.lineWidth = lineWidth;
+        context.stroke();
+      }
+    }
+
+    function wrapText(context, text, x, y, maxWidth, lineHeight) {
+      const words = text.split(' ');
+      let line = '';
+      let curY = y;
+
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' ';
+        const metrics = context.measureText(testLine);
+        const testWidth = metrics.width;
+        if (testWidth > maxWidth && n > 0) {
+          context.fillText(line, x, curY);
+          line = words[n] + ' ';
+          curY += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      context.fillText(line, x, curY);
+    }
+
+    function easeOutBack(x) {
+      const c1 = 1.70158;
+      const c3 = c1 + 1;
+      return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
+    }
+
+    function easeInOutCubic(x) {
+      return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+    }
+
+    function lerp(a, b, t) { return a + (b - a) * t; }
+
+    function requestRender() {
+      if (!isPlaying && !isExporting) drawFrame(animTime);
+    }
+
+    function togglePlayPause() {
+      if (isPlaying) pausePlayback();
+      else startPreviewPlayback();
+    }
+
+    function startPreviewPlayback() {
+      isPlaying = true;
+      lastTimestamp = performance.now();
+      document.getElementById("playBtn").innerText = "⏸";
+
+      if (videoFileLoaded) {
+        userVideo.currentTime = animTime;
+        userVideo.muted = document.getElementById("muteVideoSoundCheckbox").checked;
+        userVideo.play();
+      }
+
+      if (audioFileLoaded) {
+        userAudio.currentTime = animTime;
+        userAudio.play();
+      }
+
+      requestAnimationFrame(animationLoop);
+    }
+
+    function pausePlayback() {
+      isPlaying = false;
+      document.getElementById("playBtn").innerText = "▶";
+      if (videoFileLoaded) userVideo.pause();
+      if (audioFileLoaded) userAudio.pause();
+    }
+
+    function seekToTime(t) {
+      animTime = t;
+      drawFrame(animTime);
+      updateTimecodeDisplay();
+      if (videoFileLoaded) userVideo.currentTime = t;
+      if (audioFileLoaded) userAudio.currentTime = t;
+    }
+
+    function animationLoop(now) {
+      if (!isPlaying) return;
+      const dt = (now - lastTimestamp) / 1000;
+      lastTimestamp = now;
+      animTime += dt;
+
+      if (animTime >= TOTAL_DURATION) {
+        animTime = TOTAL_DURATION;
+        drawFrame(animTime);
+        pausePlayback();
+        updateTimecodeDisplay();
+        return;
+      }
+
+      drawFrame(animTime);
+      updateTimecodeDisplay();
+      requestAnimationFrame(animationLoop);
+    }
+
+    function updateTimecodeDisplay() {
+      const cur = animTime.toFixed(1);
+      const total = TOTAL_DURATION.toFixed(1);
+      document.getElementById("timecodeDisplay").innerText = `00:${cur.padStart(4, '0')} / 00:${total}`;
+    }
+
+    /* ================================================================
+       MAIN EXPORT TRIGGER (Full HD Video veya PNG)
+    ================================================================ */
+    function triggerMainExport() {
+      if (project.mode === 'video') {
+        exportReelsVideo();
+      } else {
+        exportGraphicPNG();
+      }
+    }
+
+    async function exportReelsVideo() {
+      if (isExporting) return;
+      isExporting = true;
+      pausePlayback();
+
+      const modal = document.getElementById("progressModal");
+      const fill = document.getElementById("renderFill");
+      const percent = document.getElementById("renderPercent");
+      const status = document.getElementById("renderStatus");
+
+      modal.style.display = "flex";
+      fill.style.width = "0%";
+      percent.innerText = "%0";
+      status.innerText = "60 FPS Full HD kareler ve ses miksleniyor...";
+
+      const canvasStream = canvas.captureStream(60);
+      let combinedStream = canvasStream;
+      const isVideoMuted = document.getElementById("muteVideoSoundCheckbox").checked;
+
+      let audioCtx = null;
+      try {
+        if ((audioFileLoaded && userAudio.src) || (!isVideoMuted && videoFileLoaded)) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const audioDest = audioCtx.createMediaStreamDestination();
+
+          if (audioFileLoaded && userAudio.src) {
+            const audioSrc = audioCtx.createMediaElementSource(userAudio);
+            audioSrc.connect(audioDest);
+            audioSrc.connect(audioCtx.destination);
+          }
+
+          if (!isVideoMuted && videoFileLoaded && userVideo.src) {
+            const videoAudioSrc = audioCtx.createMediaElementSource(userVideo);
+            videoAudioSrc.connect(audioDest);
+            videoAudioSrc.connect(audioCtx.destination);
+          }
+
+          const audioTracks = audioDest.stream.getAudioTracks();
+          if (audioTracks.length > 0) {
+            combinedStream = new MediaStream([
+              ...canvasStream.getVideoTracks(),
+              audioTracks[0]
+            ]);
+          }
+        }
+      } catch (e) {
+        console.warn("AudioContext başlatılamadı:", e);
+      }
+
+      let mimeType = 'video/webm;codecs=vp9';
+      if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm';
+
+      const recorder = new MediaRecorder(combinedStream, {
+        mimeType: mimeType,
+        videoBitsPerSecond: 16000000
+      });
+
+      const chunks = [];
+      recorder.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.download = `sinifcepte_reels_${Date.now()}.webm`;
+        a.href = url;
+        a.click();
+
+        modal.style.display = "none";
+        isExporting = false;
+        seekToTime(0);
+        if (audioCtx) audioCtx.close();
+      };
+
+      recorder.start();
+
+      const totalFrames = Math.round(TOTAL_DURATION * 60);
+      let curFrame = 0;
+
+      if (videoFileLoaded) {
+        userVideo.currentTime = 0;
+        userVideo.play();
+      }
+
+      if (audioFileLoaded) {
+        userAudio.currentTime = 0;
+        userAudio.play();
+      }
+
+      const interval = setInterval(() => {
+        curFrame++;
+        const t = (curFrame / totalFrames) * TOTAL_DURATION;
+        drawFrame(t);
+
+        const p = Math.min(100, Math.round((curFrame / totalFrames) * 100));
+        fill.style.width = `${p}%`;
+        percent.innerText = `%${p}`;
+
+        if (curFrame >= totalFrames) {
+          clearInterval(interval);
+          status.innerText = "Tamamlandı! Video indiriliyor...";
+          recorder.stop();
+          if (audioFileLoaded) userAudio.pause();
+        }
+      }, 1000 / 60);
+    }
+
+    /* ================================================================
+       STATİK GÖRSEL POST KONTROLLERİ
+    ================================================================ */
+    let currentGraphicFormat = 'square';
+    let currentGraphicTheme = 'glass';
+
+    function setGraphicFormat(fmt, btn) {
+      currentGraphicFormat = fmt;
+      btn.parentElement.querySelectorAll(".dock-btn").forEach(b => b.classList.remove("active"));
+      if (btn) btn.classList.add("active");
+
+      const card = document.getElementById("graphicCardTarget");
+      card.className = `insta-card fmt-${fmt} theme-${currentGraphicTheme}`;
+    }
+
+    function setGraphicTheme(thm, btn) {
+      currentGraphicTheme = thm;
+      btn.parentElement.querySelectorAll(".dock-btn").forEach(b => b.classList.remove("active"));
+      if (btn) btn.classList.add("active");
+
+      const card = document.getElementById("graphicCardTarget");
+      card.className = `insta-card fmt-${currentGraphicFormat} theme-${thm}`;
+    }
+
+    function updateGraphicCard() {
+      document.getElementById("cardBrandText").innerText = project.name;
+      document.getElementById("cardQuestion").innerText = project.title;
+      document.getElementById("cardCta").innerText = project.cta;
+      document.getElementById("cardSocial").innerText = project.social;
+
+      const bulletBox = document.getElementById("cardBulletContainer");
+      bulletBox.innerHTML = "";
+      project.bullets.forEach(text => {
+        const item = document.createElement("div");
+        item.className = "bullet-item";
+        item.innerHTML = `<div class="check-icon">✓</div><span>${text}</span>`;
+        bulletBox.appendChild(item);
+      });
+    }
+
+    function handleMockupUpload(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = evt => {
+          document.getElementById("mockupImg").src = evt.target.result;
+          document.getElementById("mockupContainer").style.display = "flex";
+          document.getElementById("mockupFrame").style.display = "block";
+          mockupImageLoaded = true;
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function exportGraphicPNG() {
+      const card = document.getElementById("graphicCardTarget");
+      html2canvas(card, {
+        scale: 4,
+        useCORS: true,
+        backgroundColor: null,
+        logging: false
+      }).then(c => {
+        const link = document.createElement('a');
+        link.download = `sinifcepte_post_${currentGraphicFormat}_${Date.now()}.png`;
+        link.href = c.toDataURL('image/png');
+        link.click();
+      });
+    }
+
+    // İlk Başlatma
+    renderBullets();
+    renderMediaLibrary();
+    updateTimelineTrackUI();
+    goToWizardStep(1);
+    updateTimecodeDisplay();
+    updateGraphicCard();
+
+    /* ================================================================
+       JSON PROJE KAYDET & YÜKLE MOTORU
+    ================================================================ */
+    function exportProjectJSON() {
+      const data = {
+        project: project,
+        durations: sceneDurations,
+        theme: currentVideoTheme,
+        timestamp: new Date().toISOString()
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${(project.name || 'proje').toLowerCase().replace(/\s+/g, '_')}_pazarlama.json`;
+      a.click();
+      showStudioToast("💾 Proje JSON olarak bilgisayara kaydedildi!");
+    }
+
+    function importProjectJSON(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = evt => {
+        try {
+          const data = JSON.parse(evt.target.result);
+          if (data.project) {
+            Object.assign(project, data.project);
+            document.getElementById("brandNameInput").value = project.name || "";
+            document.getElementById("introTitleInput").value = project.title || "";
+            document.getElementById("outroSloganInput").value = project.slogan || "";
+            document.getElementById("outroCtaInput").value = project.cta || "";
+            document.getElementById("outroSocialInput").value = project.social || "";
+            renderBullets();
+          }
+          if (data.durations) {
+            Object.assign(sceneDurations, data.durations);
+            ['s1', 's2', 's3', 's4'].forEach(k => setSceneDuration(k, sceneDurations[k]));
+          }
+          if (data.theme) {
+            currentVideoTheme = data.theme;
+          }
+          requestRender();
+          updateGraphicCard();
+          showStudioToast(`📂 "${file.name}" Başarıyla Yüklendi!`);
+        } catch (err) {
+          alert("Geçersiz JSON dosyası: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = "";
+    }
+  </script>
+</body>
+</html>

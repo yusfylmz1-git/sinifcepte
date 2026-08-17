@@ -1,0 +1,585 @@
+{
+  "calendar_version": 1,
+  "outcomes_version": 1,
+  "announcements_version": 1,
+  "school_directory_version": 1,
+  "min_app_version": "1.0.0",
+  "latest_app_version": "1.0.0",
+  "maintenance_mode": false,
+  "maintenance_message": null,
+  "last_updated": "2026-08-17T15:49:00Z",
+  "pack_base_url": "",
+  "source": "Tüm Okullar.json+schools_data.json",
+  "source_fetched_at": "2026-08-17T15:49:00Z",
+  "total_schools": 54968,
+  "unmapped_rows": 22,
+  "provinces": [
+    {
+      "code": "01",
+      "name": "Adana",
+      "count": 1270,
+      "file": "tr_01.json",
+      "sha256": "b80a3e2851debdd518bb76e85e20d53ff02ba52ffc197b652ec20fd0f54e444c"
+    },
+    {
+      "code": "02",
+      "name": "Adıyaman",
+      "count": 765,
+      "file": "tr_02.json",
+      "sha256": "4d609cb2cfcd67be5c8e20d01586f90a3abb5224dae2f3b5fd49e1beaef71d1c"
+    },
+    {
+      "code": "03",
+      "name": "Afyonkarahisar",
+      "count": 810,
+      "file": "tr_03.json",
+      "sha256": "6c4255b7d7bec78e05b1805d47dc5b5c473e964b8da2b6cb670d9e255110026b"
+    },
+    {
+      "code": "04",
+      "name": "Ağrı",
+      "count": 1005,
+      "file": "tr_04.json",
+      "sha256": "ca5281aaff0982956a26baa9f836bb12f6999bc1bfbc038fe325227690897ae5"
+    },
+    {
+      "code": "05",
+      "name": "Amasya",
+      "count": 304,
+      "file": "tr_05.json",
+      "sha256": "80ae78fa8b9ac4971805459b7c48f870188a002cb045407a2ada4d2731c1b0a0"
+    },
+    {
+      "code": "06",
+      "name": "Ankara",
+      "count": 2001,
+      "file": "tr_06.json",
+      "sha256": "1fc23754ae422b5e95024546fee51f256358ad7591ddf0e9c51c577cb5d5bab1"
+    },
+    {
+      "code": "07",
+      "name": "Antalya",
+      "count": 1360,
+      "file": "tr_07.json",
+      "sha256": "079d30fc7d6a335e1451d1f2cc85dc848f931087b14761f51edd76854f79be6f"
+    },
+    {
+      "code": "08",
+      "name": "Artvin",
+      "count": 171,
+      "file": "tr_08.json",
+      "sha256": "aff3df1d507666a0891ab701fd788db7801975231db51ff37e5f64cc77cecb42"
+    },
+    {
+      "code": "09",
+      "name": "Aydın",
+      "count": 744,
+      "file": "tr_09.json",
+      "sha256": "cde5098168e06053629ed95ebaeed1ff4bb3cf21c4fa750563d5c8203eb8b14c"
+    },
+    {
+      "code": "10",
+      "name": "Balıkesir",
+      "count": 765,
+      "file": "tr_10.json",
+      "sha256": "e181f0191e146719083bab82bd69184e72381160c2fb8d9c7997e90eb1e3ca98"
+    },
+    {
+      "code": "11",
+      "name": "Bilecik",
+      "count": 174,
+      "file": "tr_11.json",
+      "sha256": "0a29c52e105435a46b6532fc29f97c89f04d658eb46d95f5ff27b5e3bbb29676"
+    },
+    {
+      "code": "12",
+      "name": "Bingöl",
+      "count": 378,
+      "file": "tr_12.json",
+      "sha256": "fb132a18afd02009dfd503675152d8ec1966677d4aec83466d15ea91384127d2"
+    },
+    {
+      "code": "13",
+      "name": "Bitlis",
+      "count": 771,
+      "file": "tr_13.json",
+      "sha256": "de546c411fb3d45e3dfa3643494dcf896bd543aec39661c8bc586e3f3b046d3f"
+    },
+    {
+      "code": "14",
+      "name": "Bolu",
+      "count": 211,
+      "file": "tr_14.json",
+      "sha256": "091a1edc206708a4c5ea4ff7ffe72e0d178ea43eef8be7126d3bc91ce691f42e"
+    },
+    {
+      "code": "15",
+      "name": "Burdur",
+      "count": 250,
+      "file": "tr_15.json",
+      "sha256": "f4733d5fcdbfc705bae0520de80fc70cc0072e9cbda6c114567c6c8536c0c69b"
+    },
+    {
+      "code": "16",
+      "name": "Bursa",
+      "count": 1202,
+      "file": "tr_16.json",
+      "sha256": "86dddee0e7ea3dbdde83601849bee2e73b1ca65cb02c39448b6fa688a6b4cfbe"
+    },
+    {
+      "code": "17",
+      "name": "Çanakkale",
+      "count": 346,
+      "file": "tr_17.json",
+      "sha256": "73e86d3507c0a08169f2fa0d1c6d41d7197eafff1888b3f834b362691c784147"
+    },
+    {
+      "code": "18",
+      "name": "Çankırı",
+      "count": 165,
+      "file": "tr_18.json",
+      "sha256": "f326d9d39f9e3b65bec35d4c7e5d3991a7f5a97145bcb3e67c0cfcd41caa3c11"
+    },
+    {
+      "code": "19",
+      "name": "Çorum",
+      "count": 432,
+      "file": "tr_19.json",
+      "sha256": "b91ba8eac171f7c8a8ae09c8227f3ada8f07a7924502f8dba13044072d6e4f92"
+    },
+    {
+      "code": "20",
+      "name": "Denizli",
+      "count": 693,
+      "file": "tr_20.json",
+      "sha256": "a3a94cdaad3e1034a76dc5e4bcca345ef7ec6fc0b4022e252d0e2eb7781ea8ef"
+    },
+    {
+      "code": "21",
+      "name": "Diyarbakır",
+      "count": 1668,
+      "file": "tr_21.json",
+      "sha256": "a188b267d5953293cceadf05f0c12ce06eb37c563f4c5b1fa289aeece8739b5d"
+    },
+    {
+      "code": "22",
+      "name": "Edirne",
+      "count": 259,
+      "file": "tr_22.json",
+      "sha256": "b93edf35b11c71cc7040162132f597860c27ee7329b59a8c996a40ebe9856726"
+    },
+    {
+      "code": "23",
+      "name": "Elazığ",
+      "count": 444,
+      "file": "tr_23.json",
+      "sha256": "88eb4bad5fa25ad7d503f436a27f6599eb8c31becf9632485b16bbf54da2fde8"
+    },
+    {
+      "code": "24",
+      "name": "Erzincan",
+      "count": 243,
+      "file": "tr_24.json",
+      "sha256": "c308c0483c354df98d4a4deb76c7d4c1d326bf8abb9fad6e039380643e4cda33"
+    },
+    {
+      "code": "25",
+      "name": "Erzurum",
+      "count": 1235,
+      "file": "tr_25.json",
+      "sha256": "56a5617d48c72ff8017de904432e64181d2d6ec44f9827903f96136356843cc9"
+    },
+    {
+      "code": "26",
+      "name": "Eskişehir",
+      "count": 433,
+      "file": "tr_26.json",
+      "sha256": "d188710ba4b9484fbc54088f91a18290fd8c0a3ce60dc9074c024b2daa552eb1"
+    },
+    {
+      "code": "27",
+      "name": "Gaziantep",
+      "count": 1367,
+      "file": "tr_27.json",
+      "sha256": "ea04df6117526d9dfcefd24fe19be0dbd77171c105e2108e7566bf57f02fe05f"
+    },
+    {
+      "code": "28",
+      "name": "Giresun",
+      "count": 374,
+      "file": "tr_28.json",
+      "sha256": "f424b4ebe8eb5c2559a782c319cb1aeab4b8afabb20a545241200bf9f97c64e5"
+    },
+    {
+      "code": "29",
+      "name": "Gümüşhane",
+      "count": 156,
+      "file": "tr_29.json",
+      "sha256": "75666db5866b6129ec7965ce85f3a6ea421d4fc5122ac611e94cece9e7024656"
+    },
+    {
+      "code": "30",
+      "name": "Hakkari",
+      "count": 439,
+      "file": "tr_30.json",
+      "sha256": "02f04fae0e96fc726142595bf1c38909488c19334d7500b3ffedcfccaf6f2880"
+    },
+    {
+      "code": "31",
+      "name": "Hatay",
+      "count": 1361,
+      "file": "tr_31.json",
+      "sha256": "46bac332c24099d54aac260f7df279ad712e7ebf7b1e5699a5a056afa19e4e82"
+    },
+    {
+      "code": "32",
+      "name": "Isparta",
+      "count": 427,
+      "file": "tr_32.json",
+      "sha256": "c8b27e7e742d631214aa3b6104067896109cd4f740d69e88868e70bddcacd3a6"
+    },
+    {
+      "code": "33",
+      "name": "Mersin",
+      "count": 1108,
+      "file": "tr_33.json",
+      "sha256": "ec6ee7430a87a80612a98c3bdbded278608324b341c4f73e64352c68944dcb18"
+    },
+    {
+      "code": "34",
+      "name": "İstanbul",
+      "count": 3488,
+      "file": "tr_34.json",
+      "sha256": "bab7c495ccf4d6d04d2f517a3bf6a76d77c75ee8eb6c7c2f68b81cd2a5e02324"
+    },
+    {
+      "code": "35",
+      "name": "İzmir",
+      "count": 1780,
+      "file": "tr_35.json",
+      "sha256": "3f74f4eb831c4332123d44d05e81b53c21989c61cc5d36f3aeeba350e99832ec"
+    },
+    {
+      "code": "36",
+      "name": "Kars",
+      "count": 628,
+      "file": "tr_36.json",
+      "sha256": "43bc3a6084ae68f43b995fa167f64e9c3197d994cdb777e7f1d114c443b87db0"
+    },
+    {
+      "code": "37",
+      "name": "Kastamonu",
+      "count": 327,
+      "file": "tr_37.json",
+      "sha256": "6a7ab230134860be5bcc090da90c8b7726d4046422f7b184504a10f8f12f5e0a"
+    },
+    {
+      "code": "38",
+      "name": "Kayseri",
+      "count": 962,
+      "file": "tr_38.json",
+      "sha256": "c00998af9ed1eedf87db0abeb9f75fa20b42c2060fed17e280e5b3acb5835f79"
+    },
+    {
+      "code": "39",
+      "name": "Kırklareli",
+      "count": 228,
+      "file": "tr_39.json",
+      "sha256": "df3902e66bb79dcdf4051e74a7bb77d39b19f88f198d9a6e5d1f228d963ab9bf"
+    },
+    {
+      "code": "40",
+      "name": "Kırşehir",
+      "count": 200,
+      "file": "tr_40.json",
+      "sha256": "e600db4b26e8c6cf8a0171bd589c6f11d0cfaef1e608df610f5a9f7596558690"
+    },
+    {
+      "code": "41",
+      "name": "Kocaeli",
+      "count": 891,
+      "file": "tr_41.json",
+      "sha256": "1a9173cc480f33403b3a0de48bd5ac6e26a8e5ff12c72621b24e0eb7a6d6c0f5"
+    },
+    {
+      "code": "42",
+      "name": "Konya",
+      "count": 1635,
+      "file": "tr_42.json",
+      "sha256": "462d28f51317817520cc6ae265ade2473f66beb4896c0e771cd961c990725f5d"
+    },
+    {
+      "code": "43",
+      "name": "Kütahya",
+      "count": 465,
+      "file": "tr_43.json",
+      "sha256": "d67812deb5f16f37132d2a3f3b305a93cb3cc2c3b908d2426208fe52fd51ecbc"
+    },
+    {
+      "code": "44",
+      "name": "Malatya",
+      "count": 668,
+      "file": "tr_44.json",
+      "sha256": "563e806dbdbadbe649859fcfc4ebfb6372641d8606627a3bdc14fea39387deae"
+    },
+    {
+      "code": "45",
+      "name": "Manisa",
+      "count": 1001,
+      "file": "tr_45.json",
+      "sha256": "22620db05271f3bdd45a6a101fd72d4d51c781099ae6ee51333f0b22aee46bee"
+    },
+    {
+      "code": "46",
+      "name": "Kahramanmaraş",
+      "count": 990,
+      "file": "tr_46.json",
+      "sha256": "3186f73bec86ceafbd3e3230e6b892e75c2bb423594f6b8f014cbd7d361f3663"
+    },
+    {
+      "code": "47",
+      "name": "Mardin",
+      "count": 1163,
+      "file": "tr_47.json",
+      "sha256": "1713cc7077c0acb1300ef2de84d95e27a68c9e5f8460b13512ca30f9ecba4ea7"
+    },
+    {
+      "code": "48",
+      "name": "Muğla",
+      "count": 700,
+      "file": "tr_48.json",
+      "sha256": "9aa2c479a285114ca075f8dbb3db7b5f6698d0ff83040b3b8163e5ec7844f5d4"
+    },
+    {
+      "code": "49",
+      "name": "Muş",
+      "count": 693,
+      "file": "tr_49.json",
+      "sha256": "1f5dd01b6647f9861f28c7d9d40d535b09084a23847a31d484a2cfb0a0192ebb"
+    },
+    {
+      "code": "50",
+      "name": "Nevşehir",
+      "count": 308,
+      "file": "tr_50.json",
+      "sha256": "e2091ea880cd2ab1ed9ad20c5180278c21d6820c96b10f6c64208ef634e55d7e"
+    },
+    {
+      "code": "51",
+      "name": "Niğde",
+      "count": 357,
+      "file": "tr_51.json",
+      "sha256": "3d4c76ae29fda7de35b34e48ef1e3ceb60a80321bfd4ba2e1c85736e5af50095"
+    },
+    {
+      "code": "52",
+      "name": "Ordu",
+      "count": 551,
+      "file": "tr_52.json",
+      "sha256": "a94b0645d7e530e54b3816ce77afa41dfa36e2c6f3cdc24b6869fdd82721d7aa"
+    },
+    {
+      "code": "53",
+      "name": "Rize",
+      "count": 274,
+      "file": "tr_53.json",
+      "sha256": "ec859e4d2feafc5284553ba6305c130f5f6de4dc7daaf421fb69d6ab6819f05e"
+    },
+    {
+      "code": "54",
+      "name": "Sakarya",
+      "count": 693,
+      "file": "tr_54.json",
+      "sha256": "5fbf2432782883053c1288956095a72b3bd74545f29e7a01be4676022dfbf363"
+    },
+    {
+      "code": "55",
+      "name": "Samsun",
+      "count": 917,
+      "file": "tr_55.json",
+      "sha256": "c71e390ef2974ced68dbc57968e14f761879246b6994ac4ffcc4e18c80a908d7"
+    },
+    {
+      "code": "56",
+      "name": "Siirt",
+      "count": 613,
+      "file": "tr_56.json",
+      "sha256": "b3216fd2e89c554e50451bc861044c26f8932f6b7394cb592151df6d9be0c0bf"
+    },
+    {
+      "code": "57",
+      "name": "Sinop",
+      "count": 163,
+      "file": "tr_57.json",
+      "sha256": "5d9fc9f3216637e755cb2d49b3084ce4c10c503289ca5378d5c72c6912ab4467"
+    },
+    {
+      "code": "58",
+      "name": "Sivas",
+      "count": 624,
+      "file": "tr_58.json",
+      "sha256": "56ec324d05ea64c8c855ea361f1dcef2a0911a28ae59f1afdb033de54a2c1856"
+    },
+    {
+      "code": "59",
+      "name": "Tekirdağ",
+      "count": 470,
+      "file": "tr_59.json",
+      "sha256": "10cda220a516c08f0a751a667a2ffaf156f9bbd3773d2e755c31d33cadb330b5"
+    },
+    {
+      "code": "60",
+      "name": "Tokat",
+      "count": 555,
+      "file": "tr_60.json",
+      "sha256": "d67975c5ebd74a6a091a289c7a41f3bf027541475d09e43384653ccc8ba83259"
+    },
+    {
+      "code": "61",
+      "name": "Trabzon",
+      "count": 590,
+      "file": "tr_61.json",
+      "sha256": "3a1fcdc4ced3071e23f454ff5a6f9f95f3115ebdc79320fc222c608dbae23710"
+    },
+    {
+      "code": "62",
+      "name": "Tunceli",
+      "count": 103,
+      "file": "tr_62.json",
+      "sha256": "1190b15b8581ddb9e4946d7827071a44f86c75776bc2595c41636910b43bfd8c"
+    },
+    {
+      "code": "63",
+      "name": "Şanlıurfa",
+      "count": 2504,
+      "file": "tr_63.json",
+      "sha256": "8c15bb18b43557647b01219ab6f51986eedd13b4e719f38409a876ef8bfdeab0"
+    },
+    {
+      "code": "64",
+      "name": "Uşak",
+      "count": 280,
+      "file": "tr_64.json",
+      "sha256": "8aff5962c95f0d61897c49de94bacb1a2e7523b9f4e9d11148ede6ea11a20e4d"
+    },
+    {
+      "code": "65",
+      "name": "Van",
+      "count": 1604,
+      "file": "tr_65.json",
+      "sha256": "ad523766993341061074383a2240490fac72d4ce3c7a0ceb3ee8b73dc37f543f"
+    },
+    {
+      "code": "66",
+      "name": "Yozgat",
+      "count": 476,
+      "file": "tr_66.json",
+      "sha256": "ddaf96c9cf2273847d8149b478a2ad6cdc253c3c96a874de066b2e0aa0712212"
+    },
+    {
+      "code": "67",
+      "name": "Zonguldak",
+      "count": 421,
+      "file": "tr_67.json",
+      "sha256": "115fdc4436f810ad1c91e2ad7d5684dfa4a8a3ab3799c8e192d22b2b7a25cb0d"
+    },
+    {
+      "code": "68",
+      "name": "Aksaray",
+      "count": 437,
+      "file": "tr_68.json",
+      "sha256": "d55769c1b6677e10bc386d76dae1ac8bfefa070618812bb4c25ade9d3df62047"
+    },
+    {
+      "code": "69",
+      "name": "Bayburt",
+      "count": 129,
+      "file": "tr_69.json",
+      "sha256": "a219827857fb7d241ae5795f1cefa342db258cb2129a910dfdefd3a0872a705f"
+    },
+    {
+      "code": "70",
+      "name": "Karaman",
+      "count": 236,
+      "file": "tr_70.json",
+      "sha256": "e9e79a1c4376df340da4406b063dd36d4a504929e02a51dd921044c027b9ff4a"
+    },
+    {
+      "code": "71",
+      "name": "Kırıkkale",
+      "count": 192,
+      "file": "tr_71.json",
+      "sha256": "29f7f63949ff623dca6eacb48a000b9ff052ce11cc89ec28184366297d6f840e"
+    },
+    {
+      "code": "72",
+      "name": "Batman",
+      "count": 695,
+      "file": "tr_72.json",
+      "sha256": "df023af72b9426b1a9b3b318b90a2c8507246bcdb2854f9354424395ba5d49c6"
+    },
+    {
+      "code": "73",
+      "name": "Şırnak",
+      "count": 708,
+      "file": "tr_73.json",
+      "sha256": "eca30328e999e2ddac6b8db3ff6410d0943edd6f781fa5f0dc2bfd6854c881dd"
+    },
+    {
+      "code": "74",
+      "name": "Bartın",
+      "count": 163,
+      "file": "tr_74.json",
+      "sha256": "b5fdf70bf0a2c5360d796614f1c3e4aec6d3b289a3d8d48a0ac7bc526b5773a1"
+    },
+    {
+      "code": "75",
+      "name": "Ardahan",
+      "count": 183,
+      "file": "tr_75.json",
+      "sha256": "7d1d3560db72456d81f88022e70f9669017c0a610a7c524a022709be3a6c9691"
+    },
+    {
+      "code": "76",
+      "name": "Iğdır",
+      "count": 296,
+      "file": "tr_76.json",
+      "sha256": "fc54eabe5ba86dbb114b5757e0cb821927d47db793347099cab426382104533f"
+    },
+    {
+      "code": "77",
+      "name": "Yalova",
+      "count": 170,
+      "file": "tr_77.json",
+      "sha256": "d8967618d017db46ef9b6b47b320642b69a6f3cb9fa8401c31bb3fc5b1390e75"
+    },
+    {
+      "code": "78",
+      "name": "Karabük",
+      "count": 186,
+      "file": "tr_78.json",
+      "sha256": "34507feb49faa5c84f07ef050bb16ca851f7a427705cb945d0fe3e35401ef195"
+    },
+    {
+      "code": "79",
+      "name": "Kilis",
+      "count": 205,
+      "file": "tr_79.json",
+      "sha256": "d47d4b462cf00b24dec0f878737dd50e43824ea86cfd0eb5573a10814ad2d83a"
+    },
+    {
+      "code": "80",
+      "name": "Osmaniye",
+      "count": 412,
+      "file": "tr_80.json",
+      "sha256": "b063730997b3a252d93625e20e56aad075ff196024012e5af5e8a78b02c25952"
+    },
+    {
+      "code": "81",
+      "name": "Düzce",
+      "count": 303,
+      "file": "tr_81.json",
+      "sha256": "578c0f1e3adc1fa9ec27ccc53a4bb3687aafabd0510732bdca68c3089a68f08c"
+    }
+  ]
+}

@@ -1,119 +1,75 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'core/firebase/firebase_bootstrap.dart';
+import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
-import 'core/theme/app_colors.dart';
-import 'shared/widgets/glass_card.dart';
+import 'core/theme/theme_provider.dart';
+import 'features/auth/screens/welcome_screen.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    await FirebaseBootstrap.ensureInitialized();
+  } catch (e, stackTrace) {
+    debugPrint('Firebase bootstrap hatası: $e\n$stackTrace');
+  }
+
+  // Türkçe yerel tarih biçimlendirmesini başlat
+  try {
+    await initializeDateFormatting('tr_TR', null);
+  } catch (e, stackTrace) {
+    debugPrint('Tarih formatlama başlatma hatası: $e\n$stackTrace');
+  }
+
+  // Yerel Bildirim Servisini Başlat
+  try {
+    await NotificationService.instance.initialize();
+  } catch (e, stackTrace) {
+    debugPrint('Bildirim servisi başlatma hatası: $e\n$stackTrace');
+  }
+
+  // Windows / Masaüstü için SQLite FFI Başlatması
+  if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
+
   runApp(const ProviderScope(child: SinifCepteUygulamasi()));
 }
 
-class SinifCepteUygulamasi extends StatelessWidget {
+class SinifCepteUygulamasi extends ConsumerWidget {
   const SinifCepteUygulamasi({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
+
     return MaterialApp(
+      navigatorKey: NotificationService.instance.navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'SınıfCepte',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.dark, // UI-UX-MAX Dark Mode Varsayılan
-      home: const BaslangicEkrani(),
+      themeMode: themeMode, // Dinamik Tema Modu (Dark / Light / System)
+      locale: const Locale('tr', 'TR'),
+      supportedLocales: const [
+        Locale('tr', 'TR'),
+        Locale('en', 'US'),
+      ],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      home: const WelcomeScreen(),
     );
   }
 }
 
-class BaslangicEkrani extends StatelessWidget {
-  const BaslangicEkrani({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFF0F172A),
-              Color(0xFF1E1E38),
-              Color(0xFF0F172A),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Spacer(),
-                // Proje Logosu & İkonu
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: AppColors.primaryGradient,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.5),
-                        blurRadius: 30,
-                        spreadRadius: 4,
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.school_rounded,
-                    size: 64,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                Text(
-                  'SınıfCepte',
-                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                        letterSpacing: 1.2,
-                      ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Öğretmenler İçin Ultra-Modern Dijital Asistan',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontSize: 16,
-                      ),
-                ),
-                const Spacer(),
-                // Cam Kart Bilgi Paneli
-                GlassCard(
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.check_circle_rounded,
-                        color: AppColors.accent,
-                        size: 28,
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Text(
-                          'Altyapı ve UI-UX-MAX Tasarım Sistemi Başarıyla Hazırlandı!',
-                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

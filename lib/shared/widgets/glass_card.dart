@@ -1,8 +1,6 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import '../../core/theme/app_colors.dart';
 
-/// SınıfCepte - Cam Biçimciliği (Glassmorphism) Kart Bileşeni
+/// SınıfCepte - Yüksek Performanslı Modern Kart Bileşeni (Sıfır Klavye Kasmama Garantili)
 class GlassCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -15,7 +13,7 @@ class GlassCard extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(16.0),
     this.margin = EdgeInsets.zero,
-    this.borderRadius = 20.0,
+    this.borderRadius = 18.0,
     this.onTap,
   });
 
@@ -23,46 +21,50 @@ class GlassCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    Widget content = Container(
-      padding: padding,
-      margin: margin,
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.glassFillDark : AppColors.glassFillLight,
-        borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(
-          color: isDark ? AppColors.glassBorder : Colors.white.withValues(alpha: 0.5),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: isDark ? Colors.black38 : Colors.black.withValues(alpha: 0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
+    final cardDecoration = BoxDecoration(
+      color: isDark
+          ? const Color(0xFF1E293B)
+          : Colors.white,
+      borderRadius: BorderRadius.circular(borderRadius),
+      border: Border.all(
+        color: isDark
+            ? const Color(0xFF334155)
+            : const Color(0xFFE2E8F0),
+        width: 1.0,
       ),
-      child: child,
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+          blurRadius: 12,
+          spreadRadius: 0,
+          offset: const Offset(0, 3),
+        ),
+      ],
     );
 
     if (onTap != null) {
-      return GestureDetector(
-        onTap: onTap,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(borderRadius),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: content,
+      return Container(
+        margin: margin,
+        decoration: cardDecoration,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(borderRadius),
+            child: Padding(
+              padding: padding,
+              child: child,
+            ),
           ),
         ),
       );
     }
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(borderRadius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: content,
-      ),
+    return Container(
+      padding: padding,
+      margin: margin,
+      decoration: cardDecoration,
+      child: child,
     );
   }
 }

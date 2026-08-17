@@ -1,0 +1,132 @@
+[
+  {
+    "id": "meb_2025_donem1_baslangic",
+    "title": "1. Dönem Ders Başlangıcı",
+    "description": "2025-2026 Eğitim Öğretim Yılı 1. Dönem Açılışı",
+    "startDate": "2025-09-08",
+    "endDate": "2025-09-08",
+    "category": "period",
+    "academicYear": "2025-2026",
+    "isOfficialHoliday": false
+  },
+  {
+    "id": "meb_2025_29ekim",
+    "title": "29 Ekim Cumhuriyet Bayramı",
+    "description": "Cumhuriyetimizin Kuruluş Yıldönümü Resmî Tatili",
+    "startDate": "2025-10-29",
+    "endDate": "2025-10-29",
+    "category": "officialHoliday",
+    "academicYear": "2025-2026",
+    "isOfficialHoliday": true
+  },
+  {
+    "id": "meb_2025_ara_tatil_1",
+    "title": "1. Dönem Ara Tatili",
+    "description": "Kasım Ara Tatil Haftası (Öğrenciler ve Öğretmenler Dinlenme/Seminer)",
+    "startDate": "2025-11-10",
+    "endDate": "2025-11-14",
+    "category": "breakHoliday",
+    "academicYear": "2025-2026",
+    "isOfficialHoliday": true
+  },
+  {
+    "id": "meb_2026_yilbasi",
+    "title": "Yılbaşı Tatili",
+    "description": "1 Ocak Resmî Tatil",
+    "startDate": "2026-01-01",
+    "endDate": "2026-01-01",
+    "category": "officialHoliday",
+    "academicYear": "2025-2026",
+    "isOfficialHoliday": true
+  },
+  {
+    "id": "meb_2026_somestr",
+    "title": "Yarıyıl (Sömestr) Tatili",
+    "description": "1. Dönem Sonu Karneler ve 2 Haftalık Yarıyıl Dinlenme Tatili",
+    "startDate": "2026-01-19",
+    "endDate": "2026-01-30",
+    "category": "breakHoliday",
+    "academicYear": "2025-2026",
+    "isOfficialHoliday": true
+  },
+  {
+    "id": "meb_2026_donem2_baslangic",
+    "title": "2. Dönem Ders Başlangıcı",
+    "description": "2025-2026 Eğitim Öğretim Yılı 2. Dönem Açılışı",
+    "startDate": "2026-02-02",
+    "endDate": "2026-02-02",
+    "category": "period",
+    "academicYear": "2025-2026",
+    "isOfficialHoliday": false
+  },
+  {
+    "id": "meb_2026_ramazan_bayrami",
+    "title": "Ramazan Bayramı Tatili",
+    "description": "Ramazan Bayramı Resmî Tatil Günleri",
+    "startDate": "2026-03-20",
+    "endDate": "2026-03-22",
+    "category": "officialHoliday",
+    "academicYear": "2025-2026",
+    "isOfficialHoliday": true
+  },
+  {
+    "id": "meb_2026_ara_tatil_2",
+    "title": "2. Dönem Ara Tatili",
+    "description": "Nisan Ara Tatil Haftası",
+    "startDate": "2026-04-06",
+    "endDate": "2026-04-10",
+    "category": "breakHoliday",
+    "academicYear": "2025-2026",
+    "isOfficialHoliday": true
+  },
+  {
+    "id": "meb_2026_23nisan",
+    "title": "23 Nisan Ulusal Egemenlik ve Çocuk Bayramı",
+    "description": "Resmî Bayram ve Tatil",
+    "startDate": "2026-04-23",
+    "endDate": "2026-04-23",
+    "category": "officialHoliday",
+    "academicYear": "2025-2026",
+    "isOfficialHoliday": true
+  },
+  {
+    "id": "meb_2026_1mayis",
+    "title": "1 Mayıs Emek ve Dayanışma Günü",
+    "description": "Resmî Tatil",
+    "startDate": "2026-05-01",
+    "endDate": "2026-05-01",
+    "category": "officialHoliday",
+    "academicYear": "2025-2026",
+    "isOfficialHoliday": true
+  },
+  {
+    "id": "meb_2026_19mayis",
+    "title": "19 Mayıs Atatürk'ü Anma, Gençlik ve Spor Bayramı",
+    "description": "Resmî Bayram ve Tatil",
+    "startDate": "2026-05-19",
+    "endDate": "2026-05-19",
+    "category": "officialHoliday",
+    "academicYear": "2025-2026",
+    "isOfficialHoliday": true
+  },
+  {
+    "id": "meb_2026_kurban_bayrami",
+    "title": "Kurban Bayramı Tatili",
+    "description": "Kurban Bayramı Resmî Tatil Günleri",
+    "startDate": "2026-05-27",
+    "endDate": "2026-05-30",
+    "category": "officialHoliday",
+    "academicYear": "2025-2026",
+    "isOfficialHoliday": true
+  },
+  {
+    "id": "meb_2026_donem2_kapanis",
+    "title": "Eğitim Öğretim Yılı Sonu (Karne Günü)",
+    "description": "2025-2026 Eğitim Öğretim Yılı Kapanışı ve Yaz Tatili Başlangıcı",
+    "startDate": "2026-06-19",
+    "endDate": "2026-06-19",
+    "category": "period",
+    "academicYear": "2025-2026",
+    "isOfficialHoliday": false
+  }
+]
