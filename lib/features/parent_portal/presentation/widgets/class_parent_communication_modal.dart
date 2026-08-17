@@ -46,6 +46,16 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
     super.dispose();
   }
 
+  /// Bu sınıfın bulut kimliği. Veli tarafı duyuru, bildirim ve randevuları
+  /// bu kimlik altında görür.
+  String get _classCloudId {
+    final teacher = ref.read(teacherProfileProvider);
+    return CloudIds.classId(
+      teacherUid: teacher.id,
+      localClassId: widget.classModel.id ?? 0,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -237,6 +247,17 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                                 onPressed: () async {
                                   final repo = ref.read(parentPortalRepositoryProvider);
                                   await repo.deleteAnnouncement(a.id);
+
+                                  // Buluttan da sil: aksi halde duyuru
+                                  // öğretmende kaybolur ama velilerde
+                                  // görünmeye devam ederdi.
+                                  await ref
+                                      .read(cloudCommunicationRepositoryProvider)
+                                      .deleteAnnouncement(
+                                        classCloudId: _classCloudId,
+                                        announcementId: a.id,
+                                      );
+
                                   ref.invalidate(classAnnouncementsProvider(widget.classModel.id!));
                                 },
                                 visualDensity: VisualDensity.compact,
@@ -528,7 +549,9 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
 
   // --- 2. GELEN VELİ BİLDİRİMLERİ SEKMESİ ---
   Widget _buildStatusReportsTab(BuildContext context, bool isDark) {
-    final reportsAsync = ref.watch(classStatusReportsProvider(widget.classModel.id!));
+    // Bildirimler buluttan gelir: veli kendi telefonundan gönderdiği için
+    // öğretmenin cihazında yerel kaydı bulunmaz.
+    final reportsAsync = ref.watch(classStatusReportsCloudProvider(_classCloudId));
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -564,16 +587,24 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            '#${r.studentNumber} ${r.studentName} (${r.relation}: ${r.parentName})',
+                            '${r.studentName} (${r.relation}: ${r.parentName})',
                             style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (!r.isAcknowledged)
                           ElevatedButton(
                             onPressed: () async {
-                              final repo = ref.read(parentPortalRepositoryProvider);
-                              await repo.acknowledgeStatusReport(r.id);
-                              ref.invalidate(classStatusReportsProvider(widget.classModel.id!));
+                              await ref
+                                  .read(cloudCommunicationRepositoryProvider)
+                                  .acknowledgeStatusReport(
+                                    classCloudId: _classCloudId,
+                                    reportId: r.id,
+                                  );
+                              ref.invalidate(
+                                classStatusReportsCloudProvider(_classCloudId),
+                              );
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF10B981),
@@ -614,7 +645,9 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
 
   // --- 3. RANDEVULAR SEKMESİ ---
   Widget _buildAppointmentsTab(BuildContext context, bool isDark) {
-    final appointmentsAsync = ref.watch(classAppointmentsProvider(widget.classModel.id!));
+    // Randevu talepleri de buluttan gelir (veli kendi cihazından gönderir).
+    final appointmentsAsync =
+        ref.watch(classAppointmentsCloudProvider(_classCloudId));
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -677,9 +710,16 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                         children: [
                           OutlinedButton(
                             onPressed: () async {
-                              final repo = ref.read(parentPortalRepositoryProvider);
-                              await repo.updateAppointmentStatus(app.id, status: 'rejected');
-                              ref.invalidate(classAppointmentsProvider(widget.classModel.id!));
+                              await ref
+                                  .read(cloudCommunicationRepositoryProvider)
+                                  .updateAppointmentStatus(
+                                    classCloudId: _classCloudId,
+                                    appointmentId: app.id,
+                                    status: 'rejected',
+                                  );
+                              ref.invalidate(
+                                classAppointmentsCloudProvider(_classCloudId),
+                              );
                             },
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.redAccent,
@@ -691,9 +731,16 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                           const SizedBox(width: 8),
                           ElevatedButton(
                             onPressed: () async {
-                              final repo = ref.read(parentPortalRepositoryProvider);
-                              await repo.updateAppointmentStatus(app.id, status: 'confirmed');
-                              ref.invalidate(classAppointmentsProvider(widget.classModel.id!));
+                              await ref
+                                  .read(cloudCommunicationRepositoryProvider)
+                                  .updateAppointmentStatus(
+                                    classCloudId: _classCloudId,
+                                    appointmentId: app.id,
+                                    status: 'confirmed',
+                                  );
+                              ref.invalidate(
+                                classAppointmentsCloudProvider(_classCloudId),
+                              );
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF10B981),

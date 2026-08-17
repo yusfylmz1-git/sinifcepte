@@ -4,19 +4,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/cloud/delta_sync_tracker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/glass_card.dart';
 import '../../../auth/screens/welcome_screen.dart';
 import '../../../auth_profile/providers/user_role_provider.dart';
 import '../../../auth_profile/presentation/views/school_bind_gate.dart';
-import '../../data/models/parent_appointment_model.dart';
 import '../../data/models/parent_link_model.dart';
-import '../../data/models/parent_status_report_model.dart';
 import '../../data/services/kvkk_consent_service.dart';
 import '../../data/services/parent_lifecycle_service.dart';
 import '../../data/repositories/cloud_communication_repository.dart';
 import '../../providers/cloud_communication_provider.dart';
-import '../../providers/parent_portal_provider.dart';
 import '../../providers/parent_token_provider.dart';
 import '../widgets/help_support_modal.dart';
 import '../widgets/parent_teacher_chat_modal.dart';
@@ -253,10 +251,15 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
               onRefresh: () async {
                 ref.invalidate(myConnectedChildrenProvider);
                 if (activeChild != null) {
-                  ref.invalidate(classAnnouncementsProvider(activeChild.classId));
-                  ref.invalidate(studentStatusReportsProvider(activeChild.studentId));
-                  ref.invalidate(classTeacherContactsProvider(activeChild.classId));
-                  ref.invalidate(parentAppointmentsProvider(activeChild.parentUserId));
+                  // Duyurular delta senkronla gelir; elle yenilemede
+                  // damgayı geri alıp tam listeyi tazeliyoruz.
+                  await DeltaSyncTracker.instance.reset(
+                    DeltaSyncTracker.announcementsStream(activeChild.classCloudId),
+                  );
+                  ref.invalidate(cloudAnnouncementsProvider(activeChild));
+                  ref.invalidate(cloudStatusReportsProvider(activeChild));
+                  ref.invalidate(cloudClassStaffProvider(activeChild));
+                  ref.invalidate(cloudAppointmentsProvider(activeChild));
                 }
               },
               child: SingleChildScrollView(
@@ -1572,33 +1575,62 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.of(ctx).pop();
-              final repo = ref.read(parentPortalRepositoryProvider);
-              final appointment = ParentAppointmentModel(
-                id: 'app_${DateTime.now().millisecondsSinceEpoch}',
-                classId: child.classId,
-                className: child.className,
-                studentId: child.studentId,
+
+              // Randevu buluta yazılır: öğretmen talebi ancak orada görür.
+              final repo = ref.read(cloudCommunicationRepositoryProvider);
+              final appointmentDate = DateTime.now().add(const Duration(days: 2));
+
+              // Aynı öğretmen ve dilimde açık randevu varsa veliyi uyar.
+              final conflict = await repo.hasAppointmentConflict(
+                classCloudId: child.classCloudId,
+                teacherName: teacher.teacherName,
+                appointmentDate: appointmentDate,
+                timeSlot: teacher.meetingTime,
+              );
+
+              if (conflict) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        '⚠️ Bu saat için başka bir randevu talebi var. '
+                        'Öğretmeninize mesaj göndererek başka bir saat kararlaştırabilirsiniz.',
+                      ),
+                      backgroundColor: Colors.orange,
+                      duration: Duration(seconds: 6),
+                    ),
+                  );
+                }
+                return;
+              }
+
+              final ok = await repo.requestAppointment(
+                classCloudId: child.classCloudId,
+                appointmentId: 'apt_${DateTime.now().millisecondsSinceEpoch}',
+                studentCloudId: child.studentCloudId,
                 studentName: child.studentName,
-                studentNumber: child.studentNumber,
                 parentUserId: child.parentUserId,
                 parentName: child.parentName,
                 relation: child.relation,
                 teacherName: teacher.teacherName,
                 branch: teacher.branch,
-                appointmentDate: DateTime.now().add(const Duration(days: 2)),
+                appointmentDate: appointmentDate,
                 timeSlot: teacher.meetingTime,
                 topic: topicCtrl.text.trim(),
-                createdAt: DateTime.now(),
               );
 
-              final result = await repo.requestAppointment(appointment);
-              ref.invalidate(parentAppointmentsProvider(child.parentUserId));
+              ref.invalidate(cloudAppointmentsProvider(child));
 
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(result['success'] == true ? '✅ Randevu talebiniz iletildi.' : '⚠️ ${result['message']}'),
-                    backgroundColor: result['success'] == true ? const Color(0xFF10B981) : Colors.redAccent,
+                    content: Text(
+                      ok
+                          ? '✅ Randevu talebiniz öğretmene iletildi.'
+                          : '⚠️ Talep gönderilemedi. İnternet bağlantınızı kontrol edin.',
+                    ),
+                    backgroundColor:
+                        ok ? const Color(0xFF10B981) : Colors.redAccent,
                   ),
                 );
               }
@@ -1621,7 +1653,9 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => Consumer(
         builder: (context, modalRef, _) {
-          final reportsAsync = modalRef.watch(studentStatusReportsProvider(child.studentId));
+          // Bildirimler buluttan gelir; öğretmenin "görüldü" işareti de
+          // buradan okunur.
+          final reportsAsync = modalRef.watch(cloudStatusReportsProvider(child));
 
           return Container(
             height: MediaQuery.of(context).size.height * 0.75,
@@ -1781,36 +1815,44 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
     required String details,
   }) async {
     try {
-      final repo = ref.read(parentPortalRepositoryProvider);
-      final newReport = ParentStatusReportModel(
-        id: 'rep_${DateTime.now().millisecondsSinceEpoch}',
-        studentId: child.studentId,
-        studentName: child.studentName,
-        studentNumber: child.studentNumber,
-        classId: child.classId,
-        className: child.className,
-        parentUserId: child.parentUserId,
-        parentName: child.parentName,
-        relation: child.relation,
-        type: type,
-        title: title,
-        details: details,
-        createdAt: DateTime.now(),
-      );
+      // Bildirim buluta yazılır: öğretmen ancak orada görebilir.
+      final ok = await ref.read(cloudCommunicationRepositoryProvider).createStatusReport(
+            classCloudId: child.classCloudId,
+            reportId: 'rep_${DateTime.now().millisecondsSinceEpoch}',
+            studentCloudId: child.studentCloudId,
+            studentName: child.studentName,
+            parentUserId: child.parentUserId,
+            parentName: child.parentName,
+            relation: child.relation,
+            type: type,
+            title: title,
+            details: details,
+          );
 
-      await repo.createStatusReport(newReport);
-      ref.invalidate(studentStatusReportsProvider(child.studentId));
+      ref.invalidate(cloudStatusReportsProvider(child));
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✅ $title sınıf öğretmenine iletildi.'),
-            backgroundColor: const Color(0xFF10B981),
+            content: Text(
+              ok
+                  ? '✅ $title sınıf öğretmenine iletildi.'
+                  : '⚠️ Bildirim gönderilemedi. İnternet bağlantınızı kontrol edin.',
+            ),
+            backgroundColor: ok ? const Color(0xFF10B981) : Colors.redAccent,
           ),
         );
       }
     } catch (e, stackTrace) {
       debugPrint('Durum bildirimi hatası: $e\n$stackTrace');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Bildirim gönderilirken bir sorun oluştu.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

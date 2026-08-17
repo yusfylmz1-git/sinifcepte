@@ -110,6 +110,48 @@ final cloudClassStaffProvider =
   return repo.fetchStaff(link.classCloudId);
 });
 
+/// Veli görünümü: kendi çocuğuna ait durum bildirimleri.
+final cloudStatusReportsProvider =
+    FutureProvider.family<List<CloudStatusReport>, ParentLinkModel>(
+        (ref, link) async {
+  if (!link.hasCloudBinding) return const [];
+
+  final repo = ref.watch(cloudCommunicationRepositoryProvider);
+  return repo.fetchStatusReports(
+    classCloudId: link.classCloudId,
+    studentCloudId: link.studentCloudId,
+  );
+});
+
+/// Öğretmen görünümü: sınıfa gelen tüm durum bildirimleri.
+final classStatusReportsCloudProvider =
+    FutureProvider.family<List<CloudStatusReport>, String>(
+        (ref, classCloudId) async {
+  final repo = ref.watch(cloudCommunicationRepositoryProvider);
+  return repo.fetchStatusReports(classCloudId: classCloudId);
+});
+
+/// Veli görünümü: kendi çocuğuna ait randevular.
+final cloudAppointmentsProvider =
+    FutureProvider.family<List<CloudAppointment>, ParentLinkModel>(
+        (ref, link) async {
+  if (!link.hasCloudBinding) return const [];
+
+  final repo = ref.watch(cloudCommunicationRepositoryProvider);
+  return repo.fetchAppointments(
+    classCloudId: link.classCloudId,
+    studentCloudId: link.studentCloudId,
+  );
+});
+
+/// Öğretmen görünümü: sınıfın tüm randevu talepleri.
+final classAppointmentsCloudProvider =
+    FutureProvider.family<List<CloudAppointment>, String>(
+        (ref, classCloudId) async {
+  final repo = ref.watch(cloudCommunicationRepositoryProvider);
+  return repo.fetchAppointments(classCloudId: classCloudId);
+});
+
 /// Öğretmen görünümü: sınıfın ders öğretmeni kadrosu.
 ///
 /// Kadro üyeliği mesajlaşma yetkisini belirler; nadiren değiştiği için

@@ -757,3 +757,183 @@ describe('9. Mesajlaşma — branş öğretmeni ekseni', () => {
     );
   });
 });
+
+describe('10. Durum bildirimleri ve randevular', () => {
+  const BRANCH_UID = 'teacherBransSelin';
+
+  before(async () => {
+    await testEnv.clearFirestore();
+    await seed(async (db) => {
+      await setDoc(doc(db, 'class_rooms', CLASS_ID), {
+        classCloudId: CLASS_ID,
+        teacherUid: TEACHER_UID,
+      });
+      await setDoc(doc(db, 'class_rooms', CLASS_ID, 'staff', BRANCH_UID), {
+        teacherUid: BRANCH_UID,
+        teacherName: 'Selin Demir',
+        branch: 'Fizik',
+      });
+      await setDoc(doc(db, 'parent_links', `${PARENT_UID}_${STUDENT_ID}`), {
+        parentUid: PARENT_UID,
+        studentCloudId: STUDENT_ID,
+        status: 'active',
+      });
+      await setDoc(doc(db, 'parent_class_access', `${PARENT_UID}_${CLASS_ID}`), {
+        parentUid: PARENT_UID,
+        classCloudId: CLASS_ID,
+      });
+      // Velinin gönderdiği bildirim
+      await setDoc(doc(db, 'class_rooms', CLASS_ID, 'status_reports', 'rep_1'), {
+        studentCloudId: STUDENT_ID,
+        parentUserId: PARENT_UID,
+        type: 'medication',
+        title: 'Alerji ilacı',
+        details: 'Öğle arası verilmeli',
+        status: 'pending',
+      });
+      await setDoc(doc(db, 'class_rooms', CLASS_ID, 'appointments', 'apt_1'), {
+        studentCloudId: STUDENT_ID,
+        parentUserId: PARENT_UID,
+        teacherName: 'Ahmet Yılmaz',
+        timeSlot: '13:30',
+        status: 'pending',
+      });
+    });
+  });
+
+  const branchDb = () => testEnv.authenticatedContext(BRANCH_UID).firestore();
+
+  it('veli kendi çocuğu için durum bildirimi gönderebilir', async () => {
+    await assertSucceeds(
+      setDoc(doc(parentDb(), 'class_rooms', CLASS_ID, 'status_reports', 'rep_yeni'), {
+        studentCloudId: STUDENT_ID,
+        parentUserId: PARENT_UID,
+        type: 'early_leave',
+        title: 'Diş randevusu',
+        details: '14:00 alınacak',
+        status: 'pending',
+      }),
+    );
+  });
+
+  it('KRİTİK: bağı olmayan veli bildirim gönderemez', async () => {
+    await assertFails(
+      setDoc(doc(otherParentDb(), 'class_rooms', CLASS_ID, 'status_reports', 'rep_x'), {
+        studentCloudId: STUDENT_ID,
+        parentUserId: OTHER_PARENT_UID,
+        type: 'note',
+        title: 'İlgisiz veli',
+        details: 'test',
+        status: 'pending',
+      }),
+    );
+  });
+
+  it('KRİTİK: veli bildirimi onaylanmış olarak gönderemez', async () => {
+    // Aksi halde öğretmen görmeden "görüldü" sayılırdı.
+    await assertFails(
+      setDoc(doc(parentDb(), 'class_rooms', CLASS_ID, 'status_reports', 'rep_hile'), {
+        studentCloudId: STUDENT_ID,
+        parentUserId: PARENT_UID,
+        type: 'note',
+        title: 'Sahte onay',
+        details: 'test',
+        status: 'acknowledged',
+      }),
+    );
+  });
+
+  it('KRİTİK: veli gönderdiği bildirimin içeriğini değiştiremez', async () => {
+    // Öğretmen "ilaç 12:30" diye okuduktan sonra metin değişirse
+    // sorumluluk belirsizleşir.
+    await assertFails(
+      updateDoc(doc(parentDb(), 'class_rooms', CLASS_ID, 'status_reports', 'rep_1'), {
+        details: 'Sonradan değiştirildi',
+      }),
+    );
+  });
+
+  it('sınıf öğretmeni bildirimi görüldü işaretleyebilir', async () => {
+    await assertSucceeds(
+      updateDoc(doc(teacherDb(), 'class_rooms', CLASS_ID, 'status_reports', 'rep_1'), {
+        status: 'acknowledged',
+        teacherNote: 'Bilgilendirildi',
+      }),
+    );
+  });
+
+  it('kadrodaki branş öğretmeni de bildirimi görüp işaretleyebilir', async () => {
+    await assertSucceeds(
+      getDoc(doc(branchDb(), 'class_rooms', CLASS_ID, 'status_reports', 'rep_1')),
+    );
+    await assertSucceeds(
+      updateDoc(doc(branchDb(), 'class_rooms', CLASS_ID, 'status_reports', 'rep_1'), {
+        status: 'acknowledged',
+      }),
+    );
+  });
+
+  it('KRİTİK: ilgisiz veli bildirimleri okuyamaz (sağlık verisi)', async () => {
+    await assertFails(
+      getDoc(doc(otherParentDb(), 'class_rooms', CLASS_ID, 'status_reports', 'rep_1')),
+    );
+  });
+
+  it('veli randevu talep edebilir', async () => {
+    await assertSucceeds(
+      setDoc(doc(parentDb(), 'class_rooms', CLASS_ID, 'appointments', 'apt_yeni'), {
+        studentCloudId: STUDENT_ID,
+        parentUserId: PARENT_UID,
+        teacherName: 'Selin Demir',
+        timeSlot: '14:00',
+        status: 'pending',
+      }),
+    );
+  });
+
+  it('KRİTİK: veli randevuyu kendisi onaylayamaz', async () => {
+    await assertFails(
+      setDoc(doc(parentDb(), 'class_rooms', CLASS_ID, 'appointments', 'apt_hile'), {
+        studentCloudId: STUDENT_ID,
+        parentUserId: PARENT_UID,
+        teacherName: 'Ahmet Yılmaz',
+        timeSlot: '15:00',
+        status: 'confirmed',
+      }),
+    );
+  });
+
+  it('veli kendi randevusunu iptal edebilir', async () => {
+    await assertSucceeds(
+      updateDoc(doc(parentDb(), 'class_rooms', CLASS_ID, 'appointments', 'apt_1'), {
+        status: 'cancelled',
+        respondedAt: '2026-08-18T10:00:00.000Z',
+      }),
+    );
+  });
+
+  it('KRİTİK: veli randevuyu onaylıya çeviremez', async () => {
+    await assertFails(
+      updateDoc(doc(parentDb(), 'class_rooms', CLASS_ID, 'appointments', 'apt_1'), {
+        status: 'confirmed',
+      }),
+    );
+  });
+
+  it('öğretmen randevuyu onaylayabilir', async () => {
+    await assertSucceeds(
+      updateDoc(doc(teacherDb(), 'class_rooms', CLASS_ID, 'appointments', 'apt_1'), {
+        status: 'confirmed',
+        responseNote: 'Görüşelim',
+      }),
+    );
+  });
+
+  it('kadrodaki branş öğretmeni de randevu yanıtlayabilir', async () => {
+    await assertSucceeds(
+      updateDoc(doc(branchDb(), 'class_rooms', CLASS_ID, 'appointments', 'apt_1'), {
+        status: 'confirmed',
+      }),
+    );
+  });
+});

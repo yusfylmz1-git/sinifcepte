@@ -208,13 +208,30 @@ service cloud.firestore {
         }
       }
 
+      // Randevular. Veli talep eder, öğretmen yanıtlar.
+      // Kadrodaki branş öğretmenleri de yanıtlayabilir: veli onlarla da
+      // görüşme talep edebildiği için (mesajlaşmayla aynı yetki ekseni).
       match /appointments/{id} {
         allow read: if ownsClassRoom(classCloudId)
+          || isClassStaff(classCloudId)
           || (isParent() && parentHasStudent(resource.data.studentCloudId));
+
         allow create: if isParent()
           && parentHasStudent(request.resource.data.studentCloudId)
-          && request.resource.data.parentUserId == request.auth.uid;
-        allow update: if ownsClassRoom(classCloudId);
+          && request.resource.data.parentUserId == request.auth.uid
+          && request.resource.data.status == 'pending';
+
+        // Öğretmen onaylar/reddeder.
+        allow update: if ownsClassRoom(classCloudId) || isClassStaff(classCloudId);
+
+        // Veli kendi talebini iptal edebilir (yalnızca durum alanı).
+        allow update: if isParent()
+          && resource.data.parentUserId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['status', 'respondedAt'])
+          && request.resource.data.status == 'cancelled';
+
+        allow delete: if ownsClassRoom(classCloudId);
       }
 
       // Mesajlaşma: duyurudan FARKLI bir yetki eksenidir (kullanıcı kararı).
@@ -278,14 +295,26 @@ service cloud.firestore {
           && exists(/databases/$(database)/documents/class_rooms/$(classCloudId)/staff/$(request.auth.uid));
       }
 
+      // Durum bildirimleri (ilaç, erken çıkış, not).
+      // Öğrencinin sağlık/durum bilgisini taşır: yalnızca sınıfın
+      // öğretmenleri ve bildirimi gönderen veli erişebilir.
       match /status_reports/{id} {
         allow read: if ownsClassRoom(classCloudId)
           || isClassStaff(classCloudId)
           || (isParent() && parentHasStudent(resource.data.studentCloudId));
+
         allow create: if isParent()
           && parentHasStudent(request.resource.data.studentCloudId)
-          && request.resource.data.parentUserId == request.auth.uid;
+          && request.resource.data.parentUserId == request.auth.uid
+          && request.resource.data.status == 'pending';
+
+        // Öğretmen "görüldü" işaretler ve not ekler.
+        // Veli bildirimi gönderdikten sonra içeriğini DEĞİŞTİREMEZ:
+        // öğretmen "ilaç saat 12:30" diye okuduktan sonra metin değişirse
+        // sorumluluk belirsizleşirdi.
         allow update: if ownsClassRoom(classCloudId) || isClassStaff(classCloudId);
+
+        allow delete: if ownsClassRoom(classCloudId);
       }
     }
   }
