@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/cloud/firestore_client.dart';
@@ -104,13 +105,27 @@ class CloudMessage {
 }
 
 /// Sınıfın ders öğretmeni kadrosundan bir üye.
+///
+/// Mesajlaşma yetkisi **Firebase UID**'ye bağlıdır, isme değil. Sınıf
+/// öğretmeni branş öğretmeninin UID'sini bilemeyeceği için kayıt iki
+/// aşamada tamamlanır:
+///
+/// 1. **Beklemede** ([isPending]): satır yalnızca ad/branş içerir,
+///    doküman kimliği geçici `pending_{kod}` biçimindedir. Veli öğretmeni
+///    listede görür ama mesajlaşma açılmaz.
+/// 2. **Etkin**: branş öğretmeni [joinCode] ile katılır, kayıt kendi
+///    UID'siyle yeniden yazılır ve mesajlaşma açılır.
 class CloudStaffMember {
+  /// Etkin üyelerde Firebase UID; beklemede olanlarda `pending_{kod}`.
   final String teacherUid;
   final String teacherName;
   final String branch;
   final bool isHomeroom;
   final String meetingDay;
   final String meetingTime;
+
+  /// Branş öğretmeninin kadroya katılmak için gireceği kod.
+  final String joinCode;
 
   const CloudStaffMember({
     required this.teacherUid,
@@ -119,7 +134,17 @@ class CloudStaffMember {
     this.isHomeroom = false,
     this.meetingDay = '',
     this.meetingTime = '',
+    this.joinCode = '',
   });
+
+  /// Öğretmen henüz katılım kodunu girmedi; mesajlaşma kapalı.
+  static const String pendingPrefix = 'pending_';
+
+  bool get isPending => teacherUid.startsWith(pendingPrefix);
+
+  /// Veliye gösterilecek etiket: "Selin Demir — Fizik"
+  String get displayTitle =>
+      branch.isEmpty ? teacherName : '$teacherName — $branch';
 }
 
 /// Faz 3 — iletişim katmanının bulut erişimi.
@@ -413,6 +438,7 @@ class CloudCommunicationRepository {
           isHomeroom: data['isHomeroom'] as bool? ?? false,
           meetingDay: data['meetingDay'] as String? ?? '',
           meetingTime: data['meetingTime'] as String? ?? '',
+          joinCode: data['joinCode'] as String? ?? '',
         );
       }).toList();
     } catch (e, stackTrace) {
@@ -449,5 +475,97 @@ class CloudCommunicationRepository {
     required String teacherUid,
   }) {
     return _client.deleteDoc('$_classRooms/$classCloudId/staff/$teacherUid');
+  }
+
+  /// Sınıf öğretmeni kadroya "beklemede" bir satır ekler.
+  ///
+  /// Branş öğretmeninin UID'si henüz bilinmediği için doküman kimliği
+  /// geçici olarak `pending_{kod}` olur. Öğretmen [joinStaffByCode] ile
+  /// katıldığında kayıt kendi UID'siyle yeniden yazılır ve bu satır silinir.
+  ///
+  /// Bu aşamada veli öğretmeni listede görür (kimin dersine girdiğini bilir)
+  /// ama mesajlaşma açılmaz — kural motoru `pending_` kimliğine yetki vermez.
+  Future<bool> addPendingStaff({
+    required String classCloudId,
+    required String teacherName,
+    required String branch,
+    String meetingDay = '',
+    String meetingTime = '',
+    bool isHomeroom = false,
+  }) async {
+    final code = _generateJoinCode();
+    final pendingId = '${CloudStaffMember.pendingPrefix}$code';
+
+    return _client.setDoc('$_classRooms/$classCloudId/staff/$pendingId', {
+      'teacherName': teacherName,
+      'branch': branch,
+      'isHomeroom': isHomeroom,
+      'meetingDay': meetingDay,
+      'meetingTime': meetingTime,
+      'joinCode': code,
+      'createdAt': DateTime.now().toIso8601String(),
+    });
+  }
+
+  /// Branş öğretmeni katılım kodunu girerek kadroya dahil olur.
+  ///
+  /// Beklemedeki satırı kendi UID'siyle yeniden yazar ve geçici kaydı siler.
+  /// İkisi tek batch'te yapılır; yarım kalırsa öğretmen ne eski ne yeni
+  /// kimlikle görünürdü.
+  ///
+  /// Kodu bilmek kadroya katılmaya yeter — kod sınıf öğretmeni tarafından
+  /// doğrudan ilgili kişiye iletilir.
+  Future<bool> joinStaffByCode({
+    required String classCloudId,
+    required String joinCode,
+    required String teacherUid,
+    required String teacherName,
+  }) async {
+    await _client.ensureConfigured();
+    final db = _client.db;
+    if (db == null) return false;
+
+    try {
+      final code = joinCode.trim().toUpperCase();
+      final pendingId = '${CloudStaffMember.pendingPrefix}$code';
+      final pendingPath = '$_classRooms/$classCloudId/staff/$pendingId';
+
+      final pending = await _client.getDoc(pendingPath);
+      if (pending == null) return false;
+
+      // Kadro satırını öğretmenin gerçek UID'siyle yeniden yaz, geçici
+      // kaydı sil. Tek batch: yarım kalırsa öğretmen kadroda görünmezdi.
+      //
+      // `joinedVia` kural motoru için zorunludur: yeni kaydın gerçekten bir
+      // davete dayandığını kanıtlar. Bu alan olmadan giriş yapmış herkes
+      // kendini kadroya ekleyip mesajlaşma yetkisi kazanabilirdi.
+      return await _client.commitBatch({
+        '$_classRooms/$classCloudId/staff/$teacherUid': {
+          'teacherUid': teacherUid,
+          // Öğretmenin kendi hesabındaki adı esas alınır; sınıf
+          // öğretmeninin yazdığı ad yalnızca yer tutucuydu.
+          'teacherName':
+              teacherName.isNotEmpty ? teacherName : pending['teacherName'],
+          'branch': pending['branch'] ?? '',
+          'isHomeroom': pending['isHomeroom'] ?? false,
+          'meetingDay': pending['meetingDay'] ?? '',
+          'meetingTime': pending['meetingTime'] ?? '',
+          'joinedVia': pendingId,
+          'joinedAt': DateTime.now().toIso8601String(),
+        },
+        pendingPath: null, // geçici kaydı sil
+      });
+    } catch (e, stackTrace) {
+      debugPrint('joinStaffByCode hatası: $e\n$stackTrace');
+      return false;
+    }
+  }
+
+  /// Karışması kolay karakterler (0/O, 1/I) dışlanarak 6 haneli kod üretir.
+  String _generateJoinCode() {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final rnd = Random.secure();
+    return List.generate(6, (_) => alphabet[rnd.nextInt(alphabet.length)])
+        .join();
   }
 }

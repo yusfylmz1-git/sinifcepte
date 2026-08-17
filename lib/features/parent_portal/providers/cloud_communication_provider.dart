@@ -110,6 +110,16 @@ final cloudClassStaffProvider =
   return repo.fetchStaff(link.classCloudId);
 });
 
+/// Öğretmen görünümü: sınıfın ders öğretmeni kadrosu.
+///
+/// Kadro üyeliği mesajlaşma yetkisini belirler; nadiren değiştiği için
+/// delta uygulanmaz.
+final classStaffProvider =
+    FutureProvider.family<List<CloudStaffMember>, String>((ref, classCloudId) async {
+  final repo = ref.watch(cloudCommunicationRepositoryProvider);
+  return repo.fetchStaff(classCloudId);
+});
+
 /// Öğretmen görünümü: bir duyuruyu kaç velinin okuduğu.
 ///
 /// `count()` toplama sorgusu kullanır — 1000 dokümana kadar tek okuma

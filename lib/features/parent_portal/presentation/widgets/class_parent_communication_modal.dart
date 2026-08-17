@@ -9,6 +9,7 @@ import '../../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../data/models/class_announcement_model.dart';
 import '../../providers/cloud_communication_provider.dart';
 import '../../providers/parent_portal_provider.dart';
+import 'class_staff_manager_modal.dart';
 
 /// SınıfCepte - Öğretmen Veli İletişim, Duyuru & Randevu Merkezi Modalı
 class ClassParentCommunicationModal extends ConsumerStatefulWidget {
@@ -36,7 +37,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -123,10 +124,13 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
             labelColor: AppColors.primary,
             unselectedLabelColor: isDark ? Colors.white60 : Colors.black54,
             labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
             tabs: const [
               Tab(text: '📢 Duyurular'),
               Tab(text: '📬 Bildirimler'),
               Tab(text: '📅 Randevular'),
+              Tab(text: '👥 Kadro'),
             ],
           ),
 
@@ -138,6 +142,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                 _buildAnnouncementsTab(context, isDark),
                 _buildStatusReportsTab(context, isDark),
                 _buildAppointmentsTab(context, isDark),
+                _buildStaffTab(context, isDark),
               ],
             ),
           ),
@@ -370,6 +375,153 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // --- 4. DERS ÖĞRETMENİ KADROSU SEKMESİ ---
+  //
+  // Kullanıcı kararı gereği duyuru yetkisi yalnızca sınıf öğretmenindedir,
+  // ancak veli çocuğunun dersine giren branş öğretmenleriyle de
+  // yazışabilmelidir. Mesajlaşma yetkisi bu kadrodan yönetilir.
+  Widget _buildStaffTab(BuildContext context, bool isDark) {
+    final teacher = ref.watch(teacherProfileProvider);
+    final classCloudId = CloudIds.classId(
+      teacherUid: teacher.id,
+      localClassId: widget.classModel.id ?? 0,
+    );
+    final staffAsync = ref.watch(classStaffProvider(classCloudId));
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Kadrodaki öğretmenler bu sınıfın velileriyle yazışabilir. '
+            'Duyuru yayınlama yetkisi yalnızca sizde kalır.',
+            style: GoogleFonts.outfit(
+              fontSize: 12,
+              color: Colors.grey,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: staffAsync.when(
+              loading: () => const Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
+              ),
+              error: (e, _) => Center(
+                child: Text(
+                  'Kadro yüklenemedi. İnternet bağlantınızı kontrol edin.',
+                  style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              data: (staff) {
+                if (staff.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.groups_outlined,
+                            size: 42, color: Colors.grey.shade400),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Henüz ders öğretmeni eklenmedi',
+                          style: GoogleFonts.outfit(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: staff.length,
+                  itemBuilder: (context, idx) {
+                    final m = staff[idx];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(11),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            m.isPending
+                                ? Icons.hourglass_top_rounded
+                                : Icons.check_circle_rounded,
+                            size: 18,
+                            color: m.isPending
+                                ? Colors.orange
+                                : const Color(0xFF10B981),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  m.displayTitle,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  m.isPending
+                                      ? 'Katılım kodu: ${m.joinCode}'
+                                      : 'Yazışmaya açık',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 11.5,
+                                    color: Colors.grey,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => ClassStaffManagerModal.show(
+                context,
+                classModel: widget.classModel,
+              ),
+              icon: const Icon(Icons.settings_rounded, size: 18),
+              label: const Text('Kadroyu Yönet'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(44),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

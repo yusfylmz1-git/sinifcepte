@@ -52,6 +52,11 @@ service cloud.firestore {
     // Bu fonksiyon exists() ile doküman okur — kimlik deseninden
     // çıkarılamayan tek yetkidir. Yalnızca mesajlaşma yollarında kullanılır,
     // sık çağrılan duyuru/okuma yollarında değil.
+    // Not: Kimlik olarak kullanıcının kendi UID'si aranır. Sınıf öğretmeni
+    // henüz UID'sini bilmediği bir öğretmeni "pending_{kod}" kimliğiyle
+    // ekleyebilir; bu kayıt hiç kimsenin UID'si olmadığı için mesajlaşma
+    // yetkisi vermez. Yetki ancak öğretmen katılım kodunu girip kayıt kendi
+    // UID'siyle yeniden yazıldığında açılır.
     function isClassStaff(classCloudId) {
       return request.auth != null && exists(
         /databases/$(database)/documents/class_rooms/$(classCloudId)/staff/$(request.auth.uid)
@@ -240,11 +245,37 @@ service cloud.firestore {
 
       // Sınıfın branş öğretmeni kadrosu. Sınıf öğretmeni yönetir; veli
       // "çocuğumun dersine kimler giriyor" listesini buradan okur.
-      match /staff/{teacherUid} {
-        allow read: if ownsClassRoom(classCloudId)
-          || isClassStaff(classCloudId)
-          || parentHasClass(classCloudId);
+      match /staff/{staffId} {
+        // Katılım kodunu doğrulayabilmek için giriş yapmış her öğretmen
+        // okuyabilir. Kadro yalnızca ad/branş/görüşme saati içerir —
+        // öğrenci verisi veya iletişim bilgisi barındırmaz.
+        allow read: if request.auth != null || parentHasClass(classCloudId);
+
+        // Sınıf öğretmeni kadroyu yönetir.
         allow create, update, delete: if ownsClassRoom(classCloudId);
+
+        // Branş öğretmeni katılım kodunu girdiğinde kendi kaydını yazar.
+        //
+        // Kimlik koşulları tek başına YETMEZ: aksi halde giriş yapmış
+        // herkes (veli dahil) kendi UID'siyle kadroya girip mesajlaşma
+        // yetkisi kazanırdı. Bu yüzden katılım, sınıf öğretmeninin açtığı
+        // gerçek bir "pending_{kod}" kaydının VARLIĞINA bağlanır —
+        // yani davet edilmemiş kimse kadroya giremez.
+        //
+        // İstemci kodu bu kaydı okuyup kendi UID'siyle yeniden yazar ve
+        // aynı batch içinde geçici kaydı siler.
+        allow create: if request.auth != null
+          && staffId == request.auth.uid
+          && request.resource.data.teacherUid == request.auth.uid
+          && request.resource.data.joinedVia is string
+          && exists(/databases/$(database)/documents/class_rooms/$(classCloudId)/staff/$(request.resource.data.joinedVia))
+          && request.resource.data.joinedVia.matches('pending_.*');
+
+        // Katılan öğretmen yalnızca kendisini davet eden geçici kaydı
+        // silebilir; bunu katılımını tamamlarken yapar.
+        allow delete: if request.auth != null
+          && staffId.matches('pending_.*')
+          && exists(/databases/$(database)/documents/class_rooms/$(classCloudId)/staff/$(request.auth.uid));
       }
 
       match /status_reports/{id} {

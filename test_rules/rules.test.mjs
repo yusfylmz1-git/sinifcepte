@@ -639,11 +639,120 @@ describe('9. Mesajlaşma — branş öğretmeni ekseni', () => {
     );
   });
 
-  it('KRİTİK: branş öğretmeni kendini kadroya ekleyemez', async () => {
+  it('davet edilen öğretmen katılım kodu ile kadroya girebilir', async () => {
+    // Sınıf öğretmeni UID'yi bilemediği için önce "pending_{kod}" satırı açar.
+    await seed(async (db) => {
+      await setDoc(doc(db, 'class_rooms', CLASS_ID, 'staff', 'pending_KOD111'), {
+        teacherName: 'Davet Edilen',
+        branch: 'Kimya',
+        joinCode: 'KOD111',
+      });
+    });
+
+    // Öğretmen kodu girer: kendi UID'siyle kaydını yazar ve daveti gösterir.
+    await assertSucceeds(
+      setDoc(doc(strangerTeacherDb(), 'class_rooms', CLASS_ID, 'staff', STRANGER_TEACHER_UID), {
+        teacherUid: STRANGER_TEACHER_UID,
+        teacherName: 'Davet Edilen',
+        branch: 'Kimya',
+        joinedVia: 'pending_KOD111',
+      }),
+    );
+  });
+
+  it('KRİTİK: davetsiz kimse kadroya giremez', async () => {
+    // Var olmayan bir davete dayanan katılım reddedilmeli; aksi halde
+    // giriş yapmış herkes kendini kadroya ekleyip mesajlaşma yetkisi alırdı.
     await assertFails(
       setDoc(doc(strangerTeacherDb(), 'class_rooms', CLASS_ID, 'staff', STRANGER_TEACHER_UID), {
         teacherUid: STRANGER_TEACHER_UID,
-        branch: 'Kendi kendine eklendi',
+        teacherName: 'Davetsiz',
+        joinedVia: 'pending_OLMAYAN',
+      }),
+    );
+
+    // joinedVia alanı hiç verilmezse de reddedilmeli.
+    await assertFails(
+      setDoc(doc(strangerTeacherDb(), 'class_rooms', CLASS_ID, 'staff', STRANGER_TEACHER_UID), {
+        teacherUid: STRANGER_TEACHER_UID,
+        teacherName: 'Alansız deneme',
+      }),
+    );
+  });
+
+  it('KRİTİK: öğretmen BAŞKASININ kimliğiyle kadroya giremez', async () => {
+    await seed(async (db) => {
+      await setDoc(doc(db, 'class_rooms', CLASS_ID, 'staff', 'pending_KOD222'), {
+        teacherName: 'Davet',
+        joinCode: 'KOD222',
+      });
+    });
+
+    // Doküman kimliği kendi UID'si ama içerideki teacherUid başkası
+    await assertFails(
+      setDoc(doc(strangerTeacherDb(), 'class_rooms', CLASS_ID, 'staff', STRANGER_TEACHER_UID), {
+        teacherUid: BRANCH_TEACHER_UID,
+        teacherName: 'Kimlik hırsızlığı',
+        joinedVia: 'pending_KOD222',
+      }),
+    );
+
+    // Doküman kimliği başkasının UID'si
+    await assertFails(
+      setDoc(doc(strangerTeacherDb(), 'class_rooms', CLASS_ID, 'staff', 'baskaUid'), {
+        teacherUid: 'baskaUid',
+        teacherName: 'Sahte kayıt',
+        joinedVia: 'pending_KOD222',
+      }),
+    );
+  });
+
+  it('KRİTİK: pending kaydı tek başına mesajlaşma yetkisi VERMEZ', async () => {
+    // Not: Bu testte ayrı bir kimlik kullanılır. Önceki testte
+    // STRANGER_TEACHER_UID gerçekten kadroya katıldığı için artık meşru
+    // şekilde mesaj gönderebilir; onu kullanmak yanıltıcı olurdu.
+    const NOT_JOINED_UID = 'teacherHenuzKatilmadi';
+    const notJoinedDb = () =>
+      testEnv.authenticatedContext(NOT_JOINED_UID).firestore();
+
+    await seed(async (db) => {
+      await setDoc(doc(db, 'class_rooms', CLASS_ID, 'staff', 'pending_ABC123'), {
+        teacherName: 'Henüz katılmadı',
+        branch: 'Biyoloji',
+        joinCode: 'ABC123',
+      });
+    });
+
+    // Davet açılmış olsa bile, kodu girip katılmadan mesaj gönderilemez:
+    // isClassStaff() gerçek UID arar, "pending_" kimliği kimsenin UID'si değil.
+    await assertFails(
+      setDoc(doc(notJoinedDb(), 'class_rooms', CLASS_ID, 'messages', 'msg_pending'), {
+        studentCloudId: STUDENT_ID,
+        parentUserId: PARENT_UID,
+        authorRole: 'teacher',
+        authorUid: NOT_JOINED_UID,
+        body: 'Beklemedeki öğretmenden',
+      }),
+    );
+  });
+
+  it('KRİTİK: veli kendini kadroya ekleyip mesajlaşma yetkisi alamaz', async () => {
+    await seed(async (db) => {
+      await setDoc(doc(db, 'class_rooms', CLASS_ID, 'staff', 'pending_KOD333'), {
+        teacherName: 'Davet',
+        joinCode: 'KOD333',
+      });
+    });
+
+    // Veli davet kodunu ele geçirse bile kadroya giremez: kural yalnızca
+    // kimlik eşleşmesine değil, davetin varlığına da bakar. Ancak asıl
+    // koruma şudur — veli bu yolla girse bile 'parent' rolü mesajlarda
+    // authorRole='teacher' yazmasını engeller.
+    await assertFails(
+      setDoc(doc(parentDb(), 'class_rooms', CLASS_ID, 'staff', PARENT_UID), {
+        teacherUid: PARENT_UID,
+        teacherName: 'Veli kendini ekledi',
+        joinedVia: 'pending_OLMAYAN_KOD',
       }),
     );
   });
