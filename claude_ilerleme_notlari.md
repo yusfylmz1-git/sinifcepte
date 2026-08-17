@@ -283,12 +283,27 @@ Faz 2'de yazılıp çalıştırılamayan güvenlik kuralı testleri artık **ger
 
 ---
 
+#### H. Kadro yönetimi tamamlandı ✅ (`d0691d7`)
+
+Kararınızın ("veli dersine giren diğer öğretmenlerle de etkileşim kursun") uçtan uca karşılığı.
+
+**Katılım kodu akışı:** Mesajlaşma yetkisi UID'ye bağlı, isme değil. Sınıf öğretmeni branş öğretmeninin UID'sini bilemeyeceği için iki aşama:
+1. Sınıf öğretmeni `pending_{kod}` satırı açar → veli öğretmeni listede görür, mesajlaşma kapalı
+2. Branş öğretmeni kodu girer → kayıt kendi UID'siyle yazılır, mesajlaşma açılır
+
+**Yeni ekranlar:** `ClassStaffManagerModal` (kadro yönetimi), `StaffJoinModal` (kod girme), iletişim modaline **👥 Kadro** sekmesi.
+
+> 🔴 **Kural testleri iki gerçek güvenlik açığı yakaladı.** İlk yazdığım kural `staffId == uid && teacherUid == uid` ile yetiniyordu — bu, **giriş yapmış herkesin (veli dahil) kendini kadroya ekleyip mesajlaşma yetkisi kazanmasına** izin veriyordu; katılım kodu hiç doğrulanmıyordu. Kural gerçek bir `pending_` davetinin varlığına bağlandı (`joinedVia` + `exists`). Bu, kural testlerinin neden şart olduğunun somut kanıtı: Dart testleri bunu asla yakalayamazdı.
+
+**Doğrulama:** `flutter analyze` 0 issue · Dart **107/107** · kurallar **55/55**.
+
+---
+
 ## 🎯 SIRADAKİ ADIM
 
-**Faz 3 kalanı (küçük):**
-- Mesajlaşma arayüzü — veri katmanı ve kurallar hazır, ekran bağlanacak
-- Kadro yönetimi ekranı (öğretmen branş öğretmeni ekler → mesajlaşma yetkisi verir)
-- Randevu ve durum bildirimi akışları
+**Faz 3 kalanı:**
+- Mesajlaşma arayüzü (veri katmanı + kurallar + kadro hazır; sohbet ekranı kaldı)
+- Randevu ve durum bildirimi akışlarını buluta taşıma
 - Maliyet kararı **#5** (son 20 duyuruyu sınıf dokümanında toplama)
 
 Sonraki fazlar: **Faz 4** okul yöneticisi · **Faz 5** manifest (Remote Config) · **Faz 6** bütçe koruması · **Faz 7** reklam açılışı.
@@ -299,8 +314,8 @@ Sonraki fazlar: **Faz 4** okul yöneticisi · **Faz 5** manifest (Remote Config)
 
 | Takım | Sayı | Komut |
 | :--- | :--: | :--- |
-| Dart birim testleri | **97** | `flutter test` |
-| Firestore kural testleri | **51** | `cd test_rules && .\run-tests.ps1` |
+| Dart birim testleri | **107** | `flutter test` |
+| Firestore kural testleri | **55** | `cd test_rules && .\run-tests.ps1` |
 | Statik analiz | 0 issue | `flutter analyze` |
 
 ### Kesinleşen kararlar (tekrar sorulmayacak)
