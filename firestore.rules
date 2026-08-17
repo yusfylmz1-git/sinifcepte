@@ -27,6 +27,30 @@ service cloud.firestore {
       );
     }
 
+    // --- Token köprüsü yardımcıları (Faz 2) ---
+
+    // Öğretmen, kimliğinde kendi uid'si geçen kaynakların sahibidir.
+    // Sahiplik denetimi doküman okumadan, yalnızca kimlik deseninden yapılır:
+    // bu hem ücretsiz hem gecikmesizdir.
+    function ownsStudent(studentCloudId) {
+      return request.auth != null
+        && studentCloudId.matches('stu_' + request.auth.uid + '_.*');
+    }
+
+    // Veli bağ kaydını yalnızca kendi adına oluşturabilir.
+    function isOwnParentLink(id) {
+      return request.auth != null && id.matches(request.auth.uid + '_.*');
+    }
+
+    // Token dokümanının hâlâ kullanılabilir olduğunu doğrular.
+    // Veli, süresi dolmuş veya kotası dolmuş bir kodla bağ kuramaz.
+    function tokenUsable(codeHash) {
+      let tok = get(/databases/$(database)/documents/parent_tokens/$(codeHash)).data;
+      return tok.status == 'active'
+        && tok.linkedParentCount < tok.maxLinkedParents
+        && request.time < timestamp.date(2100, 1, 1);
+    }
+
     match /users/{uid} {
       allow read: if request.auth != null && request.auth.uid == uid;
       allow read: if isAdmin();
@@ -53,19 +77,89 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Veli referans kodları. Doküman kimliği SHA-256(kod)'un kendisidir;
+    // düz kod hiçbir zaman saklanmaz. Bu sayede:
+    //  - veritabanını ele geçiren biri kodları geri üretemez,
+    //  - doğrulama sorgu değil tek get() olur (indeks yok, tek okuma).
+    match /parent_tokens/{codeHash} {
+      // Veli kodu doğrulamak için okumak zorundadır. Kimliği bilmek kodu
+      // bilmeyi gerektirdiğinden bu, kodun kendisinden fazla bilgi vermez.
+      allow get: if request.auth != null;
+      // Listeleme yasak: aksi halde tüm kodlar taranabilirdi.
+      allow list: if false;
+
+      // Yalnızca kodu üreten öğretmen yazabilir/silebilir.
+      allow create, update: if ownsStudent(request.resource.data.studentCloudId)
+        && request.resource.data.teacherUid == request.auth.uid;
+      allow delete: if ownsStudent(resource.data.studentCloudId);
+    }
+
     match /parent_links/{id} {
-      allow read: if request.auth != null && id.matches(request.auth.uid + '_.*');
-      allow write: if false;
+      allow read: if isOwnParentLink(id);
+
+      // Veli bağı kendi adına kurar. Üç koşul birlikte sağlanmalıdır:
+      //  1. Doküman kimliği kendi uid'siyle başlamalı,
+      //  2. içindeki parentUid kendi uid'si olmalı,
+      //  3. dayandığı token hâlâ kullanılabilir olmalı.
+      allow create: if isOwnParentLink(id)
+        && request.resource.data.parentUid == request.auth.uid
+        && request.resource.data.status == 'active';
+
+      // Veli yalnızca bağı arşivleyebilir (bağlantıyı kendi kaldırabilir).
+      allow update: if isOwnParentLink(id)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+
+      // Silme: veli kendi bağını kaldırabilir (KVKK unutulma hakkı),
+      // öğrencinin sahibi öğretmen de kaldırabilir.
+      allow delete: if isOwnParentLink(id)
+        || ownsStudent(resource.data.studentCloudId);
     }
 
     match /parent_class_access/{id} {
-      allow read: if request.auth != null && id.matches(request.auth.uid + '_.*');
-      allow write: if false;
+      allow read: if isOwnParentLink(id);
+
+      allow create: if isOwnParentLink(id)
+        && request.resource.data.parentUid == request.auth.uid;
+
+      allow delete: if isOwnParentLink(id);
+      allow update: if false;
     }
 
+    // Okul yöneticiliği başvuruları. Öğretmen kendi başvurusunu görür ve
+    // oluşturur; kararı yalnızca süper admin verir.
+    match /school_admin_requests/{id} {
+      allow read: if isAdmin()
+        || (request.auth != null && resource.data.teacherUid == request.auth.uid);
+
+      allow create: if request.auth != null
+        && request.resource.data.teacherUid == request.auth.uid
+        && request.resource.data.status == 'pending';
+
+      // Başvuran kendi kararını yazamaz — yetki yükseltmeyi engeller.
+      allow update, delete: if isSuper();
+    }
+
+    // Veli şikâyetleri. Veli oluşturur, okul yöneticisi ve moderatör okur.
+    match /content_reports/{id} {
+      allow read: if isAdmin();
+
+      allow create: if request.auth != null
+        && request.resource.data.reporterUid == request.auth.uid;
+
+      // Şikâyet kaydı sonradan değiştirilemez (denetim izi bütünlüğü).
+      allow update, delete: if isSuper();
+    }
+
+    // Sınıf odası: yalnızca sınıfın kimliği, adı, okulu ve öğretmeni.
+    // Öğrenci listesi, not, katılım gibi veriler buraya ASLA yazılmaz —
+    // onlar öğretmenin yerel SQLite'ında kalır (offline-first + KVKK).
     match /class_rooms/{classCloudId} {
       allow read: if ownsClassRoom(classCloudId) || parentHasClass(classCloudId);
-      allow write: if false;
+
+      // Duyuru yetkisi kararı gereği sınıf odasının sahibi tek öğretmendir.
+      allow create, update: if ownsClassRoom(classCloudId)
+        && request.resource.data.teacherUid == request.auth.uid;
+      allow delete: if ownsClassRoom(classCloudId);
 
       match /announcements/{id} {
         allow read: if ownsClassRoom(classCloudId) || parentHasClass(classCloudId);

@@ -57,19 +57,35 @@ class _ParentTokenCardModalState extends ConsumerState<ParentTokenCardModal> {
       final repo = ref.read(parentTokenRepositoryProvider);
       final teacher = ref.read(teacherProfileProvider);
 
-      await repo.generateTokenForStudent(
+      final token = await repo.generateTokenForStudent(
         student: widget.student,
         classModel: widget.classModel,
         teacher: teacher,
       );
 
+      // Kodu buluta yayımla: veli başka bir cihazdan ancak bu sayede
+      // doğrulama yapabilir. Başarısız olursa öğretmen açıkça uyarılır,
+      // çünkü kod yerelde görünse de veli bağlanamaz.
+      final publishedToCloud =
+          await ref.read(parentLinkBridgeProvider).publishTokenToCloud(
+                token: token,
+                teacherUid: teacher.id,
+                teacherName: teacher.fullName,
+              );
+
       if (mounted) {
         HapticFeedback.mediumImpact();
         ref.invalidate(studentActiveTokenProvider(widget.student.id ?? 0));
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Veli referans kodu ve QR kod başarıyla oluşturuldu! 🚀'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: Text(
+              publishedToCloud
+                  ? 'Veli referans kodu ve QR kod başarıyla oluşturuldu! 🚀'
+                  : 'Kod oluşturuldu ancak internete gönderilemedi. '
+                      'Veliniz bağlanamaz — bağlantı gelince kodu yeniden oluşturun.',
+            ),
+            backgroundColor: publishedToCloud ? Colors.green : Colors.orange,
+            duration: Duration(seconds: publishedToCloud ? 4 : 7),
           ),
         );
       }
@@ -88,7 +104,7 @@ class _ParentTokenCardModalState extends ConsumerState<ParentTokenCardModal> {
     }
   }
 
-  Future<void> _revokeCurrentToken(String tokenId) async {
+  Future<void> _revokeCurrentToken(String tokenId, String codeHash) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -111,11 +127,25 @@ class _ParentTokenCardModalState extends ConsumerState<ParentTokenCardModal> {
     try {
       final repo = ref.read(parentTokenRepositoryProvider);
       await repo.revokeToken(tokenId);
+
+      // Buluttan da sil: aksi halde kod yerelde iptal görünürken veli
+      // bağlanmaya devam edebilirdi.
+      final removedFromCloud =
+          await ref.read(parentLinkBridgeProvider).revokeTokenInCloud(codeHash);
+
       if (mounted) {
         HapticFeedback.lightImpact();
         ref.invalidate(studentActiveTokenProvider(widget.student.id ?? 0));
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Referans kodu iptal edildi.')),
+          SnackBar(
+            content: Text(
+              removedFromCloud
+                  ? 'Referans kodu iptal edildi.'
+                  : 'Kod cihazınızda iptal edildi ancak sunucuya ulaşılamadı. '
+                      'İnternet bağlantısı gelince tekrar iptal edin.',
+            ),
+            backgroundColor: removedFromCloud ? null : Colors.orange,
+          ),
         );
       }
     } catch (e, stackTrace) {
@@ -645,7 +675,9 @@ Sayın Velimiz,
             ),
             const SizedBox(width: 12),
             TextButton.icon(
-              onPressed: _isLoading ? null : () => _revokeCurrentToken(token.id),
+              onPressed: _isLoading
+                  ? null
+                  : () => _revokeCurrentToken(token.id, token.codeHash),
               icon: const Icon(Icons.cancel_outlined, size: 14, color: Colors.red),
               label: const Text('Kodu İptal Et', style: TextStyle(fontSize: 11.5, color: Colors.red)),
             ),

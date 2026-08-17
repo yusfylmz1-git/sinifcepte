@@ -1,0 +1,14 @@
+{
+  "name": "sinifcepte-rules-tests",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "SınıfCepte Firestore güvenlik kuralı testleri (emülatör tabanlı)",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore --project sinifcepte-test \"node --test rules.test.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.0.0"
+  }
+}

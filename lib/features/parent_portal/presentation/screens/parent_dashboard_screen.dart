@@ -553,7 +553,9 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
     final code = _quickCodeCtrl.text.trim();
     final studentNoStr = _quickStudentNoCtrl.text.trim();
     final parentName = _quickParentNameCtrl.text.trim();
-    final phone = _quickPhoneCtrl.text.trim();
+    // Veli telefonu bilinçli olarak buluta gönderilmez: öğretmen ve veli
+    // birbirinin numarasını görmez (KVKK + proje anayasası). Numara yalnızca
+    // velinin kendi cihazında kalır.
 
     if (code.isEmpty || studentNoStr.isEmpty || parentName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -580,19 +582,28 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
     setState(() => _isConnecting = true);
 
     try {
-      final repo = ref.read(parentTokenRepositoryProvider);
-      final result = await repo.verifyAndLinkParent(
-        code: code,
-        studentNumber: studentNo,
+      // Bağlama bulut üzerinden yapılır: öğretmenin ürettiği kod bu cihazda
+      // bulunmadığı için doğrulama yerel depodan yapılamaz.
+      final identity = ref.read(parentAuthServiceProvider).currentIdentity;
+      final bridge = ref.read(parentLinkBridgeProvider);
+
+      final bridgeResult = await bridge.verifyAndLink(
+        inputCode: code,
+        inputStudentNumber: studentNo.toString(),
+        parentUid: identity?.uid ?? '',
         parentName: parentName,
-        parentPhone: phone.isNotEmpty ? phone : null,
         relation: _quickRelation,
       );
 
+      final result = <String, dynamic>{
+        'success': bridgeResult.success,
+        'message': bridgeResult.message,
+      };
+
       if (result['success'] == true) {
-        // KVKK Kaydı
+        // KVKK Kaydı — kalıcı Firebase UID'si ile (cihaz değişse de korunur)
         await KvkkConsentService.recordConsent(
-          userId: 'puser_${DateTime.now().millisecondsSinceEpoch}',
+          userId: identity?.uid ?? 'puser_${DateTime.now().millisecondsSinceEpoch}',
         );
 
         ref.invalidate(myConnectedChildrenProvider);
@@ -1068,24 +1079,29 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                 final c = codeCtrl.text.trim();
                 final n = int.tryParse(noCtrl.text.trim());
                 final parentName = nameCtrl.text.trim().isNotEmpty ? nameCtrl.text.trim() : 'Veli';
-                final phone = phoneCtrl.text.trim();
+                // Telefon buluta gönderilmez (KVKK): yalnızca velinin cihazında kalır.
 
                 if (c.isNotEmpty && n != null) {
                   Navigator.of(ctx).pop();
-                  final repo = ref.read(parentTokenRepositoryProvider);
-                  final res = await repo.verifyAndLinkParent(
-                    code: c,
-                    studentNumber: n,
-                    parentName: parentName,
-                    parentPhone: phone.isNotEmpty ? phone : null,
-                    relation: relation,
-                  );
+                  final identity =
+                      ref.read(parentAuthServiceProvider).currentIdentity;
+                  final res =
+                      await ref.read(parentLinkBridgeProvider).verifyAndLink(
+                            inputCode: c,
+                            inputStudentNumber: n.toString(),
+                            parentUid: identity?.uid ?? '',
+                            parentName: parentName,
+                            relation: relation,
+                          );
                   ref.invalidate(myConnectedChildrenProvider);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(res['success'] == true ? '✅ ${res['message']}' : '⚠️ ${res['message']}'),
-                        backgroundColor: res['success'] == true ? const Color(0xFF10B981) : Colors.redAccent,
+                        content: Text(
+                          res.success ? '✅ ${res.message}' : '⚠️ ${res.message}',
+                        ),
+                        backgroundColor:
+                            res.success ? const Color(0xFF10B981) : Colors.redAccent,
                       ),
                     );
                   }

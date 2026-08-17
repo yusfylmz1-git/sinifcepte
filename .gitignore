@@ -31,6 +31,12 @@ key.properties
 *.sqlite
 *.sqlite3
 
+# Node (Firestore kural testleri)
+node_modules/
+firebase-debug.*.log
+firestore-debug.log
+ui-debug.log
+
 # IntelliJ & VS Code
 *.iml
 *.ipr

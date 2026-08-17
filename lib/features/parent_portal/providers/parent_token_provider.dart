@@ -1,11 +1,29 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/parent_link_model.dart';
 import '../data/models/parent_token_model.dart';
+import '../data/repositories/cloud_token_repository.dart';
 import '../data/repositories/parent_token_repository.dart';
+import '../data/services/parent_auth_service.dart';
+import '../data/services/parent_link_bridge.dart';
 
-/// ParentTokenRepository Sağlayıcısı
+/// ParentTokenRepository Sağlayıcısı (yerel depo — öğretmen tarafı)
 final parentTokenRepositoryProvider = Provider<ParentTokenRepository>((ref) {
   return ParentTokenRepository();
+});
+
+/// Bulut token deposu (öğretmen ↔ veli köprüsünün alt katmanı)
+final cloudTokenRepositoryProvider = Provider<CloudTokenRepository>((ref) {
+  return CloudTokenRepository();
+});
+
+/// Token köprüsü: kodu buluta yayımlar ve veli tarafında doğrular.
+final parentLinkBridgeProvider = Provider<ParentLinkBridge>((ref) {
+  return ParentLinkBridge(cloudRepo: ref.watch(cloudTokenRepositoryProvider));
+});
+
+/// Veli kimlik doğrulama servisi (yalnızca Google).
+final parentAuthServiceProvider = Provider<ParentAuthService>((ref) {
+  return ParentAuthService();
 });
 
 /// Belirli Bir Öğrencinin Aktif Veli Referans Kodu Provider'ı

@@ -295,16 +295,16 @@ class ParentTokenRepository {
     final tokens = await _loadTokens();
 
     // 1. Kod Hash Eşleşmesi
+    //
+    // Yalnızca hash karşılaştırılır. Eski sürümdeki düz metin yedeği
+    // kaldırıldı: bulut tarafında düz kod hiç saklanmadığı için orada zaten
+    // imkânsızdı, yerelde tutulması ise iki depoyu farklı güvenlik
+    // seviyesinde bırakıyordu.
     final inputCodeHash = ParentTokenModel.generateSha256(cleanCode);
     final matchingTokens = tokens.where((t) => t.codeHash == inputCodeHash).toList();
 
     if (matchingTokens.isEmpty) {
-      // Düz metin karşılaştırması yedeği (büyük/küçük harf toleransı)
-      final directMatch = tokens.where((t) => t.code.replaceAll(' ', '').toUpperCase() == cleanCode).toList();
-      if (directMatch.isEmpty) {
-        return TokenVerificationResult.failure('Geçersiz referans kodu. Lütfen öğretmeninizin verdiği kodu kontrol edin.');
-      }
-      matchingTokens.addAll(directMatch);
+      return TokenVerificationResult.failure('Geçersiz referans kodu. Lütfen öğretmeninizin verdiği kodu kontrol edin.');
     }
 
     final token = matchingTokens.first;
@@ -321,9 +321,9 @@ class ParentTokenRepository {
     }
 
     // 3. İkinci Faktör Doğrulaması (Öğrenci No Hash Kontrolü)
+    // Burada da yalnızca hash karşılaştırılır (bkz. 1. adımdaki gerekçe).
     final inputNumberHash = ParentTokenModel.generateSha256(cleanNumber);
-    final isNumberValid = token.secondFactorHash == inputNumberHash ||
-        token.studentNumber.toString().trim() == cleanNumber;
+    final isNumberValid = token.secondFactorHash == inputNumberHash;
 
     if (!isNumberValid) {
       return TokenVerificationResult.failure('Öğrenci okul numarası eşleşmedi! Güvenlik nedeniyle bağlantı kurulamadı.');
