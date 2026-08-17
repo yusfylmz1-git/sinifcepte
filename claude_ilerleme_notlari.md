@@ -312,13 +312,31 @@ Kararınızın ("veli dersine giren diğer öğretmenlerle de etkileşim kursun"
 
 ---
 
+#### J. Faz 3 TAMAMLANDI ✅ (`08450dc`) — randevu ve durum bildirimleri
+
+- **Durum bildirimleri:** Veli gönderir (ilaç, erken çıkış, not), öğretmen ve kadrodaki branş öğretmeni görüp "görüldü" işaretler.
+- **Randevular:** Veli talep eder, öğretmen onaylar/reddeder, veli iptal edebilir. Çakışma denetimi buluttan yapılıyor.
+
+**Kural sıkılaştırmaları:** Veli bildirimi `acknowledged` durumuyla oluşturamıyor; gönderdiği bildirimin **içeriğini değiştiremiyor** (öğretmen "ilaç 12:30" diye okuduktan sonra metin değişirse sorumluluk belirsizleşir); randevuyu kendisi onaylayamıyor.
+
+> 🔴 **Sessiz veri tutarsızlığı bulundu ve düzeltildi.** Öğretmen tarafındaki duyuru silme, randevu onay/red ve bildirim işaretleme butonları hâlâ **yerel depoya** yazıyordu. `flutter analyze` bunu yakalamıyordu çünkü kod geçerliydi — ama öğretmen duyuruyu sildiğinde **velilerde görünmeye devam ederdi**, randevu yanıtı veliye hiç ulaşmazdı. Bu tür hatalar ancak veri akışını uçtan uca takip ederek bulunuyor.
+
+**Doğrulama:** `flutter analyze` 0 issue · Dart **125/125** · kurallar **68/68**.
+
+---
+
 ## 🎯 SIRADAKİ ADIM
 
-**Faz 3 kalanı (küçük parçalar):**
-- Randevu ve durum bildirimi akışlarını buluta taşıma (şu an hâlâ `SharedPreferences`)
-- Maliyet kararı **#5** (son 20 duyuruyu sınıf dokümanında toplama)
+**Faz 4 — Okul yöneticisi.** Model (`SchoolAdminRequestModel`) ve kurallar Faz 1-2'de hazırlandı; kalan iş:
+- Öğretmen profilinden yönetici başvuru ekranı
+- Admin portalına onay kuyruğu
+- Onaylanınca `adminRole` claim yazımı (Admin SDK betiği)
+- Yönetici paneli: öğretmen doğrulama + şikâyet listesi
+- `isVerifiedBySchoolAdmin` nihayet okunacak (mavi rozet)
 
-Sonraki fazlar: **Faz 4** okul yöneticisi · **Faz 5** manifest (Remote Config) · **Faz 6** bütçe koruması · **Faz 7** reklam açılışı.
+Sonraki fazlar: **Faz 5** manifest (Remote Config) · **Faz 6** bütçe koruması · **Faz 7** reklam açılışı.
+
+**Ertelenen:** Maliyet kararı **#5** (son 20 duyuruyu sınıf dokümanında toplama) — mevcut delta senkron zaten okumaların çoğunu sıfırlıyor; bu ek optimizasyon gerçek kullanım verisi görülmeden yapılmamalı.
 
 ---
 
@@ -334,6 +352,8 @@ Bugün itibarıyla iki ayrı cihazda şunlar çalışıyor:
 6. Öğretmen kadroya branş öğretmeni ekler → katılım kodu üretilir
 7. Branş öğretmeni kodu girer → **velilerle yazışma yetkisi açılır**
 8. Veli ↔ öğretmen birebir mesajlaşır
+9. Veli durum bildirimi gönderir (ilaç/erken çıkış) → **öğretmen görür ve onaylar**
+10. Veli randevu talep eder → **öğretmen onaylar/reddeder**, veli yanıtı görür
 
 ---
 
@@ -341,8 +361,8 @@ Bugün itibarıyla iki ayrı cihazda şunlar çalışıyor:
 
 | Takım | Sayı | Komut |
 | :--- | :--: | :--- |
-| Dart birim testleri | **115** | `flutter test` |
-| Firestore kural testleri | **55** | `cd test_rules && .\run-tests.ps1` |
+| Dart birim testleri | **125** | `flutter test` |
+| Firestore kural testleri | **68** | `cd test_rules && .\run-tests.ps1` |
 | Statik analiz | 0 issue | `flutter analyze` |
 
 ### Kesinleşen kararlar (tekrar sorulmayacak)
