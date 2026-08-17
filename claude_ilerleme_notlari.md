@@ -325,16 +325,35 @@ Kararınızın ("veli dersine giren diğer öğretmenlerle de etkileşim kursun"
 
 ---
 
+#### K. Faz 4 TAMAMLANDI ✅ (`1ae199a`) — okul yöneticisi
+
+Kurgunun son ana parçası. **Yönetici rolü opsiyonel kaldı** — yöneticisi olmayan okullarda her şey normal çalışıyor.
+
+- `SchoolAdminRepository` — başvuru kimliği deterministik (`req_{uid}`): aynı kişi kuyruğu dolduramıyor, durum tek `get()` ile okunuyor.
+- `SchoolAdminRequestView` — başvuru ekranı; yöneticiliğin opsiyonel olduğunu açıkça yazıyor.
+- `SchoolAdminPanelView` — öğretmen onay listesi + şikâyet listesi.
+- `scripts/admin/approve_school_admin.mjs` — `--list` / `--approve` / `--reject`. **Claim yazımı burada olur**; istemci kendine yönetici diyemez.
+
+**K6 kapandı:** `isVerifiedBySchoolAdmin` alanı ilk analizde "var ama hiç kullanılmıyor" diye işaretlenmişti. Artık profilde **mavi doğrulama rozeti** — bir kapı değil, rozet.
+
+> 🔴 **Kural boşluğu bulundu ve kapatıldı.** `content_reports` kuralı yalnızca `isAdmin()` (süper/moderatör) izni veriyordu — yani **okul yöneticisi şikâyetleri okuyamıyordu**, oysa kurgunuzda yöneticinin işi tam olarak bu. `isSchoolAdminOf()` eklendi ve yetki **kendi okuluyla sınırlandı**: bir okulun yöneticisi başka okulun şikâyetini göremiyor.
+
+> 🔴 **İkinci sessiz hata:** Veli şikâyeti yalnızca `SharedPreferences`'a yazılıyordu ama arayüz **"okul idaresine iletildi"** diyordu. Artık buluta gidiyor; başarısız olursa kullanıcı doğru bilgilendiriliyor.
+
+**Doğrulama:** `flutter analyze` 0 issue · Dart **139/139** · kurallar **78/78**.
+
+---
+
 ## 🎯 SIRADAKİ ADIM
 
-**Faz 4 — Okul yöneticisi.** Model (`SchoolAdminRequestModel`) ve kurallar Faz 1-2'de hazırlandı; kalan iş:
-- Öğretmen profilinden yönetici başvuru ekranı
-- Admin portalına onay kuyruğu
-- Onaylanınca `adminRole` claim yazımı (Admin SDK betiği)
-- Yönetici paneli: öğretmen doğrulama + şikâyet listesi
-- `isVerifiedBySchoolAdmin` nihayet okunacak (mavi rozet)
+**Faz 5 — Manifest senkronu (Remote Config).** Analizdeki **K2**'yi kapatacak:
+- `SyncService`'teki sabit manifest simülasyonu gerçek okumayla değiştirilecek
+- Firestore yerine **Remote Config** kullanılacak (maliyet kararı #3 — ücretsiz ve kotasız)
+- Admin portalın "+1 Artır (Yayınla)" butonu nihayet mobili etkileyecek
+- `pendingSchoolSubmissions` → `school_merge_queue` (K4'ün kalanı)
+- Bakım modu ve asgari sürüm kontrolü
 
-Sonraki fazlar: **Faz 5** manifest (Remote Config) · **Faz 6** bütçe koruması · **Faz 7** reklam açılışı.
+Sonra: **Faz 6** bütçe koruması · **Faz 7** reklam açılışı.
 
 **Ertelenen:** Maliyet kararı **#5** (son 20 duyuruyu sınıf dokümanında toplama) — mevcut delta senkron zaten okumaların çoğunu sıfırlıyor; bu ek optimizasyon gerçek kullanım verisi görülmeden yapılmamalı.
 
@@ -354,6 +373,8 @@ Bugün itibarıyla iki ayrı cihazda şunlar çalışıyor:
 8. Veli ↔ öğretmen birebir mesajlaşır
 9. Veli durum bildirimi gönderir (ilaç/erken çıkış) → **öğretmen görür ve onaylar**
 10. Veli randevu talep eder → **öğretmen onaylar/reddeder**, veli yanıtı görür
+11. Öğretmen yöneticilik başvurusu yapar → süper admin betikle onaylar → **yönetici paneli açılır**
+12. Veli şikâyet bildirir → **okul yöneticisi kendi okulunun şikâyetlerini görür**
 
 ---
 
@@ -361,9 +382,27 @@ Bugün itibarıyla iki ayrı cihazda şunlar çalışıyor:
 
 | Takım | Sayı | Komut |
 | :--- | :--: | :--- |
-| Dart birim testleri | **125** | `flutter test` |
-| Firestore kural testleri | **68** | `cd test_rules && .\run-tests.ps1` |
+| Dart birim testleri | **139** | `flutter test` |
+| Firestore kural testleri | **78** | `cd test_rules && .\run-tests.ps1` |
 | Statik analiz | 0 issue | `flutter analyze` |
+
+## 🔑 SÜPER ADMİN KURULUMU (bir kez yapılmalı)
+
+Yönetici onaylarını verebilmek için:
+```bash
+# 1. Firebase Console > Project Settings > Service accounts > Generate new private key
+set GOOGLE_APPLICATION_CREDENTIALS=C:\secrets\sinifcepte-sa.json
+
+# 2. Bağımlılık
+cd scripts/admin && npm i firebase-admin
+
+# 3. Bekleyen başvuruları gör
+node scripts/admin/approve_school_admin.mjs --list
+
+# 4. Onayla
+node scripts/admin/approve_school_admin.mjs --uid <ogretmenUid> --approve
+```
+Onay sonrası öğretmenin çıkış/giriş yapması veya panelde **"Yetkiyi yenile"** düğmesine basması gerekir: claim'ler ID token içinde taşınır ve token saatte bir yenilenir.
 
 ### Kesinleşen kararlar (tekrar sorulmayacak)
 | Konu | Karar |
