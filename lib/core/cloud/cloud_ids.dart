@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// SınıfCepte bulut kimlik şeması.
 ///
 /// Yerel SQLite kimlikleri (`int id`) yalnızca tek cihazda anlamlıdır: iki
@@ -109,10 +111,28 @@ class CloudIds {
     return parts[1];
   }
 
-  /// Firebase UID'leri alt çizgi içermez; içerirse kimlik şeması bozulur
-  /// ve sahiplik kontrolü sessizce yanlış sonuç verir.
+  /// Verilen kimlik gerçek bir Firebase UID mi?
+  ///
+  /// Firebase UID'leri alt çizgi içermez. Google girişi yapılmamışsa
+  /// öğretmen profili `local_teacher` gibi yer tutucu bir kimlik taşır;
+  /// bu kimlikle bulut yolu üretilirse sahiplik kontrolü sessizce yanlış
+  /// sonuç verir.
+  static bool isValidUid(String uid) =>
+      uid.isNotEmpty && !uid.contains('_');
+
+  /// Kimlik geçersizse geliştiriciyi uyarır.
+  ///
+  /// Eskiden `assert` ile ÇÖKERTİYORDU. Yer tutucu kimlikle (giriş
+  /// yapılmamış öğretmen) bulut ekranı açıldığında uygulama kapanıyor ve
+  /// kullanıcı sebebini anlamıyordu. Artık yalnızca loglanır; çağıran
+  /// taraf [isValidUid] ile önden kontrol edip kullanıcıya anlamlı bir
+  /// mesaj göstermelidir.
   static void _assertUid(String uid) {
-    assert(uid.isNotEmpty, 'Bulut kimliği için UID boş olamaz.');
-    assert(!uid.contains('_'), 'Firebase UID alt çizgi içeremez: $uid');
+    if (!isValidUid(uid)) {
+      debugPrint(
+        'CloudIds: geçersiz UID ("$uid"). Google girişi yapılmamış olabilir; '
+        'bulut özellikleri bu kimlikle çalışmaz.',
+      );
+    }
   }
 }

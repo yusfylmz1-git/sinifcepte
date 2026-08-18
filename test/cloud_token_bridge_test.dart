@@ -120,6 +120,31 @@ void main() {
       expect(linkId.startsWith('parentAyse_'), isTrue);
     });
 
+    test('KRİTİK: yer tutucu kimlik ÇÖKERTMEZ', () {
+      // Google girişi yapılmamış öğretmenin profili 'local_teacher'
+      // taşır (alt çizgi içerir). Eskiden assert ile uygulama
+      // çöküyordu; artık yalnızca uyarı loglanır.
+      expect(
+        () => CloudIds.classId(teacherUid: 'local_teacher', localClassId: 5),
+        returnsNormally,
+      );
+      expect(
+        () => CloudIds.studentId(teacherUid: '', localStudentId: 1),
+        returnsNormally,
+      );
+    });
+
+    test('isValidUid yer tutucu kimlikleri ayırt eder', () {
+      // Çağıran taraf bununla önden kontrol edip kullanıcıya anlamlı
+      // mesaj gösterir.
+      expect(CloudIds.isValidUid('local_teacher'), isFalse);
+      expect(CloudIds.isValidUid(''), isFalse);
+      expect(CloudIds.isValidUid('puser_123'), isFalse);
+
+      // Gerçek Firebase UID'leri alt çizgi içermez.
+      expect(CloudIds.isValidUid('abc123XYZ'), isTrue);
+    });
+
     test('Yerel kimlik bulut kimliğinden geri okunur', () {
       expect(CloudIds.localIdOf('stu_uidAhmet_42'), 42);
       expect(CloudIds.localIdOf('cls_uidAhmet_7'), 7);

@@ -407,6 +407,13 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
   // yazışabilmelidir. Mesajlaşma yetkisi bu kadrodan yönetilir.
   Widget _buildStaffTab(BuildContext context, bool isDark) {
     final teacher = ref.watch(teacherProfileProvider);
+
+    // Google girişi yapılmamışsa bulut kimliği üretilemez. Sessizce boş
+    // liste göstermek yerine sebebi söylenir.
+    if (!CloudIds.isValidUid(teacher.id)) {
+      return _buildSignInRequired(isDark);
+    }
+
     final classCloudId = CloudIds.classId(
       teacherUid: teacher.id,
       localClassId: widget.classModel.id ?? 0,
@@ -543,6 +550,42 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Bulut özellikleri için Google girişi gerektiğini anlatır.
+  Widget _buildSignInRequired(bool isDark) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.cloud_off_rounded, size: 42, color: Colors.grey.shade400),
+            const SizedBox(height: 12),
+            Text(
+              'Google girişi gerekiyor',
+              style: GoogleFonts.outfit(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Duyuru, mesajlaşma ve kadro özellikleri velilerle paylaşılan '
+              'buluta bağlıdır. Profil ekranından Google ile giriş yaptığınızda '
+              'bu bölüm açılır. Sınıf ve öğrenci kayıtlarınız girişten '
+              'bağımsız olarak cihazınızda çalışmaya devam eder.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(
+                fontSize: 12.5,
+                color: Colors.grey,
+                height: 1.45,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

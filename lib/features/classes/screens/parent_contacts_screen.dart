@@ -520,25 +520,39 @@ class _ParentContactsScreenState extends ConsumerState<ParentContactsScreen> {
               ],
             ),
           ] else ...[
-            // Telefon Kayıtlı Değilse Uyarı ve Hızlı Ekle
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Telefon Kayıtlı Değilse Uyarı ve Hızlı Ekle.
+            //
+            // Uyarı metni ve iki buton tek satıra sığmıyordu (dar ekranda
+            // 34px taşma). Wrap kullanılıyor: yer varsa yan yana, yoksa
+            // buton grubu alt satıra iner. Böylece 320px ekranda bile
+            // taşma olmaz (AGENTS.md Madde 8).
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.warning_amber_rounded, size: 16, color: Colors.orange.shade700),
                     const SizedBox(width: 6),
-                    Text(
-                      'Veli Telefonu Girilmedi',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.orange.shade700,
+                    Flexible(
+                      child: Text(
+                        'Veli Telefonu Girilmedi',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange.shade700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
                 ),
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     OutlinedButton.icon(
                       onPressed: () => ParentTokenCardModal.show(
@@ -547,10 +561,16 @@ class _ParentContactsScreenState extends ConsumerState<ParentContactsScreen> {
                         classModel: widget.classModel,
                       ),
                       icon: const Icon(Icons.qr_code_2_rounded, size: 15, color: AppColors.primary),
-                      label: const Text('Veli Kodu', style: TextStyle(fontSize: 11.5, color: AppColors.primary)),
+                      label: const Text(
+                        'Veli Kodu',
+                        style: TextStyle(fontSize: 11.5, color: AppColors.primary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       style: OutlinedButton.styleFrom(
                         side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
                         visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                     ),
@@ -558,11 +578,17 @@ class _ParentContactsScreenState extends ConsumerState<ParentContactsScreen> {
                     OutlinedButton.icon(
                       onPressed: () => _openSingleEditModal(context, student),
                       icon: const Icon(Icons.add_rounded, size: 16),
-                      label: const Text('Numara Ekle', style: TextStyle(fontSize: 11.5)),
+                      label: const Text(
+                        'Numara Ekle',
+                        style: TextStyle(fontSize: 11.5),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.orange.shade800,
                         side: BorderSide(color: Colors.orange.shade400),
                         visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                     ),
