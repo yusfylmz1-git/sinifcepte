@@ -108,6 +108,37 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Okul öğretmen dizini.
+    //
+    // Öğretmen okulunu seçtiğinde buraya kaydolur. Amaç: sınıf öğretmeni
+    // kadroyu kurarken meslektaşlarını kod alışverişi olmadan seçebilsin.
+    //
+    // Gizlilik: yalnızca ad, branş ve e-posta bulunur — öğrenci, sınıf
+    // veya not verisi ASLA. Aynı okuldaki öğretmenler birbirini görür
+    // (gerçek hayatta da öyle); veliler bu listeye erişemez.
+    match /school_teachers/{id} {
+      // Öğretmen rolündeki kullanıcılar okur (kadro seçimi için).
+      //
+      // Veli rolü hariç tutulur: velinin öğretmen dizinine ihtiyacı yok,
+      // dersine giren öğretmenleri sınıf kadrosundan görür.
+      //
+      // Not: `!isParent()` YETMEZ. Öğretmenlerde `role` claim'i hiç
+      // tanımlı olmadığı için `request.auth.token.role` erişimi kural
+      // motorunda değerlendirme hatası verir ve erişim tümden reddedilir.
+      // Bu yüzden claim'in VARLIĞI ayrıca denetlenir.
+      allow read: if request.auth != null
+        && (!('role' in request.auth.token) || request.auth.token.role != 'parent');
+
+      // Herkes yalnızca KENDİ kaydını yazabilir: doküman kimliği
+      // "{schoolId}_{uid}" olduğu için kimlik ve içerik birlikte denetlenir.
+      allow create, update: if request.auth != null
+        && request.resource.data.teacherUid == request.auth.uid
+        && id == request.resource.data.schoolId + '_' + request.auth.uid;
+
+      allow delete: if request.auth != null
+        && resource.data.teacherUid == request.auth.uid;
+    }
+
     // Veli referans kodları. Doküman kimliği SHA-256(kod)'un kendisidir;
     // düz kod hiçbir zaman saklanmaz. Bu sayede:
     //  - veritabanını ele geçiren biri kodları geri üretemez,

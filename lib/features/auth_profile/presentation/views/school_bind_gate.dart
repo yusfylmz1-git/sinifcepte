@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -5,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../navigation/screens/main_navigation_screen.dart';
 import '../../../schools/data/models/school_model.dart';
 import '../../../schools/presentation/widgets/school_selection_modal.dart';
+import '../../data/repositories/school_directory_repository.dart';
 import '../../providers/teacher_profile_provider.dart';
 
 /// Öğretmen kromuna tek giriş: kanonik okul bağı yoksa MainNavigation açılmaz.
@@ -43,6 +46,23 @@ class _SchoolBindGateState extends ConsumerState<SchoolBindGate> {
       schoolType: school.type,
     );
     await ref.read(teacherProfileProvider.notifier).saveProfile(updated);
+
+    // Okul bağını buluta da yaz: böylece aynı okuldaki öğretmenler
+    // birbirini kadro listesinde görebilir ve sınıf kadrosu kod
+    // alışverişi olmadan kurulabilir.
+    //
+    // Başarısız olması akışı bozmaz (offline-first): öğretmen çalışmaya
+    // devam eder, yalnızca meslektaşlarının listesinde görünmez.
+    unawaited(
+      SchoolDirectoryRepository().registerTeacher(
+        teacherUid: updated.id,
+        schoolId: school.id,
+        fullName: updated.fullName,
+        branch: updated.branch,
+        email: updated.email,
+      ),
+    );
+
     if (mounted) setState(() {});
   }
 

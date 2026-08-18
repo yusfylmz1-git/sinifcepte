@@ -1074,3 +1074,95 @@ describe('11. Okul yöneticisi yetkisi', () => {
     );
   });
 });
+
+describe('12. Okul öğretmen dizini (school_teachers)', () => {
+  const SCHOOL = 'meb_16_123';
+  const DOC_ID = `${SCHOOL}_${TEACHER_UID}`;
+
+  before(async () => {
+    await testEnv.clearFirestore();
+    await seed(async (db) => {
+      await setDoc(doc(db, 'school_teachers', DOC_ID), {
+        teacherUid: TEACHER_UID,
+        schoolId: SCHOOL,
+        fullName: 'Ahmet Yılmaz',
+        branch: 'Matematik',
+      });
+    });
+  });
+
+  it('öğretmen meslektaş dizinini okuyabilir (kadro seçimi için)', async () => {
+    await assertSucceeds(
+      getDoc(doc(otherTeacherDb(), 'school_teachers', DOC_ID)),
+    );
+  });
+
+  it('öğretmen kendi kaydını yazabilir', async () => {
+    await assertSucceeds(
+      setDoc(
+        doc(otherTeacherDb(), 'school_teachers', `${SCHOOL}_${OTHER_TEACHER_UID}`),
+        {
+          teacherUid: OTHER_TEACHER_UID,
+          schoolId: SCHOOL,
+          fullName: 'Mehmet Demir',
+          branch: 'Fizik',
+        },
+      ),
+    );
+  });
+
+  it('KRİTİK: öğretmen BAŞKASI adına kayıt yazamaz', async () => {
+    // İçerideki uid başkası
+    await assertFails(
+      setDoc(
+        doc(otherTeacherDb(), 'school_teachers', `${SCHOOL}_${OTHER_TEACHER_UID}`),
+        {
+          teacherUid: TEACHER_UID,
+          schoolId: SCHOOL,
+          fullName: 'Sahte kayıt',
+        },
+      ),
+    );
+
+    // Doküman kimliği başkasının uid'siyle bitiyor
+    await assertFails(
+      setDoc(doc(otherTeacherDb(), 'school_teachers', DOC_ID), {
+        teacherUid: OTHER_TEACHER_UID,
+        schoolId: SCHOOL,
+        fullName: 'Kimlik uyuşmazlığı',
+      }),
+    );
+  });
+
+  it('KRİTİK: doküman kimliği okul+uid deseniyle eşleşmeli', async () => {
+    // Kimlik deseni bozuksa reddedilir; aksi halde bir öğretmen
+    // başka okulun dizinine sızabilirdi.
+    await assertFails(
+      setDoc(doc(otherTeacherDb(), 'school_teachers', `bambaska_${OTHER_TEACHER_UID}`), {
+        teacherUid: OTHER_TEACHER_UID,
+        schoolId: SCHOOL, // kimlikteki okulla çelişiyor
+        fullName: 'Desen uyuşmazlığı',
+      }),
+    );
+  });
+
+  it('KRİTİK: veli öğretmen dizinini okuyamaz', async () => {
+    // Velinin öğretmen listesine ihtiyacı yok; dersine giren
+    // öğretmenleri sınıf kadrosundan görür.
+    await assertFails(
+      getDoc(doc(parentDb(), 'school_teachers', DOC_ID)),
+    );
+  });
+
+  it('KRİTİK: öğretmen başkasının kaydını silemez', async () => {
+    await assertFails(
+      deleteDoc(doc(otherTeacherDb(), 'school_teachers', DOC_ID)),
+    );
+  });
+
+  it('öğretmen kendi kaydını silebilir (okul değiştirme)', async () => {
+    await assertSucceeds(
+      deleteDoc(doc(teacherDb(), 'school_teachers', DOC_ID)),
+    );
+  });
+});

@@ -645,6 +645,35 @@ class CloudCommunicationRepository {
     return _client.deleteDoc('$_classRooms/$classCloudId/staff/$teacherUid');
   }
 
+  /// Aynı okuldaki bir öğretmeni doğrudan kadroya ekler.
+  ///
+  /// Tercih edilen yol budur: öğretmen okulunu zaten seçmiş olduğu için
+  /// UID'si `school_teachers` dizininde bulunur. Kod alışverişine,
+  /// beklemeye ve karşı tarafın işlem yapmasına gerek kalmaz —
+  /// eklendiği anda mesajlaşma açılır.
+  ///
+  /// [addPendingStaff] yalnızca dizinde bulunmayan öğretmenler için
+  /// (henüz uygulamayı açmamış veya farklı okul seçmiş) yedek yoldur.
+  Future<bool> addStaffDirectly({
+    required String classCloudId,
+    required String teacherUid,
+    required String teacherName,
+    required String branch,
+    String meetingDay = '',
+    String meetingTime = '',
+    bool isHomeroom = false,
+  }) {
+    return _client.setDoc('$_classRooms/$classCloudId/staff/$teacherUid', {
+      'teacherUid': teacherUid,
+      'teacherName': teacherName,
+      'branch': branch,
+      'isHomeroom': isHomeroom,
+      'meetingDay': meetingDay,
+      'meetingTime': meetingTime,
+      'addedAt': DateTime.now().toIso8601String(),
+    });
+  }
+
   /// Sınıf öğretmeni kadroya "beklemede" bir satır ekler.
   ///
   /// Branş öğretmeninin UID'si henüz bilinmediği için doküman kimliği
