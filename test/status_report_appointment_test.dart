@@ -13,9 +13,9 @@ CloudStatusReport report({
     parentName: 'Ayşe Yılmaz',
     relation: 'Anne',
     type: type,
-    title: 'Alerji ilacı',
-    details: 'Öğle arası verilmeli',
-    timeInfo: '12:30',
+    title: 'Erken çıkış',
+    details: 'Bugün saat 14:00 alınacak',
+    timeInfo: '14:00',
     createdAt: DateTime(2026, 8, 18, 8),
     status: status,
   );
@@ -42,9 +42,12 @@ CloudAppointment appointment({String status = 'pending'}) {
 void main() {
   group('Durum bildirimi (veli → öğretmen)', () {
     test('Bildirim türleri doğru ayırt edilir', () {
-      expect(report(type: 'medication').isMedication, isTrue);
+      // Not: 'medication' türü kaldırıldı (Karar: 18 Ağustos 2026) —
+      // sağlık verisi KVKK'da özel nitelikli sayılır. Ayrıntı için
+      // test/retention_policy_test.dart.
+      expect(report(type: 'late').isLate, isTrue);
       expect(report(type: 'early_leave').isEarlyLeave, isTrue);
-      expect(report(type: 'note').isMedication, isFalse);
+      expect(report(type: 'note').isLate, isFalse);
       expect(report(type: 'note').isEarlyLeave, isFalse);
     });
 
@@ -55,25 +58,24 @@ void main() {
     });
 
     test('Her tür için ikon ve renk tanımlıdır', () {
-      for (final t in ['medication', 'early_leave', 'note', 'bilinmeyen']) {
+      for (final t in ['early_leave', 'late', 'note', 'bilinmeyen']) {
         expect(report(type: t).typeIcon, isNotNull);
         expect(report(type: t).typeColor, isNotNull);
       }
     });
 
-    test('İlaç bildirimi görsel olarak en dikkat çekici renkte', () {
-      // Sağlıkla ilgili bildirim, nottan ayırt edilebilmeli.
+    test('Erken çıkış bildirimi nottan görsel olarak ayrışır', () {
       expect(
-        report(type: 'medication').typeColor,
+        report(type: 'early_leave').typeColor,
         isNot(report(type: 'note').typeColor),
       );
     });
 
     test('Bildirim içeriği ve zaman bilgisi taşınır', () {
-      final r = report(type: 'medication');
-      expect(r.title, 'Alerji ilacı');
-      expect(r.details, 'Öğle arası verilmeli');
-      expect(r.timeInfo, '12:30');
+      final r = report(type: 'early_leave');
+      expect(r.title, 'Erken çıkış');
+      expect(r.details, 'Bugün saat 14:00 alınacak');
+      expect(r.timeInfo, '14:00');
       expect(r.relation, 'Anne');
     });
   });

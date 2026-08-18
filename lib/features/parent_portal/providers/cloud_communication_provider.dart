@@ -124,10 +124,18 @@ final cloudStatusReportsProvider =
 });
 
 /// Öğretmen görünümü: sınıfa gelen tüm durum bildirimleri.
+///
+/// Liste çekilirken saklama süresi dolmuş kayıtlar fırsatçı olarak
+/// temizlenir (KVKK: sınırlı süre ilkesi). Ayrı bir sunucu işi gerekmez;
+/// Spark planında Cloud Functions zaten kısıtlıdır.
 final classStatusReportsCloudProvider =
     FutureProvider.family<List<CloudStatusReport>, String>(
         (ref, classCloudId) async {
   final repo = ref.watch(cloudCommunicationRepositoryProvider);
+
+  // Önce temizle, sonra oku: silinen kayıt listeye girmesin.
+  await repo.purgeExpiredStatusReports(classCloudId);
+
   return repo.fetchStatusReports(classCloudId: classCloudId);
 });
 
@@ -145,10 +153,13 @@ final cloudAppointmentsProvider =
 });
 
 /// Öğretmen görünümü: sınıfın tüm randevu talepleri.
+///
+/// Saklama süresi dolmuş randevular fırsatçı olarak temizlenir.
 final classAppointmentsCloudProvider =
     FutureProvider.family<List<CloudAppointment>, String>(
         (ref, classCloudId) async {
   final repo = ref.watch(cloudCommunicationRepositoryProvider);
+  await repo.purgeExpiredAppointments(classCloudId);
   return repo.fetchAppointments(classCloudId: classCloudId);
 });
 

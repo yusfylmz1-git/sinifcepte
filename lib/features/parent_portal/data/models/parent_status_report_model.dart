@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
 
-/// Veli Hızlı Durum Bildirimi Modeli (İlaç, Erken Çıkış, Not)
+/// Veli Hızlı Durum Bildirimi Modeli (Erken Çıkış, Geç Kalma, Not)
+///
+/// ## Sağlık verisi toplanmaz (Karar: 18 Ağustos 2026)
+/// Önceki sürümde "İlaç Kullanımı" türü vardı. KVKK'da sağlık verisi
+/// **özel nitelikli** sayılır: işlenmesi açık rıza ister, ihlali daha ağır
+/// yaptırıma tabidir ve hem uygulama sahibine hem öğretmene sorumluluk
+/// yükler. Ürün için sağladığı değer bu riski karşılamıyordu.
+///
+/// Veli gerekirse öğretmene mesaj gönderebilir; orada ne yazacağı kendi
+/// tercihidir ve uygulama bunu bir kategori olarak teşvik etmez.
 class ParentStatusReportModel {
   final String id;
   final int studentId;
@@ -11,7 +20,7 @@ class ParentStatusReportModel {
   final String parentUserId;
   final String parentName;
   final String relation; // 'Anne', 'Baba', 'Vasi', 'Diğer'
-  final String type; // 'medication' (İlaç), 'early_leave' (Erken Çıkış/Randevu), 'note' (Özel Not)
+  final String type; // 'early_leave' (Erken Çıkış), 'late' (Geç Kalma), 'note' (Özel Not)
   final String title;
   final String details;
   final String? timeInfo; // Örn: "Öğle Arası 12:30", "15:00"
@@ -41,14 +50,14 @@ class ParentStatusReportModel {
   });
 
   bool get isAcknowledged => status == 'acknowledged' || status == 'completed';
-  bool get isMedication => type == 'medication';
+  bool get isLate => type == 'late';
   bool get isEarlyLeave => type == 'early_leave';
   bool get isNote => type == 'note';
 
   IconData get typeIcon {
     switch (type) {
-      case 'medication':
-        return Icons.medication_liquid_rounded;
+      case 'late':
+        return Icons.schedule_rounded;
       case 'early_leave':
         return Icons.timer_outlined;
       case 'note':
@@ -59,7 +68,7 @@ class ParentStatusReportModel {
 
   Color get typeColor {
     switch (type) {
-      case 'medication':
+      case 'late':
         return const Color(0xFF10B981);
       case 'early_leave':
         return const Color(0xFFF59E0B);
@@ -71,8 +80,8 @@ class ParentStatusReportModel {
 
   String get typeTitleTr {
     switch (type) {
-      case 'medication':
-        return 'İlaç Kullanımı';
+      case 'late':
+        return 'Geç Kalacak';
       case 'early_leave':
         return 'Erken Çıkış / Randevu';
       case 'note':

@@ -13,7 +13,7 @@ class ParentPortalRepository {
   static const String _teacherContactsPrefKey = 'sinifcepte_class_teacher_contacts';
   static const String _appointmentsPrefKey = 'sinifcepte_parent_appointments';
 
-  // --- 1. DURUM BİLDİRİMLERİ (İlaç, Erken Çıkış, Not) ---
+  // --- 1. DURUM BİLDİRİMLERİ (Erken Çıkış, Geç Kalma, Not) ---
 
   Future<List<ParentStatusReportModel>> _loadStatusReports() async {
     try {

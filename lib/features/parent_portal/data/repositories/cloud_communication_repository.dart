@@ -104,7 +104,10 @@ class CloudMessage {
   bool get isFromTeacher => authorRole == 'teacher';
 }
 
-/// Veli durum bildirimi (ilaç, erken çıkış, özel not).
+/// Veli durum bildirimi (erken çıkış, geç kalma, özel not).
+///
+/// Sağlık verisi toplanmaz: "İlaç Kullanımı" türü KVKK'daki özel nitelikli
+/// veri yükü nedeniyle kaldırıldı (Karar: 18 Ağustos 2026).
 ///
 /// Veli oluşturur, öğretmen görür ve onaylar. Öğrencinin sağlık/durum
 /// bilgisi taşıdığı için yalnızca ilgili sınıfın öğretmenleri ve bildirimi
@@ -117,7 +120,7 @@ class CloudStatusReport {
   final String parentName;
   final String relation;
 
-  /// 'medication' | 'early_leave' | 'note'
+  /// 'early_leave' | 'late' | 'note'
   final String type;
   final String title;
   final String details;
@@ -147,13 +150,13 @@ class CloudStatusReport {
   });
 
   bool get isAcknowledged => status == 'acknowledged' || status == 'completed';
-  bool get isMedication => type == 'medication';
+  bool get isLate => type == 'late';
   bool get isEarlyLeave => type == 'early_leave';
 
   IconData get typeIcon {
     switch (type) {
-      case 'medication':
-        return Icons.medication_rounded;
+      case 'late':
+        return Icons.schedule_rounded;
       case 'early_leave':
         return Icons.directions_walk_rounded;
       case 'note':
@@ -164,8 +167,8 @@ class CloudStatusReport {
 
   Color get typeColor {
     switch (type) {
-      case 'medication':
-        return const Color(0xFFEF4444);
+      case 'late':
+        return const Color(0xFF10B981);
       case 'early_leave':
         return const Color(0xFFF59E0B);
       case 'note':
@@ -768,7 +771,89 @@ class CloudCommunicationRepository {
 
   // --- Durum bildirimleri (veli → öğretmen) ---
 
-  /// Veli durum bildirimi gönderir (ilaç, erken çıkış, not).
+  /// Durum bildirimlerinin saklama süresi (KVKK: sınırlı süre ilkesi).
+  ///
+  /// Bildirimler geçici bilgilendirmelerdir ("bugün erken alınacak");
+  /// süresiz saklanmaları için hiçbir gerekçe yoktur. 30 gün sonra
+  /// silinirler — bu hem "ne kadar saklıyorsunuz?" sorusuna net yanıt
+  /// verir hem depolamayı sabit tutar.
+  ///
+  /// Silme, veli veya öğretmen ekranı açtığında fırsatçı olarak yapılır;
+  /// ayrı bir sunucu işi (Cloud Function) gerekmez — Spark planında
+  /// zaten kısıtlıdır. Silme işlemleri okumadan üç kat ucuzdur.
+  static const Duration statusReportRetention = Duration(days: 30);
+
+  /// Randevu kayıtlarının saklama süresi.
+  static const Duration appointmentRetention = Duration(days: 90);
+
+  /// Saklama süresi dolmuş durum bildirimlerini siler.
+  ///
+  /// Hata durumunda sessizce geçer: temizlik yapılamadı diye kullanıcının
+  /// akışı kesilmemelidir.
+  Future<int> purgeExpiredStatusReports(String classCloudId) async {
+    return _purgeExpired(
+      classCloudId: classCloudId,
+      subcollection: 'status_reports',
+      dateField: 'createdAt',
+      retention: statusReportRetention,
+    );
+  }
+
+  /// Saklama süresi dolmuş randevuları siler.
+  Future<int> purgeExpiredAppointments(String classCloudId) async {
+    return _purgeExpired(
+      classCloudId: classCloudId,
+      subcollection: 'appointments',
+      dateField: 'createdAt',
+      retention: appointmentRetention,
+    );
+  }
+
+  Future<int> _purgeExpired({
+    required String classCloudId,
+    required String subcollection,
+    required String dateField,
+    required Duration retention,
+  }) async {
+    await _client.ensureConfigured();
+    final db = _client.db;
+    if (db == null) return 0;
+
+    try {
+      final cutoff = DateTime.now().subtract(retention).toIso8601String();
+
+      final snap = await db
+          .collection(_classRooms)
+          .doc(classCloudId)
+          .collection(subcollection)
+          .where(dateField, isLessThan: cutoff)
+          .limit(50) // tek seferde makul bir parça
+          .get();
+
+      if (snap.docs.isEmpty) return 0;
+      await _client.recordQueryReads(snap.docs.length);
+
+      // Tek batch: 50 ayrı silme isteği yerine tek tur.
+      final deletions = <String, Map<String, dynamic>?>{
+        for (final d in snap.docs)
+          '$_classRooms/$classCloudId/$subcollection/${d.id}': null,
+      };
+
+      final ok = await _client.commitBatch(deletions);
+      if (ok) {
+        debugPrint(
+          'Saklama süresi dolan ${snap.docs.length} $subcollection kaydı silindi.',
+        );
+      }
+      return ok ? snap.docs.length : 0;
+    } catch (e, stackTrace) {
+      debugPrint('Saklama süresi temizliği başarısız ($subcollection): $e');
+      debugPrint('$stackTrace');
+      return 0;
+    }
+  }
+
+  /// Veli durum bildirimi gönderir (erken çıkış, geç kalma, not).
   Future<bool> createStatusReport({
     required String classCloudId,
     required String reportId,

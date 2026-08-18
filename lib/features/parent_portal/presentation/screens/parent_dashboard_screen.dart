@@ -1012,8 +1012,8 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
     final modules = [
       {
         'title': 'Hızlı Durum Bildirimi',
-        'subtitle': 'İlaç, geç kalma, acil not',
-        'icon': Icons.medication_liquid_rounded,
+        'subtitle': 'Erken çıkış, geç kalma, not',
+        'icon': Icons.notifications_active_rounded,
         'color': const Color(0xFF10B981),
         'onTap': () => _showQuickStatusModal(context, child),
       },
@@ -1951,7 +1951,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.medication_liquid_rounded, color: Color(0xFF10B981), size: 24),
+                    const Icon(Icons.notifications_active_rounded, color: Color(0xFF10B981), size: 24),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -1967,24 +1967,31 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                   physics: const BouncingScrollPhysics(),
                   child: Row(
                     children: [
-                      _buildQuickActionChip(
-                        context,
-                        child: child,
-                        icon: Icons.medical_services_outlined,
-                        label: '💊 İlaç Bildir',
-                        type: 'medication',
-                        defaultTitle: 'İlaç Kullanımı',
-                        defaultDetails: 'Öğle saatinde içmesi gereken reçeteli ilacı var.',
-                      ),
-                      const SizedBox(width: 8),
+                      // NOT: "İlaç Bildir" seçeneği bilinçli olarak kaldırıldı
+                      // (Karar: 18 Ağustos 2026). Sağlık verisi KVKK'da
+                      // ÖZEL NİTELİKLİ veridir; toplanması hem uygulama
+                      // sahibine hem öğretmene ek hukuki sorumluluk yükler.
+                      // Veli gerekirse öğretmene mesaj gönderebilir.
                       _buildQuickActionChip(
                         context,
                         child: child,
                         icon: Icons.timer_outlined,
                         label: '⏳ Erken Çıkış',
                         type: 'early_leave',
-                        defaultTitle: 'Erken Çıkış / Randevu',
-                        defaultDetails: 'Doktor kontrolü sebebiyle dersten önce alınacak.',
+                        defaultTitle: 'Erken Çıkış',
+                        // Varsayılan metin sağlık sebebi ima etmez;
+                        // veri minimizasyonu ilkesi gereği nötr tutulur.
+                        defaultDetails: 'Bugün dersten önce alınacak.',
+                      ),
+                      const SizedBox(width: 8),
+                      _buildQuickActionChip(
+                        context,
+                        child: child,
+                        icon: Icons.schedule_rounded,
+                        label: '🕐 Geç Kalacak',
+                        type: 'late',
+                        defaultTitle: 'Geç Kalacak',
+                        defaultDetails: 'Bugün derse geç katılacak.',
                       ),
                       const SizedBox(width: 8),
                       _buildQuickActionChip(
