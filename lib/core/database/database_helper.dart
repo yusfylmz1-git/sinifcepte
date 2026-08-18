@@ -4,12 +4,19 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../config/app_config.dart';
 
 /// SınıfCepte - SQLite Veritabanı Yardımcısı (DatabaseHelper)
 class DatabaseHelper {
+  /// Eski tek-veritabanı göçünün yapıldığını işaretler (tek seferlik).
+  static const String _kLegacyMigratedKey = 'sinifcepte_legacy_db_migrated';
+
+  /// Bu cihazda en son giriş yapan hesabın kimliği.
+  static const String _kLastUidKey = 'sinifcepte_last_teacher_uid';
+
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
   static String? _openUid;
@@ -22,7 +29,24 @@ class DatabaseHelper {
     return _database!;
   }
 
-  /// Google uid başına ayrı SQLite. İlk uid legacy dosyayı devralır.
+  /// Google uid başına ayrı SQLite veritabanı açar.
+  ///
+  /// ## Veri sahipliği (Karar: 18 Ağustos 2026 — Seçenek A)
+  /// Öğrenci, sınıf ve not verileri **öğretmenin cihazında ve hesabında**
+  /// kalır; buluta çıkmaz. Her Google hesabı kendi veritabanı dosyasına
+  /// sahiptir. Bu, KVKK yükünü en aza indirir: uygulama sahibi öğrenci
+  /// kimlik verisinin sorumlusu olmaz.
+  ///
+  /// Sonucu: aynı cihazda ikinci bir hesapla giriş yapmak **boş bir
+  /// çalışma alanı** açar. Bu bir hata değil, bilinçli tasarımdır — ama
+  /// kullanıcıya açıkça gösterilmelidir (bkz. [lastKnownUid]).
+  ///
+  /// ## Eski sürüm göçü — neden yalnızca BİR kez
+  /// Eski sürümlerde tek ortak veritabanı vardı. İlk giriş yapan hesap
+  /// onu devralır. Önceden bu göç her yeni hesap için tekrar deneniyordu:
+  /// ikinci hesap da aynı eski dosyayı kopyalayınca iki hesabın verisi
+  /// karışıyor ve kullanıcı "öğrencilerim kayboldu, başka sınıflar geldi"
+  /// durumuyla karşılaşıyordu. Artık göç tek seferlik olarak işaretlenir.
   Future<void> openForUid(String uid) async {
     if (_openUid == uid && _database != null) return;
     if (_database != null) {
@@ -37,21 +61,79 @@ class DatabaseHelper {
     final target = File(targetPath);
 
     if (!await target.exists()) {
+      await _migrateLegacyOnce(dbPath, targetPath);
+    }
+
+    _database = await _initDB(targetName);
+    await _rememberUid(uid);
+  }
+
+  /// Eski tek-veritabanı düzeninden göç. Yalnızca bir kez çalışır.
+  ///
+  /// Göç yapıldığında bir bayrak yazılır; sonraki hesaplar boş
+  /// veritabanıyla başlar. Bayrak olmasaydı her yeni hesap aynı eski
+  /// veriyi devralır ve hesaplar arası veri karışması sürerdi.
+  Future<void> _migrateLegacyOnce(String dbPath, String targetPath) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_kLegacyMigratedKey) ?? false) return;
+
       for (final legacyName in <String>[
         'sinifcepte.db',
         AppConfig.dbName,
         'sinifcepte_dev.db',
       ]) {
         final legacy = File(join(dbPath, legacyName));
-        if (await legacy.exists()) {
-          await legacy.copy(targetPath);
-          await legacy.rename(join(dbPath, '$legacyName.migrated'));
-          break;
-        }
-      }
-    }
+        if (!await legacy.exists()) continue;
 
-    _database = await _initDB(targetName);
+        await legacy.copy(targetPath);
+        await legacy.rename(join(dbPath, '$legacyName.migrated'));
+        await prefs.setBool(_kLegacyMigratedKey, true);
+        debugPrint('Eski veritabanı devralındı: $legacyName');
+        return;
+      }
+
+      // Devralınacak eski dosya yok; yine de işaretle ki bir daha aranmasın.
+      await prefs.setBool(_kLegacyMigratedKey, true);
+    } catch (e, stackTrace) {
+      debugPrint('Eski veritabanı göçü başarısız: $e');
+      debugPrint('$stackTrace');
+    }
+  }
+
+  /// Son giriş yapılan hesabı hatırlar.
+  ///
+  /// Kullanıcı hesap değiştirdiğinde arayüz bunu fark edip
+  /// "bu hesabın çalışma alanı ayrıdır" uyarısı gösterebilir.
+  Future<void> _rememberUid(String uid) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kLastUidKey, uid);
+    } catch (e, stackTrace) {
+      debugPrint('Son hesap kimliği kaydedilemedi: $e');
+      debugPrint('$stackTrace');
+    }
+  }
+
+  /// Bu cihazda en son hangi hesapla çalışıldı? (yoksa boş)
+  static Future<String> lastKnownUid() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_kLastUidKey) ?? '';
+    } catch (e, stackTrace) {
+      debugPrint('Son hesap kimliği okunamadı: $e');
+      debugPrint('$stackTrace');
+      return '';
+    }
+  }
+
+  /// Bu cihazda daha önce başka bir hesapla çalışılmış mı?
+  ///
+  /// `true` dönerse kullanıcıya "her hesabın verisi ayrıdır" bilgisi
+  /// gösterilmelidir — sessizce boş liste göstermek kafa karıştırır.
+  static Future<bool> isDifferentAccountThanLast(String uid) async {
+    final last = await lastKnownUid();
+    return last.isNotEmpty && last != uid;
   }
 
   Future<Database> _initDB(String filePath) async {

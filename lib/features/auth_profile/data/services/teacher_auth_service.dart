@@ -6,6 +6,22 @@ import '../../../../core/firebase/firebase_bootstrap.dart';
 import '../models/teacher_profile_model.dart';
 import '../../providers/teacher_profile_provider.dart';
 
+/// Google girişinin sonucu.
+class TeacherSignInResult {
+  final TeacherProfileModel profile;
+
+  /// Bu cihazda daha önce **başka** bir hesapla çalışılmış mı?
+  ///
+  /// `true` ise kullanıcıya "her hesabın çalışma alanı ayrıdır" bilgisi
+  /// gösterilmelidir; aksi halde sınıflarının kaybolduğunu sanır.
+  final bool switchedAccount;
+
+  const TeacherSignInResult({
+    required this.profile,
+    required this.switchedAccount,
+  });
+}
+
 class TeacherAuthException implements Exception {
   final String message;
   const TeacherAuthException(this.message);
@@ -28,7 +44,7 @@ class TeacherAuthService {
   User? get firebaseUser =>
       FirebaseBootstrap.ready ? FirebaseAuth.instance.currentUser : null;
 
-  Future<TeacherProfileModel> signInWithGoogle({
+  Future<TeacherSignInResult> signInWithGoogle({
     required TeacherProfileNotifier profileNotifier,
     required TeacherProfileModel current,
   }) async {
@@ -61,6 +77,12 @@ class TeacherAuthService {
       throw const TeacherAuthException('Google oturumu doğrulanamadı.');
     }
 
+    // Bu cihazda daha önce başka bir hesapla çalışılmış mı?
+    // Veri hesap başına ayrı tutulduğu için kullanıcı bilgilendirilmeli
+    // (bkz. DatabaseHelper.openForUid dokümantasyonu).
+    final switchedAccount =
+        await DatabaseHelper.isDifferentAccountThanLast(user.uid);
+
     await DatabaseHelper.instance.openForUid(user.uid);
 
     final names = (user.displayName ?? googleUser.displayName ?? '').trim().split(RegExp(r'\s+'));
@@ -75,7 +97,10 @@ class TeacherAuthService {
       photoUrl: user.photoURL ?? googleUser.photoUrl,
     );
     await profileNotifier.saveProfile(updated);
-    return updated;
+    return TeacherSignInResult(
+      profile: updated,
+      switchedAccount: switchedAccount,
+    );
   }
 
   Future<void> signOut() async {

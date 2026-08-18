@@ -105,15 +105,24 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
     setState(() => _teacherSigningIn = true);
     try {
       await FirebaseBootstrap.ensureInitialized();
+      var switchedAccount = false;
       if (FirebaseBootstrap.ready) {
-        await TeacherAuthService().signInWithGoogle(
+        final result = await TeacherAuthService().signInWithGoogle(
           profileNotifier: ref.read(teacherProfileProvider.notifier),
           current: ref.read(teacherProfileProvider),
         );
+        switchedAccount = result.switchedAccount;
       }
       await ref.read(userRoleProvider.notifier).selectTeacherRole();
       // Okul yöneticisi yetkisi varsa claim'den okunur (opsiyonel rol).
       await ref.read(userRoleProvider.notifier).refreshClaims(forceRefresh: true);
+      // Hesap değiştiyse kullanıcıyı bilgilendir: her hesabın verisi
+      // ayrıdır ve bu bilinçli bir tasarımdır. Sessizce boş sınıf listesi
+      // göstermek "verilerim silindi" endişesi yaratıyordu.
+      if (switchedAccount && context.mounted) {
+        await _showAccountSwitchNotice(context);
+      }
+
       if (context.mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const SchoolBindGate()),
@@ -132,6 +141,81 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
     } finally {
       if (mounted) setState(() => _teacherSigningIn = false);
     }
+  }
+
+  /// Hesap değişikliğini açıklayan bilgilendirme.
+  ///
+  /// Öğrenci ve sınıf verileri gizlilik gereği buluta gönderilmez; her
+  /// Google hesabı kendi çalışma alanına sahiptir (Karar: Seçenek A).
+  /// Kullanıcı bunu bilmezse verilerinin kaybolduğunu sanar.
+  Future<void> _showAccountSwitchNotice(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.switch_account_rounded,
+                color: AppColors.primary, size: 22),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Farklı hesapla giriş yaptınız',
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Sınıf ve öğrenci bilgileriniz gizlilik gereği internete '
+              'gönderilmez; yalnızca bu cihazda ve giriş yaptığınız hesapta '
+              'saklanır.',
+              style: GoogleFonts.outfit(fontSize: 13, height: 1.45),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(11),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'Bu nedenle her hesabın kendi sınıf listesi vardır. '
+                'Önceki hesabınızdaki sınıflar silinmedi — o hesapla giriş '
+                'yaptığınızda yerinde duruyor olacak.',
+                style: GoogleFonts.outfit(
+                  fontSize: 12.5,
+                  height: 1.4,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Anladım'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Veli Olarak Giriş Yap.
