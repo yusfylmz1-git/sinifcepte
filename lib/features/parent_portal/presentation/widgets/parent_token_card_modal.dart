@@ -4,10 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/cloud/cloud_ids.dart';
 import '../../../../core/utils/perf_trace.dart';
@@ -18,6 +14,7 @@ import '../../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../data/models/parent_link_model.dart';
 import '../../data/models/parent_token_model.dart';
 import '../../providers/parent_token_provider.dart';
+import '../../data/services/token_share_service.dart';
 import 'parent_teacher_chat_modal.dart';
 
 /// SınıfCepte - Öğrenci Veli Bağlantı Kartı Modalı
@@ -255,107 +252,6 @@ class _ParentTokenCardModalState extends ConsumerState<ParentTokenCardModal> {
     );
   }
 
-  void _shareViaWhatsApp(ParentTokenModel token) {
-    final teacher = ref.read(teacherProfileProvider);
-    final schoolTitle = teacher.fullSchoolTitle.isNotEmpty ? teacher.fullSchoolTitle : teacher.schoolName;
-    final expFormatted = DateFormat('dd.MM.yyyy').format(token.expiresAt);
-
-    final message = '''
-🏫 *SınıfCepte Veli Bilgilendirme Sistemi*
-📍 *${schoolTitle.isNotEmpty ? schoolTitle : 'Okulumuz'}*
-
-Sayın Velimiz,
-Öğrencimiz *${widget.student.fullName}* (${widget.classModel.name} / No: ${widget.student.schoolNumber}) için hazırlanan sınıf duyuruları, ders öğretmenleri ve bilgilendirmeleri takip edebilmeniz için bağlantı kodunuz:
-
-🔑 *Giriş Kodu:* `${token.code}`
-🔒 *Güvenlik Doğrulaması:* Öğrenci Okul No (*${widget.student.schoolNumber}*)
-⏳ *Son Geçerlilik:* $expFormatted (7 Gün)
-
-📲 *Nasıl Giriş Yapılır?*
-1. SınıfCepte uygulamasını açın ve "Veli Girişi"ni seçin.
-2. Yukarıdaki 8 haneli kodu girin veya QR kodu taratın.
-3. Öğrencinin okul numarasını onaylayarak sınıfa bağlanın.
-''';
-
-    SharePlus.instance.share(
-      ShareParams(
-        text: message,
-        subject: '${widget.student.fullName} - Veli Giriş Kodu',
-      ),
-    );
-  }
-
-  Future<void> _printOrSavePdf(ParentTokenModel token) async {
-    final doc = pw.Document();
-    final teacher = ref.read(teacherProfileProvider);
-    final schoolTitle = teacher.fullSchoolTitle.isNotEmpty ? teacher.fullSchoolTitle : teacher.schoolName;
-    final expFormatted = DateFormat('dd.MM.yyyy').format(token.expiresAt);
-
-    doc.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a5,
-        build: (pw.Context context) {
-          return pw.Container(
-            padding: const pw.EdgeInsets.all(20),
-            decoration: pw.BoxDecoration(
-              border: pw.Border.all(color: PdfColors.blueGrey800, width: 2),
-              borderRadius: pw.BorderRadius.circular(12),
-            ),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.center,
-              children: [
-                pw.Text('SINIFCEPTE VELİ BİLGİLENDİRME KARTI', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
-                pw.SizedBox(height: 4),
-                pw.Text(schoolTitle, style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
-                pw.Divider(thickness: 1, color: PdfColors.grey400),
-                pw.SizedBox(height: 10),
-
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text('Öğrenci: ${widget.student.fullName}', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
-                        pw.Text('Sınıf: ${widget.classModel.name}  |  Okul No: ${widget.student.schoolNumber}', style: const pw.TextStyle(fontSize: 11)),
-                        pw.Text('Öğretmen: ${teacher.fullName}', style: const pw.TextStyle(fontSize: 11)),
-                      ],
-                    ),
-                    pw.Container(
-                      padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: pw.BoxDecoration(color: PdfColors.indigo50, borderRadius: pw.BorderRadius.circular(8)),
-                      child: pw.Text(token.code, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
-                    ),
-                  ],
-                ),
-                pw.SizedBox(height: 16),
-
-                pw.BarcodeWidget(
-                  barcode: pw.Barcode.qrCode(),
-                  data: token.code,
-                  width: 110,
-                  height: 110,
-                ),
-                pw.SizedBox(height: 10),
-
-                pw.Container(
-                  padding: const pw.EdgeInsets.all(8),
-                  decoration: pw.BoxDecoration(color: PdfColors.amber50, borderRadius: pw.BorderRadius.circular(6)),
-                  child: pw.Text(
-                    'Giriş esnasında güvenlik amacıyla öğrencinin okul numarası (${widget.student.schoolNumber}) sorulacaktır. Bu kod $expFormatted tarihine kadar geçerlidir.',
-                    style: const pw.TextStyle(fontSize: 9.5, color: PdfColors.brown800),
-                    textAlign: pw.TextAlign.center,
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-
-    await Printing.layoutPdf(onLayout: (format) async => doc.save());
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -777,7 +673,12 @@ Sayın Velimiz,
             Expanded(
               flex: 3,
               child: ElevatedButton.icon(
-                onPressed: () => _shareViaWhatsApp(token),
+                onPressed: () => TokenShareService.shareViaWhatsApp(
+                  token: token,
+                  student: widget.student,
+                  classModel: widget.classModel,
+                  teacher: ref.read(teacherProfileProvider),
+                ),
                 icon: const Icon(Icons.send_rounded, size: 16),
                 label: const Text('WhatsApp ile Paylaş'),
                 style: ElevatedButton.styleFrom(
@@ -792,7 +693,12 @@ Sayın Velimiz,
             Expanded(
               flex: 2,
               child: OutlinedButton.icon(
-                onPressed: () => _printOrSavePdf(token),
+                onPressed: () => TokenShareService.printOrSavePdf(
+                  token: token,
+                  student: widget.student,
+                  classModel: widget.classModel,
+                  teacher: ref.read(teacherProfileProvider),
+                ),
                 icon: const Icon(Icons.print_rounded, size: 16),
                 label: const Text('Yazdır'),
                 style: OutlinedButton.styleFrom(
