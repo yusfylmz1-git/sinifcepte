@@ -486,11 +486,40 @@ Bugün itibarıyla iki ayrı cihazda şunlar çalışıyor:
 
 ---
 
+## 🔑 VERİ SAHİPLİĞİ KARARI (18 Ağustos 2026)
+
+**Seçenek A + iyileştirmeler seçildi.** Karar belgesi: https://claude.ai/code/artifact/680145ef-2443-4710-adbc-05f4f157e544
+
+Öğrenci, sınıf, not, katılım ve veli telefonu verileri **öğretmenin cihazında** kalır; buluta çıkmaz.
+
+**Gerekçe:** Öğrenci adlarını bulutta tutmak uygulamayı KVKK anlamında **veri sorumlusu** yapar (aydınlatma, veliden açık rıza, saklama süresi, 72 saatlik ihlal bildirimi; ceza bandı 68.000–13.600.000 TL). Kullanıcı bu riski almak istemedi.
+
+**Reddedilenler:** Seçenek B (öğrenci okula ait) — daha iyi deneyim ama yüksek hukuki yük; ileride geçilebilir. Seçenek C (her şey bulutta) — offline-first'ü çökertir.
+
+**Kabul edilen bedeller:** Aynı sınıfa giren iki öğretmen listeyi ayrı girer · Telefon değişince veri gider (yedekleme bunu çözecek) · Her hesap ayrı çalışma alanı.
+
+**Bulutta yine de duranlar:** veli bağı, duyuru, mesaj, randevu, durum bildirimi (ilaç = **özel nitelikli sağlık verisi**), öğretmen adı/branş/okul. Bunlar için gizlilik politikası ve aydınlatma metni **yine gerekli**.
+
+### Yapılanlar (`a8c48ab`)
+
+> 🔴 **Yaşanan veri karışmasının sebebi bulundu.** `openForUid` içindeki eski sürüm göçü **her yeni hesap için tekrar deneniyordu**: ikinci hesap için de dosya bulunmadığından aynı eski veritabanı yeniden kopyalanıyor, iki hesabın verisi karışıyordu. Uygulamanın donması da bununla ilgiliydi.
+
+- Göç **tek seferlik bayrakla** korundu — ilk hesap devralır, sonrakiler boş başlar.
+- Hesap değişikliği tespiti eklendi (`isDifferentAccountThanLast`).
+- Hesap değiştiğinde **açıklayıcı bilgilendirme** gösteriliyor: "verileriniz gizlilik gereği internete gönderilmez, her hesabın kendi listesi vardır, öncekiler silinmedi". Sessizce boş liste göstermek "verilerim silindi" endişesi yaratıyordu.
+- `test/account_isolation_test.dart` (10 test).
+
+### Sıradaki iyileştirmeler
+1. **Yedekleme / geri yükleme** — şifreli tek dosya, kullanıcının elinde (Drive'a, e-postaya). Uygulama sahibi hiçbir şey saklamaz → veri sorumlusu olmaz. Telefon değişimi sorununu çözer.
+2. **Sınıf listesi aktarımı** — QR veya dosya ile cihazdan cihaza. "Aynı listeyi iki kez girme" sorununu azaltır. Mevcut Excel/PDF içe aktarma altyapısı üzerine kurulabilir.
+
+---
+
 ## 🧪 TEST DURUMU ÖZETİ
 
 | Takım | Sayı | Komut |
 | :--- | :--: | :--- |
-| Dart birim testleri | **161** | `flutter test` |
+| Dart birim testleri | **199** | `flutter test` |
 | Firestore kural testleri | **78** | `cd test_rules && .\run-tests.ps1` |
 | Statik analiz | 0 issue | `flutter analyze` |
 
