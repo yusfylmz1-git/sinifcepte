@@ -344,16 +344,50 @@ Kurgunun son ana parçası. **Yönetici rolü opsiyonel kaldı** — yöneticisi
 
 ---
 
+#### L. Faz 5 TAMAMLANDI ✅ (`c53f63a`) — **K2 ve K4 kapandı**
+
+İlk analizdeki en büyük iki teknik borç kapandı.
+
+**K2 — `SyncService` bir simülasyondu.** Bulut manifestini kod içinde **sabit üretiyordu**; ağa hiç çıkmıyor, sonuç her zaman "verileriniz güncel" oluyordu. Admin portalınızın **"+1 Artır (Yayınla)" butonu bu yüzden mobil tarafı hiç etkilemiyordu.** Artık gerçek okuma yapıyor.
+
+**Neden Firestore değil Remote Config:** Sürüm/bakım kontrolü her açılışta yapılır. Firestore'dan okunsaydı 10M kullanıcıda **aylık ~$180** maliyet oluşurdu — üstelik veri tek küçük dokümandı. **Remote Config ücretsizdir ve okuma kotası yoktur** (maliyet kararı #3 uygulandı).
+
+**K4'ün kalanı** — "Okulum listede yok" önerileri yalnızca yerelde birikiyordu, artık `school_merge_queue`'ya gidiyor.
+
+**Yeni bileşenler:**
+- `RemoteManifestService` — 6 saatlik önbellek; ağ yoksa **güvenli varsayılana** düşer (bakım modu kapalı, hiçbir şey engellenmez).
+- `scripts/admin/publish_remote_config.mjs` — panelden indirilen JSON'u yayınlar. `validateTemplate` ile hatalı şablonun uygulamayı bozması engellenir.
+- Admin paneline "Remote Config JSON indir" işlevi.
+
+**Ölü kod:** `SyncManifestModel` kaldırıldı (yerini `RemoteManifest` aldı).
+
+**Doğrulama:** `flutter analyze` 0 issue · Dart **149/149** · kurallar **78/78**.
+
+---
+
 ## 🎯 SIRADAKİ ADIM
 
-**Faz 5 — Manifest senkronu (Remote Config).** Analizdeki **K2**'yi kapatacak:
-- `SyncService`'teki sabit manifest simülasyonu gerçek okumayla değiştirilecek
-- Firestore yerine **Remote Config** kullanılacak (maliyet kararı #3 — ücretsiz ve kotasız)
-- Admin portalın "+1 Artır (Yayınla)" butonu nihayet mobili etkileyecek
-- `pendingSchoolSubmissions` → `school_merge_queue` (K4'ün kalanı)
-- Bakım modu ve asgari sürüm kontrolü
+**Faz 6 — Bütçe koruması.** Blaze'e geçildiğinde Firebase **varsayılan harcama tavanı koymaz**; tek bir kod hatası dört haneli faturaya yol açabilir.
+- Google Cloud bütçe alarmı kurulum rehberi
+- Kota aşımında yazmayı durduran koruma
+- Maliyet izleme notları
 
-Sonra: **Faz 6** bütçe koruması · **Faz 7** reklam açılışı.
+Sonra: **Faz 7** reklam açılışı (AdMob SDK + kişiselleştirilmemiş reklam yapılandırması).
+
+---
+
+## 📤 MANİFEST YAYINLAMA (admin akışı)
+
+```bash
+# 1. Admin panelinde sürümü artır → "Remote Config JSON indir"
+# 2. Yayınla
+set GOOGLE_APPLICATION_CREDENTIALS=C:\secrets\sinifcepte-sa.json
+node scripts/admin/publish_remote_config.mjs remote_config_params.json
+
+# Mevcut değerleri görmek için
+node scripts/admin/publish_remote_config.mjs --show
+```
+Mobil cihazlar en geç **6 saat** içinde alır; kullanıcı "senkronize et" derse **anında** çeker.
 
 **Ertelenen:** Maliyet kararı **#5** (son 20 duyuruyu sınıf dokümanında toplama) — mevcut delta senkron zaten okumaların çoğunu sıfırlıyor; bu ek optimizasyon gerçek kullanım verisi görülmeden yapılmamalı.
 
@@ -382,7 +416,7 @@ Bugün itibarıyla iki ayrı cihazda şunlar çalışıyor:
 
 | Takım | Sayı | Komut |
 | :--- | :--: | :--- |
-| Dart birim testleri | **139** | `flutter test` |
+| Dart birim testleri | **149** | `flutter test` |
 | Firestore kural testleri | **78** | `cd test_rules && .\run-tests.ps1` |
 | Statik analiz | 0 issue | `flutter analyze` |
 
