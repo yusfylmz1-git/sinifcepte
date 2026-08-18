@@ -6,6 +6,8 @@ import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../../shared/widgets/glass_card.dart';
 import '../../../schools/presentation/widgets/school_selection_modal.dart';
 import '../../providers/teacher_profile_provider.dart';
+import '../../../auth/screens/welcome_screen.dart';
+import '../../providers/user_role_provider.dart';
 
 /// SınıfCepte - Öğretmen Profil Düzenleme & Ayarlar Ekranı
 class TeacherProfileSetupView extends ConsumerStatefulWidget {
@@ -494,15 +496,19 @@ class _TeacherProfileSetupViewState extends ConsumerState<TeacherProfileSetupVie
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () async {
-                          final messenger = ScaffoldMessenger.of(context);
+                          final navigator = Navigator.of(context);
                           await ref.read(teacherProfileProvider.notifier).logout();
-                          if (mounted) {
-                            messenger.showSnackBar(
-                              const SnackBar(
-                                content: Text('Oturum kapatıldı. 🚪'),
-                              ),
-                            );
-                          }
+                          await ref.read(userRoleProvider.notifier).resetRole();
+
+                          // Karşılama ekranına dön: profil ekranında kalmak
+                          // kullanıcıyı boş bir formla baş başa bırakırdı.
+                          if (!mounted) return;
+                          navigator.pushAndRemoveUntil(
+                            MaterialPageRoute(
+                              builder: (_) => const WelcomeScreen(),
+                            ),
+                            (route) => false,
+                          );
                         },
                         icon: const Icon(Icons.logout_rounded, color: Colors.red),
                         label: const Text('Oturumu Kapat', style: TextStyle(color: Colors.red)),

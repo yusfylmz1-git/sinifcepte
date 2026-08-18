@@ -169,6 +169,9 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                   );
                 }
               } else if (value == 'logout') {
+                // Google oturumunu da kapat: aksi halde veli başka bir
+                // hesapla giriş yapamaz, uygulama sessizce eskisini kullanır.
+                await ref.read(parentAuthServiceProvider).signOut();
                 await ref.read(userRoleProvider.notifier).resetRole();
                 if (context.mounted) {
                   Navigator.of(context).pushAndRemoveUntil(

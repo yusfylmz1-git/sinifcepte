@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../data/services/teacher_auth_service.dart';
 import '../data/models/teacher_profile_model.dart';
 
 /// SınıfCepte - Öğretmen Profil Durum Yöneticisi (Riverpod + SharedPrefs Persistence)
@@ -95,9 +96,18 @@ class TeacherProfileNotifier extends StateNotifier<TeacherProfileModel> {
     }
   }
 
-  /// Oturumu Kapat / Temizle
+  /// Oturumu Kapat / Temizle.
+  ///
+  /// Yalnızca yerel tercihleri silmek YETMEZ: Firebase ve Google oturumu
+  /// açık kalırsa kullanıcı başka bir hesapla giriş yapamaz — uygulama
+  /// sessizce eski hesabı kullanmaya devam eder. Bu, hem hesap değiştirmek
+  /// isteyen gerçek kullanıcıyı hem de iki rolü tek cihazda denemek
+  /// isteyen test senaryosunu engelliyordu.
   Future<void> logout() async {
     try {
+      // Önce kimlik oturumunu kapat, sonra yerel izleri temizle.
+      await TeacherAuthService().signOut();
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
       state = const TeacherProfileModel(
