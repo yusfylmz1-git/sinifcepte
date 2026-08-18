@@ -108,7 +108,7 @@ class ParentLinkBridge {
     required String relation,
     Future<bool> Function(BridgeLinkPreview preview)? confirm,
   }) async {
-    final cleanCode = inputCode.replaceAll(' ', '').toUpperCase().trim();
+    final cleanCode = ParentTokenModel.normalizeCode(inputCode);
     final cleanNumber = inputStudentNumber.replaceAll(' ', '').trim();
 
     if (cleanCode.isEmpty) {

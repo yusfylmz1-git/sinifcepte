@@ -39,6 +39,11 @@ class TeacherAuthService {
       );
     }
 
+    // Cihazdaki önceki Google oturumunu sıfırla ki kullanıcı hesap seçebilsin
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {}
+
     final googleUser = await _googleSignIn.signIn();
     if (googleUser == null) {
       throw const TeacherAuthException('Google girişi iptal edildi.');
@@ -79,6 +84,9 @@ class TeacherAuthService {
         await FirebaseAuth.instance.signOut();
       }
       await _googleSignIn.signOut();
+      try {
+        await _googleSignIn.disconnect();
+      } catch (_) {}
     } catch (e, stackTrace) {
       debugPrint('TeacherAuthService.signOut hatası: $e\n$stackTrace');
     }

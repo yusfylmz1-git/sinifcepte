@@ -74,6 +74,11 @@ class ParentAuthService {
       );
     }
 
+    // Cihazdaki önceki Google oturumunu sıfırla ki kullanıcı hesap seçebilsin
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {}
+
     final googleUser = await _googleSignIn.signIn();
     if (googleUser == null) {
       throw const ParentAuthException('Google girişi iptal edildi.');
@@ -128,6 +133,9 @@ class ParentAuthService {
         await FirebaseAuth.instance.signOut();
       }
       await _googleSignIn.signOut();
+      try {
+        await _googleSignIn.disconnect();
+      } catch (_) {}
     } catch (e, stackTrace) {
       debugPrint('ParentAuthService.signOut hatası: $e\n$stackTrace');
     }

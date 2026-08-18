@@ -66,6 +66,43 @@ class ParentTokenModel {
     return 'Aktif ($remainingDays gün kaldı) 🟢';
   }
 
+  /// Referans kodunu standart 'SC-{classTag}-{digits}' biçimine normalize eder.
+  ///
+  /// Desteklenen formatlar:
+  /// - 'SC-8A-9402' -> 'SC-8A-9402'
+  /// - 'sc-8a-9402' -> 'SC-8A-9402'
+  /// - 'sc 8a 9402' -> 'SC-8A-9402'
+  /// - 'SC8A9402'   -> 'SC-8A-9402'
+  /// - '8A-9402'    -> 'SC-8A-9402'
+  /// - '8a9402'     -> 'SC-8A-9402'
+  static String normalizeCode(String input) {
+    var raw = input.trim().toUpperCase().replaceAll(' ', '');
+    raw = raw.replaceAll('İ', 'I').replaceAll('ı', 'I');
+    if (raw.isEmpty) return '';
+
+    final stripped = raw.replaceAll('-', '').replaceAll('/', '').replaceAll('.', '');
+    String body = stripped;
+    if (body.startsWith('SC')) {
+      body = body.substring(2);
+    }
+
+    if (body.length >= 5) {
+      final digits = body.substring(body.length - 4);
+      final isDigits = RegExp(r'^\d{4}$').hasMatch(digits);
+      if (isDigits) {
+        final classTag = body.substring(0, body.length - 4);
+        if (classTag.isNotEmpty) {
+          return 'SC-$classTag-$digits';
+        }
+      }
+    }
+
+    if (raw.startsWith('SC-')) {
+      return raw;
+    }
+    return raw;
+  }
+
   /// SHA-256 Hash Yardımcısı
   static String generateSha256(String input, {String salt = 'sinifcepte_salt_2026'}) {
     final bytes = utf8.encode('$input:$salt');

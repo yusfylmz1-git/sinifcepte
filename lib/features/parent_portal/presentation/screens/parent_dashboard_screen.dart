@@ -68,6 +68,8 @@ class ParentDashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
+  DateTime? _lastBackPressTime;
+
   // Hızlı Öğrenci Bağlama Form Controller'ları
   final _quickCodeCtrl = TextEditingController();
   final _quickStudentNoCtrl = TextEditingController();
@@ -94,13 +96,72 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
     final selectedIndex = ref.watch(selectedChildIndexProvider);
     final activeChild = ref.watch(activeSelectedChildProvider);
 
-    return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.9),
-        elevation: 0,
-        centerTitle: false,
-        title: Row(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        final hasChildren = (childrenAsync.valueOrNull ?? []).isNotEmpty;
+        if (!hasChildren) {
+          // Çocuk ekli değilse güvenle giriş ekranına dön
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+            (route) => false,
+          );
+          return;
+        }
+
+        // Çocuk varsa çift tıklama ile çıkış
+        final now = DateTime.now();
+        if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+          _lastBackPressTime = now;
+          ScaffoldMessenger.of(context).clearSnackBars();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.exit_to_app_rounded, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Çıkmak için tekrar geri basın',
+                      style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFF0F172A),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              margin: const EdgeInsets.all(16),
+            ),
+          );
+        } else {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+        appBar: AppBar(
+          backgroundColor: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.9),
+          elevation: 0,
+          centerTitle: false,
+          leading: childrenAsync.maybeWhen(
+            data: (children) => children.isEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    tooltip: 'Giriş Ekranına Dön',
+                    onPressed: () {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+                        (route) => false,
+                      );
+                    },
+                  )
+                : null,
+            orElse: () => null,
+          ),
+          title: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(7),
@@ -313,11 +374,14 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
           );
         },
       ),
-    );
-  }
+    ),
+  );
+}
 
   /// ÖĞRENCİ HENÜZ EKLİ DEĞİLSE GÖSTERİLEN MODERN YÖNETİM PORTALI
   Widget _buildQuickConnectPortalView(BuildContext context, bool isDark) {
+    final identity = ref.read(parentAuthServiceProvider).currentIdentity;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -353,13 +417,21 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Hoş Geldiniz!',
-                      style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                      identity != null && identity.displayName.isNotEmpty
+                          ? 'Hoş Geldiniz, ${identity.displayName}!'
+                          : 'Hoş Geldiniz!',
+                      style: GoogleFonts.outfit(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Öğretmeninizin verdiği referans koduyla çocuğunuzun sınıfına anında bağlanın.',
+                      identity != null && identity.email.isNotEmpty
+                          ? '${identity.email} hesabıyla bağlısınız.'
+                          : 'Öğretmeninizin verdiği referans koduyla çocuğunuzun sınıfına anında bağlanın.',
                       style: GoogleFonts.outfit(fontSize: 12, color: Colors.white.withValues(alpha: 0.9)),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -394,7 +466,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                 textCapitalization: TextCapitalization.characters,
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\-]')),
-                  LengthLimitingTextInputFormatter(12),
+                  LengthLimitingTextInputFormatter(16),
                 ],
                 decoration: InputDecoration(
                   labelText: '🔑 Veli Referans Kodu',
@@ -545,7 +617,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                   children: [
                     Text('Referans Kodu Nedir?', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 12.5)),
                     Text(
-                      'Sınıf öğretmeninizin ürettiği 8 haneli güvenli koddur. Kodunuz yoksa sınıf öğretmeninizden talep edebilirsiniz.',
+                      'Sınıf öğretmeninizin ürettiği güvenli referans kodudur (Örn: SC-8A-9402). Kodunuz yoksa sınıf öğretmeninizden talep edebilirsiniz.',
                       style: GoogleFonts.outfit(fontSize: 11, color: isDark ? Colors.white60 : Colors.black54),
                     ),
                   ],
@@ -553,6 +625,67 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
               ),
             ],
           ),
+        ),
+
+        const SizedBox(height: 14),
+
+        // Çıkış Yap & Rol Değiştirme Butonları
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  await ref.read(parentAuthServiceProvider).signOut();
+                  await ref.read(userRoleProvider.notifier).resetRole();
+                  if (context.mounted) {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+                      (route) => false,
+                    );
+                  }
+                },
+                icon: const Icon(Icons.logout_rounded, size: 18, color: Colors.redAccent),
+                label: Text(
+                  'Çıkış Yap',
+                  style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.redAccent),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.4)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  await ref.read(userRoleProvider.notifier).selectTeacherRole();
+                  if (context.mounted) {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const SchoolBindGate()),
+                      (route) => false,
+                    );
+                  }
+                },
+                icon: const Icon(Icons.school_rounded, size: 18, color: Colors.white),
+                label: Text(
+                  'Öğretmen Modu',
+                  style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );

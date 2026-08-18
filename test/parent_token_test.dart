@@ -150,5 +150,40 @@ void main() {
       expect(verifyResult.isSuccess, isFalse);
       expect(verifyResult.errorMessage, contains('iptal edilmiş'));
     });
+
+    test('normalizeCode correctly formats various user inputs', () {
+      expect(ParentTokenModel.normalizeCode('SC-8A-9402'), equals('SC-8A-9402'));
+      expect(ParentTokenModel.normalizeCode('sc-8a-9402'), equals('SC-8A-9402'));
+      expect(ParentTokenModel.normalizeCode('sc 8a 9402'), equals('SC-8A-9402'));
+      expect(ParentTokenModel.normalizeCode('SC8A9402'), equals('SC-8A-9402'));
+      expect(ParentTokenModel.normalizeCode('8A-9402'), equals('SC-8A-9402'));
+      expect(ParentTokenModel.normalizeCode('8a9402'), equals('SC-8A-9402'));
+      expect(ParentTokenModel.normalizeCode('12B1234'), equals('SC-12B-1234'));
+      expect(ParentTokenModel.normalizeCode(''), equals(''));
+    });
+
+    test('verifyToken succeeds with lowercase, unhyphenated or prefixless inputs', () async {
+      final token = await repository.generateTokenForStudent(
+        student: testStudent,
+        classModel: testClass,
+        teacher: testTeacher,
+      );
+
+      // Kodu SC- olmadan veya küçük harfle girince de doğrulamalı
+      final rawWithoutPrefix = token.code.replaceFirst('SC-', '').toLowerCase();
+      final result1 = await repository.verifyToken(
+        inputCode: rawWithoutPrefix,
+        inputStudentNumber: '142',
+      );
+      expect(result1.isSuccess, isTrue);
+
+      // Kodu tiresiz girince de doğrulamalı
+      final rawWithoutDashes = token.code.replaceAll('-', '').toLowerCase();
+      final result2 = await repository.verifyToken(
+        inputCode: rawWithoutDashes,
+        inputStudentNumber: '142',
+      );
+      expect(result2.isSuccess, isTrue);
+    });
   });
 }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/glass_card.dart';
+import '../../../auth/screens/welcome_screen.dart';
 import '../../../auth_profile/providers/user_role_provider.dart';
 import '../../providers/parent_token_provider.dart';
 import 'parent_dashboard_screen.dart';
@@ -279,26 +280,42 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: isDark ? Colors.white : AppColors.textPrimaryLight,
-            size: 20,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (widget.isAddingAnotherChild && Navigator.canPop(context)) {
+          Navigator.of(context).pop();
+        } else {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+            (route) => false,
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: isDark ? Colors.white : AppColors.textPrimaryLight,
+              size: 20,
+            ),
+            onPressed: () {
+              if (widget.isAddingAnotherChild && Navigator.canPop(context)) {
+                Navigator.of(context).pop();
+              } else {
+                ref.read(userRoleProvider.notifier).resetRole();
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+                  (route) => false,
+                );
+              }
+            },
           ),
-          onPressed: () {
-            if (widget.isAddingAnotherChild) {
-              Navigator.of(context).pop();
-            } else {
-              ref.read(userRoleProvider.notifier).resetRole();
-              Navigator.of(context).pop();
-            }
-          },
-        ),
         title: Text(
           widget.isAddingAnotherChild ? 'Yeni Çocuk Ekle' : 'Veli Girişi & Öğrenci Bağlama',
           style: GoogleFonts.outfit(
@@ -720,6 +737,7 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

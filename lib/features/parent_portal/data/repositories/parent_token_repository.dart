@@ -282,7 +282,7 @@ class ParentTokenRepository {
     required String inputCode,
     required String inputStudentNumber,
   }) async {
-    final cleanCode = inputCode.replaceAll(' ', '').toUpperCase().trim();
+    final cleanCode = ParentTokenModel.normalizeCode(inputCode);
     final cleanNumber = inputStudentNumber.replaceAll(' ', '').trim();
 
     if (cleanCode.isEmpty) {
