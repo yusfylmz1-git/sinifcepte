@@ -365,14 +365,35 @@ Kurgunun son ana parçası. **Yönetici rolü opsiyonel kaldı** — yöneticisi
 
 ---
 
+#### M. Faz 6 TAMAMLANDI ✅ (`18c5e9e`) — bütçe koruması
+
+Maliyet endişenizin teknik karşılığı. **Blaze planında Firebase varsayılan harcama tavanı koymaz** — faturayı patlatan şey genelde özellik kullanımı değil, bir kod hatasıdır.
+
+**`FirestoreBudgetGuard` (istemci freni):**
+- Günlük yazma tavanı **500** — gerçekçi kullanımın ~50 katı. Normal kullanımda asla tetiklenmez, ama sonsuz döngü **saniyeler içinde** yakalanır.
+- **Okuma asla engellenmez**, yalnızca uyarı loglanır. Gerekçe: okuma engellenirse uygulama kullanılamaz hale gelir ve kullanıcı sebebini anlamaz; yazma ise üç kat pahalı ve kaçakların çoğu yazma döngüsü.
+- Tavanı aşacak toplu yazma **tümüyle** reddedilir (kısmi batch yazılmaz).
+- `FirestoreClient`'ın tüm yazma yolları frenden geçiyor; sorgu okumaları da sayılıyor.
+
+**`docs/BUDGET.md`** — Katman 1 (kod freni) / Katman 2 (Google Cloud alarmı) ayrımı, kurulum adımları, App Check önerisi, teşhis sırası.
+
+> ⚠️ **Sizin yapmanız gereken:** Google Cloud Console'da bütçe alarmı kurmak. Kod freni kaçağı keser ama gerçek kullanıcı büyümesini yakalamaz. Adımlar `docs/BUDGET.md` içinde.
+
+**Test kalitesi notu:** Gün değişimi testi başta **yanlış sebepten geçiyordu** — `setUp`'taki `reset()` belleği "yüklendi" işaretlediği için disk hiç okunmuyordu. `invalidateCache()` eklendi ve **mutasyon testiyle** (koşulu kasıtlı bozarak) testin gerçekten o yolu koruduğu doğrulandı.
+
+**Doğrulama:** `flutter analyze` 0 issue · Dart **161/161** · kurallar **78/78**.
+
+---
+
 ## 🎯 SIRADAKİ ADIM
 
-**Faz 6 — Bütçe koruması.** Blaze'e geçildiğinde Firebase **varsayılan harcama tavanı koymaz**; tek bir kod hatası dört haneli faturaya yol açabilir.
-- Google Cloud bütçe alarmı kurulum rehberi
-- Kota aşımında yazmayı durduran koruma
-- Maliyet izleme notları
+**Faz 7 — Reklam açılışı.** Altyapı Faz 1'de kuruldu (kapalı); kalan iş:
+- `google_mobile_ads` SDK eklenmesi
+- **Kişiselleştirilmemiş** reklam yapılandırması (Google Play Families + KVKK gereği — tercih değil, zorunluluk)
+- Banner/native yer tutucuların gerçek reklamla doldurulması
+- `AdGate.setEnabled(true)` ile açılış
 
-Sonra: **Faz 7** reklam açılışı (AdMob SDK + kişiselleştirilmemiş reklam yapılandırması).
+Bu faz **kullanıcı sayısı olmadan gelir getirmez**; ürün yayına yaklaşınca yapılması daha mantıklı.
 
 ---
 
@@ -416,7 +437,7 @@ Bugün itibarıyla iki ayrı cihazda şunlar çalışıyor:
 
 | Takım | Sayı | Komut |
 | :--- | :--: | :--- |
-| Dart birim testleri | **149** | `flutter test` |
+| Dart birim testleri | **161** | `flutter test` |
 | Firestore kural testleri | **78** | `cd test_rules && .\run-tests.ps1` |
 | Statik analiz | 0 issue | `flutter analyze` |
 
