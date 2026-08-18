@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sinifcepte/core/storage/prefs_migrator.dart';
+import 'package:sinifcepte/core/storage/prefs_service.dart';
 import 'package:sinifcepte/data/models/class_model.dart';
 import 'package:sinifcepte/data/models/student_model.dart';
 import 'package:sinifcepte/features/auth_profile/data/models/teacher_profile_model.dart';
@@ -42,6 +44,8 @@ void main() {
 
     setUp(() {
       SharedPreferences.setMockInitialValues({});
+      PrefsService.resetCache();
+      PrefsMigrator.resetForTest();
       repository = ParentTokenRepository();
     });
 

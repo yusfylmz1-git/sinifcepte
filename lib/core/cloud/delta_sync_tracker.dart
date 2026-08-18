@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../storage/prefs_service.dart';
 
 /// Delta senkron zaman damgası deposu (maliyet kararı #2).
 ///
@@ -23,10 +23,10 @@ class DeltaSyncTracker {
 
   static final DeltaSyncTracker instance = DeltaSyncTracker._();
 
-  /// Saat kayması payı.
+  /// Zaman damgasını bu kadar geriden başlat: sınırda kalan güncellemeler
+  /// saat farkı yüzünden atlanmasın.
   static const Duration _safetyMargin = Duration(minutes: 5);
 
-  /// Bu süreden eski senkronlar yok sayılır ve tam çekim yapılır.
   /// Uzun süre açılmamış uygulamada delta zincirinin kopmasını önler.
   static const Duration _maxStaleness = Duration(days: 30);
 
@@ -37,8 +37,8 @@ class DeltaSyncTracker {
   /// `null` dönerse tam çekim yapılmalıdır (ilk açılış veya çok eski senkron).
   Future<DateTime?> lastSyncOf(String stream) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_key(stream));
+      final prefs = await PrefsService.instance();
+      final raw = prefs?.getString(_key(stream));
       if (raw == null || raw.isEmpty) return null;
 
       final parsed = DateTime.tryParse(raw);
@@ -60,7 +60,8 @@ class DeltaSyncTracker {
   /// çekimden sonra damgayı ilerletmek veri atlamasına yol açar.
   Future<void> markSynced(String stream, {DateTime? at}) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
+      if (prefs == null) return;
       await prefs.setString(
         _key(stream),
         (at ?? DateTime.now()).toIso8601String(),
@@ -73,7 +74,8 @@ class DeltaSyncTracker {
   /// Akışı sıfırlar (bir sonraki çekim tam olur).
   Future<void> reset(String stream) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
+      if (prefs == null) return;
       await prefs.remove(_key(stream));
     } catch (e, stackTrace) {
       debugPrint('DeltaSyncTracker.reset hatası ($stream): $e\n$stackTrace');

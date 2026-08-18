@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/storage/prefs_keys.dart';
+import '../../../core/storage/prefs_service.dart';
 import '../data/services/auth_claims_service.dart';
 
 /// SınıfCepte Kullanıcı Rolleri
@@ -91,8 +91,8 @@ class UserRoleNotifier extends StateNotifier<UserRoleState> {
   /// sunucudan gelir.
   Future<void> loadRole() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedRoleStr = prefs.getString(_prefKey);
+      final prefs = await PrefsService.instance();
+      final savedRoleStr = prefs?.getString(_prefKey);
 
       // Yükleme sürerken kullanıcı seçim yaptıysa onun kararı geçerlidir.
       if (_roleExplicitlySelected) {
@@ -157,7 +157,8 @@ class UserRoleNotifier extends StateNotifier<UserRoleState> {
     _roleExplicitlySelected = newRole != UserRole.none;
     state = state.copyWith(role: newRole);
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
+      if (prefs == null) return;
       if (newRole == UserRole.none) {
         await prefs.remove(_prefKey);
       } else {

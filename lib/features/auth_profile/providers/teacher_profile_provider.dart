@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/storage/prefs_service.dart';
 import '../data/services/teacher_auth_service.dart';
 import '../data/models/teacher_profile_model.dart';
 
@@ -36,7 +36,8 @@ class TeacherProfileNotifier extends StateNotifier<TeacherProfileModel> {
   /// Yerel hafızadan profil yükleme
   Future<void> loadProfileFromStorage() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
+      if (prefs == null) return;
       final firstName = prefs.getString('profil_ad') ?? state.firstName;
       final lastName = prefs.getString('profil_soyad') ?? state.lastName;
       final gender = prefs.getString('profil_cinsiyet') ?? state.gender;
@@ -72,7 +73,8 @@ class TeacherProfileNotifier extends StateNotifier<TeacherProfileModel> {
   /// Profil bilgilerini kaydetme
   Future<bool> saveProfile(TeacherProfileModel updated) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
+      if (prefs == null) return false;
       await prefs.setString('profil_ad', updated.firstName);
       await prefs.setString('profil_soyad', updated.lastName);
       await prefs.setString('profil_cinsiyet', updated.gender);
@@ -97,19 +99,30 @@ class TeacherProfileNotifier extends StateNotifier<TeacherProfileModel> {
   }
 
   /// Oturumu Kapat / Temizle.
-  ///
-  /// Yalnızca yerel tercihleri silmek YETMEZ: Firebase ve Google oturumu
-  /// açık kalırsa kullanıcı başka bir hesapla giriş yapamaz — uygulama
-  /// sessizce eski hesabı kullanmaya devam eder. Bu, hem hesap değiştirmek
-  /// isteyen gerçek kullanıcıyı hem de iki rolü tek cihazda denemek
-  /// isteyen test senaryosunu engelliyordu.
   Future<void> logout() async {
     try {
       // Önce kimlik oturumunu kapat, sonra yerel izleri temizle.
       await TeacherAuthService().signOut();
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
+      final prefs = await PrefsService.instance();
+      if (prefs != null) {
+        for (final k in [
+          'profil_ad',
+          'profil_soyad',
+          'profil_cinsiyet',
+          'profil_brans',
+          'profil_okul',
+          'profil_il',
+          'profil_ilce',
+          'profil_okul_id',
+          'profil_okul_turu',
+          'profil_mudur',
+          'profil_email',
+          'profil_foto',
+        ]) {
+          await prefs.remove(k);
+        }
+      }
       state = const TeacherProfileModel(
         id: 'local_teacher',
         firstName: '',

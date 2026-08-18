@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/cloud/firestore_client.dart';
 import '../../../../core/storage/prefs_keys.dart';
+import '../../../../core/storage/prefs_service.dart';
 import '../models/school_model.dart';
 import '../models/school_types.dart';
 import '../utils/normalized_levenshtein.dart';
@@ -219,10 +219,12 @@ class SchoolRepository {
         source: 'manuel_onayli',
       );
 
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getStringList(PrefsKeys.pendingSchoolSubmissions) ?? [];
+      final prefs = await PrefsService.instance();
+      final raw = prefs?.getStringList(PrefsKeys.pendingSchoolSubmissions) ?? [];
       raw.add(jsonEncode(pending.toMap()));
-      await prefs.setStringList(PrefsKeys.pendingSchoolSubmissions, raw);
+      if (prefs != null) {
+        await prefs.setStringList(PrefsKeys.pendingSchoolSubmissions, raw);
+      }
 
       // Öneriyi onay kuyruğuna da gönder: yalnızca yerelde kalırsa okul
       // dizinine hiçbir zaman eklenmez ve aynı okulu ekleyen her öğretmen
@@ -270,8 +272,8 @@ class SchoolRepository {
 
   Future<List<SchoolModel>> getCustomSchools() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getStringList(PrefsKeys.pendingSchoolSubmissions) ?? [];
+      final prefs = await PrefsService.instance();
+      final raw = prefs?.getStringList(PrefsKeys.pendingSchoolSubmissions) ?? [];
       final list = <SchoolModel>[];
       for (final item in raw) {
         try {

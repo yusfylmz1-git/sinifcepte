@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sinifcepte/core/storage/prefs_migrator.dart';
+import 'package:sinifcepte/core/storage/prefs_service.dart';
 import 'package:sinifcepte/features/parent_portal/data/models/parent_link_model.dart';
 import 'package:sinifcepte/features/parent_portal/data/models/parent_token_model.dart';
 import 'package:sinifcepte/features/parent_portal/data/services/kvkk_consent_service.dart';
@@ -12,6 +14,8 @@ void main() {
   group('KVKK Consent & Lifecycle Services Tests', () {
     setUp(() {
       SharedPreferences.setMockInitialValues({});
+      PrefsService.resetCache();
+      PrefsMigrator.resetForTest();
     });
 
     test('KvkkConsentService records consent and checks valid consent version', () async {

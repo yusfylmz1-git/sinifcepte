@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../storage/prefs_service.dart';
 
 /// Firestore işlem sayacı ve istemci tarafı kota freni.
 ///
@@ -28,11 +28,13 @@ class FirestoreBudgetGuard {
 
   static final FirestoreBudgetGuard instance = FirestoreBudgetGuard._();
 
-  /// Tek cihaz için günlük yazma tavanı.
-  static const int dailyWriteLimit = 500;
+  /// Günde tek cihazdan yapılabilecek azami yazma sayısı.
+  /// Normal kullanım: ~2 yazma/gün. Sınır: 100 yazma/gün (50 kat).
+  static const int dailyWriteLimit = 100;
 
-  /// Tek cihaz için günlük okuma uyarı eşiği (engellemez, yalnızca loglar).
-  static const int dailyReadWarnThreshold = 2000;
+  /// Bu okuma sayısına ulaşıldığında loglara uyarı basılır (engellenmez).
+  /// Normal kullanım: ~10 okuma/gün. Uyarı: 200 okuma/gün (20 kat).
+  static const int dailyReadWarnThreshold = 200;
 
   static const String _kDateKey = 'sinifcepte_budget_date';
   static const String _kWritesKey = 'sinifcepte_budget_writes';
@@ -43,11 +45,12 @@ class FirestoreBudgetGuard {
   String _day = '';
   bool _loaded = false;
 
-  /// Bugünkü yazma sayısı.
+  /// Güncel sayaç durumları (gözlemleme ve testler için).
   int get writesToday => _writes;
-
-  /// Bugünkü okuma sayısı.
   int get readsToday => _reads;
+  int get currentWrites => _writes;
+  int get currentReads => _reads;
+  String get currentDay => _day;
 
   /// Yazma tavanına ulaşıldı mı?
   bool get isWriteBlocked => _writes >= dailyWriteLimit;
@@ -62,8 +65,8 @@ class FirestoreBudgetGuard {
     if (_loaded && _day == _today()) return;
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final storedDay = prefs.getString(_kDateKey) ?? '';
+      final prefs = await PrefsService.instance();
+      final storedDay = prefs?.getString(_kDateKey) ?? '';
       final today = _today();
 
       if (storedDay != today) {
@@ -71,12 +74,14 @@ class FirestoreBudgetGuard {
         _writes = 0;
         _reads = 0;
         _day = today;
-        await prefs.setString(_kDateKey, today);
-        await prefs.setInt(_kWritesKey, 0);
-        await prefs.setInt(_kReadsKey, 0);
+        if (prefs != null) {
+          await prefs.setString(_kDateKey, today);
+          await prefs.setInt(_kWritesKey, 0);
+          await prefs.setInt(_kReadsKey, 0);
+        }
       } else {
-        _writes = prefs.getInt(_kWritesKey) ?? 0;
-        _reads = prefs.getInt(_kReadsKey) ?? 0;
+        _writes = prefs?.getInt(_kWritesKey) ?? 0;
+        _reads = prefs?.getInt(_kReadsKey) ?? 0;
         _day = today;
       }
       _loaded = true;
@@ -125,7 +130,8 @@ class FirestoreBudgetGuard {
 
   Future<void> _persist({int? writes, int? reads}) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
+      if (prefs == null) return;
       if (writes != null) await prefs.setInt(_kWritesKey, writes);
       if (reads != null) await prefs.setInt(_kReadsKey, reads);
     } catch (e, stackTrace) {
@@ -140,7 +146,8 @@ class FirestoreBudgetGuard {
     _day = _today();
     _loaded = true;
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
+      if (prefs == null) return;
       await prefs.setString(_kDateKey, _day);
       await prefs.setInt(_kWritesKey, 0);
       await prefs.setInt(_kReadsKey, 0);

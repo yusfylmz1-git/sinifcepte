@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/storage/prefs_service.dart';
 
 /// SınıfCepte - Ders Programı Ayarları Modeli ve Kalıcı Depolama Yöneticisi
 class ScheduleSettings {
@@ -82,8 +82,7 @@ class ScheduleSettings {
     return '${formatMin(lunchStartMin)} - ${formatMin(lunchEndMin)}';
   }
 
-  // --- SHARED PREFERENCES YÖNETİMİ ---
-
+  // --- Kalıcı Depolama Anahtarları (PrefsService) ---
   static const _kFirstLessonHour = 'sched_first_hour';
   static const _kFirstLessonMin = 'sched_first_min';
   static const _kLessonDuration = 'sched_lesson_dur';
@@ -95,15 +94,15 @@ class ScheduleSettings {
 
   static Future<ScheduleSettings> load() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final hour = prefs.getInt(_kFirstLessonHour) ?? 8;
-      final min = prefs.getInt(_kFirstLessonMin) ?? 30;
-      final lessonDur = prefs.getInt(_kLessonDuration) ?? 40;
-      final breakDur = prefs.getInt(_kBreakDuration) ?? 10;
-      final dailyCount = prefs.getInt(_kDailyLessonCount) ?? 8;
-      final hasLunch = prefs.getBool(_kHasLunchBreak) ?? true;
-      final lunchDur = prefs.getInt(_kLunchDuration) ?? 45;
-      final lunchAfter = prefs.getInt(_kLunchAfter) ?? 4;
+      final prefs = await PrefsService.instance();
+      final hour = prefs?.getInt(_kFirstLessonHour) ?? 8;
+      final min = prefs?.getInt(_kFirstLessonMin) ?? 30;
+      final lessonDur = prefs?.getInt(_kLessonDuration) ?? 40;
+      final breakDur = prefs?.getInt(_kBreakDuration) ?? 10;
+      final dailyCount = prefs?.getInt(_kDailyLessonCount) ?? 8;
+      final hasLunch = prefs?.getBool(_kHasLunchBreak) ?? true;
+      final lunchDur = prefs?.getInt(_kLunchDuration) ?? 45;
+      final lunchAfter = prefs?.getInt(_kLunchAfter) ?? 4;
 
       return ScheduleSettings(
         firstLessonTime: TimeOfDay(hour: hour, minute: min),
@@ -125,7 +124,8 @@ class ScheduleSettings {
 
   Future<void> save() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
+      if (prefs == null) return;
       await prefs.setInt(_kFirstLessonHour, firstLessonTime.hour);
       await prefs.setInt(_kFirstLessonMin, firstLessonTime.minute);
       await prefs.setInt(_kLessonDuration, lessonDuration);

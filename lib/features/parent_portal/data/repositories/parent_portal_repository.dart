@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/storage/prefs_service.dart';
 import '../models/parent_status_report_model.dart';
 import '../models/class_announcement_model.dart';
 import '../models/class_teacher_contact_model.dart';
 import '../models/parent_appointment_model.dart';
 
-/// SınıfCepte - Veli Portalı Master Veri Deposu (Offline-First / SharedPreferences)
+/// SınıfCepte - Veli Portalı Master Veri Deposu (Offline-First / PrefsService)
 class ParentPortalRepository {
   static const String _statusReportsPrefKey = 'sinifcepte_parent_status_reports';
   static const String _announcementsPrefKey = 'sinifcepte_class_announcements';
@@ -17,8 +17,8 @@ class ParentPortalRepository {
 
   Future<List<ParentStatusReportModel>> _loadStatusReports() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final rawList = prefs.getStringList(_statusReportsPrefKey) ?? [];
+      final prefs = await PrefsService.instance();
+      final rawList = prefs?.getStringList(_statusReportsPrefKey) ?? [];
       final list = <ParentStatusReportModel>[];
       for (final raw in rawList) {
         try {
@@ -37,7 +37,8 @@ class ParentPortalRepository {
 
   Future<void> _saveStatusReports(List<ParentStatusReportModel> list) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
+      if (prefs == null) return;
       final rawList = list.map((r) => jsonEncode(r.toMap())).toList();
       await prefs.setStringList(_statusReportsPrefKey, rawList);
     } catch (e, stackTrace) {
@@ -85,8 +86,8 @@ class ParentPortalRepository {
 
   Future<List<ClassAnnouncementModel>> _loadAnnouncements() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final rawList = prefs.getStringList(_announcementsPrefKey) ?? [];
+      final prefs = await PrefsService.instance();
+      final rawList = prefs?.getStringList(_announcementsPrefKey) ?? [];
       final list = <ClassAnnouncementModel>[];
       for (final raw in rawList) {
         try {
@@ -105,7 +106,8 @@ class ParentPortalRepository {
 
   Future<void> _saveAnnouncements(List<ClassAnnouncementModel> list) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
+      if (prefs == null) return;
       final rawList = list.map((a) => jsonEncode(a.toMap())).toList();
       await prefs.setStringList(_announcementsPrefKey, rawList);
     } catch (e, stackTrace) {
@@ -177,8 +179,8 @@ class ParentPortalRepository {
 
   Future<List<ClassTeacherContactModel>> _loadTeacherContacts() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final rawList = prefs.getStringList(_teacherContactsPrefKey) ?? [];
+      final prefs = await PrefsService.instance();
+      final rawList = prefs?.getStringList(_teacherContactsPrefKey) ?? [];
       final list = <ClassTeacherContactModel>[];
       for (final raw in rawList) {
         try {
@@ -197,7 +199,8 @@ class ParentPortalRepository {
 
   Future<void> _saveTeacherContacts(List<ClassTeacherContactModel> list) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
+      if (prefs == null) return;
       final rawList = list.map((c) => jsonEncode(c.toMap())).toList();
       await prefs.setStringList(_teacherContactsPrefKey, rawList);
     } catch (e, stackTrace) {
@@ -254,8 +257,8 @@ class ParentPortalRepository {
 
   Future<List<ParentAppointmentModel>> _loadAppointments() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final rawList = prefs.getStringList(_appointmentsPrefKey) ?? [];
+      final prefs = await PrefsService.instance();
+      final rawList = prefs?.getStringList(_appointmentsPrefKey) ?? [];
       final list = <ParentAppointmentModel>[];
       for (final raw in rawList) {
         try {
@@ -274,7 +277,8 @@ class ParentPortalRepository {
 
   Future<void> _saveAppointments(List<ParentAppointmentModel> list) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
+      if (prefs == null) return;
       final rawList = list.map((a) => jsonEncode(a.toMap())).toList();
       await prefs.setStringList(_appointmentsPrefKey, rawList);
     } catch (e, stackTrace) {

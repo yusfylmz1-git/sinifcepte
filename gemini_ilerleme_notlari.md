@@ -36,6 +36,30 @@ Kullanıcı testlerinde ortaya çıkan kritik akış ve UX sorunları çözüld�
    * Henüz çocuk eklenmemişken geri tuşuna basıldığında uygulama kapanması engellendi; giriş ekranına dönüş sağlandı.
    * Formun altına belirgin **"🚪 Çıkış Yap"** ve **"👨‍🏫 Öğretmen Modu"** butonları eklendi.
 
+### 🚀 SharedPreferences.getInstance() Kilitlenme ve ANR Çözümü (Faz Tamamlama)
+* **Kök Neden:** Android platform kanalında doğrudan yapılan 55 ayrı `SharedPreferences.getInstance()` çağrısının ağır eşzamanlı isteklerde kanalı kilitlemesi ve süresiz bekleyerek ANR / donma üretmesi tespit edildi.
+* **Merkezi Çözüm (`PrefsService`):**
+  * Tüm kod tabanındaki (14 dosya) doğrudan `SharedPreferences.getInstance()` çağrıları `PrefsService.instance()` yapısına geçirildi.
+  * 3 saniyelik zaman aşımı (`Duration(seconds: 3)`), `_inFlight` tek istek birleştirme (deduplication) ve `_cached` tek örnek önbellekleme sağlandı.
+  * `main.dart` içinde `PrefsService.warmUp()` ile uygulama açılışında depo ısıtması yapıldı.
+  * `PrefsMigrator` ve `PrefsService` birim testleri için `@visibleForTesting resetCache()` ve `resetForTest()` fonksiyonlarıyla donatıldı.
+* **Dönüştürülen Modüller:**
+  1. `lib/core/theme/theme_provider.dart`
+  2. `lib/features/auth_profile/providers/user_role_provider.dart`
+  3. `lib/features/auth_profile/providers/teacher_profile_provider.dart`
+  4. `lib/core/database/database_helper.dart`
+  5. `lib/core/cloud/delta_sync_tracker.dart`
+  6. `lib/core/cloud/firestore_budget_guard.dart`
+  7. `lib/core/ads/ad_gate.dart`
+  8. `lib/features/outcomes/data/repositories/curriculum_outcome_repository.dart`
+  9. `lib/features/parent_portal/data/repositories/parent_portal_repository.dart`
+  10. `lib/features/parent_portal/data/services/kvkk_consent_service.dart`
+  11. `lib/features/parent_portal/data/services/parent_auth_service.dart`
+  12. `lib/features/parent_portal/data/services/parent_lifecycle_service.dart`
+  13. `lib/features/schedule/models/schedule_settings.dart`
+  14. `lib/features/schools/data/repositories/school_repository.dart`
+
 ### 🧪 Test ve Analiz Durumu
-* `flutter test` → **206/206 test BAŞARILI**
-* `flutter analyze` → **0 issue**
+* `flutter test` → **206/206 test EKSİKSİZ BAŞARILI**
+* `flutter analyze` → **0 issue / Hata Yok**
+* Çalışma ağacında tek bir doğrudan `SharedPreferences.getInstance()` çağrısı kalmadı (`PrefsService` korumalı wrapper hariç).

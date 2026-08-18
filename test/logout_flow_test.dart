@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sinifcepte/core/storage/prefs_keys.dart';
+import 'package:sinifcepte/core/storage/prefs_service.dart';
 import 'package:sinifcepte/features/auth_profile/providers/user_role_provider.dart';
 
 /// Çıkış akışı, hesap değiştirmenin ön koşuludur.
@@ -13,6 +14,7 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    PrefsService.resetCache();
   });
 
   group('Rol sıfırlama', () {
@@ -21,13 +23,13 @@ void main() {
       await notifier.loadRole();
       await notifier.selectTeacherRole();
 
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString(PrefsKeys.activeUserRole), 'teacher');
+      final prefs = await PrefsService.instance();
+      expect(prefs?.getString(PrefsKeys.activeUserRole), 'teacher');
 
       await notifier.resetRole();
 
       expect(notifier.state.hasSelectedRole, isFalse);
-      expect(prefs.getString(PrefsKeys.activeUserRole), isNull);
+      expect(prefs?.getString(PrefsKeys.activeUserRole), isNull);
     });
 
     test('resetRole yönetici yetkisini de temizler', () async {

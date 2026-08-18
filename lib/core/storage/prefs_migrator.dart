@@ -8,6 +8,11 @@ class PrefsMigrator {
 
   static final Set<String> _done = <String>{};
 
+  @visibleForTesting
+  static void resetForTest() {
+    _done.clear();
+  }
+
   static Future<void> migrateParentStores() async {
     await mergeStringLists(
       canonicalKey: PrefsKeys.parentLinks,

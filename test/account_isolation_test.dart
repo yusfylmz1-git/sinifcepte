@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sinifcepte/core/config/app_config.dart';
 import 'package:sinifcepte/core/database/database_helper.dart';
+import 'package:sinifcepte/core/storage/prefs_service.dart';
 
 /// Hesap izolasyonu ve eski veritabanı göçü.
 ///
@@ -19,6 +20,7 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    PrefsService.resetCache();
   });
 
   group('Hesap başına veritabanı adı', () {
@@ -58,6 +60,7 @@ void main() {
       SharedPreferences.setMockInitialValues({
         'sinifcepte_last_teacher_uid': 'uid1',
       });
+      PrefsService.resetCache();
 
       expect(await DatabaseHelper.isDifferentAccountThanLast('uid2'), isTrue);
     });
@@ -66,6 +69,7 @@ void main() {
       SharedPreferences.setMockInitialValues({
         'sinifcepte_last_teacher_uid': 'uid1',
       });
+      PrefsService.resetCache();
 
       expect(await DatabaseHelper.isDifferentAccountThanLast('uid1'), isFalse);
     });
@@ -74,6 +78,7 @@ void main() {
       SharedPreferences.setMockInitialValues({
         'sinifcepte_last_teacher_uid': 'uidAhmet',
       });
+      PrefsService.resetCache();
 
       expect(await DatabaseHelper.lastKnownUid(), 'uidAhmet');
     });
@@ -89,19 +94,20 @@ void main() {
       SharedPreferences.setMockInitialValues({
         'sinifcepte_legacy_db_migrated': true,
       });
+      PrefsService.resetCache();
 
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
 
       // 2. hesap giriş yaptığında bayrak zaten true olduğu için göç
       // ATLANIR ve boş bir çalışma alanı açılır.
-      expect(prefs.getBool('sinifcepte_legacy_db_migrated'), isTrue);
+      expect(prefs?.getBool('sinifcepte_legacy_db_migrated'), isTrue);
     });
 
     test('Bayrak yoksa göç bir kez denenir', () async {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
 
       // Temiz kurulumda bayrak yok: ilk hesap devralma hakkına sahip.
-      expect(prefs.getBool('sinifcepte_legacy_db_migrated'), isNull);
+      expect(prefs?.getBool('sinifcepte_legacy_db_migrated'), isNull);
     });
   });
 }

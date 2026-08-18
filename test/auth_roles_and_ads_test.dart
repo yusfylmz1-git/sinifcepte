@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sinifcepte/core/ads/ad_gate.dart';
+import 'package:sinifcepte/core/storage/prefs_service.dart';
 import 'package:sinifcepte/features/auth_profile/data/models/school_admin_request_model.dart';
 import 'package:sinifcepte/features/auth_profile/data/services/auth_claims_service.dart';
 import 'package:sinifcepte/features/auth_profile/providers/user_role_provider.dart';
@@ -10,6 +11,7 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    PrefsService.resetCache();
   });
 
   group('1. Rol ve Yetki Modeli', () {
@@ -221,11 +223,11 @@ void main() {
       final gate = AdGate.instance;
       await gate.setEnabled(true);
 
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getBool('sinifcepte_ads_enabled'), isTrue);
+      final prefs = await PrefsService.instance();
+      expect(prefs?.getBool('sinifcepte_ads_enabled'), isTrue);
 
       await gate.setEnabled(false);
-      expect(prefs.getBool('sinifcepte_ads_enabled'), isFalse);
+      expect(prefs?.getBool('sinifcepte_ads_enabled'), isFalse);
     });
   });
 }

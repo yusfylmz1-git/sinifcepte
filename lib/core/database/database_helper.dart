@@ -4,7 +4,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../storage/prefs_service.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../config/app_config.dart';
@@ -75,8 +75,8 @@ class DatabaseHelper {
   /// veriyi devralır ve hesaplar arası veri karışması sürerdi.
   Future<void> _migrateLegacyOnce(String dbPath, String targetPath) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      if (prefs.getBool(_kLegacyMigratedKey) ?? false) return;
+      final prefs = await PrefsService.instance();
+      if (prefs == null || (prefs.getBool(_kLegacyMigratedKey) ?? false)) return;
 
       for (final legacyName in <String>[
         'sinifcepte.db',
@@ -107,8 +107,10 @@ class DatabaseHelper {
   /// "bu hesabın çalışma alanı ayrıdır" uyarısı gösterebilir.
   Future<void> _rememberUid(String uid) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_kLastUidKey, uid);
+      final prefs = await PrefsService.instance();
+      if (prefs != null) {
+        await prefs.setString(_kLastUidKey, uid);
+      }
     } catch (e, stackTrace) {
       debugPrint('Son hesap kimliği kaydedilemedi: $e');
       debugPrint('$stackTrace');
@@ -118,8 +120,8 @@ class DatabaseHelper {
   /// Bu cihazda en son hangi hesapla çalışıldı? (yoksa boş)
   static Future<String> lastKnownUid() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getString(_kLastUidKey) ?? '';
+      final prefs = await PrefsService.instance();
+      return prefs?.getString(_kLastUidKey) ?? '';
     } catch (e, stackTrace) {
       debugPrint('Son hesap kimliği okunamadı: $e');
       debugPrint('$stackTrace');

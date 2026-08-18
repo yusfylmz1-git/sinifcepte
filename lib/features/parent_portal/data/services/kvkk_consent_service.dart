@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/storage/prefs_service.dart';
 import '../models/content_report_model.dart';
 
 /// KVKK Açık Rıza ve İzin Kaydı Modeli
@@ -49,8 +49,8 @@ class AuditLogModel {
   final String id;
   final String actorId;
   final String actorRole; // 'teacher', 'parent', 'admin'
-  final String action; // 'token_generated', 'parent_link_created', 'teacher_verified', 'content_reported', etc.
-  final String targetId;
+  final String action;    // 'token_generated', 'parent_linked', 'content_reported', etc.
+  final String targetId;  // studentId, reportId, etc.
   final String? schoolId;
   final String? details;
   final DateTime timestamp;
@@ -93,9 +93,9 @@ class AuditLogModel {
   }
 }
 
-/// KVKK Açık Rıza, Moderasyon ve Denetim Loglama Servisi
+/// SınıfCepte - KVKK, Açık Rıza ve Denetim Kayıt Servisi (Audit Logging)
 class KvkkConsentService {
-  static const String _consentPrefKey = 'sinifcepte_consent_logs';
+  static const String _consentPrefKey = 'sinifcepte_kvkk_consents';
   static const String _auditPrefKey = 'sinifcepte_audit_logs';
   static const String _reportsPrefKey = 'sinifcepte_content_reports';
   static const String _verifiedTeachersPrefKey = 'sinifcepte_verified_teachers';
@@ -109,8 +109,8 @@ class KvkkConsentService {
     String deviceLocale = 'tr_TR',
   }) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final rawList = prefs.getStringList(_consentPrefKey) ?? [];
+      final prefs = await PrefsService.instance();
+      final rawList = prefs?.getStringList(_consentPrefKey) ?? [];
 
       final log = ConsentLogModel(
         id: 'consent_${DateTime.now().millisecondsSinceEpoch}',
@@ -122,7 +122,9 @@ class KvkkConsentService {
       );
 
       rawList.add(jsonEncode(log.toMap()));
-      await prefs.setStringList(_consentPrefKey, rawList);
+      if (prefs != null) {
+        await prefs.setStringList(_consentPrefKey, rawList);
+      }
       return log;
     } catch (e, stackTrace) {
       debugPrint('KvkkConsentService recordConsent hatası: $e\n$stackTrace');
@@ -140,8 +142,8 @@ class KvkkConsentService {
   /// 2. Kullanıcının Güncel Rıza Verip Vermediğini Kontrol Etme
   static Future<bool> hasValidConsent(String userId) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final rawList = prefs.getStringList(_consentPrefKey) ?? [];
+      final prefs = await PrefsService.instance();
+      final rawList = prefs?.getStringList(_consentPrefKey) ?? [];
 
       for (final raw in rawList.reversed) {
         final decoded = jsonDecode(raw);
@@ -169,8 +171,8 @@ class KvkkConsentService {
     String? details,
   }) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final rawList = prefs.getStringList(_auditPrefKey) ?? [];
+      final prefs = await PrefsService.instance();
+      final rawList = prefs?.getStringList(_auditPrefKey) ?? [];
 
       final audit = AuditLogModel(
         id: 'audit_${DateTime.now().millisecondsSinceEpoch}',
@@ -184,7 +186,9 @@ class KvkkConsentService {
       );
 
       rawList.add(jsonEncode(audit.toMap()));
-      await prefs.setStringList(_auditPrefKey, rawList);
+      if (prefs != null) {
+        await prefs.setStringList(_auditPrefKey, rawList);
+      }
     } catch (e, stackTrace) {
       debugPrint('KvkkConsentService logAudit hatası: $e\n$stackTrace');
     }
@@ -193,8 +197,8 @@ class KvkkConsentService {
   /// 4. Denetim Loglarını Getirme
   static Future<List<AuditLogModel>> getAuditLogs({int limit = 100}) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final rawList = prefs.getStringList(_auditPrefKey) ?? [];
+      final prefs = await PrefsService.instance();
+      final rawList = prefs?.getStringList(_auditPrefKey) ?? [];
       final logs = <AuditLogModel>[];
 
       for (final raw in rawList.reversed) {
@@ -223,8 +227,8 @@ class KvkkConsentService {
     required String reason,
   }) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final rawList = prefs.getStringList(_reportsPrefKey) ?? [];
+      final prefs = await PrefsService.instance();
+      final rawList = prefs?.getStringList(_reportsPrefKey) ?? [];
 
       final report = ContentReportModel(
         id: 'rep_${DateTime.now().millisecondsSinceEpoch}',
@@ -239,7 +243,9 @@ class KvkkConsentService {
       );
 
       rawList.add(jsonEncode(report.toMap()));
-      await prefs.setStringList(_reportsPrefKey, rawList);
+      if (prefs != null) {
+        await prefs.setStringList(_reportsPrefKey, rawList);
+      }
 
       await logAudit(
         actorId: reportedByUserId,
@@ -259,8 +265,8 @@ class KvkkConsentService {
   /// 6. İçerik Şikayetlerini Listeleme
   static Future<List<ContentReportModel>> getContentReports() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final rawList = prefs.getStringList(_reportsPrefKey) ?? [];
+      final prefs = await PrefsService.instance();
+      final rawList = prefs?.getStringList(_reportsPrefKey) ?? [];
       final list = <ContentReportModel>[];
 
       for (final raw in rawList.reversed) {
@@ -286,12 +292,14 @@ class KvkkConsentService {
     required String schoolName,
   }) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final verifiedList = prefs.getStringList(_verifiedTeachersPrefKey) ?? [];
+      final prefs = await PrefsService.instance();
+      final verifiedList = prefs?.getStringList(_verifiedTeachersPrefKey) ?? [];
 
       if (!verifiedList.contains(teacherId)) {
         verifiedList.add(teacherId);
-        await prefs.setStringList(_verifiedTeachersPrefKey, verifiedList);
+        if (prefs != null) {
+          await prefs.setStringList(_verifiedTeachersPrefKey, verifiedList);
+        }
       }
 
       await logAudit(
@@ -312,8 +320,8 @@ class KvkkConsentService {
   /// 8. Öğretmenin Doğrulanmış Olup Olmadığını Kontrol Etme
   static Future<bool> isTeacherVerified(String teacherId) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final verifiedList = prefs.getStringList(_verifiedTeachersPrefKey) ?? [];
+      final prefs = await PrefsService.instance();
+      final verifiedList = prefs?.getStringList(_verifiedTeachersPrefKey) ?? [];
       return verifiedList.contains(teacherId);
     } catch (e, stackTrace) {
       debugPrint('KvkkConsentService isTeacherVerified hatası: $e\n$stackTrace');

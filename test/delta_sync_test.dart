@@ -1,12 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sinifcepte/core/cloud/delta_sync_tracker.dart';
+import 'package:sinifcepte/core/storage/prefs_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    PrefsService.resetCache();
   });
 
   group('Delta Senkron Takibi (maliyet kararı #2)', () {
@@ -66,6 +68,7 @@ void main() {
       SharedPreferences.setMockInitialValues({
         'sinifcepte_delta_ann_cls_1': 'bu-bir-tarih-degil',
       });
+      PrefsService.resetCache();
 
       final last = await DeltaSyncTracker.instance.lastSyncOf('ann_cls_1');
       expect(last, isNull);

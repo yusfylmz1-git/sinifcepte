@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sinifcepte/core/cloud/firestore_budget_guard.dart';
+import 'package:sinifcepte/core/storage/prefs_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -9,6 +10,7 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
+    PrefsService.resetCache();
     await guard.reset();
   });
 
@@ -93,9 +95,9 @@ void main() {
       await guard.allowWrite(count: 7);
       await guard.recordRead(count: 11);
 
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getInt('sinifcepte_budget_writes'), 7);
-      expect(prefs.getInt('sinifcepte_budget_reads'), 11);
+      final prefs = await PrefsService.instance();
+      expect(prefs?.getInt('sinifcepte_budget_writes'), 7);
+      expect(prefs?.getInt('sinifcepte_budget_reads'), 11);
     });
 
     test('Yeni gün sayaçları sıfırlar (dünün freni devretmez)', () async {
@@ -105,6 +107,7 @@ void main() {
         'sinifcepte_budget_writes': FirestoreBudgetGuard.dailyWriteLimit,
         'sinifcepte_budget_reads': 9999,
       });
+      PrefsService.resetCache();
 
       // setUp'taki reset() belleği "yüklendi" işaretler; diskteki eski
       // tarihin gerçekten okunduğunu görmek için önbelleği boşaltıyoruz.

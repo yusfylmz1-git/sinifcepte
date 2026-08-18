@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sinifcepte/core/storage/prefs_service.dart';
 import 'package:sinifcepte/features/parent_portal/data/models/class_announcement_model.dart';
 import 'package:sinifcepte/features/parent_portal/data/models/parent_appointment_model.dart';
 import 'package:sinifcepte/features/parent_portal/data/models/parent_status_report_model.dart';
@@ -13,6 +14,7 @@ void main() {
 
     setUp(() {
       SharedPreferences.setMockInitialValues({});
+      PrefsService.resetCache();
       repository = ParentPortalRepository();
     });
 

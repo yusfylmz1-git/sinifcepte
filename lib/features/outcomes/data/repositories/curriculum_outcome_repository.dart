@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/storage/prefs_service.dart';
 import '../../../../core/database/database_helper.dart';
 import '../models/curriculum_outcome_model.dart';
 
@@ -108,7 +108,7 @@ class CurriculumOutcomeRepository {
     return rawList.map((m) => CurriculumOutcomeModel.fromMap(m)).toList();
   }
 
-  // --- FAVORİ DERS YÖNETİMİ (SharedPreferences) ---
+  // --- FAVORİ DERS YÖNETİMİ (PrefsService) ---
 
   String _buildFavoriteKey(int gradeLevel, String subjectCode, String publisher) {
     return '${gradeLevel}_${subjectCode}_$publisher';
@@ -116,8 +116,8 @@ class CurriculumOutcomeRepository {
 
   Future<Set<String>> getFavoriteSubjectKeys() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final list = prefs.getStringList(_favoritePrefKey) ?? [];
+      final prefs = await PrefsService.instance();
+      final list = prefs?.getStringList(_favoritePrefKey) ?? [];
       return list.toSet();
     } catch (e, stackTrace) {
       debugPrint('---------------- HATA DETAYI (CurriculumOutcomeRepository.getFavoriteSubjectKeys) ----------------');
@@ -130,7 +130,7 @@ class CurriculumOutcomeRepository {
 
   Future<bool> toggleFavoriteSubject(int gradeLevel, String subjectCode, String publisher) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
       final set = await getFavoriteSubjectKeys();
       final key = _buildFavoriteKey(gradeLevel, subjectCode, publisher);
 
@@ -141,13 +141,15 @@ class CurriculumOutcomeRepository {
         set.remove(key);
       }
 
-      await prefs.setStringList(_favoritePrefKey, set.toList());
+      if (prefs != null) {
+        await prefs.setStringList(_favoritePrefKey, set.toList());
+      }
       return isNowFavorite;
     } catch (e, stackTrace) {
       debugPrint('---------------- HATA DETAYI (CurriculumOutcomeRepository.toggleFavoriteSubject) ----------------');
       debugPrint('Hata Mesajı : $e');
       debugPrint('Kod Satırı   : $stackTrace');
-      debugPrint('------------------------------------------------------------------------------------------------');
+      debugPrint('-------------------------------------------------------------------------------------------------');
       return false;
     }
   }

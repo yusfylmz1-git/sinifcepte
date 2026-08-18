@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../storage/prefs_keys.dart';
+import '../storage/prefs_service.dart';
 
 /// Reklamın gösterilebileceği yerler.
 ///
@@ -18,22 +18,6 @@ enum AdSlot {
 }
 
 /// SınıfCepte reklam kapısı (Faz 1: altyapı kurulur, reklam kapalıdır).
-///
-/// ## Neden SDK henüz eklenmedi
-/// `google_mobile_ads` paketi uygulamaya ~2 MB ve Android/iOS yapılandırma
-/// yükü getirir. Reklam kapalıyken bu yük tamamen boşa gider. Bu sınıf
-/// çağrı yüzeyini şimdiden sabitler; SDK eklendiğinde yalnızca
-/// [_loadNativeAd] gövdesi doldurulur, çağıran ekranlar değişmez.
-///
-/// ## Kritik kısıtlar (Google Play Families + KVKK)
-/// Uygulama öğrenci verisi işlediği için:
-/// 1. Reklamlar **kişiselleştirilmemiş** (non-personalized) olmak zorundadır.
-/// 2. Öğrenci adı, notu, katılımı veya fotoğrafı görünen hiçbir ekranda
-///    reklam gösterilemez.
-/// 3. Ders içi katılım ekranı öğrencilere gösterildiği için kesinlikle
-///    reklamsızdır.
-///
-/// Bu kısıtlar tercih değil, mağazada kalabilmenin şartıdır.
 class AdGate {
   AdGate._();
 
@@ -42,11 +26,10 @@ class AdGate {
   bool _initialized = false;
   bool _enabled = false;
 
-  /// Reklam altyapısı şu an etkin mi?
-  ///
-  /// Faz 7'ye kadar `false` döner. [setEnabled] ile açılır.
+  /// Reklam sistemi aktif mi?
   bool get isEnabled => _enabled;
 
+  /// Reklam sistemi başlatıldı mı?
   bool get isInitialized => _initialized;
 
   /// Yerelde saklanan reklam tercihini yükler.
@@ -56,8 +39,8 @@ class AdGate {
   Future<void> initialize() async {
     if (_initialized) return;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      _enabled = prefs.getBool(PrefsKeys.adsEnabled) ?? false;
+      final prefs = await PrefsService.instance();
+      _enabled = prefs?.getBool(PrefsKeys.adsEnabled) ?? false;
     } catch (e, stackTrace) {
       debugPrint('AdGate başlatma hatası (reklam kapalı varsayıldı): $e\n$stackTrace');
       _enabled = false;
@@ -73,8 +56,10 @@ class AdGate {
   Future<void> setEnabled(bool value) async {
     _enabled = value;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(PrefsKeys.adsEnabled, value);
+      final prefs = await PrefsService.instance();
+      if (prefs != null) {
+        await prefs.setBool(PrefsKeys.adsEnabled, value);
+      }
     } catch (e, stackTrace) {
       debugPrint('AdGate tercihi kaydedilemedi: $e\n$stackTrace');
     }

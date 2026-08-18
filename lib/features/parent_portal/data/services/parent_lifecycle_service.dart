@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/storage/prefs_keys.dart';
 import '../../../../core/storage/prefs_migrator.dart';
+import '../../../../core/storage/prefs_service.dart';
 import '../models/parent_link_model.dart';
 import '../models/parent_token_model.dart';
 import 'kvkk_consent_service.dart';
@@ -26,8 +26,8 @@ class ParentLifecycleService {
   }) async {
     try {
       await _ensureMigrated();
-      final prefs = await SharedPreferences.getInstance();
-      final rawLinks = prefs.getStringList(_linksPrefKey) ?? [];
+      final prefs = await PrefsService.instance();
+      final rawLinks = prefs?.getStringList(_linksPrefKey) ?? [];
       final updatedList = <ParentLinkModel>[];
       var affectedCount = 0;
 
@@ -48,7 +48,9 @@ class ParentLifecycleService {
         } catch (_) {}
       }
 
-      await prefs.setStringList(_linksPrefKey, updatedList.map((l) => jsonEncode(l.toMap())).toList());
+      if (prefs != null) {
+        await prefs.setStringList(_linksPrefKey, updatedList.map((l) => jsonEncode(l.toMap())).toList());
+      }
 
       await KvkkConsentService.logAudit(
         actorId: actorId,
@@ -73,8 +75,8 @@ class ParentLifecycleService {
   }) async {
     try {
       await _ensureMigrated();
-      final prefs = await SharedPreferences.getInstance();
-      final rawLinks = prefs.getStringList(_linksPrefKey) ?? [];
+      final prefs = await PrefsService.instance();
+      final rawLinks = prefs?.getStringList(_linksPrefKey) ?? [];
       final updatedList = <ParentLinkModel>[];
 
       for (final raw in rawLinks) {
@@ -90,7 +92,9 @@ class ParentLifecycleService {
         } catch (_) {}
       }
 
-      await prefs.setStringList(_linksPrefKey, updatedList.map((l) => jsonEncode(l.toMap())).toList());
+      if (prefs != null) {
+        await prefs.setStringList(_linksPrefKey, updatedList.map((l) => jsonEncode(l.toMap())).toList());
+      }
 
       await KvkkConsentService.logAudit(
         actorId: actorId,
@@ -116,8 +120,8 @@ class ParentLifecycleService {
   }) async {
     try {
       await _ensureMigrated();
-      final prefs = await SharedPreferences.getInstance();
-      final rawLinks = prefs.getStringList(_linksPrefKey) ?? [];
+      final prefs = await PrefsService.instance();
+      final rawLinks = prefs?.getStringList(_linksPrefKey) ?? [];
       final updatedList = <ParentLinkModel>[];
 
       for (final raw in rawLinks) {
@@ -133,10 +137,12 @@ class ParentLifecycleService {
         } catch (_) {}
       }
 
-      await prefs.setStringList(_linksPrefKey, updatedList.map((l) => jsonEncode(l.toMap())).toList());
+      if (prefs != null) {
+        await prefs.setStringList(_linksPrefKey, updatedList.map((l) => jsonEncode(l.toMap())).toList());
+      }
 
       // Aktif tokenları da iptal et
-      final rawTokens = prefs.getStringList(_tokensPrefKey) ?? [];
+      final rawTokens = prefs?.getStringList(_tokensPrefKey) ?? [];
       final updatedTokens = <ParentTokenModel>[];
       for (final raw in rawTokens) {
         try {
@@ -150,7 +156,9 @@ class ParentLifecycleService {
           }
         } catch (_) {}
       }
-      await prefs.setStringList(_tokensPrefKey, updatedTokens.map((t) => jsonEncode(t.toMap())).toList());
+      if (prefs != null) {
+        await prefs.setStringList(_tokensPrefKey, updatedTokens.map((t) => jsonEncode(t.toMap())).toList());
+      }
 
       await KvkkConsentService.logAudit(
         actorId: actorId,
@@ -175,7 +183,8 @@ class ParentLifecycleService {
   }) async {
     try {
       await _ensureMigrated();
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
+      if (prefs == null) return;
 
       // 1. Tokenları Sil
       final rawTokens = prefs.getStringList(_tokensPrefKey) ?? [];
@@ -242,9 +251,9 @@ class ParentLifecycleService {
   static Future<Map<String, dynamic>> exportParentDataAsJson(String parentUserId) async {
     try {
       await _ensureMigrated();
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
 
-      final rawLinks = prefs.getStringList(_linksPrefKey) ?? [];
+      final rawLinks = prefs?.getStringList(_linksPrefKey) ?? [];
       final myChildren = <Map<String, dynamic>>[];
       for (final raw in rawLinks) {
         try {
@@ -253,7 +262,7 @@ class ParentLifecycleService {
         } catch (_) {}
       }
 
-      final rawReports = prefs.getStringList(_statusReportsPrefKey) ?? [];
+      final rawReports = prefs?.getStringList(_statusReportsPrefKey) ?? [];
       final myReports = <Map<String, dynamic>>[];
       for (final raw in rawReports) {
         try {
@@ -262,7 +271,7 @@ class ParentLifecycleService {
         } catch (_) {}
       }
 
-      final rawApps = prefs.getStringList(_appointmentsPrefKey) ?? [];
+      final rawApps = prefs?.getStringList(_appointmentsPrefKey) ?? [];
       final myApps = <Map<String, dynamic>>[];
       for (final raw in rawApps) {
         try {
@@ -299,7 +308,8 @@ class ParentLifecycleService {
   static Future<bool> deleteParentSelfAccount(String parentUserId) async {
     try {
       await _ensureMigrated();
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
+      if (prefs == null) return false;
 
       // Veli bağlantılarını temizle
       final rawLinks = prefs.getStringList(_linksPrefKey) ?? [];

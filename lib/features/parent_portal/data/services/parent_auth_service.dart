@@ -1,9 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/firebase/firebase_bootstrap.dart';
 import '../../../../core/storage/prefs_keys.dart';
+import '../../../../core/storage/prefs_service.dart';
 
 class ParentAuthException implements Exception {
   final String message;
@@ -102,8 +102,10 @@ class ParentAuthService {
     // Görünen adı yerelde de tut: bağlantı kartlarında ve mesaj imzasında
     // ağ beklemeden gösterilebilsin.
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(PrefsKeys.parentDisplayName, displayName);
+      final prefs = await PrefsService.instance();
+      if (prefs != null) {
+        await prefs.setString(PrefsKeys.parentDisplayName, displayName);
+      }
     } catch (e, stackTrace) {
       debugPrint('Veli görünen adı kaydedilemedi: $e\n$stackTrace');
     }
@@ -119,8 +121,8 @@ class ParentAuthService {
   /// Yerelde saklanan veli görünen adı (offline gösterim için).
   Future<String> readCachedDisplayName() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getString(PrefsKeys.parentDisplayName) ?? '';
+      final prefs = await PrefsService.instance();
+      return prefs?.getString(PrefsKeys.parentDisplayName) ?? '';
     } catch (e, stackTrace) {
       debugPrint('Veli görünen adı okunamadı: $e\n$stackTrace');
       return '';

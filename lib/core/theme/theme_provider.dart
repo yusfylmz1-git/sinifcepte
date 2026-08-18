@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../storage/prefs_service.dart';
 
 /// Tema Durumu Provider'ı (ThemeModeNotifier)
 final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
@@ -17,8 +17,8 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   /// SharedPreferences'tan kaydedilmiş temayı yükle
   Future<void> _loadThemeMode() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedTheme = prefs.getString(_key);
+      final prefs = await PrefsService.instance();
+      final savedTheme = prefs?.getString(_key);
       if (savedTheme != null) {
         switch (savedTheme) {
           case 'light':
@@ -41,7 +41,8 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   Future<void> setThemeMode(ThemeMode mode) async {
     state = mode;
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
+      if (prefs == null) return;
       String modeStr = 'dark';
       if (mode == ThemeMode.light) modeStr = 'light';
       if (mode == ThemeMode.system) modeStr = 'system';
