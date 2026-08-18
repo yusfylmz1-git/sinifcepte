@@ -67,9 +67,12 @@ class ParentTokenRepository {
   }
 
   Future<List<ParentTokenModel>> _loadTokensUncached() async {
+    debugPrint('IZLEME A1: migrator basliyor');
     await PrefsMigrator.migrateParentStores();
+    debugPrint('IZLEME A2: migrator bitti, prefs aliniyor');
     try {
       final prefs = await SharedPreferences.getInstance();
+      debugPrint('IZLEME A3: prefs alindi');
       final rawList = prefs.getStringList(_tokensPrefKey) ?? [];
       final list = <ParentTokenModel>[];
       for (final raw in rawList) {
@@ -103,9 +106,12 @@ class ParentTokenRepository {
   /// Tüm Veli Bağlantılarını (parent_links) Yükleme
   Future<List<ParentLinkModel>> _loadLinks() async {
     if (_cachedLinks != null) return _cachedLinks!;
+    debugPrint('IZLEME C1: link migrator basliyor');
     await PrefsMigrator.migrateParentStores();
+    debugPrint('IZLEME C2: link migrator bitti');
     try {
       final prefs = await SharedPreferences.getInstance();
+      debugPrint('IZLEME C3: link prefs alindi');
       final rawList = prefs.getStringList(_linksPrefKey) ?? [];
       final list = <ParentLinkModel>[];
       for (final raw in rawList) {

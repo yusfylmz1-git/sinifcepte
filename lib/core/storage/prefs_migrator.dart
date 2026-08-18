@@ -29,8 +29,10 @@ class PrefsMigrator {
   }) async {
     final stamp = '$canonicalKey|${legacyKeys.join(',')}';
     if (_done.contains(stamp)) return;
+    debugPrint('IZLEME M1: merge basladi ($canonicalKey)');
     try {
       final prefs = await SharedPreferences.getInstance();
+      debugPrint('IZLEME M2: merge prefs alindi ($canonicalKey)');
       final merged = <String>[];
       final seen = <String>{};
 
@@ -50,6 +52,7 @@ class PrefsMigrator {
         await prefs.remove(key);
       }
       _done.add(stamp);
+      debugPrint('IZLEME M3: merge bitti ($canonicalKey)');
     } catch (e, stackTrace) {
       debugPrint('PrefsMigrator.mergeStringLists hatası: $e\n$stackTrace');
     }
