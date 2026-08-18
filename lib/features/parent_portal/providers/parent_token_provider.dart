@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/parent_link_model.dart';
 import '../data/models/parent_token_model.dart';
@@ -29,19 +28,15 @@ final parentAuthServiceProvider = Provider<ParentAuthService>((ref) {
 
 /// Belirli Bir Öğrencinin Aktif Veli Referans Kodu Provider'ı
 final studentActiveTokenProvider = FutureProvider.family<ParentTokenModel?, int>((ref, studentId) async {
-  debugPrint('IZLEME A: aktif token sorgusu basladi (id=$studentId)');
   final repo = ref.watch(parentTokenRepositoryProvider);
   final r = await repo.getActiveTokenForStudent(studentId);
-  debugPrint('IZLEME B: aktif token sorgusu bitti (sonuc=${r?.code ?? "yok"})');
   return r;
 });
 
 /// Belirli Bir Öğrenciye Bağlı Velilerin Listesi Provider'ı (Öğretmen Görünümü)
 final studentLinkedParentsProvider = FutureProvider.family<List<ParentLinkModel>, int>((ref, studentId) async {
-  debugPrint('IZLEME C: bagli veli sorgusu basladi');
   final repo = ref.watch(parentTokenRepositoryProvider);
   final r = await repo.getLinkedParentsForStudent(studentId);
-  debugPrint('IZLEME D: bagli veli sorgusu bitti (${r.length} kayit)');
   return r;
 });
 

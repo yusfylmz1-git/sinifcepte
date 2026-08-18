@@ -9,12 +9,22 @@ import 'core/ads/ad_gate.dart';
 import 'core/cloud/remote_manifest_service.dart';
 import 'core/firebase/firebase_bootstrap.dart';
 import 'core/services/notification_service.dart';
+import 'core/storage/prefs_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'features/auth/screens/welcome_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Yerel depoyu erkenden ısıt: ilk ekran açılırken platform kanalı hazır
+  // olsun. Kullanıcı "öğrenciye basınca 20 saniye tepki yok" bildirdiğinde
+  // sebep, SharedPreferences çağrısının hiç dönmemesiydi.
+  try {
+    await PrefsService.warmUp();
+  } catch (e) {
+    debugPrint('Yerel depo ısıtma hatası: $e');
+  }
 
   try {
     await FirebaseBootstrap.ensureInitialized();

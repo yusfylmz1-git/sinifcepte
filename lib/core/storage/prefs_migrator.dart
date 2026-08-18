@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'prefs_keys.dart';
+import 'prefs_service.dart';
 
 /// Eski prefs listelerini kanonik anahtara birleştirir (yinelenen id düşülür).
 class PrefsMigrator {
@@ -29,10 +29,13 @@ class PrefsMigrator {
   }) async {
     final stamp = '$canonicalKey|${legacyKeys.join(',')}';
     if (_done.contains(stamp)) return;
-    debugPrint('IZLEME M1: merge basladi ($canonicalKey)');
     try {
-      final prefs = await SharedPreferences.getInstance();
-      debugPrint('IZLEME M2: merge prefs alindi ($canonicalKey)');
+      final prefs = await PrefsService.instance();
+      if (prefs == null) {
+        // Depoya erişilemedi: göç atlanır, uygulama varsayılanla devam eder.
+        // Bir sonraki açılışta yeniden denenir.
+        return;
+      }
       final merged = <String>[];
       final seen = <String>{};
 
@@ -52,7 +55,6 @@ class PrefsMigrator {
         await prefs.remove(key);
       }
       _done.add(stamp);
-      debugPrint('IZLEME M3: merge bitti ($canonicalKey)');
     } catch (e, stackTrace) {
       debugPrint('PrefsMigrator.mergeStringLists hatası: $e\n$stackTrace');
     }

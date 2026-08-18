@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/storage/prefs_service.dart';
 import '../../../../core/storage/prefs_keys.dart';
 import '../../../../core/utils/perf_trace.dart';
 import '../../../../core/storage/prefs_migrator.dart';
@@ -67,12 +67,10 @@ class ParentTokenRepository {
   }
 
   Future<List<ParentTokenModel>> _loadTokensUncached() async {
-    debugPrint('IZLEME A1: migrator basliyor');
     await PrefsMigrator.migrateParentStores();
-    debugPrint('IZLEME A2: migrator bitti, prefs aliniyor');
     try {
-      final prefs = await SharedPreferences.getInstance();
-      debugPrint('IZLEME A3: prefs alindi');
+      final prefs = await PrefsService.instance();
+      if (prefs == null) return const [];
       final rawList = prefs.getStringList(_tokensPrefKey) ?? [];
       final list = <ParentTokenModel>[];
       for (final raw in rawList) {
@@ -95,7 +93,8 @@ class ParentTokenRepository {
   Future<void> _saveTokens(List<ParentTokenModel> list) async {
     _cachedTokens = list;
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
+      if (prefs == null) return;
       final rawList = list.map((t) => jsonEncode(t.toMap())).toList();
       await prefs.setStringList(_tokensPrefKey, rawList);
     } catch (e, stackTrace) {
@@ -106,12 +105,10 @@ class ParentTokenRepository {
   /// Tüm Veli Bağlantılarını (parent_links) Yükleme
   Future<List<ParentLinkModel>> _loadLinks() async {
     if (_cachedLinks != null) return _cachedLinks!;
-    debugPrint('IZLEME C1: link migrator basliyor');
     await PrefsMigrator.migrateParentStores();
-    debugPrint('IZLEME C2: link migrator bitti');
     try {
-      final prefs = await SharedPreferences.getInstance();
-      debugPrint('IZLEME C3: link prefs alindi');
+      final prefs = await PrefsService.instance();
+      if (prefs == null) return const [];
       final rawList = prefs.getStringList(_linksPrefKey) ?? [];
       final list = <ParentLinkModel>[];
       for (final raw in rawList) {
@@ -134,7 +131,8 @@ class ParentTokenRepository {
   Future<void> _saveLinks(List<ParentLinkModel> list) async {
     _cachedLinks = list;
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
+      if (prefs == null) return;
       final rawList = list.map((l) => jsonEncode(l.toMap())).toList();
       await prefs.setStringList(_linksPrefKey, rawList);
     } catch (e, stackTrace) {
@@ -151,7 +149,8 @@ class ParentTokenRepository {
     String? details,
   }) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
+      if (prefs == null) return;
       final rawLogs = prefs.getStringList(_auditLogsPrefKey) ?? [];
       final logEntry = {
         'id': 'log_${DateTime.now().millisecondsSinceEpoch}',
@@ -478,7 +477,8 @@ class ParentTokenRepository {
   /// Cihazdaki Yerel Veli Kullanıcı Kimliğini Getir veya Oluştur
   Future<String> getOrCreateLocalParentUserId() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await PrefsService.instance();
+      if (prefs == null) return 'puser_default';
       var parentId = prefs.getString(PrefsKeys.localParentId);
       if (parentId == null || parentId.isEmpty) {
         parentId = 'puser_${DateTime.now().millisecondsSinceEpoch}';
