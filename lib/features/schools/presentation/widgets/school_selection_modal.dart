@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/models/school_model.dart';
 import '../../data/models/school_types.dart';
@@ -135,7 +135,7 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
                           children: [
                             Text(
                               'Okulunuzu Seçin',
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 17,
                                 fontWeight: FontWeight.bold,
                                 color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -143,7 +143,7 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
                             ),
                             Text(
                               'Türkiye geneli MEB okulları dizini',
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 11.5,
                                 color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                               ),
@@ -195,7 +195,7 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
                               children: [
                                 Text(
                                   'İL',
-                                  style: GoogleFonts.outfit(
+                                  style: AppFonts.outfit(
                                     fontSize: 9,
                                     fontWeight: FontWeight.w700,
                                     color: isDark ? Colors.white54 : Colors.black45,
@@ -203,7 +203,7 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
                                 ),
                                 Text(
                                   selectedCity.isNotEmpty ? selectedCity : 'İl Seçin',
-                                  style: GoogleFonts.outfit(
+                                  style: AppFonts.outfit(
                                     fontSize: 13,
                                     fontWeight: FontWeight.bold,
                                     color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -250,7 +250,7 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
                               children: [
                                 Text(
                                   'İLÇE',
-                                  style: GoogleFonts.outfit(
+                                  style: AppFonts.outfit(
                                     fontSize: 9,
                                     fontWeight: FontWeight.w700,
                                     color: isDark ? Colors.white54 : Colors.black45,
@@ -260,7 +260,7 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
                                   selectedDistrict != null && selectedDistrict.isNotEmpty
                                       ? selectedDistrict
                                       : 'Tüm İlçeler',
-                                  style: GoogleFonts.outfit(
+                                  style: AppFonts.outfit(
                                     fontSize: 13,
                                     fontWeight: FontWeight.bold,
                                     color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -295,10 +295,10 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
               ),
               child: TextField(
                 controller: _searchController,
-                style: GoogleFonts.outfit(fontSize: 13, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+                style: AppFonts.outfit(fontSize: 13, color: isDark ? Colors.white : const Color(0xFF0F172A)),
                 decoration: InputDecoration(
                   hintText: '$selectedCity içindeki okullarda ara... (Örn: Atatürk, Fen)',
-                  hintStyle: GoogleFonts.outfit(fontSize: 12, color: isDark ? Colors.white38 : Colors.black38),
+                  hintStyle: AppFonts.outfit(fontSize: 12, color: isDark ? Colors.white38 : Colors.black38),
                   prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppColors.primary),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
@@ -357,7 +357,7 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
                         ),
                         child: Text(
                           type,
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 11,
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                             color: isSelected
@@ -380,7 +380,7 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
             child: schoolsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (err, stack) => Center(
-                child: Text('Okullar yüklenirken hata oluştu', style: GoogleFonts.outfit(fontSize: 13)),
+                child: Text('Okullar yüklenirken hata oluştu', style: AppFonts.outfit(fontSize: 13)),
               ),
               data: (schools) {
                 if (schools.isEmpty) {
@@ -394,12 +394,12 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
                           const SizedBox(height: 12),
                           Text(
                             'Aradığınız kriterde okul bulunamadı',
-                            style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold),
+                            style: AppFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 6),
                           Text(
                             'Aşağıdaki butona basarak okulunuzu saniyeler içinde ekleyebilirsiniz.',
-                            style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey),
+                            style: AppFonts.outfit(fontSize: 12, color: Colors.grey),
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 16),
@@ -465,11 +465,11 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
                                   children: [
                                     Text(
                                       'Bu Okul Olarak Kaydet & Seç:',
-                                      style: GoogleFonts.outfit(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                      style: AppFonts.outfit(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
                                     ),
                                     Text(
                                       '"$queryText"',
-                                      style: GoogleFonts.outfit(
+                                      style: AppFonts.outfit(
                                         fontSize: 13.5,
                                         fontWeight: FontWeight.bold,
                                         color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -498,7 +498,7 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
                           icon: const Icon(Icons.add_business_rounded, size: 18, color: AppColors.primary),
                           label: Text(
                             'Aradığınız okul yok mu? + Yeni Okul Ekle',
-                            style: GoogleFonts.outfit(fontSize: 12.5, fontWeight: FontWeight.bold, color: AppColors.primary),
+                            style: AppFonts.outfit(fontSize: 12.5, fontWeight: FontWeight.bold, color: AppColors.primary),
                           ),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 12),
@@ -552,7 +552,7 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
                                 children: [
                                   Text(
                                     school.name,
-                                    style: GoogleFonts.outfit(
+                                    style: AppFonts.outfit(
                                       fontSize: 13.5,
                                       fontWeight: FontWeight.bold,
                                       color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -571,7 +571,7 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
                                         ),
                                         child: Text(
                                           school.type,
-                                          style: GoogleFonts.outfit(
+                                          style: AppFonts.outfit(
                                             fontSize: 9.5,
                                             fontWeight: FontWeight.bold,
                                             color: color,
@@ -584,7 +584,7 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
                                       Expanded(
                                         child: Text(
                                           school.fullLocation,
-                                          style: GoogleFonts.outfit(
+                                          style: AppFonts.outfit(
                                             fontSize: 11,
                                             color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                                           ),
@@ -645,7 +645,7 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('İl Seçin (81 İl)', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+                        Text('İl Seçin (81 İl)', style: AppFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
                         IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
                       ],
                     ),
@@ -686,7 +686,7 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
                               ),
                             ),
                           ),
-                          title: Text(name, style: GoogleFonts.outfit(fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
+                          title: Text(name, style: AppFonts.outfit(fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
                           trailing: isSelected ? const Icon(Icons.check_rounded, color: AppColors.primary) : null,
                           onTap: () {
                             ref.read(selectedSchoolCityProvider.notifier).state = name;
@@ -728,14 +728,14 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('$city - İlçe Seçin', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text('$city - İlçe Seçin', style: AppFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
                     IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
                   ],
                 ),
               ),
               ListTile(
                 leading: const Icon(Icons.all_inclusive_rounded, color: AppColors.primary),
-                title: Text('Tüm İlçeler', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+                title: Text('Tüm İlçeler', style: AppFonts.outfit(fontWeight: FontWeight.bold)),
                 onTap: () {
                   ref.read(selectedSchoolDistrictProvider.notifier).state = null;
                   Navigator.pop(ctx);
@@ -749,7 +749,7 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
                     final dist = districts[i];
                     final isSelected = ref.read(selectedSchoolDistrictProvider) == dist;
                     return ListTile(
-                      title: Text(dist, style: GoogleFonts.outfit(fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
+                      title: Text(dist, style: AppFonts.outfit(fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
                       trailing: isSelected ? const Icon(Icons.check_rounded, color: AppColors.primary) : null,
                       onTap: () {
                         ref.read(selectedSchoolDistrictProvider.notifier).state = dist;
@@ -791,7 +791,7 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
               children: [
                 const Icon(Icons.add_business_rounded, color: AppColors.primary),
                 const SizedBox(width: 8),
-                Text('Yeni Okul Ekle', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('Yeni Okul Ekle', style: AppFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
               ],
             ),
             content: SingleChildScrollView(
@@ -801,12 +801,12 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
                 children: [
                   Text(
                     'Okulunuzu sisteme kaydedin:',
-                    style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey),
+                    style: AppFonts.outfit(fontSize: 12, color: Colors.grey),
                   ),
                   const SizedBox(height: 14),
 
                   // İl (Kilitli/Bilgi)
-                  Text('İL: $currentCity', style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold)),
+                  Text('İL: $currentCity', style: AppFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
 
                   // İlçe Seçimi

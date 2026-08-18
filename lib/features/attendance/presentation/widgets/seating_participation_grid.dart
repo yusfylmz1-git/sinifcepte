@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../../classes/providers/seating_plan_provider.dart';
 import '../../data/models/classroom_participation_model.dart';
 import '../../providers/classroom_participation_provider.dart';
@@ -55,7 +55,7 @@ class SeatingParticipationGrid extends ConsumerWidget {
                   const SizedBox(width: 8),
                   Text(
                     'TAHTA & ÖĞRETMEN KÜRSÜSÜ',
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
@@ -72,7 +72,7 @@ class SeatingParticipationGrid extends ConsumerWidget {
             padding: const EdgeInsets.only(bottom: 12),
             child: Text(
               '💡 1 Dokunuş: ⭐ +1 Yıldız  |  Çift Dokunuş: Ödev Değiştir (+/-)  |  Uzun Basış: Detay/Not',
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 11,
                 color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
               ),
@@ -262,7 +262,7 @@ class SeatingParticipationGrid extends ConsumerWidget {
               children: [
                 Text(
                   'No: ${eval.studentNumber}',
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
                     color: isFemale
@@ -303,7 +303,7 @@ class SeatingParticipationGrid extends ConsumerWidget {
             // Orta: Öğrenci Adı (Zero-overflow)
             Text(
               eval.shortName,
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -326,7 +326,7 @@ class SeatingParticipationGrid extends ConsumerWidget {
                   const SizedBox(width: 2),
                   Text(
                     '(${eval.starLabel})',
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 9,
                       fontWeight: FontWeight.bold,
                       color: Colors.amber.shade800,
@@ -335,7 +335,7 @@ class SeatingParticipationGrid extends ConsumerWidget {
                 ] else
                   Text(
                     'Puan ver...',
-                    style: GoogleFonts.outfit(fontSize: 8.5, color: Colors.grey),
+                    style: AppFonts.outfit(fontSize: 8.5, color: Colors.grey),
                   ),
               ],
             ),

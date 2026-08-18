@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/repositories/school_admin_repository.dart';
@@ -62,10 +62,10 @@ class _SchoolAdminPanelViewState extends ConsumerState<SchoolAdminPanelView>
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Okul Yönetimi', style: GoogleFonts.outfit(fontSize: 17)),
+            Text('Okul Yönetimi', style: AppFonts.outfit(fontSize: 17)),
             Text(
               teacher.schoolName,
-              style: GoogleFonts.outfit(fontSize: 11.5, color: Colors.grey),
+              style: AppFonts.outfit(fontSize: 11.5, color: Colors.grey),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -75,7 +75,7 @@ class _SchoolAdminPanelViewState extends ConsumerState<SchoolAdminPanelView>
           controller: _tabController,
           indicatorColor: AppColors.primary,
           labelColor: AppColors.primary,
-          labelStyle: GoogleFonts.outfit(
+          labelStyle: AppFonts.outfit(
             fontWeight: FontWeight.bold,
             fontSize: 13,
           ),
@@ -107,7 +107,7 @@ class _SchoolAdminPanelViewState extends ConsumerState<SchoolAdminPanelView>
             Text(
               'Bu panel yalnızca onaylı okul yöneticilerine açıktır',
               textAlign: TextAlign.center,
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
@@ -117,7 +117,7 @@ class _SchoolAdminPanelViewState extends ConsumerState<SchoolAdminPanelView>
               'Başvurunuz onaylandıysa çıkış yapıp tekrar giriş yapmayı deneyin; '
               'yetki bilgisi oturum tazelendiğinde güncellenir.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 12.5,
                 color: Colors.grey,
                 height: 1.4,
@@ -184,7 +184,7 @@ class _SchoolAdminPanelViewState extends ConsumerState<SchoolAdminPanelView>
                       Expanded(
                         child: Text(
                           r.teacherName,
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 13.5,
                             fontWeight: FontWeight.bold,
                           ),
@@ -194,7 +194,7 @@ class _SchoolAdminPanelViewState extends ConsumerState<SchoolAdminPanelView>
                       ),
                       Text(
                         dateStr,
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 11,
                           color: Colors.grey,
                         ),
@@ -205,7 +205,7 @@ class _SchoolAdminPanelViewState extends ConsumerState<SchoolAdminPanelView>
                     const SizedBox(height: 6),
                     Text(
                       r.note,
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 12.5,
                         height: 1.35,
                         color: isDark ? Colors.white70 : Colors.black87,
@@ -228,7 +228,7 @@ class _SchoolAdminPanelViewState extends ConsumerState<SchoolAdminPanelView>
                         Expanded(
                           child: Text(
                             'Yöneticilik onayı süper admin tarafından verilir.',
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 11.5,
                               color: Colors.orange.shade800,
                             ),
@@ -304,7 +304,7 @@ class _SchoolAdminPanelViewState extends ConsumerState<SchoolAdminPanelView>
                       Expanded(
                         child: Text(
                           rep.contentType,
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
                           ),
@@ -314,7 +314,7 @@ class _SchoolAdminPanelViewState extends ConsumerState<SchoolAdminPanelView>
                       ),
                       Text(
                         dateStr,
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 10.5,
                           color: Colors.grey,
                         ),
@@ -324,7 +324,7 @@ class _SchoolAdminPanelViewState extends ConsumerState<SchoolAdminPanelView>
                   const SizedBox(height: 7),
                   Text(
                     'Gerekçe: ${rep.reason}',
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 12.5,
                       height: 1.35,
                       color: isDark ? Colors.white70 : Colors.black87,
@@ -343,7 +343,7 @@ class _SchoolAdminPanelViewState extends ConsumerState<SchoolAdminPanelView>
                       ),
                       child: Text(
                         rep.contentSnippet,
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 11.5,
                           fontStyle: FontStyle.italic,
                           color: Colors.grey,
@@ -377,7 +377,7 @@ class _SchoolAdminPanelViewState extends ConsumerState<SchoolAdminPanelView>
             const SizedBox(height: 12),
             Text(
               title,
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
@@ -386,7 +386,7 @@ class _SchoolAdminPanelViewState extends ConsumerState<SchoolAdminPanelView>
             Text(
               body,
               textAlign: TextAlign.center,
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 12.5,
                 color: Colors.grey,
                 height: 1.4,

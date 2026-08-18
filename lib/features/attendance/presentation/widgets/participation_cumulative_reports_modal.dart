@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import 'package:printing/printing.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/date_formatter.dart';
@@ -332,7 +332,7 @@ class _ParticipationCumulativeReportsModalState
                   children: [
                     Text(
                       'Katılım & Veli Toplantısı Raporları',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 16.5,
                         fontWeight: FontWeight.w900,
                         color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -340,7 +340,7 @@ class _ParticipationCumulativeReportsModalState
                     ),
                     Text(
                       'Dönem başından bugüne anlık katılım ve toplantı analizleri',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 12,
                         color: isDark ? Colors.white60 : Colors.black54,
                       ),
@@ -390,7 +390,7 @@ class _ParticipationCumulativeReportsModalState
                           child: Text(
                             '${c.name} (${c.subject})',
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 13.5,
                               fontWeight: FontWeight.bold,
                               color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -517,7 +517,7 @@ class _ParticipationCumulativeReportsModalState
                         Expanded(
                           child: Text(
                             'Tarih: $turkishDate',
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 12.5,
                               fontWeight: FontWeight.bold,
                               color: isDark ? Colors.white : const Color(0xFF92400E),
@@ -528,7 +528,7 @@ class _ParticipationCumulativeReportsModalState
                         ),
                         Text(
                           'Değiştir',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                             color: const Color(0xFFD97706),
@@ -545,7 +545,7 @@ class _ParticipationCumulativeReportsModalState
           const SizedBox(height: 6),
           Text(
             'Dönem başından seçilen tarihe kadar olan tüm değerlendirmeler kümülatif derlenir.',
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 11,
               color: isDark ? Colors.white60 : Colors.black54,
             ),
@@ -562,7 +562,7 @@ class _ParticipationCumulativeReportsModalState
                   icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
                   label: Text(
                     'Toplantı Listesi (PDF)',
-                    style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold),
+                    style: AppFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFFD97706),
@@ -580,7 +580,7 @@ class _ParticipationCumulativeReportsModalState
                   icon: const Icon(Icons.share_rounded, size: 16, color: Colors.white),
                   label: Text(
                     'Paylaş',
-                    style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: AppFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFD97706),
@@ -624,7 +624,7 @@ class _ParticipationCumulativeReportsModalState
         child: Center(
           child: Text(
             'Bu sınıfta henüz kayıtlı öğrenci bulunamadı.',
-            style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey),
+            style: AppFonts.outfit(fontSize: 12, color: Colors.grey),
           ),
         ),
       );
@@ -688,7 +688,7 @@ class _ParticipationCumulativeReportsModalState
             children: [
               Text(
                 'Bireysel Öğrenci Özeti & Görüşme',
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
                   color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -702,7 +702,7 @@ class _ParticipationCumulativeReportsModalState
                 ),
                 child: Text(
                   '${filteredStudents.length} / ${students.length} Öğrenci',
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                     color: const Color(0xFFD97706),
@@ -727,13 +727,13 @@ class _ParticipationCumulativeReportsModalState
             child: TextField(
               controller: _studentSearchController,
               focusNode: _searchFocusNode,
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 12.5,
                 color: isDark ? Colors.white : const Color(0xFF0F172A),
               ),
               decoration: InputDecoration(
                 hintText: 'Öğrenci adı veya okul no ile anında bul...',
-                hintStyle: GoogleFonts.outfit(
+                hintStyle: AppFonts.outfit(
                   fontSize: 11.5,
                   color: isDark ? Colors.white38 : Colors.black38,
                 ),
@@ -817,7 +817,7 @@ class _ParticipationCumulativeReportsModalState
               child: Center(
                 child: Text(
                   'Arama kriterine uygun öğrenci bulunamadı.',
-                  style: GoogleFonts.outfit(fontSize: 11.5, color: Colors.grey),
+                  style: AppFonts.outfit(fontSize: 11.5, color: Colors.grey),
                 ),
               ),
             ),
@@ -858,7 +858,7 @@ class _ParticipationCumulativeReportsModalState
                               : (_studentSearchQuery.isNotEmpty
                                   ? 'Eşleşen Diğer Öğrenciler (${filteredStudents.length})'
                                   : 'Tüm Sınıf Listesini Gör (${students.length} Öğrenci)'),
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 11.5,
                             fontWeight: FontWeight.bold,
                             color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -915,7 +915,7 @@ class _ParticipationCumulativeReportsModalState
                         backgroundColor: const Color(0xFF3B82F6),
                         child: Text(
                           studentMap['studentNumber']?.toString() ?? '-',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 9,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
@@ -926,7 +926,7 @@ class _ParticipationCumulativeReportsModalState
                       Expanded(
                         child: Text(
                           studentMap['studentName']?.toString() ?? 'Öğrenci',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 12,
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                             color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -937,7 +937,7 @@ class _ParticipationCumulativeReportsModalState
                       ),
                       Text(
                         'Ödev: %${((studentMap['homeworkRate'] as num?)?.toDouble() ?? 100.0).toStringAsFixed(0)}',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 10.5,
                           color: isDark ? Colors.white60 : Colors.black54,
                         ),
@@ -1025,7 +1025,7 @@ class _ParticipationCumulativeReportsModalState
                   backgroundColor: statusColor,
                   child: Text(
                     sNum,
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 10.5,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -1039,7 +1039,7 @@ class _ParticipationCumulativeReportsModalState
                     children: [
                       Text(
                         sName,
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
                           color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -1049,7 +1049,7 @@ class _ParticipationCumulativeReportsModalState
                       ),
                       Text(
                         '$className Sınıfı • $subjectName',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 11,
                           color: isDark ? Colors.white60 : Colors.black54,
                         ),
@@ -1065,7 +1065,7 @@ class _ParticipationCumulativeReportsModalState
                   ),
                   child: Text(
                     'Detay Gör 👆',
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                       color: const Color(0xFFD97706),
@@ -1112,7 +1112,7 @@ class _ParticipationCumulativeReportsModalState
                     icon: const Icon(Icons.share_rounded, size: 15, color: Colors.white),
                     label: Text(
                       'WhatsApp Paylaş',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 11.5,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -1147,7 +1147,7 @@ class _ParticipationCumulativeReportsModalState
                     icon: const Icon(Icons.picture_as_pdf_rounded, size: 15, color: Color(0xFFEF4444)),
                     label: Text(
                       'Özet (PDF)',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 11.5,
                         fontWeight: FontWeight.bold,
                         color: const Color(0xFFEF4444),
@@ -1180,7 +1180,7 @@ class _ParticipationCumulativeReportsModalState
         children: [
           Text(
             value,
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 12.5,
               fontWeight: FontWeight.w900,
               color: isDark ? Colors.white : color,
@@ -1188,7 +1188,7 @@ class _ParticipationCumulativeReportsModalState
           ),
           Text(
             label,
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 9.5,
               color: isDark ? Colors.white60 : Colors.black54,
             ),
@@ -1224,7 +1224,7 @@ class _ParticipationCumulativeReportsModalState
         ),
         child: Text(
           label,
-          style: GoogleFonts.outfit(
+          style: AppFonts.outfit(
             fontSize: 11,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             color: isSelected
@@ -1285,7 +1285,7 @@ class _ParticipationCumulativeReportsModalState
                 backgroundColor: AppColors.primary,
                 child: Text(
                   sNum,
-                  style: GoogleFonts.outfit(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: AppFonts.outfit(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ),
               const SizedBox(width: 10),
@@ -1295,13 +1295,13 @@ class _ParticipationCumulativeReportsModalState
                   children: [
                     Text(
                       sName,
-                      style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.bold),
+                      style: AppFonts.outfit(fontSize: 15, fontWeight: FontWeight.bold),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       '$className • $subjectName ($sLessons Ders İşlendi)',
-                      style: GoogleFonts.outfit(fontSize: 11.5, color: Colors.grey),
+                      style: AppFonts.outfit(fontSize: 11.5, color: Colors.grey),
                     ),
                   ],
                 ),
@@ -1352,7 +1352,7 @@ class _ParticipationCumulativeReportsModalState
                           const SizedBox(width: 6),
                           Text(
                             'Veli Görüşme Tüyosu',
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 11.5,
                               fontWeight: FontWeight.bold,
                               color: isDark ? Colors.white : const Color(0xFF92400E),
@@ -1363,7 +1363,7 @@ class _ParticipationCumulativeReportsModalState
                       const SizedBox(height: 4),
                       Text(
                         meetingTip,
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 11.5,
                           color: isDark ? Colors.white70 : const Color(0xFF78350F),
                           height: 1.35,
@@ -1377,13 +1377,13 @@ class _ParticipationCumulativeReportsModalState
                 // Ödev Dağılımı Detayı
                 Text(
                   'Ödev Dağılımı: $hwDone Tam • $hwPart Eksik • $hwNone Yapmadı',
-                  style: GoogleFonts.outfit(fontSize: 11.5, fontWeight: FontWeight.w600),
+                  style: AppFonts.outfit(fontSize: 11.5, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 8),
 
                 // Davranış Etiketleri
                 if (tags.isNotEmpty) ...[
-                  Text('Öne Çıkan Nitelikler:', style: GoogleFonts.outfit(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                  Text('Öne Çıkan Nitelikler:', style: AppFonts.outfit(fontSize: 11.5, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
                   Wrap(
                     spacing: 4,
@@ -1395,7 +1395,7 @@ class _ParticipationCumulativeReportsModalState
                           color: Colors.blue.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: Text(t, style: GoogleFonts.outfit(fontSize: 10.5, color: Colors.blue)),
+                        child: Text(t, style: AppFonts.outfit(fontSize: 10.5, color: Colors.blue)),
                       );
                     }).toList(),
                   ),
@@ -1404,12 +1404,12 @@ class _ParticipationCumulativeReportsModalState
 
                 // Gözlem Notları
                 if (notes.isNotEmpty) ...[
-                  Text('Öğretmen Gözlem Notları:', style: GoogleFonts.outfit(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                  Text('Öğretmen Gözlem Notları:', style: AppFonts.outfit(fontSize: 11.5, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
                   ...notes.take(3).map((n) {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 2),
-                      child: Text('• $n', style: GoogleFonts.outfit(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87)),
+                      child: Text('• $n', style: AppFonts.outfit(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87)),
                     );
                   }),
                 ],
@@ -1445,8 +1445,8 @@ class _ParticipationCumulativeReportsModalState
   Widget _buildMiniMetric(String label, String value, Color color) {
     return Column(
       children: [
-        Text(value, style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w900, color: color)),
-        Text(label, style: GoogleFonts.outfit(fontSize: 10, color: Colors.grey)),
+        Text(value, style: AppFonts.outfit(fontSize: 13, fontWeight: FontWeight.w900, color: color)),
+        Text(label, style: AppFonts.outfit(fontSize: 10, color: Colors.grey)),
       ],
     );
   }
@@ -1488,7 +1488,7 @@ class _ParticipationCumulativeReportsModalState
                       children: [
                         Text(
                           '🏛️ Resmî İdare Dönem & Yıl Sonu Evrakları',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
                             color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -1496,7 +1496,7 @@ class _ParticipationCumulativeReportsModalState
                         ),
                         Text(
                           'MEB antetli 1. Dönem, 2. Dönem ve Yıl Sonu çizelgeleri',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 11,
                             color: isDark ? Colors.white60 : Colors.black54,
                           ),
@@ -1581,7 +1581,7 @@ class _ParticipationCumulativeReportsModalState
           Expanded(
             child: Text(
               title,
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: isDark ? Colors.white : const Color(0xFF0F172A),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../../shared/widgets/custom_bottom_nav_bar.dart';
@@ -151,7 +151,7 @@ class _AnalyticsDashboardViewState extends ConsumerState<AnalyticsDashboardView>
                 children: [
                   Text(
                     'Rapor & Analiz Merkezi',
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 16.5,
                       fontWeight: FontWeight.w900,
                       color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -159,7 +159,7 @@ class _AnalyticsDashboardViewState extends ConsumerState<AnalyticsDashboardView>
                   ),
                   Text(
                     'MEB uyumlu resmî evraklar ve akıllı analizler',
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 12,
                       color: isDark ? Colors.white60 : Colors.black54,
                     ),
@@ -187,13 +187,13 @@ class _AnalyticsDashboardViewState extends ConsumerState<AnalyticsDashboardView>
                 ),
                 child: TextField(
                   controller: _searchController,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 12.5,
                     color: isDark ? Colors.white : const Color(0xFF0F172A),
                   ),
                   decoration: InputDecoration(
                     hintText: 'Rapor veya evrak adı ara... (Örn: Sınav, Veli, Karne)',
-                    hintStyle: GoogleFonts.outfit(
+                    hintStyle: AppFonts.outfit(
                       fontSize: 12,
                       color: isDark ? Colors.white38 : Colors.black38,
                     ),
@@ -261,7 +261,7 @@ class _AnalyticsDashboardViewState extends ConsumerState<AnalyticsDashboardView>
                       const SizedBox(height: 8),
                       Text(
                         'Arama kriterine uygun rapor bulunamadı.',
-                        style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey),
+                        style: AppFonts.outfit(fontSize: 13, color: Colors.grey),
                       ),
                     ],
                   ),
@@ -316,7 +316,7 @@ class _AnalyticsDashboardViewState extends ConsumerState<AnalyticsDashboardView>
         ),
         child: Text(
           label,
-          style: GoogleFonts.outfit(
+          style: AppFonts.outfit(
             fontSize: 11.5,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             color: isSelected
@@ -380,7 +380,7 @@ class _AnalyticsDashboardViewState extends ConsumerState<AnalyticsDashboardView>
                           Expanded(
                             child: Text(
                               item.title,
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.bold,
                                 color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -397,7 +397,7 @@ class _AnalyticsDashboardViewState extends ConsumerState<AnalyticsDashboardView>
                             ),
                             child: Text(
                               item.badgeText,
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 9.5,
                                 fontWeight: FontWeight.bold,
                                 color: item.badgeColor,
@@ -409,7 +409,7 @@ class _AnalyticsDashboardViewState extends ConsumerState<AnalyticsDashboardView>
                       const SizedBox(height: 3),
                       Text(
                         item.description,
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 11.5,
                           color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                           height: 1.3,

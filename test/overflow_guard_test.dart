@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:sinifcepte/core/theme/app_fonts.dart';
 import 'package:sinifcepte/features/parent_portal/data/repositories/cloud_communication_repository.dart';
 
 /// Taşma (RenderFlex overflow) koruması.
@@ -42,7 +42,7 @@ void main() {
             Expanded(
               child: Text(
                 title,
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontWeight: FontWeight.bold,
                   fontSize: 13.5,
                 ),
@@ -156,13 +156,13 @@ void main() {
                   children: [
                     Text(
                       member.displayTitle,
-                      style: GoogleFonts.outfit(fontSize: 13),
+                      style: AppFonts.outfit(fontSize: 13),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       'Katılım kodu: K7M2P9',
-                      style: GoogleFonts.outfit(fontSize: 11.5),
+                      style: AppFonts.outfit(fontSize: 11.5),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -193,9 +193,9 @@ void main() {
                 Text(
                   'Merhaba öğretmenim, Ali bugün rahatsızlandığı için okula '
                   'gelemeyecek. Bilginize sunarım, iyi çalışmalar.',
-                  style: GoogleFonts.outfit(fontSize: 13),
+                  style: AppFonts.outfit(fontSize: 13),
                 ),
-                Text('18.08 13:45', style: GoogleFonts.outfit(fontSize: 9.5)),
+                Text('18.08 13:45', style: AppFonts.outfit(fontSize: 9.5)),
               ],
             ),
           ),
@@ -218,7 +218,7 @@ void main() {
             children: [
               Text(
                 'Abdürrahman Hüsameddin Küçükoğulları',
-                style: GoogleFonts.outfit(fontSize: 17),
+                style: AppFonts.outfit(fontSize: 17),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -230,7 +230,7 @@ void main() {
                   Expanded(
                     child: Text(
                       'Şehit Öğretmen Neşe Alten Ortaokulu · 7-B',
-                      style: GoogleFonts.outfit(fontSize: 12.5),
+                      style: AppFonts.outfit(fontSize: 12.5),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -262,7 +262,7 @@ void main() {
               // Expanded YOK — kasıtlı olarak korumasız
               Text(
                 'SınıfCepte Veli Bilgilendirme Sistemi Başladı',
-                style: GoogleFonts.outfit(fontSize: 13.5),
+                style: AppFonts.outfit(fontSize: 13.5),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6),

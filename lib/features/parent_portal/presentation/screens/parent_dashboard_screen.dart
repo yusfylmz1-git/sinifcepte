@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/cloud/delta_sync_tracker.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -180,7 +180,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                 children: [
                   Text(
                     'Veli Yönetim Portalı',
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: isDark ? Colors.white : AppColors.textPrimaryLight,
@@ -188,7 +188,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                   ),
                   Text(
                     'SınıfCepte Veli Masası & Güvenlik Köprüsü',
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 11,
                       color: isDark ? Colors.white60 : Colors.black54,
                     ),
@@ -301,7 +301,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
               children: [
                 const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 48),
                 const SizedBox(height: 12),
-                Text('Veriler yüklenemedi: $err', style: GoogleFonts.outfit(fontSize: 14)),
+                Text('Veriler yüklenemedi: $err', style: AppFonts.outfit(fontSize: 14)),
                 const SizedBox(height: 8),
                 ElevatedButton(
                   onPressed: () => ref.invalidate(myConnectedChildrenProvider),
@@ -350,7 +350,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
 
                       Text(
                         '📱 Sınıf & Öğrenci Yönetim Modülleri',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                           color: isDark ? Colors.white : AppColors.textPrimaryLight,
@@ -420,7 +420,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                       identity != null && identity.displayName.isNotEmpty
                           ? 'Hoş Geldiniz, ${identity.displayName}!'
                           : 'Hoş Geldiniz!',
-                      style: GoogleFonts.outfit(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: AppFonts.outfit(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -429,7 +429,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                       identity != null && identity.email.isNotEmpty
                           ? '${identity.email} hesabıyla bağlısınız.'
                           : 'Öğretmeninizin verdiği referans koduyla çocuğunuzun sınıfına anında bağlanın.',
-                      style: GoogleFonts.outfit(fontSize: 12, color: Colors.white.withValues(alpha: 0.9)),
+                      style: AppFonts.outfit(fontSize: 12, color: Colors.white.withValues(alpha: 0.9)),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -454,7 +454,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                   const SizedBox(width: 8),
                   Text(
                     'Öğrencinizi Ekleyin',
-                    style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: AppFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -563,7 +563,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                       padding: const EdgeInsets.only(top: 8.0),
                       child: Text(
                         'KVKK Aydınlatma Metnini okudum; eğitim ve bilgilendirme süreçleri kapsamında verilerimin yerel olarak işlenmesine rıza gösteriyorum.',
-                        style: GoogleFonts.outfit(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87),
+                        style: AppFonts.outfit(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87),
                       ),
                     ),
                   ),
@@ -615,10 +615,10 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Referans Kodu Nedir?', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                    Text('Referans Kodu Nedir?', style: AppFonts.outfit(fontWeight: FontWeight.bold, fontSize: 12.5)),
                     Text(
                       'Sınıf öğretmeninizin ürettiği güvenli referans kodudur (Örn: SC-8A-9402). Kodunuz yoksa sınıf öğretmeninizden talep edebilirsiniz.',
-                      style: GoogleFonts.outfit(fontSize: 11, color: isDark ? Colors.white60 : Colors.black54),
+                      style: AppFonts.outfit(fontSize: 11, color: isDark ? Colors.white60 : Colors.black54),
                     ),
                   ],
                 ),
@@ -647,7 +647,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                 icon: const Icon(Icons.logout_rounded, size: 18, color: Colors.redAccent),
                 label: Text(
                   'Çıkış Yap',
-                  style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.redAccent),
+                  style: AppFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.redAccent),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -673,7 +673,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                 icon: const Icon(Icons.school_rounded, size: 18, color: Colors.white),
                 label: Text(
                   'Öğretmen Modu',
-                  style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
+                  style: AppFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -840,7 +840,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                       const SizedBox(width: 6),
                       Text(
                         '${child.studentName} (${child.className})',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 12.5,
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                           color: isSelected ? Colors.white : (isDark ? Colors.white : AppColors.textPrimaryLight),
@@ -890,7 +890,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                             child.studentName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 17,
                               fontWeight: FontWeight.bold,
                               color: isDark ? Colors.white : AppColors.textPrimaryLight,
@@ -905,7 +905,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                           ),
                           child: Text(
                             '#${child.studentNumber}',
-                            style: GoogleFonts.firaCode(
+                            style: AppFonts.firaCode(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                               color: const Color(0xFF10B981),
@@ -920,7 +920,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                         Expanded(
                           child: Text(
                             '${child.className} Sınıfı • ${child.relation}: ${child.parentName}',
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 12.5,
                               color: isDark ? Colors.white70 : Colors.black54,
                             ),
@@ -943,7 +943,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                                 const SizedBox(width: 3),
                                 Text(
                                   child.parentPhone!,
-                                  style: GoogleFonts.firaCode(
+                                  style: AppFonts.firaCode(
                                     fontSize: 10.5,
                                     fontWeight: FontWeight.w600,
                                     color: isDark ? Colors.white70 : Colors.black87,
@@ -975,7 +975,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                   child.schoolName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: isDark ? Colors.white70 : Colors.black87,
@@ -995,7 +995,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                     const SizedBox(width: 4),
                     Text(
                       'Doğrulanmış Sınıf',
-                      style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+                      style: AppFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueAccent),
                     ),
                   ],
                 ),
@@ -1085,7 +1085,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                       item['title'] as String,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 13.5,
                         fontWeight: FontWeight.bold,
                         color: isDark ? Colors.white : AppColors.textPrimaryLight,
@@ -1096,7 +1096,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                       item['subtitle'] as String,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 11,
                         color: isDark ? Colors.white60 : Colors.black54,
                       ),
@@ -1124,14 +1124,14 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
               const SizedBox(width: 8),
               Text(
                 'Başka Bir Öğrenci Ekle',
-                style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13.5),
+                style: AppFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13.5),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
             'Farklı bir sınıfta veya okulda öğrenim gören diğer çocuğunuzu da aynı panelden yönetebilirsiniz.',
-            style: GoogleFonts.outfit(fontSize: 11.5, color: isDark ? Colors.white60 : Colors.black54),
+            style: AppFonts.outfit(fontSize: 11.5, color: isDark ? Colors.white60 : Colors.black54),
           ),
           const SizedBox(height: 10),
           OutlinedButton.icon(
@@ -1164,7 +1164,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
         builder: (dialogCtx, setDialogState) => AlertDialog(
           backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text('Yeni Öğrenci Ekle', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
+          title: Text('Yeni Öğrenci Ekle', style: AppFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1306,7 +1306,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                     Expanded(
                       child: Text(
                         '${child.className} Sınıfı Duyuruları',
-                        style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: AppFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
@@ -1319,7 +1319,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                     data: (announcements) {
                       if (announcements.isEmpty) {
                         return Center(
-                          child: Text('Sınıfta henüz yayınlanmış duyuru bulunmuyor.', style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey)),
+                          child: Text('Sınıfta henüz yayınlanmış duyuru bulunmuyor.', style: AppFonts.outfit(fontSize: 13, color: Colors.grey)),
                         );
                       }
 
@@ -1351,14 +1351,14 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                                       children: [
                                         Icon(a.priorityIcon, size: 16, color: a.priorityColor),
                                         const SizedBox(width: 6),
-                                        Text(a.title, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                                        Text(a.title, style: AppFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13.5)),
                                       ],
                                     ),
-                                    Text(dateStr, style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey)),
+                                    Text(dateStr, style: AppFonts.outfit(fontSize: 11, color: Colors.grey)),
                                   ],
                                 ),
                                 const SizedBox(height: 6),
-                                Text(a.content, style: GoogleFonts.outfit(fontSize: 12.5, height: 1.35, color: isDark ? Colors.white70 : Colors.black87)),
+                                Text(a.content, style: AppFonts.outfit(fontSize: 12.5, height: 1.35, color: isDark ? Colors.white70 : Colors.black87)),
                                 const SizedBox(height: 10),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1549,7 +1549,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                     Expanded(
                       child: Text(
                         '${child.className} Ders Öğretmenleri & Randevu',
-                        style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: AppFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
@@ -1593,7 +1593,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                                           Flexible(
                                             child: Text(
                                               t.teacherName,
-                                              style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
+                                              style: AppFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -1606,7 +1606,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                                       if (t.branch.isNotEmpty)
                                         Text(
                                           t.branch,
-                                          style: GoogleFonts.outfit(fontSize: 11.5, color: isDark ? Colors.white70 : Colors.black87),
+                                          style: AppFonts.outfit(fontSize: 11.5, color: isDark ? Colors.white70 : Colors.black87),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -1619,7 +1619,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                                             Flexible(
                                               child: Text(
                                                 '${t.meetingDay} ${t.meetingTime}'.trim(),
-                                                style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey),
+                                                style: AppFonts.outfit(fontSize: 11, color: Colors.grey),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                               ),
@@ -1630,7 +1630,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                                       if (t.isPending)
                                         Text(
                                           'Henüz mesajlaşmaya açık değil',
-                                          style: GoogleFonts.outfit(fontSize: 10.5, color: Colors.orange),
+                                          style: AppFonts.outfit(fontSize: 10.5, color: Colors.orange),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -1696,7 +1696,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
             Expanded(
               child: Text(
                 'Bu öğrenci doğru mu?',
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
@@ -1723,7 +1723,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                 children: [
                   Text(
                     preview.studentName,
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 17,
                       fontWeight: FontWeight.bold,
                     ),
@@ -1733,7 +1733,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                   const SizedBox(height: 4),
                   Text(
                     'Okul No: ${preview.studentNumber}',
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 12.5,
                       color: Colors.grey,
                     ),
@@ -1748,7 +1748,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                         Expanded(
                           child: Text(
                             preview.locationLine,
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 12.5,
                               color: isDark ? Colors.white70 : Colors.black87,
                             ),
@@ -1766,7 +1766,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
             Text(
               'Onayladığınızda bu öğrencinin duyuru, mesaj ve '
               'bilgilendirmelerine erişeceksiniz.',
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 12,
                 color: Colors.grey,
                 height: 1.4,
@@ -1837,14 +1837,14 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Randevu Talebi Oluştur', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
+        title: Text('Randevu Talebi Oluştur', style: AppFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Öğretmen: ${teacher.teacherName} (${teacher.branch})', style: GoogleFonts.outfit(fontSize: 12.5, fontWeight: FontWeight.w600)),
+            Text('Öğretmen: ${teacher.teacherName} (${teacher.branch})', style: AppFonts.outfit(fontSize: 12.5, fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
-            Text('Görüşme Saati: ${teacher.meetingDay} ${teacher.meetingTime}', style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey)),
+            Text('Görüşme Saati: ${teacher.meetingDay} ${teacher.meetingTime}', style: AppFonts.outfit(fontSize: 12, color: Colors.grey)),
             const SizedBox(height: 12),
             TextField(
               controller: topicCtrl,
@@ -1956,7 +1956,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                     Expanded(
                       child: Text(
                         '${child.studentName} İçin Hızlı Durum Bildirimi',
-                        style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: AppFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
@@ -2010,7 +2010,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                 const SizedBox(height: 16),
                 const Divider(height: 1),
                 const SizedBox(height: 10),
-                Text('📋 Gönderilen Bildirimler & Öğretmen Onayı', style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.bold)),
+                Text('📋 Gönderilen Bildirimler & Öğretmen Onayı', style: AppFonts.outfit(fontSize: 13, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 Expanded(
                   child: reportsAsync.when(
@@ -2018,7 +2018,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                     error: (e, _) => Center(child: Text('Bildirimler yüklenemedi: $e')),
                     data: (reports) {
                       if (reports.isEmpty) {
-                        return Center(child: Text('Henüz gönderilmiş durum bildirimi yok.', style: GoogleFonts.outfit(fontSize: 12.5, color: Colors.grey)));
+                        return Center(child: Text('Henüz gönderilmiş durum bildirimi yok.', style: AppFonts.outfit(fontSize: 12.5, color: Colors.grey)));
                       }
                       return ListView.builder(
                         physics: const BouncingScrollPhysics(),
@@ -2041,7 +2041,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                                   children: [
                                     Icon(r.typeIcon, size: 18, color: r.typeColor),
                                     const SizedBox(width: 8),
-                                    Expanded(child: Text(r.title, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13))),
+                                    Expanded(child: Text(r.title, style: AppFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13))),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
@@ -2053,9 +2053,9 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                                   ],
                                 ),
                                 const SizedBox(height: 4),
-                                Text(r.details, style: GoogleFonts.outfit(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87)),
+                                Text(r.details, style: AppFonts.outfit(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87)),
                                 const SizedBox(height: 4),
-                                Text(timeStr, style: GoogleFonts.outfit(fontSize: 10.5, color: Colors.grey)),
+                                Text(timeStr, style: AppFonts.outfit(fontSize: 10.5, color: Colors.grey)),
                               ],
                             ),
                           );
@@ -2155,7 +2155,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Öğretmene Not İlet', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
+        title: Text('Öğretmene Not İlet', style: AppFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -2197,7 +2197,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
         content: SingleChildScrollView(
           child: Text(
             const JsonEncoder.withIndent('  ').convert(export),
-            style: GoogleFonts.firaCode(fontSize: 10.5),
+            style: AppFonts.firaCode(fontSize: 10.5),
           ),
         ),
         actions: [

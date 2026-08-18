@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../data/models/class_model.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
@@ -171,7 +171,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
                           Expanded(
                             child: Text(
                               c.name,
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.bold,
                                 color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -221,7 +221,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
                           Expanded(
                             child: Text(
                               sub,
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w600,
                                 color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -298,7 +298,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
             const SizedBox(width: 3),
             Text(
               value,
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w800,
                 color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -309,7 +309,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
         const SizedBox(height: 1),
         Text(
           label,
-          style: GoogleFonts.outfit(
+          style: AppFonts.outfit(
             fontSize: 10,
             color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
           ),
@@ -332,7 +332,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
             const SizedBox(height: 8),
             Text(
               'Bu sınıfta henüz öğrenci bulunmuyor.',
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 13,
                 color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
               ),
@@ -391,7 +391,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
                     Expanded(
                       child: Text(
                         project.studentName,
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -418,7 +418,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
                             children: [
                               Text(
                                 '⭐ ${project.totalScore}/100',
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.w800,
                                   color: _getScoreTextColor(project.totalScore!),
@@ -456,7 +456,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
                               const SizedBox(width: 4),
                               Text(
                                 'Değerlendir',
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
@@ -491,7 +491,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
                             project.homeworkTopic.isNotEmpty
                                 ? project.homeworkTopic
                                 : 'Ödev/Proje konusu girilmedi (Dokunun)',
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 11,
                               fontStyle: project.homeworkTopic.isEmpty ? FontStyle.italic : FontStyle.normal,
                               color: project.homeworkTopic.isNotEmpty
@@ -531,7 +531,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
                             const SizedBox(width: 5),
                             Text(
                               project.isSubmitted ? 'Ödev Teslim Edildi' : 'Teslim Bekleniyor',
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
                                 color: project.isSubmitted ? Colors.teal : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
@@ -585,7 +585,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
               const SizedBox(width: 10),
               Text(
                 'Ödev / Proje Konusu',
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
                   color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -596,10 +596,10 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
           content: TextField(
             controller: controller,
             autofocus: true,
-            style: GoogleFonts.outfit(fontSize: 13),
+            style: AppFonts.outfit(fontSize: 13),
             decoration: InputDecoration(
               hintText: 'Ödev veya proje başlığı girin...',
-              hintStyle: GoogleFonts.outfit(fontSize: 12.5, color: Colors.grey.shade400),
+              hintStyle: AppFonts.outfit(fontSize: 12.5, color: Colors.grey.shade400),
               filled: true,
               fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -616,7 +616,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('İptal', style: GoogleFonts.outfit(fontSize: 12.5)),
+              child: Text('İptal', style: AppFonts.outfit(fontSize: 12.5)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -631,7 +631,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              child: Text('Kaydet', style: GoogleFonts.outfit(fontSize: 12.5, fontWeight: FontWeight.bold)),
+              child: Text('Kaydet', style: AppFonts.outfit(fontSize: 12.5, fontWeight: FontWeight.bold)),
             ),
           ],
         );
@@ -726,7 +726,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
                           children: [
                             Text(
                               project.studentName,
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
                                 color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -736,7 +736,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
                             ),
                             Text(
                               'MEB 100 Puanlık Rubric Ölçeği',
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 11,
                                 color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                               ),
@@ -753,7 +753,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
                         ),
                         child: Text(
                           '$total / 100',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 14,
                             fontWeight: FontWeight.w900,
                             color: _getScoreTextColor(total),
@@ -790,7 +790,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
                               const Text('⚡ ', style: TextStyle(fontSize: 11)),
                               Text(
                                 'Tam Puan Ver (100)',
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                   color: isDark ? Colors.amber.shade300 : Colors.amber.shade800,
@@ -832,7 +832,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
                                   Expanded(
                                     child: Text(
                                       '${cIdx + 1}. ${criterion.title}',
-                                      style: GoogleFonts.outfit(
+                                      style: AppFonts.outfit(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
                                         color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -873,7 +873,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
                                         ),
                                         child: Text(
                                           '$scoreOption p.',
-                                          style: GoogleFonts.outfit(
+                                          style: AppFonts.outfit(
                                             fontSize: 10.5,
                                             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                                             color: isSelected
@@ -933,7 +933,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
                           const SizedBox(width: 8),
                           Text(
                             'Değerlendirmeyi Kaydet ($total Puan)',
-                            style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13.5, color: Colors.white),
+                            style: AppFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13.5, color: Colors.white),
                           ),
                         ],
                       ),
@@ -957,7 +957,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
           const SizedBox(height: 12),
           Text(
             'Henüz Kayıtlı Sınıfınız Yok',
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 15,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -966,7 +966,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
           const SizedBox(height: 4),
           Text(
             'Proje takibi için önce bir sınıf oluşturmalısınız.',
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 12,
               color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
             ),

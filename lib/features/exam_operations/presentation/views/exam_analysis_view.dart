@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/input_sanitizer.dart';
 import '../../../../core/widgets/responsive_bottom_sheet.dart';
@@ -73,7 +73,7 @@ class _ExamAnalysisViewState extends ConsumerState<ExamAnalysisView> {
                             children: [
                               Text(
                                 'Hızlı Not Dağıtımı (Space Duyarlı)',
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
                                   color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -81,7 +81,7 @@ class _ExamAnalysisViewState extends ConsumerState<ExamAnalysisView> {
                               ),
                               Text(
                                 'Boşluk bırakarak soru puanlarını tek seferde girin',
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 11.5,
                                   color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                                 ),
@@ -94,7 +94,7 @@ class _ExamAnalysisViewState extends ConsumerState<ExamAnalysisView> {
                     const SizedBox(height: 12),
                     Text(
                       'Soru notlarını aralarında BOŞLUK (Space) bırakarak yazın. Sistem otomatik olarak sorulara sırayla dağıtıp analiz grafiği çıkartacaktır.',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 12.5,
                         color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
                         height: 1.4,
@@ -123,7 +123,7 @@ class _ExamAnalysisViewState extends ConsumerState<ExamAnalysisView> {
                         icon: const Icon(Icons.edit_note_rounded, size: 20, color: Colors.white),
                         label: Text(
                           'Hızlı Not Girişi Yap',
-                          style: GoogleFonts.outfit(fontSize: 13.5, fontWeight: FontWeight.bold, color: Colors.white),
+                          style: AppFonts.outfit(fontSize: 13.5, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
@@ -186,7 +186,7 @@ class _ExamAnalysisViewState extends ConsumerState<ExamAnalysisView> {
                               children: [
                                 Text(
                                   'Resmî MEB Sınav Analiz Raporu',
-                                  style: GoogleFonts.outfit(
+                                  style: AppFonts.outfit(
                                     fontSize: 13.5,
                                     fontWeight: FontWeight.bold,
                                     color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -195,7 +195,7 @@ class _ExamAnalysisViewState extends ConsumerState<ExamAnalysisView> {
                                 const SizedBox(height: 2),
                                 Text(
                                   'Millî Eğitim standartlarında otomatik PDF çıktısı al',
-                                  style: GoogleFonts.outfit(
+                                  style: AppFonts.outfit(
                                     fontSize: 11.5,
                                     color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                                   ),
@@ -243,17 +243,17 @@ class _ExamAnalysisViewState extends ConsumerState<ExamAnalysisView> {
             children: [
               Text(
                 'Örnek Giriş: 10 15 20 10 25 20 (Soru puanları toplamı 100 olmalıdır)',
-                style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey),
+                style: AppFonts.outfit(fontSize: 12, color: Colors.grey),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _quickEntryController,
                 keyboardType: TextInputType.number,
                 maxLines: 3,
-                style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600),
+                style: AppFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600),
                 decoration: InputDecoration(
                   hintText: '10 15 25 20 15 15',
-                  hintStyle: GoogleFonts.outfit(fontSize: 13, color: Colors.grey.shade400),
+                  hintStyle: AppFonts.outfit(fontSize: 13, color: Colors.grey.shade400),
                   filled: true,
                   fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                   border: OutlineInputBorder(
@@ -278,7 +278,7 @@ class _ExamAnalysisViewState extends ConsumerState<ExamAnalysisView> {
                   children: [
                     Text(
                       'Ayrıştırılan Soru: ${_parsedScores.length}',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 12.5,
                         fontWeight: FontWeight.bold,
                         color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -295,7 +295,7 @@ class _ExamAnalysisViewState extends ConsumerState<ExamAnalysisView> {
                       ),
                       child: Text(
                         'Toplam: ${totalScore.toStringAsFixed(0)} / 100',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 12,
                           fontWeight: FontWeight.w900,
                           color: isValidHundred ? Colors.green : Colors.red,
@@ -318,7 +318,7 @@ class _ExamAnalysisViewState extends ConsumerState<ExamAnalysisView> {
                       ),
                       child: Text(
                         'S${e.key + 1}: ${e.value.toStringAsFixed(0)}p',
-                        style: GoogleFonts.outfit(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        style: AppFonts.outfit(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
                       ),
                     );
                   }).toList(),
@@ -363,7 +363,7 @@ class _ExamAnalysisViewState extends ConsumerState<ExamAnalysisView> {
                       const SizedBox(width: 8),
                       Text(
                         'Kaydet ve Tamamla',
-                        style: GoogleFonts.outfit(fontSize: 13.5, fontWeight: FontWeight.bold, color: Colors.white),
+                        style: AppFonts.outfit(fontSize: 13.5, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
                     ],
                   ),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../classes/providers/class_provider.dart';
 import '../models/lesson_model.dart';
@@ -165,7 +165,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                       children: [
                         Text(
                           'Haftalık Ders Akışı',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
                             color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -173,7 +173,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                         ),
                         Text(
                           '$selectedDay • ${dayLessons.length} Ders Kayıtlı',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w500,
                             color: AppColors.primary,
@@ -196,7 +196,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                     icon: const Icon(Icons.table_chart_rounded, size: 15),
                     label: Text(
                       'Tablo & PDF',
-                      style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w700),
+                      style: AppFonts.outfit(fontSize: 12, fontWeight: FontWeight.w700),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0284C7),
@@ -270,7 +270,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                         children: [
                           Text(
                             day.substring(0, 3), // Pzt, Sal, Çar...
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 12.5,
                               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                               color: isSelected
@@ -421,7 +421,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               ),
               child: Text(
                 '${lesson.lessonHourIndex + 1}. Ders',
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   color: lesson.color,
@@ -438,7 +438,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                 children: [
                   Text(
                     lesson.className,
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 15.5,
                       fontWeight: FontWeight.w800,
                       color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -446,7 +446,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                   ),
                   Text(
                     lesson.lessonName,
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                       color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -465,7 +465,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               ),
               child: Text(
                 timeRange,
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -530,7 +530,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             children: [
               Text(
                 '${lessonIndex + 1}. Ders',
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: isDark ? Colors.white38 : Colors.grey.shade500,
@@ -539,7 +539,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               const SizedBox(width: 8),
               Text(
                 '($timeRange)',
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontSize: 11,
                   color: isDark ? Colors.white24 : Colors.grey.shade400,
                 ),
@@ -552,7 +552,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                   const SizedBox(width: 4),
                   Text(
                     'Ders Ekle',
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: AppColors.primary,
@@ -589,7 +589,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           const SizedBox(width: 8),
           Text(
             'ÖĞLE ARASI ($lunchTime • ${settings.lunchBreakDuration} dk)',
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 11.5,
               fontWeight: FontWeight.w700,
               color: const Color(0xFFD97706),

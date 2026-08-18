@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'app_fonts.dart';
 import 'app_colors.dart';
 import 'app_design_tokens.dart';
 
@@ -7,7 +7,10 @@ import 'app_design_tokens.dart';
 abstract class AppTheme {
   /// Koyu Tema (Dark Mode UI-UX-MAX)
   static ThemeData get darkTheme {
-    final textTheme = GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme);
+    // Font pakete gömülüdür; internetten indirilmez (offline-first).
+    final textTheme = ThemeData.dark().textTheme.apply(
+      fontFamily: AppFonts.display,
+    );
 
     return ThemeData(
       useMaterial3: true,
@@ -26,32 +29,32 @@ abstract class AppTheme {
 
       // Tipografi
       textTheme: textTheme.copyWith(
-        displayLarge: GoogleFonts.outfit(
+        displayLarge: AppFonts.outfit(
           color: AppColors.textPrimaryDark,
           fontSize: 28,
           fontWeight: FontWeight.bold,
         ),
-        titleLarge: GoogleFonts.outfit(
+        titleLarge: AppFonts.outfit(
           color: AppColors.textPrimaryDark,
           fontSize: 18,
           fontWeight: FontWeight.w600,
         ),
-        titleMedium: GoogleFonts.outfit(
+        titleMedium: AppFonts.outfit(
           color: AppColors.textPrimaryDark,
           fontSize: 15,
           fontWeight: FontWeight.w600,
         ),
-        bodyLarge: GoogleFonts.outfit(
+        bodyLarge: AppFonts.outfit(
           color: AppColors.textPrimaryDark,
           fontSize: 14.5,
           fontWeight: FontWeight.normal,
         ),
-        bodyMedium: GoogleFonts.outfit(
+        bodyMedium: AppFonts.outfit(
           color: AppColors.textSecondaryDark,
           fontSize: 13,
           fontWeight: FontWeight.normal,
         ),
-        labelLarge: GoogleFonts.outfit(
+        labelLarge: AppFonts.outfit(
           color: AppColors.textPrimaryDark,
           fontSize: 13,
           fontWeight: FontWeight.w600,
@@ -63,7 +66,7 @@ abstract class AppTheme {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.outfit(
+        titleTextStyle: AppFonts.outfit(
           color: AppColors.textPrimaryDark,
           fontSize: 18,
           fontWeight: FontWeight.bold,
@@ -184,7 +187,9 @@ abstract class AppTheme {
 
   /// Açık Tema (Light Mode UI-UX-MAX)
   static ThemeData get lightTheme {
-    final textTheme = GoogleFonts.outfitTextTheme(ThemeData.light().textTheme);
+    final textTheme = ThemeData.light().textTheme.apply(
+      fontFamily: AppFonts.display,
+    );
 
     return ThemeData(
       useMaterial3: true,
@@ -202,32 +207,32 @@ abstract class AppTheme {
       ),
 
       textTheme: textTheme.copyWith(
-        displayLarge: GoogleFonts.outfit(
+        displayLarge: AppFonts.outfit(
           color: AppColors.textPrimaryLight,
           fontSize: 28,
           fontWeight: FontWeight.bold,
         ),
-        titleLarge: GoogleFonts.outfit(
+        titleLarge: AppFonts.outfit(
           color: AppColors.textPrimaryLight,
           fontSize: 18,
           fontWeight: FontWeight.w600,
         ),
-        titleMedium: GoogleFonts.outfit(
+        titleMedium: AppFonts.outfit(
           color: AppColors.textPrimaryLight,
           fontSize: 15,
           fontWeight: FontWeight.w600,
         ),
-        bodyLarge: GoogleFonts.outfit(
+        bodyLarge: AppFonts.outfit(
           color: AppColors.textPrimaryLight,
           fontSize: 14.5,
           fontWeight: FontWeight.normal,
         ),
-        bodyMedium: GoogleFonts.outfit(
+        bodyMedium: AppFonts.outfit(
           color: AppColors.textSecondaryLight,
           fontSize: 13,
           fontWeight: FontWeight.normal,
         ),
-        labelLarge: GoogleFonts.outfit(
+        labelLarge: AppFonts.outfit(
           color: AppColors.textPrimaryLight,
           fontSize: 13,
           fontWeight: FontWeight.w600,
@@ -238,7 +243,7 @@ abstract class AppTheme {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.outfit(
+        titleTextStyle: AppFonts.outfit(
           color: AppColors.textPrimaryLight,
           fontSize: 18,
           fontWeight: FontWeight.bold,

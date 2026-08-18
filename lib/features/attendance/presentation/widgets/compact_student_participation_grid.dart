@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../data/models/classroom_participation_model.dart';
 import 'quick_student_eval_dialog.dart';
 
@@ -45,7 +45,7 @@ class CompactStudentParticipationGrid extends ConsumerWidget {
                 const SizedBox(height: 12),
                 Text(
                   '"$searchQuery" ile eşleşen öğrenci bulunamadı',
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 14.5,
                     fontWeight: FontWeight.bold,
                     color: isDark ? Colors.white70 : const Color(0xFF334155),
@@ -70,7 +70,7 @@ class CompactStudentParticipationGrid extends ConsumerWidget {
               const SizedBox(height: 12),
               Text(
                 'Bu sınıfta kayıtlı öğrenci bulunamadı.',
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
                   color: isDark ? Colors.white70 : const Color(0xFF334155),
@@ -211,7 +211,7 @@ class CompactStudentParticipationGrid extends ConsumerWidget {
                   Flexible(
                     child: Text(
                       'No: ${student.studentNumber}',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w800,
                         color: numberColor,
@@ -229,7 +229,7 @@ class CompactStudentParticipationGrid extends ConsumerWidget {
                 child: Text(
                   student.shortName,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w800,
                     color: isDark ? Colors.white : const Color(0xFF0F172A),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/glass_card.dart';
 import '../../../auth/screens/welcome_screen.dart';
@@ -104,7 +104,7 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
             Expanded(
               child: Text(
                 'KVKK ve Gizlilik Aydınlatma Metni',
-                style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
+                style: AppFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -118,7 +118,7 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
               children: [
                 Text(
                   '6698 Sayılı Kişisel Verilerin Korunması Kanunu (KVKK) Uyarınca:',
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
+                  style: AppFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -126,7 +126,7 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
                   '2. Çocuğunuza ait kişisel veriler ve okul numarası, yalnızca öğretmeniniz tarafından sağlanan güvenli referans kodu ve çift faktörlü doğrulama yoluyla eşleştirilir.\n\n'
                   '3. Velilerin iletişim bilgileri diğer velilerle paylaşılmaz; her veli yalnızca kendi çocuğunun gelişim raporlarına ve sınıf duyurularına erişebilir.\n\n'
                   '4. Dilediğiniz an bağlantınızı iptal edebilir ve unutulma hakkınızı kullanarak verilerinizin cihazdan silinmesini talep edebilirsiniz.',
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 12.5,
                     height: 1.45,
                     color: isDark ? Colors.white70 : Colors.black87,
@@ -318,7 +318,7 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
           ),
         title: Text(
           widget.isAddingAnotherChild ? 'Yeni Çocuk Ekle' : 'Veli Girişi & Öğrenci Bağlama',
-          style: GoogleFonts.outfit(
+          style: AppFonts.outfit(
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: isDark ? Colors.white : AppColors.textPrimaryLight,
@@ -359,7 +359,7 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
                           children: [
                             Text(
                               'Öğrencinize Bağlanın',
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: isDark ? Colors.white : AppColors.textPrimaryLight,
@@ -368,7 +368,7 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
                             const SizedBox(height: 2),
                             Text(
                               'Öğretmeninizin size verdiği 8 haneli referans kodu ile sınıfa katılın.',
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 12.5,
                                 color: isDark ? Colors.white60 : Colors.black54,
                                 height: 1.3,
@@ -399,7 +399,7 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
                         Expanded(
                           child: Text(
                             _errorMessage!,
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               color: Colors.redAccent,
                               fontSize: 12.5,
                               fontWeight: FontWeight.w600,
@@ -415,20 +415,20 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
                 // 2. Referans Kodu Alanı
                 Text(
                   '🔑 Referans Kodu *',
-                  style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
+                  style: AppFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 6),
                 TextFormField(
                   controller: _tokenController,
                   textCapitalization: TextCapitalization.characters,
-                  style: GoogleFonts.firaCode(
+                  style: AppFonts.firaCode(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1.5,
                   ),
                   decoration: InputDecoration(
                     hintText: 'Örn: SC-8A-9402',
-                    hintStyle: GoogleFonts.firaCode(
+                    hintStyle: AppFonts.firaCode(
                       fontSize: 14,
                       letterSpacing: 1.2,
                       color: isDark ? Colors.white30 : Colors.black26,
@@ -469,14 +469,14 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
                 // 3. İkinci Faktör Doğrulama: Öğrenci Okul No
                 Text(
                   '🔒 Öğrenci Okul Numarası (2. Faktör Doğrulama) *',
-                  style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
+                  style: AppFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 6),
                 TextFormField(
                   controller: _schoolNumberController,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600),
+                  style: AppFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600),
                   decoration: InputDecoration(
                     hintText: 'Örn: 142',
                     prefixIcon: const Icon(Icons.tag_rounded, color: AppColors.primary),
@@ -512,7 +512,7 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
                 // 4. Veli Yakınlık Derecesi
                 Text(
                   '👥 Yakınlık Dereceniz *',
-                  style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
+                  style: AppFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -551,7 +551,7 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
                               const SizedBox(height: 4),
                               Text(
                                 title,
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 12,
                                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                                   color: isSelected
@@ -572,13 +572,13 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
                 // 5. Veli Ad Soyad
                 Text(
                   '👤 Veli Adı Soyadı *',
-                  style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
+                  style: AppFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 6),
                 TextFormField(
                   controller: _parentNameController,
                   textCapitalization: TextCapitalization.words,
-                  style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600),
+                  style: AppFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600),
                   decoration: InputDecoration(
                     hintText: 'Örn: Fatma Yılmaz',
                     prefixIcon: const Icon(Icons.person_rounded, color: AppColors.primary),
@@ -614,14 +614,14 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
                 // 6. Veli Telefon Numarası (Opsiyonel)
                 Text(
                   '📱 İletişim Telefon Numarası (İsteğe Bağlı)',
-                  style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
+                  style: AppFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 6),
                 TextFormField(
                   controller: _parentPhoneController,
                   keyboardType: TextInputType.phone,
                   inputFormatters: [_TurkishPhoneInputFormatter()],
-                  style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600),
+                  style: AppFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600),
                   decoration: InputDecoration(
                     hintText: '0 (5XX) XXX XX XX',
                     prefixIcon: const Icon(Icons.phone_rounded, color: AppColors.primary),
@@ -669,7 +669,7 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
                           padding: const EdgeInsets.only(top: 12.0),
                           child: RichText(
                             text: TextSpan(
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 12,
                                 color: isDark ? Colors.white70 : Colors.black87,
                                 height: 1.35,

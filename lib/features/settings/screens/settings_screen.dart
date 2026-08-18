@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../../shared/widgets/custom_app_bar.dart';
@@ -202,7 +202,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             const SizedBox(height: 2),
                             Text(
                               'SınıfCepte v$_appVersion',
-                              style: GoogleFonts.firaCode(
+                              style: AppFonts.firaCode(
                                 fontSize: 12,
                                 color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
                               ),

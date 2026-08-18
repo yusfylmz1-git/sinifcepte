@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
@@ -119,7 +119,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                   const SizedBox(width: 6),
                   Text(
                     'Sınav Ekle',
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
@@ -196,7 +196,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                     Flexible(
                       child: Text(
                         '${item['label']}',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 11.5,
                           fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                           color: isSelected
@@ -285,7 +285,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
               child: Center(
                 child: Text(
                   item['label']!,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 11,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     color: isSelected
@@ -326,7 +326,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                         ? 'Henüz okul sınavı eklemediniz.\nAlttaki (+ Sınav Ekle) butonuyla hemen ekleyebilirsiniz.'
                         : 'Kayıtlı resmî sınav bulunmuyor.'),
                 textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontSize: 12.5,
                   color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                 ),
@@ -394,7 +394,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                     isSchool
                         ? (exam.className ?? 'Okul')
                         : (exam.institution.length > 5 ? exam.institution.substring(0, 4) : exam.institution),
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 8,
                       fontWeight: FontWeight.w800,
                       color: institutionColor,
@@ -416,7 +416,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                   // Sınav Başlığı
                   Text(
                     exam.title,
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
                       color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -434,7 +434,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                       const SizedBox(width: 3),
                       Text(
                         _formatExamDate(exam.examDate),
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
@@ -447,7 +447,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                         Flexible(
                           child: Text(
                             'Başvuru: ${_formatShortDate(exam.applicationDeadline!)}',
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 10.5,
                               fontWeight: FontWeight.w500,
                               color: Colors.red.shade400,
@@ -518,7 +518,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
         ),
         child: Text(
           'Geçti',
-          style: GoogleFonts.outfit(
+          style: AppFonts.outfit(
             fontSize: 9.5,
             fontWeight: FontWeight.w600,
             color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
@@ -536,7 +536,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
         ),
         child: Text(
           '🚨 Bugün!',
-          style: GoogleFonts.outfit(fontSize: 9.5, fontWeight: FontWeight.bold, color: Colors.red),
+          style: AppFonts.outfit(fontSize: 9.5, fontWeight: FontWeight.bold, color: Colors.red),
         ),
       );
     }
@@ -550,7 +550,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
         ),
         child: Text(
           '⚡ $days gün',
-          style: GoogleFonts.outfit(
+          style: AppFonts.outfit(
             fontSize: 9.5,
             fontWeight: FontWeight.bold,
             color: Colors.orange.shade800,
@@ -567,7 +567,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
       ),
       child: Text(
         '⏳ $days gün',
-        style: GoogleFonts.outfit(
+        style: AppFonts.outfit(
           fontSize: 9.5,
           fontWeight: FontWeight.w700,
           color: AppColors.primary,
@@ -723,7 +723,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                             children: [
                               Text(
                                 'Yeni Okul Sınavı Ekle',
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 16.5,
                                   fontWeight: FontWeight.w800,
                                   color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -731,7 +731,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                               ),
                               Text(
                                 'Sınıfınız için yazılı / deneme takvimi oluşturun',
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.w500,
                                   color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -763,7 +763,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                     // 1. Sınav Başlığı
                     Text(
                       'SINAV ADI / KONUSU',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
@@ -773,14 +773,14 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                     const SizedBox(height: 6),
                     TextField(
                       controller: titleController,
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: isDark ? Colors.white : const Color(0xFF0F172A),
                       ),
                       decoration: InputDecoration(
                         hintText: 'Örn: 1. Dönem 1. Matematik Yazılısı',
-                        hintStyle: GoogleFonts.outfit(fontSize: 12.5, color: Colors.grey.shade400),
+                        hintStyle: AppFonts.outfit(fontSize: 12.5, color: Colors.grey.shade400),
                         prefixIcon: const Icon(Icons.drive_file_rename_outline_rounded, size: 18, color: AppColors.primary),
                         filled: true,
                         fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
@@ -805,7 +805,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                     // 2. Sınıf Seçimi
                     Text(
                       'SINIF VEYA ŞUBE',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
@@ -818,7 +818,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                         if (classes.isNotEmpty) {
                           return DropdownButtonFormField<String>(
                             initialValue: selectedClassName,
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -826,7 +826,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                             dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
                             decoration: InputDecoration(
                               hintText: 'Sınıf Seçin (Opsiyonel)',
-                              hintStyle: GoogleFonts.outfit(fontSize: 12.5, color: Colors.grey.shade400),
+                              hintStyle: AppFonts.outfit(fontSize: 12.5, color: Colors.grey.shade400),
                               prefixIcon: const Icon(Icons.groups_rounded, size: 18, color: AppColors.primary),
                               filled: true,
                               fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
@@ -848,7 +848,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                             items: classes.map((c) {
                               return DropdownMenuItem<String>(
                                 value: c.name,
-                                child: Text(c.name, style: GoogleFonts.outfit(fontSize: 13)),
+                                child: Text(c.name, style: AppFonts.outfit(fontSize: 13)),
                               );
                             }).toList(),
                             onChanged: (val) {
@@ -858,10 +858,10 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                         }
                         return TextField(
                           onChanged: (val) => selectedClassName = val,
-                          style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
+                          style: AppFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
                           decoration: InputDecoration(
                             hintText: 'Sınıf (Örn: 10-A, 8-B)',
-                            hintStyle: GoogleFonts.outfit(fontSize: 12.5, color: Colors.grey.shade400),
+                            hintStyle: AppFonts.outfit(fontSize: 12.5, color: Colors.grey.shade400),
                             prefixIcon: const Icon(Icons.groups_rounded, size: 18, color: AppColors.primary),
                             filled: true,
                             fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
@@ -876,10 +876,10 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                       },
                       orElse: () => TextField(
                         onChanged: (val) => selectedClassName = val,
-                        style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
+                        style: AppFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
                         decoration: InputDecoration(
                           hintText: 'Sınıf (Örn: 10-A, 8-B)',
-                          hintStyle: GoogleFonts.outfit(fontSize: 12.5, color: Colors.grey.shade400),
+                          hintStyle: AppFonts.outfit(fontSize: 12.5, color: Colors.grey.shade400),
                           prefixIcon: const Icon(Icons.groups_rounded, size: 18, color: AppColors.primary),
                           filled: true,
                           fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
@@ -897,7 +897,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                     // 3. Sınav Tarihi Seçici Kartı
                     Text(
                       'SINAV TARİHİ',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
@@ -949,7 +949,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                             Expanded(
                               child: Text(
                                 _formatExamDate(selectedDate),
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
                                   color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -969,7 +969,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                                   const SizedBox(width: 4),
                                   Text(
                                     'Değiştir',
-                                    style: GoogleFonts.outfit(
+                                    style: AppFonts.outfit(
                                       fontSize: 11.5,
                                       fontWeight: FontWeight.w700,
                                       color: AppColors.primary,
@@ -1001,7 +1001,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                           Expanded(
                             child: Text(
                               'Sınav gününe 24 saat kala otomatik alarm bildirimi kurulacaktır.',
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
                                 color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
@@ -1057,7 +1057,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                             const SizedBox(width: 8),
                             Text(
                               'Takvime Kaydet & Bildirim Kur',
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w800,
                                 color: Colors.white,
@@ -1083,8 +1083,8 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          title: Text('Sınavı Sil', style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.bold)),
-          content: Text('"${exam.title}" sınav kaydını silmek istediğinizden emin misiniz?', style: GoogleFonts.outfit(fontSize: 13)),
+          title: Text('Sınavı Sil', style: AppFonts.outfit(fontSize: 15, fontWeight: FontWeight.bold)),
+          content: Text('"${exam.title}" sınav kaydını silmek istediğinizden emin misiniz?', style: AppFonts.outfit(fontSize: 13)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),

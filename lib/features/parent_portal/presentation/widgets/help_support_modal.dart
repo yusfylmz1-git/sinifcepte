@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/services/kvkk_consent_service.dart';
 
@@ -91,7 +91,7 @@ class _HelpSupportModalState extends State<HelpSupportModal> {
                     children: [
                       Text(
                         'Yardım & Destek Merkezi',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: isDark ? Colors.white : AppColors.textPrimaryLight,
@@ -99,7 +99,7 @@ class _HelpSupportModalState extends State<HelpSupportModal> {
                       ),
                       Text(
                         'Sorun, öneri veya hata bildirimlerinizi iletin',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 11,
                           color: isDark ? Colors.white60 : Colors.black54,
                         ),
@@ -184,7 +184,7 @@ class _HelpSupportModalState extends State<HelpSupportModal> {
             Center(
               child: Text(
                 'Talepleriniz en geç 24 saat içinde incelenir ve yanıtlanır.',
-                style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey),
+                style: AppFonts.outfit(fontSize: 11, color: Colors.grey),
               ),
             ),
           ],

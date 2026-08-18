@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../academic_calendar/data/models/academic_calendar_event_model.dart';
 import '../../academic_calendar/providers/academic_calendar_provider.dart';
@@ -188,7 +188,7 @@ class DashboardScreen extends ConsumerWidget {
                   children: [
                     Text(
                       'İyi çalışmalar, ',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -197,7 +197,7 @@ class DashboardScreen extends ConsumerWidget {
                     Flexible(
                       child: Text(
                         displayName,
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
                           color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -215,7 +215,7 @@ class DashboardScreen extends ConsumerWidget {
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
                       '🚨 Bugün Sınav: ${todayExam.title}',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: const Color(0xFFDC2626),
@@ -266,7 +266,7 @@ class DashboardScreen extends ConsumerWidget {
                   const SizedBox(width: 5),
                   Text(
                     '$dayStr, $todayName',
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: isDark ? Colors.white : const Color(0xFF1E293B),
@@ -333,7 +333,7 @@ class DashboardScreen extends ConsumerWidget {
                     const SizedBox(width: 4),
                     Text(
                       isLive ? 'ŞU AN DERSTESİNİZ' : 'SIRADAKİ DERS',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w800,
                         color: isLive ? const Color(0xFF10B981) : const Color(0xFFD97706),
@@ -345,7 +345,7 @@ class DashboardScreen extends ConsumerWidget {
               const Spacer(),
               Text(
                 '$lessonHour. Ders Saati',
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                   color: isDark ? Colors.white60 : Colors.black45,
@@ -356,7 +356,7 @@ class DashboardScreen extends ConsumerWidget {
           const SizedBox(height: 6),
           Text(
             '$className • $subjectName',
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 14.5,
               fontWeight: FontWeight.w800,
               color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -365,7 +365,7 @@ class DashboardScreen extends ConsumerWidget {
           const SizedBox(height: 2),
           Text(
             'Ders içi katılımı hızlıca değerlendirin veya tek tıkla tam puan verin.',
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 11.5,
               color: isDark ? Colors.white70 : const Color(0xFF64748B),
             ),
@@ -403,7 +403,7 @@ class DashboardScreen extends ConsumerWidget {
                     fit: BoxFit.scaleDown,
                     child: Text(
                       'Tümüne Tam Puan (3 ⭐)',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309),
@@ -432,7 +432,7 @@ class DashboardScreen extends ConsumerWidget {
                 icon: const Icon(Icons.arrow_forward_rounded, size: 15),
                 label: Text(
                   'Değerlendir',
-                  style: GoogleFonts.outfit(fontSize: 11.5, fontWeight: FontWeight.bold),
+                  style: AppFonts.outfit(fontSize: 11.5, fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
@@ -522,7 +522,7 @@ class DashboardScreen extends ConsumerWidget {
             const SizedBox(width: 7),
             Text(
               'Hızlı İşlemler',
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
                 color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -660,7 +660,7 @@ class DashboardScreen extends ConsumerWidget {
                                   children: [
                                     Text(
                                       item['title'] as String,
-                                      style: GoogleFonts.outfit(
+                                      style: AppFonts.outfit(
                                         fontSize: 12.5,
                                         fontWeight: FontWeight.w800,
                                         color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -672,7 +672,7 @@ class DashboardScreen extends ConsumerWidget {
                                     const SizedBox(height: 1),
                                     Text(
                                       item['subtitle'] as String,
-                                      style: GoogleFonts.outfit(
+                                      style: AppFonts.outfit(
                                         fontSize: 9.5,
                                         fontWeight: FontWeight.w500,
                                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -757,7 +757,7 @@ class DashboardScreen extends ConsumerWidget {
                     Flexible(
                       child: Text(
                         'Yaklaşan Sınavlar',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 14.5,
                           fontWeight: FontWeight.w700,
                           color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -776,7 +776,7 @@ class DashboardScreen extends ConsumerWidget {
                         ),
                         child: Text(
                           '${upcomingExams.length}',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                             color: const Color(0xFFD97706),
@@ -805,7 +805,7 @@ class DashboardScreen extends ConsumerWidget {
                   children: [
                     Text(
                       'Tümünü Gör',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: const Color(0xFFD97706),
@@ -924,7 +924,7 @@ class DashboardScreen extends ConsumerWidget {
                 ),
                 child: Text(
                   instLabel,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
                     color: instColor,
@@ -941,7 +941,7 @@ class DashboardScreen extends ConsumerWidget {
                   children: [
                     Text(
                       exam.title,
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w700,
                         color: isDark ? Colors.white : const Color(0xFF1E293B),
@@ -952,7 +952,7 @@ class DashboardScreen extends ConsumerWidget {
                     const SizedBox(height: 1.5),
                     Text(
                       '📅 $dateStr',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w500,
                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -974,7 +974,7 @@ class DashboardScreen extends ConsumerWidget {
                 ),
                 child: Text(
                   badgeText,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: badgeColor,
@@ -1019,7 +1019,7 @@ class DashboardScreen extends ConsumerWidget {
                   children: [
                     Text(
                       'Yakın Tarihte Sınav Yok',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: isDark ? Colors.white : const Color(0xFF1E293B),
@@ -1028,7 +1028,7 @@ class DashboardScreen extends ConsumerWidget {
                     const SizedBox(height: 2),
                     Text(
                       'Önümüzdeki günlerde planlanmış bir MEB veya ÖSYM sınavı bulunmuyor.',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 11,
                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                       ),
@@ -1051,7 +1051,7 @@ class DashboardScreen extends ConsumerWidget {
               icon: const Icon(Icons.add_circle_outline_rounded, size: 15),
               label: Text(
                 'Sınav Takvimini İncele & Ekle',
-                style: GoogleFonts.outfit(fontSize: 11.5, fontWeight: FontWeight.w600),
+                style: AppFonts.outfit(fontSize: 11.5, fontWeight: FontWeight.w600),
               ),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 6),
@@ -1165,7 +1165,7 @@ class DashboardScreen extends ConsumerWidget {
                     Expanded(
                       child: Text(
                         timelineTitle,
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 14.5,
                           fontWeight: FontWeight.w700,
                           color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -1190,7 +1190,7 @@ class DashboardScreen extends ConsumerWidget {
                   children: [
                     Text(
                       buttonText,
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: timelineAccent,
@@ -1222,7 +1222,7 @@ class DashboardScreen extends ConsumerWidget {
                   const SizedBox(height: 6),
                   Text(
                     'Bugün için kayıtlı dersiniz bulunmuyor.',
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 12.5,
                       color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                     ),
@@ -1311,7 +1311,7 @@ class DashboardScreen extends ConsumerWidget {
                   children: [
                     Text(
                       'YAZ TATİLİ & DİNLENME DÖNEMİ',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                         color: const Color(0xFFD97706),
@@ -1321,7 +1321,7 @@ class DashboardScreen extends ConsumerWidget {
                     const SizedBox(height: 2),
                     Text(
                       'İyi Tatiller Öğretmenim! ☀️🏖️',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w800,
                         color: isDark ? Colors.white : const Color(0xFF78350F),
@@ -1337,7 +1337,7 @@ class DashboardScreen extends ConsumerWidget {
           const SizedBox(height: 10),
           Text(
             '2025-2026 Eğitim Öğretim Yılı tamamlandı. Yeni eğitim dönemi Eylül ayında başlayacaktır. Keyifli dinlenmeler dileriz!',
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 12,
               height: 1.35,
               color: isDark ? Colors.amber.shade100.withValues(alpha: 0.85) : const Color(0xFF92400E),
@@ -1417,7 +1417,7 @@ class DashboardScreen extends ConsumerWidget {
                   children: [
                     Text(
                       'RESMÎ TATİL / DİNLENME GÜNÜ',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                         color: const Color(0xFFDC2626),
@@ -1427,7 +1427,7 @@ class DashboardScreen extends ConsumerWidget {
                     const SizedBox(height: 2),
                     Text(
                       '${holiday.title} 🇹🇷',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w800,
                         color: isDark ? Colors.white : const Color(0xFF7F1D1D),
@@ -1444,7 +1444,7 @@ class DashboardScreen extends ConsumerWidget {
           Text(
             holiday.description ??
                 'Bugün MEB resmî çalışma takviminde tatil olarak belirlenmiştir. Ders yapılmamaktadır.',
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 12,
               height: 1.35,
               color: isDark ? Colors.red.shade100.withValues(alpha: 0.85) : const Color(0xFF991B1B),
@@ -1525,7 +1525,7 @@ class DashboardScreen extends ConsumerWidget {
                   children: [
                     Text(
                       'HAFTA SONU DİNLENME VAKTİ',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                         color: const Color(0xFF8B5CF6),
@@ -1535,7 +1535,7 @@ class DashboardScreen extends ConsumerWidget {
                     const SizedBox(height: 2),
                     Text(
                       'İyi Hafta Sonları! ☕✨',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w800,
                         color: isDark ? Colors.white : const Color(0xFF4C1D95),
@@ -1551,7 +1551,7 @@ class DashboardScreen extends ConsumerWidget {
           const SizedBox(height: 10),
           Text(
             'Bugün $todayName. Haftanın tüm yoğunluğunu geride bırakma ve sevdiklerinizle dinlenme zamanı.',
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 12,
               height: 1.35,
               color: isDark ? Colors.purple.shade100.withValues(alpha: 0.85) : const Color(0xFF5B21B6),
@@ -1651,7 +1651,7 @@ class DashboardScreen extends ConsumerWidget {
                 ),
                 child: Text(
                   lessonNo,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
@@ -1667,7 +1667,7 @@ class DashboardScreen extends ConsumerWidget {
                   children: [
                     Text(
                       className,
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
                         color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -1677,7 +1677,7 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     Text(
                       subject,
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 11.5,
                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                       ),
@@ -1703,7 +1703,7 @@ class DashboardScreen extends ConsumerWidget {
                   children: [
                     Text(
                       time,
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),

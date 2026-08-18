@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../../shared/widgets/custom_bottom_nav_bar.dart';
@@ -98,7 +98,7 @@ class ExamOperationsMenuView extends ConsumerWidget {
                       children: [
                         Text(
                           'Öğrenci Değerlendirme & Takip',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 13.5,
                             fontWeight: FontWeight.bold,
                             color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -107,7 +107,7 @@ class ExamOperationsMenuView extends ConsumerWidget {
                         const SizedBox(height: 1),
                         Text(
                           'Quiz, sözlü, proje ve sınav tarihlerini tek merkezden yönetin.',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 11.5,
                             color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                           ),
@@ -172,7 +172,7 @@ class ExamOperationsMenuView extends ConsumerWidget {
                                       Expanded(
                                         child: Text(
                                           item['title'] as String,
-                                          style: GoogleFonts.outfit(
+                                          style: AppFonts.outfit(
                                             fontSize: 13.5,
                                             fontWeight: FontWeight.bold,
                                             color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -202,7 +202,7 @@ class ExamOperationsMenuView extends ConsumerWidget {
                                   const SizedBox(height: 3),
                                   Text(
                                     item['subtitle'] as String,
-                                    style: GoogleFonts.outfit(
+                                    style: AppFonts.outfit(
                                       fontSize: 11,
                                       color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                                     ),
@@ -260,7 +260,7 @@ class ExamOperationsMenuView extends ConsumerWidget {
                             children: [
                               Text(
                                 'Soru Bazlı Sınav Analizi & MEB Raporları',
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.bold,
                                   color: isDark ? Colors.amber.shade200 : Colors.amber.shade900,
@@ -269,7 +269,7 @@ class ExamOperationsMenuView extends ConsumerWidget {
                               const SizedBox(height: 2),
                               Text(
                                 'Soru zorluk grafikleri ve resmî MEB PDF analiz raporlarına ulaşmak için dokunun.',
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 11,
                                   color: isDark ? Colors.amber.shade100.withValues(alpha: 0.8) : Colors.amber.shade800,
                                 ),

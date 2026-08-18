@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/models/school_admin_request_model.dart';
@@ -177,7 +177,7 @@ class _SchoolAdminRequestViewState
                   Expanded(
                     child: Text(
                       'Okul Yöneticiliği Başvurusu',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -240,7 +240,7 @@ class _SchoolAdminRequestViewState
           'Bu süreçte uygulamanın tüm özelliklerini normal şekilde '
           'kullanmaya devam edebilirsiniz — yöneticilik onayı hiçbir '
           'özelliğin ön koşulu değildir.',
-          style: GoogleFonts.outfit(
+          style: AppFonts.outfit(
             fontSize: 12.5,
             color: Colors.grey,
             height: 1.4,
@@ -258,7 +258,7 @@ class _SchoolAdminRequestViewState
           'Okul yöneticisi, okulundaki öğretmenleri doğrular ve velilerden '
           'gelen şikâyetleri görür. Öğretmenlerin sınıf verilerine, notlarına '
           'veya veli iletişimine erişimi yoktur.',
-          style: GoogleFonts.outfit(
+          style: AppFonts.outfit(
             fontSize: 12.5,
             color: Colors.grey,
             height: 1.45,
@@ -279,12 +279,12 @@ class _SchoolAdminRequestViewState
             children: [
               Text(
                 'Başvurulan okul',
-                style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey),
+                style: AppFonts.outfit(fontSize: 11, color: Colors.grey),
               ),
               const SizedBox(height: 3),
               Text(
                 schoolTitle.isEmpty ? 'Okul seçilmedi' : schoolTitle,
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -318,7 +318,7 @@ class _SchoolAdminRequestViewState
             ),
             child: Text(
               _error!,
-              style: GoogleFonts.outfit(fontSize: 12.5, color: Colors.redAccent),
+              style: AppFonts.outfit(fontSize: 12.5, color: Colors.redAccent),
             ),
           ),
         ],
@@ -378,7 +378,7 @@ class _SchoolAdminRequestViewState
               Expanded(
                 child: Text(
                   title,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 13.5,
                     fontWeight: FontWeight.bold,
                     color: color,
@@ -390,7 +390,7 @@ class _SchoolAdminRequestViewState
           const SizedBox(height: 6),
           Text(
             body,
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 12.5,
               height: 1.4,
               color: isDark ? Colors.white70 : Colors.black87,

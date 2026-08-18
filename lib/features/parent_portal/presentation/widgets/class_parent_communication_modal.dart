@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/cloud/cloud_ids.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -101,7 +101,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                     children: [
                       Text(
                         '${widget.classModel.name} Veli İletişim Merkezi',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: isDark ? Colors.white : AppColors.textPrimaryLight,
@@ -109,7 +109,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                       ),
                       Text(
                         'Duyurular, veli bildirimleri ve randevular',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 11,
                           color: isDark ? Colors.white60 : Colors.black54,
                         ),
@@ -133,7 +133,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
             indicatorColor: AppColors.primary,
             labelColor: AppColors.primary,
             unselectedLabelColor: isDark ? Colors.white60 : Colors.black54,
-            labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
+            labelStyle: AppFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
             isScrollable: true,
             tabAlignment: TabAlignment.start,
             tabs: const [
@@ -223,7 +223,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                               Expanded(
                                 child: Text(
                                   a.title,
-                                  style: GoogleFonts.outfit(
+                                  style: AppFonts.outfit(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 13.5,
                                   ),
@@ -252,7 +252,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                           const SizedBox(height: 4),
                           Text(
                             a.content,
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 12,
                               color: isDark ? Colors.white70 : Colors.black87,
                             ),
@@ -263,7 +263,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(dateStr, style: GoogleFonts.outfit(fontSize: 10.5, color: Colors.grey)),
+                              Text(dateStr, style: AppFonts.outfit(fontSize: 10.5, color: Colors.grey)),
                               IconButton(
                                 icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent),
                                 onPressed: () async {
@@ -311,7 +311,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
         builder: (ctx, setDialogState) => AlertDialog(
           backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text('Yeni Sınıf Duyurusu', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
+          title: Text('Yeni Sınıf Duyurusu', style: AppFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -450,7 +450,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
           Text(
             'Kadrodaki öğretmenler bu sınıfın velileriyle yazışabilir. '
             'Duyuru yayınlama yetkisi yalnızca sizde kalır.',
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 12,
               color: Colors.grey,
               height: 1.35,
@@ -465,7 +465,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
               error: (e, _) => Center(
                 child: Text(
                   'Kadro yüklenemedi. İnternet bağlantınızı kontrol edin.',
-                  style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey),
+                  style: AppFonts.outfit(fontSize: 13, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -480,7 +480,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                         const SizedBox(height: 10),
                         Text(
                           'Henüz ders öğretmeni eklenmedi',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w600,
                           ),
@@ -522,7 +522,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                               children: [
                                 Text(
                                   m.displayTitle,
-                                  style: GoogleFonts.outfit(
+                                  style: AppFonts.outfit(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -533,7 +533,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                                   m.isPending
                                       ? 'Katılım kodu: ${m.joinCode}'
                                       : 'Yazışmaya açık',
-                                  style: GoogleFonts.outfit(
+                                  style: AppFonts.outfit(
                                     fontSize: 11.5,
                                     color: Colors.grey,
                                   ),
@@ -588,7 +588,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
             const SizedBox(height: 12),
             Text(
               'Google girişi gerekiyor',
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
@@ -600,7 +600,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
               'bu bölüm açılır. Sınıf ve öğrenci kayıtlarınız girişten '
               'bağımsız olarak cihazınızda çalışmaya devam eder.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 12.5,
                 color: Colors.grey,
                 height: 1.45,
@@ -653,7 +653,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                         Expanded(
                           child: Text(
                             '${r.studentName} (${r.relation}: ${r.parentName})',
-                            style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
+                            style: AppFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -694,10 +694,10 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                     const SizedBox(height: 6),
                     Text(
                       '${r.title}: ${r.details}',
-                      style: GoogleFonts.outfit(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87),
+                      style: AppFonts.outfit(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87),
                     ),
                     const SizedBox(height: 4),
-                    Text(dateStr, style: GoogleFonts.outfit(fontSize: 10.5, color: Colors.grey)),
+                    Text(dateStr, style: AppFonts.outfit(fontSize: 10.5, color: Colors.grey)),
                   ],
                 ),
               );
@@ -748,7 +748,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                         Expanded(
                           child: Text(
                             '${app.studentName} • ${app.parentName} (${app.relation})',
-                            style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
+                            style: AppFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
                           ),
                         ),
                         Container(
@@ -765,9 +765,9 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text('Öğretmen: ${app.teacherName} • $dateStr ${app.timeSlot}', style: GoogleFonts.outfit(fontSize: 11.5, color: Colors.grey)),
+                    Text('Öğretmen: ${app.teacherName} • $dateStr ${app.timeSlot}', style: AppFonts.outfit(fontSize: 11.5, color: Colors.grey)),
                     const SizedBox(height: 4),
-                    Text('Konu: ${app.topic}', style: GoogleFonts.outfit(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87)),
+                    Text('Konu: ${app.topic}', style: AppFonts.outfit(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87)),
                     if (app.isPending) ...[
                       const SizedBox(height: 8),
                       Row(

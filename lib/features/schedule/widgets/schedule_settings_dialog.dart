@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 import '../models/schedule_settings.dart';
 
@@ -117,7 +117,7 @@ class _ScheduleSettingsDialogState extends State<ScheduleSettingsDialog> {
                     children: [
                       Text(
                         'Ders Programı Ayarları',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
                           color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -125,7 +125,7 @@ class _ScheduleSettingsDialogState extends State<ScheduleSettingsDialog> {
                       ),
                       Text(
                         'Saat aralıkları otomatik hesaplanacaktır',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 11.5,
                           color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                         ),
@@ -169,7 +169,7 @@ class _ScheduleSettingsDialogState extends State<ScheduleSettingsDialog> {
                         ),
                         child: Text(
                           _firstLessonTime.format(context),
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w700,
                             color: AppColors.primary,
@@ -242,7 +242,7 @@ class _ScheduleSettingsDialogState extends State<ScheduleSettingsDialog> {
                     ),
                     title: Text(
                       'Öğle Arası',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -250,7 +250,7 @@ class _ScheduleSettingsDialogState extends State<ScheduleSettingsDialog> {
                     ),
                     subtitle: Text(
                       _hasLunchBreak ? 'Aktif' : 'Yok / Kesintisiz',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 11.5,
                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                       ),
@@ -325,7 +325,7 @@ class _ScheduleSettingsDialogState extends State<ScheduleSettingsDialog> {
                     ),
                     child: Text(
                       'Ayarları Kaydet',
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 13.5),
+                      style: AppFonts.outfit(fontWeight: FontWeight.w600, fontSize: 13.5),
                     ),
                   ),
                 ),
@@ -363,7 +363,7 @@ class _ScheduleSettingsDialogState extends State<ScheduleSettingsDialog> {
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w600,
                     color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -371,7 +371,7 @@ class _ScheduleSettingsDialogState extends State<ScheduleSettingsDialog> {
                 ),
                 Text(
                   subtitle,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 11,
                     color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                   ),
@@ -412,7 +412,7 @@ class _ScheduleSettingsDialogState extends State<ScheduleSettingsDialog> {
             alignment: Alignment.center,
             child: Text(
               value,
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: isDark ? Colors.white : const Color(0xFF0F172A),

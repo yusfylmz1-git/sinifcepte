@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../auth_profile/providers/teacher_profile_provider.dart';
@@ -168,7 +168,7 @@ class _ClassroomParticipationViewState extends ConsumerState<ClassroomParticipat
                     Expanded(
                       child: Text(
                         _liveLessonBanner!,
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: AppColors.primary,
@@ -217,7 +217,7 @@ class _ClassroomParticipationViewState extends ConsumerState<ClassroomParticipat
                           const SizedBox(height: 12),
                           Text(
                             'Ders katılım oturumu yüklenemedi',
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: isDark ? Colors.white : AppColors.textPrimaryLight,
@@ -306,7 +306,7 @@ class _ClassroomParticipationViewState extends ConsumerState<ClassroomParticipat
                   child: classes.isEmpty
                       ? Text(
                           'Sınıf Yok',
-                          style: GoogleFonts.outfit(fontSize: 11.5, color: Colors.grey),
+                          style: AppFonts.outfit(fontSize: 11.5, color: Colors.grey),
                         )
                       : DropdownButtonHideUnderline(
                           child: DropdownButton<int>(
@@ -320,7 +320,7 @@ class _ClassroomParticipationViewState extends ConsumerState<ClassroomParticipat
                                 child: Text(
                                   '${c.name} (${c.subject})',
                                   overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.outfit(
+                                  style: AppFonts.outfit(
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.bold,
                                     color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -379,7 +379,7 @@ class _ClassroomParticipationViewState extends ConsumerState<ClassroomParticipat
                           child: Text(
                             selectedDate,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
                               color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -417,7 +417,7 @@ class _ClassroomParticipationViewState extends ConsumerState<ClassroomParticipat
                           child: Text(
                             '$h. Saat',
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
                               color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -469,13 +469,13 @@ class _ClassroomParticipationViewState extends ConsumerState<ClassroomParticipat
                           onChanged: (val) {
                             setState(() => _searchQuery = val.trim());
                           },
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 12,
                             color: isDark ? Colors.white : const Color(0xFF0F172A),
                           ),
                           decoration: InputDecoration(
                             hintText: 'Öğrenci adı veya okul no ile filtrele...',
-                            hintStyle: GoogleFonts.outfit(
+                            hintStyle: AppFonts.outfit(
                               fontSize: 11.5,
                               color: isDark ? Colors.white38 : Colors.black38,
                             ),
@@ -527,7 +527,7 @@ class _ClassroomParticipationViewState extends ConsumerState<ClassroomParticipat
                       const SizedBox(width: 4),
                       Text(
                         'Kura',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w800,
                           color: isDark ? const Color(0xFFDDD6FE) : const Color(0xFF7C3AED),

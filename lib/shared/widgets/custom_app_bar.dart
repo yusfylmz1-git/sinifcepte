@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../core/theme/app_fonts.dart';
 import '../../core/theme/app_colors.dart';
 import '../../features/exam_operations/presentation/views/exam_tracking_view.dart';
 import '../../features/exam_operations/providers/exam_tracking_provider.dart';
@@ -153,7 +153,7 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                   children: [
                     Text(
                       title,
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 16.5,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
@@ -166,7 +166,7 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                       const SizedBox(height: 1),
                       Text(
                         subtitle!,
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 11,
                           fontWeight: FontWeight.w400,
                           color: Colors.white.withValues(alpha: 0.8),
@@ -370,7 +370,7 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                         const SizedBox(width: 8),
                         Text(
                           'Bildirim Merkezi',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 17,
                             fontWeight: FontWeight.w800,
                             color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -397,7 +397,7 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                         const SizedBox(height: 8),
                         Text(
                           'Yeni bildiriminiz bulunmuyor.',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 13,
                             color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                           ),
@@ -473,7 +473,7 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                                     children: [
                                       Text(
                                         item['title'] as String,
-                                        style: GoogleFonts.outfit(
+                                        style: AppFonts.outfit(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w700,
                                           color: isUrgent
@@ -484,7 +484,7 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                                       const SizedBox(height: 2),
                                       Text(
                                         item['subtitle'] as String,
-                                        style: GoogleFonts.outfit(
+                                        style: AppFonts.outfit(
                                           fontSize: 11.5,
                                           color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                                         ),

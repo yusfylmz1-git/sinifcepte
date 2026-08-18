@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../data/models/class_model.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
@@ -143,7 +143,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                   const SizedBox(width: 6),
                   Text(
                     'Kolon Ekle',
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
@@ -209,7 +209,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                           Expanded(
                             child: Text(
                               c.name,
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.bold,
                                 color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -260,7 +260,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                           Expanded(
                             child: Text(
                               sub,
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w600,
                                 color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -302,7 +302,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
             const SizedBox(height: 8),
             Text(
               'Bu sınıfta henüz kayıtlı öğrenci bulunmuyor.',
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 13,
                 color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
               ),
@@ -356,7 +356,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                 DataColumn(
                   label: Text(
                     '👤 Öğrenci',
-                    style: GoogleFonts.outfit(fontSize: 12.5, fontWeight: FontWeight.bold),
+                    style: AppFonts.outfit(fontSize: 12.5, fontWeight: FontWeight.bold),
                   ),
                 ),
 
@@ -382,7 +382,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                             const SizedBox(width: 4),
                             Text(
                               kolon.title,
-                              style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold),
+                              style: AppFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -401,7 +401,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                     ),
                     child: Text(
                       '⭐ Ort.',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
                         color: isDark ? Colors.amber.shade300 : Colors.amber.shade900,
@@ -441,13 +441,13 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                               ),
                               child: Text(
                                 student.schoolNumber > 0 ? '${student.schoolNumber}' : '-',
-                                style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold),
+                                style: AppFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold),
                               ),
                             ),
                             const SizedBox(width: 8),
                             Text(
                               '${student.firstName} ${student.lastName}',
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w600,
                                 color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -485,7 +485,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                                 ),
                                 child: Text(
                                   score != null ? '$score' : '—',
-                                  style: GoogleFonts.outfit(
+                                  style: AppFonts.outfit(
                                     fontSize: 11.5,
                                     fontWeight: score != null ? FontWeight.w800 : FontWeight.normal,
                                     color: score != null
@@ -514,7 +514,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                             ),
                             child: Text(
                               avg != null ? avg.toStringAsFixed(1) : '—',
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 11.5,
                                 color: avg != null
@@ -538,7 +538,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                     DataCell(
                       Text(
                         '⭐ Sınıf Ortalaması',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
                           color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -559,7 +559,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                             ),
                             child: Text(
                               colAvg != null ? colAvg.toStringAsFixed(1) : '—',
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontWeight: FontWeight.w800,
                                 fontSize: 11.5,
                                 color: AppColors.primary,
@@ -582,7 +582,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                           ),
                           child: Text(
                             overallAvg != null ? overallAvg.toStringAsFixed(1) : '—',
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontWeight: FontWeight.w900,
                               fontSize: 12,
                               color: isDark ? Colors.amber.shade300 : Colors.amber.shade900,
@@ -669,7 +669,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                   children: [
                     Text(
                       '${student.firstName} ${student.lastName}',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 14.5,
                         fontWeight: FontWeight.bold,
                         color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -678,7 +678,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                     ),
                     Text(
                       '${kolon.title} (${student.schoolNumber > 0 ? "No: ${student.schoolNumber}" : "Öğrenci"})',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 11.5,
                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                       ),
@@ -697,14 +697,14 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                 keyboardType: TextInputType.number,
                 autofocus: true,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontSize: 26,
                   fontWeight: FontWeight.w900,
                   color: AppColors.primary,
                 ),
                 decoration: InputDecoration(
                   hintText: '0 - 100',
-                  hintStyle: GoogleFonts.outfit(fontSize: 18, color: Colors.grey.shade400),
+                  hintStyle: AppFonts.outfit(fontSize: 18, color: Colors.grey.shade400),
                   filled: true,
                   fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                   contentPadding: const EdgeInsets.symmetric(vertical: 12),
@@ -723,7 +723,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
               // Hızlı Puan Butonları
               Text(
                 'HIZLI PUAN SEÇİMİ',
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.5,
@@ -757,7 +757,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                       ),
                       child: Text(
                         '$quick',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 11.5,
                           fontWeight: FontWeight.bold,
                           color: quick >= 85
@@ -782,11 +782,11 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                       );
                   Navigator.pop(ctx);
                 },
-                child: Text('Notu Sil', style: GoogleFonts.outfit(color: Colors.red.shade400, fontSize: 12.5)),
+                child: Text('Notu Sil', style: AppFonts.outfit(color: Colors.red.shade400, fontSize: 12.5)),
               ),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('İptal', style: GoogleFonts.outfit(fontSize: 12.5)),
+              child: Text('İptal', style: AppFonts.outfit(fontSize: 12.5)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -804,7 +804,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              child: Text('Kaydet', style: GoogleFonts.outfit(fontSize: 12.5, fontWeight: FontWeight.bold)),
+              child: Text('Kaydet', style: AppFonts.outfit(fontSize: 12.5, fontWeight: FontWeight.bold)),
             ),
           ],
         );
@@ -902,7 +902,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                             children: [
                               Text(
                                 'Yeni Değerlendirme Kolonu',
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 16.5,
                                   fontWeight: FontWeight.w800,
                                   color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -910,7 +910,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                               ),
                               Text(
                                 'Quiz, sözlü, dinleme veya ödev çizelgesi oluşturun',
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.w500,
                                   color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -942,7 +942,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                     // 1. Kolon Başlığı
                     Text(
                       'KOLON BAŞLIĞI',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
@@ -952,14 +952,14 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                     const SizedBox(height: 6),
                     TextField(
                       controller: titleController,
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: isDark ? Colors.white : const Color(0xFF0F172A),
                       ),
                       decoration: InputDecoration(
                         hintText: 'Örn: 2. Quiz, 1. Sözlü, Dinleme',
-                        hintStyle: GoogleFonts.outfit(fontSize: 12.5, color: Colors.grey.shade400),
+                        hintStyle: AppFonts.outfit(fontSize: 12.5, color: Colors.grey.shade400),
                         prefixIcon: const Icon(Icons.edit_note_rounded, size: 20, color: AppColors.primary),
                         filled: true,
                         fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
@@ -984,7 +984,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                     // Hızlı Başlık Şablonları
                     Text(
                       'HAZIR ŞABLONLAR',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
@@ -1015,7 +1015,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                             ),
                             child: Text(
                               p['title']!,
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
                                 color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
@@ -1030,7 +1030,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                     // 2. Değerlendirme Türü
                     Text(
                       'DEĞERLENDİRME TÜRÜ',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
@@ -1094,7 +1094,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                             const SizedBox(width: 8),
                             Text(
                               'Kolonu Tabloya Ekle',
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w800,
                                 color: Colors.white,
@@ -1144,7 +1144,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
           ),
           child: Text(
             label,
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 11,
               fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
               color: isSelected
@@ -1164,8 +1164,8 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          title: Text('Kolonu Sil', style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.bold)),
-          content: Text('"${kolon.title}" kolonunu ve girilen tüm notları silmek istediğinizden emin misiniz?', style: GoogleFonts.outfit(fontSize: 13)),
+          title: Text('Kolonu Sil', style: AppFonts.outfit(fontSize: 15, fontWeight: FontWeight.bold)),
+          content: Text('"${kolon.title}" kolonunu ve girilen tüm notları silmek istediğinizden emin misiniz?', style: AppFonts.outfit(fontSize: 13)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -1196,7 +1196,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
           const SizedBox(height: 12),
           Text(
             'Henüz Kayıtlı Sınıfınız Yok',
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 15,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -1205,7 +1205,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
           const SizedBox(height: 4),
           Text(
             'Quiz ve sözlü notu girmek için önce bir sınıf oluşturmalısınız.',
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 12,
               color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
             ),

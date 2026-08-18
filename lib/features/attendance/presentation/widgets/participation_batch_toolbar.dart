@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../providers/classroom_participation_provider.dart';
 
 /// SınıfCepte - Sıfır Taşma (Zero-Overflow) Minimal Tek Butonlu Hızlı Eylem Çubuğu
@@ -49,7 +49,7 @@ class ParticipationBatchToolbar extends ConsumerWidget {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'Ödev: %${session.homeworkCompletionRate.toStringAsFixed(0)} • ⭐ ${session.totalStarsAwarded}',
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 11.5,
                     fontWeight: FontWeight.bold,
                     color: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF047857),
@@ -94,7 +94,7 @@ class ParticipationBatchToolbar extends ConsumerWidget {
                       const SizedBox(width: 4),
                       Text(
                         'Tümünü Fulle (3 ⭐)',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
                           color: isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309),

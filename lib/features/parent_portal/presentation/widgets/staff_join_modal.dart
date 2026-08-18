@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../providers/cloud_communication_provider.dart';
@@ -127,7 +127,7 @@ class _StaffJoinModalState extends ConsumerState<StaffJoinModal> {
                 Expanded(
                   child: Text(
                     'Sınıf Kadrosuna Katıl',
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -141,7 +141,7 @@ class _StaffJoinModalState extends ConsumerState<StaffJoinModal> {
             Text(
               'Sınıf öğretmeninin ilettiği katılım kodunu girin. '
               'Katıldıktan sonra o sınıfın velileriyle yazışabilirsiniz.',
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 12.5,
                 color: Colors.grey,
                 height: 1.4,
@@ -181,7 +181,7 @@ class _StaffJoinModalState extends ConsumerState<StaffJoinModal> {
                 ),
                 child: Text(
                   _error!,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 12.5,
                     color: Colors.redAccent,
                   ),

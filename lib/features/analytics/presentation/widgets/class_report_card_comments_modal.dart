@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/services/whatsapp_share_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../classes/providers/class_provider.dart';
@@ -148,7 +148,7 @@ class _ClassReportCardCommentsModalState
                           children: [
                             Text(
                               '$studentName (#$studentNumber)',
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
                                 color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -158,7 +158,7 @@ class _ClassReportCardCommentsModalState
                             ),
                             Text(
                               'Katılım puanını belirleyin veya doğrudan panoya kopyalayın',
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 11.5,
                                 color: isDark ? Colors.white60 : Colors.black54,
                               ),
@@ -187,7 +187,7 @@ class _ClassReportCardCommentsModalState
                           children: [
                             Text(
                               'Ders İçi Katılım Notu:',
-                              style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
+                              style: AppFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -197,7 +197,7 @@ class _ClassReportCardCommentsModalState
                               ),
                               child: Text(
                                 '${tempGrade.toStringAsFixed(0)} Puan',
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
@@ -250,7 +250,7 @@ class _ClassReportCardCommentsModalState
                                 ),
                                 child: Text(
                                   '$preset',
-                                  style: GoogleFonts.outfit(
+                                  style: AppFonts.outfit(
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.bold,
                                     color: isCur
@@ -290,7 +290,7 @@ class _ClassReportCardCommentsModalState
                           icon: const Icon(Icons.copy_rounded, size: 15),
                           label: Text(
                             'Notu Kopyala (${tempGrade.toStringAsFixed(0)})',
-                            style: GoogleFonts.outfit(fontSize: 11.5, fontWeight: FontWeight.bold),
+                            style: AppFonts.outfit(fontSize: 11.5, fontWeight: FontWeight.bold),
                           ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: const Color(0xFF3B82F6),
@@ -314,7 +314,7 @@ class _ClassReportCardCommentsModalState
                           icon: const Icon(Icons.check_rounded, size: 16, color: Colors.white),
                           label: Text(
                             'Görüşü Güncelle',
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
@@ -486,7 +486,7 @@ class _ClassReportCardCommentsModalState
                   children: [
                     Text(
                       'Akıllı e-Okul Karne Görüşü & Puanlama',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 16,
                         fontWeight: FontWeight.w900,
                         color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -494,7 +494,7 @@ class _ClassReportCardCommentsModalState
                     ),
                     Text(
                       'Ders içi verilere göre otomatik puanlama ve seri kopyalama',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 11.5,
                         color: isDark ? Colors.white60 : Colors.black54,
                       ),
@@ -540,7 +540,7 @@ class _ClassReportCardCommentsModalState
                                 child: Text(
                                   '${c.name} (${c.subject})',
                                   overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.outfit(
+                                  style: AppFonts.outfit(
                                     fontSize: 13,
                                     fontWeight: FontWeight.bold,
                                     color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -574,7 +574,7 @@ class _ClassReportCardCommentsModalState
                 icon: const Icon(Icons.copy_all_rounded, size: 16),
                 label: Text(
                   'Toplu Liste Al',
-                  style: GoogleFonts.outfit(fontSize: 11.5, fontWeight: FontWeight.bold),
+                  style: AppFonts.outfit(fontSize: 11.5, fontWeight: FontWeight.bold),
                 ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFFE11D48),
@@ -600,13 +600,13 @@ class _ClassReportCardCommentsModalState
             child: TextField(
               controller: _searchController,
               focusNode: _searchFocusNode,
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 12.5,
                 color: isDark ? Colors.white : const Color(0xFF0F172A),
               ),
               decoration: InputDecoration(
                 hintText: 'Öğrenci adı veya okul no ile filtrele...',
-                hintStyle: GoogleFonts.outfit(
+                hintStyle: AppFonts.outfit(
                   fontSize: 11.5,
                   color: isDark ? Colors.white38 : Colors.black38,
                 ),
@@ -654,7 +654,7 @@ class _ClassReportCardCommentsModalState
                     ? Center(
                         child: Text(
                           'Kriterlere uygun öğrenci bulunamadı.',
-                          style: GoogleFonts.outfit(fontSize: 12.5, color: Colors.grey),
+                          style: AppFonts.outfit(fontSize: 12.5, color: Colors.grey),
                         ),
                       )
                     : ListView.builder(
@@ -736,7 +736,7 @@ class _ClassReportCardCommentsModalState
                                       backgroundColor: gradeColor,
                                       child: Text(
                                         sNum,
-                                        style: GoogleFonts.outfit(
+                                        style: AppFonts.outfit(
                                           fontSize: 9.5,
                                           fontWeight: FontWeight.bold,
                                           color: Colors.white,
@@ -747,7 +747,7 @@ class _ClassReportCardCommentsModalState
                                     Expanded(
                                       child: Text(
                                         sName,
-                                        style: GoogleFonts.outfit(
+                                        style: AppFonts.outfit(
                                           fontSize: 13.5,
                                           fontWeight: FontWeight.bold,
                                           color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -781,7 +781,7 @@ class _ClassReportCardCommentsModalState
                                           children: [
                                             Text(
                                               '${isCustomGrade ? "Özel: " : "Katılım: "}${calculatedGrade.toStringAsFixed(0)} / 100',
-                                              style: GoogleFonts.outfit(
+                                              style: AppFonts.outfit(
                                                 fontSize: 11,
                                                 fontWeight: FontWeight.bold,
                                                 color: gradeColor,
@@ -810,7 +810,7 @@ class _ClassReportCardCommentsModalState
                                   ),
                                   child: Text(
                                     comment,
-                                    style: GoogleFonts.outfit(
+                                    style: AppFonts.outfit(
                                       fontSize: 12,
                                       color: isDark ? Colors.white70 : const Color(0xFF334155),
                                       height: 1.35,
@@ -850,7 +850,7 @@ class _ClassReportCardCommentsModalState
                                         ),
                                         label: Text(
                                           isCopied ? 'Kopyalandı ✓' : 'Kopyala',
-                                          style: GoogleFonts.outfit(
+                                          style: AppFonts.outfit(
                                             fontSize: 11.5,
                                             fontWeight: FontWeight.bold,
                                             color: Colors.white,
@@ -886,7 +886,7 @@ class _ClassReportCardCommentsModalState
                                         icon: const Icon(Icons.tune_rounded, size: 14),
                                         label: Text(
                                           '${calculatedGrade.toStringAsFixed(0)} Not',
-                                          style: GoogleFonts.outfit(fontSize: 11, fontWeight: FontWeight.bold),
+                                          style: AppFonts.outfit(fontSize: 11, fontWeight: FontWeight.bold),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -914,7 +914,7 @@ class _ClassReportCardCommentsModalState
                                         icon: const Icon(Icons.refresh_rounded, size: 14),
                                         label: Text(
                                           'Değiştir',
-                                          style: GoogleFonts.outfit(fontSize: 11, fontWeight: FontWeight.w600),
+                                          style: AppFonts.outfit(fontSize: 11, fontWeight: FontWeight.w600),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -962,7 +962,7 @@ class _ClassReportCardCommentsModalState
         ),
         child: Text(
           label,
-          style: GoogleFonts.outfit(
+          style: AppFonts.outfit(
             fontSize: 11,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             color: isSelected ? (isDark ? Colors.white : color) : (isDark ? Colors.white70 : Colors.black87),

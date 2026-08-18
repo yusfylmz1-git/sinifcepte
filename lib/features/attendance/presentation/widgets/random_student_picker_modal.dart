@@ -2,7 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/models/classroom_participation_model.dart';
 import '../../providers/classroom_participation_provider.dart';
@@ -113,7 +113,7 @@ class _RandomStudentPickerModalState extends ConsumerState<RandomStudentPickerMo
                       const SizedBox(width: 6),
                       Text(
                         'Rastgele Öğrenci Seçimi',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 12.5,
                           fontWeight: FontWeight.bold,
                           color: const Color(0xFF8B5CF6),
@@ -143,7 +143,7 @@ class _RandomStudentPickerModalState extends ConsumerState<RandomStudentPickerMo
                       backgroundColor: avatarBg,
                       child: Text(
                         '${currentStudent.studentNumber}',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 16,
                           fontWeight: FontWeight.w900,
                           color: Colors.white,
@@ -154,7 +154,7 @@ class _RandomStudentPickerModalState extends ConsumerState<RandomStudentPickerMo
                   const SizedBox(height: 10),
                   Text(
                     currentStudent.studentName,
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 19,
                       fontWeight: FontWeight.w900,
                       color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -164,7 +164,7 @@ class _RandomStudentPickerModalState extends ConsumerState<RandomStudentPickerMo
                   const SizedBox(height: 2),
                   Text(
                     'No: ${currentStudent.studentNumber} • ${currentStudent.gender}',
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 13,
                       color: isDark ? Colors.white60 : Colors.black54,
                     ),
@@ -177,7 +177,7 @@ class _RandomStudentPickerModalState extends ConsumerState<RandomStudentPickerMo
             // Hızlı Puanlama (3 Yıldız Butonları)
             Text(
               'Derse Katılımı Değerlendir',
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
                 color: isDark ? Colors.white70 : Colors.black87,
@@ -245,7 +245,7 @@ class _RandomStudentPickerModalState extends ConsumerState<RandomStudentPickerMo
                     icon: const Icon(Icons.casino_rounded, size: 17, color: Color(0xFF8B5CF6)),
                     label: Text(
                       'Başka Öğrenci',
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontWeight: FontWeight.bold,
                         color: const Color(0xFF8B5CF6),
                       ),
@@ -269,7 +269,7 @@ class _RandomStudentPickerModalState extends ConsumerState<RandomStudentPickerMo
                     ),
                     child: Text(
                       'Tamam',
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                      style: AppFonts.outfit(fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -300,7 +300,7 @@ class _RandomStudentPickerModalState extends ConsumerState<RandomStudentPickerMo
         ),
         child: Text(
           label,
-          style: GoogleFonts.outfit(
+          style: AppFonts.outfit(
             fontSize: 11,
             fontWeight: FontWeight.bold,
             color: isSelected ? Colors.white : color,
@@ -329,7 +329,7 @@ class _RandomStudentPickerModalState extends ConsumerState<RandomStudentPickerMo
         ),
         child: Text(
           tag,
-          style: GoogleFonts.outfit(
+          style: AppFonts.outfit(
             fontSize: 11,
             fontWeight: FontWeight.bold,
             color: hasTag ? Colors.white : const Color(0xFF334155),

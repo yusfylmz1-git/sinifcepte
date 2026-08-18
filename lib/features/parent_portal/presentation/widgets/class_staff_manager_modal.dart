@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/cloud/cloud_ids.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../data/models/class_model.dart';
@@ -181,7 +181,7 @@ class _ClassStaffManagerModalState
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Veli Görüşme Saati',
-          style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
+          style: AppFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -189,7 +189,7 @@ class _ClassStaffManagerModalState
           children: [
             Text(
               '$teacherName için (isteğe bağlı)',
-              style: GoogleFonts.outfit(fontSize: 12.5, color: Colors.grey),
+              style: AppFonts.outfit(fontSize: 12.5, color: Colors.grey),
             ),
             const SizedBox(height: 12),
             Row(
@@ -255,7 +255,7 @@ class _ClassStaffManagerModalState
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Ders Öğretmeni Ekle',
-          style: GoogleFonts.outfit(fontSize: 17, fontWeight: FontWeight.bold),
+          style: AppFonts.outfit(fontSize: 17, fontWeight: FontWeight.bold),
         ),
         content: SingleChildScrollView(
           child: Column(
@@ -265,7 +265,7 @@ class _ClassStaffManagerModalState
               Text(
                 'Bu sınıfa derse giren öğretmeni ekleyin. Eklenen öğretmen, '
                 'katılım kodunu girdikten sonra velilerle yazışabilir.',
-                style: GoogleFonts.outfit(fontSize: 12.5, color: Colors.grey),
+                style: AppFonts.outfit(fontSize: 12.5, color: Colors.grey),
               ),
               const SizedBox(height: 14),
               TextField(
@@ -463,7 +463,7 @@ class _ClassStaffManagerModalState
               Expanded(
                 child: Text(
                   '${widget.classModel.name} Ders Öğretmenleri',
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -483,7 +483,7 @@ class _ClassStaffManagerModalState
           Text(
             'Kadrodaki öğretmenler bu sınıfın velileriyle yazışabilir. '
             'Duyuru yayınlama yetkisi yalnızca sizde kalır.',
-            style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey, height: 1.35),
+            style: AppFonts.outfit(fontSize: 12, color: Colors.grey, height: 1.35),
           ),
           const SizedBox(height: 14),
           if (_busy) const LinearProgressIndicator(minHeight: 2),
@@ -495,7 +495,7 @@ class _ClassStaffManagerModalState
               error: (e, _) => Center(
                 child: Text(
                   'Kadro yüklenemedi. İnternet bağlantınızı kontrol edin.',
-                  style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey),
+                  style: AppFonts.outfit(fontSize: 13, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -525,7 +525,7 @@ class _ClassStaffManagerModalState
           const SizedBox(height: 12),
           Text(
             'Henüz Ders Öğretmeni Eklenmedi',
-            style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600),
+            style: AppFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 6),
           Padding(
@@ -534,7 +534,7 @@ class _ClassStaffManagerModalState
               'Bu sınıfa derse giren branş öğretmenlerini ekleyin; '
               'veliler onları görebilsin ve yazışabilsin.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.outfit(fontSize: 12.5, color: Colors.grey, height: 1.4),
+              style: AppFonts.outfit(fontSize: 12.5, color: Colors.grey, height: 1.4),
             ),
           ),
           const SizedBox(height: 16),
@@ -593,7 +593,7 @@ class _ClassStaffManagerModalState
                   children: [
                     Text(
                       member.teacherName,
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 13.5,
                         fontWeight: FontWeight.bold,
                       ),
@@ -603,7 +603,7 @@ class _ClassStaffManagerModalState
                     if (member.branch.isNotEmpty)
                       Text(
                         member.branch,
-                        style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey),
+                        style: AppFonts.outfit(fontSize: 12, color: Colors.grey),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -611,7 +611,7 @@ class _ClassStaffManagerModalState
                         member.meetingTime.isNotEmpty)
                       Text(
                         'Görüşme: ${member.meetingDay} ${member.meetingTime}'.trim(),
-                        style: GoogleFonts.outfit(fontSize: 11.5, color: Colors.grey),
+                        style: AppFonts.outfit(fontSize: 11.5, color: Colors.grey),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -645,7 +645,7 @@ class _ClassStaffManagerModalState
                     Expanded(
                       child: Text(
                         'Katılım kodu: ${member.joinCode}',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: Colors.orange.shade800,
@@ -662,7 +662,7 @@ class _ClassStaffManagerModalState
             const SizedBox(height: 4),
             Text(
               'Öğretmen bu kodu girene kadar velilerle yazışamaz.',
-              style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey),
+              style: AppFonts.outfit(fontSize: 11, color: Colors.grey),
             ),
           ],
         ],
@@ -708,7 +708,7 @@ class _ColleaguePickerSheet extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Ders Öğretmeni Seç',
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -723,7 +723,7 @@ class _ColleaguePickerSheet extends StatelessWidget {
             schoolName.isEmpty
                 ? 'Okulunuzdaki öğretmenler'
                 : '$schoolName öğretmenleri',
-            style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey),
+            style: AppFonts.outfit(fontSize: 12, color: Colors.grey),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -754,7 +754,7 @@ class _ColleaguePickerSheet extends StatelessWidget {
                           ),
                           title: Text(
                             c.fullName,
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 13.5,
                               fontWeight: FontWeight.w600,
                             ),
@@ -765,7 +765,7 @@ class _ColleaguePickerSheet extends StatelessWidget {
                               ? null
                               : Text(
                                   c.branch,
-                                  style: GoogleFonts.outfit(
+                                  style: AppFonts.outfit(
                                     fontSize: 12,
                                     color: Colors.grey,
                                   ),
@@ -812,7 +812,7 @@ class _ColleaguePickerSheet extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               'Okulunuzda başka öğretmen bulunamadı',
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w600,
               ),
@@ -823,7 +823,7 @@ class _ColleaguePickerSheet extends StatelessWidget {
               'Meslektaşlarınız uygulamada okullarını seçtiğinde burada '
               'görünecekler. Şimdilik katılım koduyla ekleyebilirsiniz.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 12.5,
                 color: Colors.grey,
                 height: 1.4,

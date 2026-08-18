@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../../shared/widgets/glass_card.dart';
@@ -50,7 +50,7 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
             const SizedBox(width: 8),
             Text(
               'Sınav Analizini Sil',
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -60,17 +60,17 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
         ),
         content: Text(
           'Bu sınav analizini ve tüm öğrenci soru puanlarını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
-          style: GoogleFonts.outfit(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87),
+          style: AppFonts.outfit(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Vazgeç', style: GoogleFonts.outfit(color: Colors.grey)),
+            child: Text('Vazgeç', style: AppFonts.outfit(color: Colors.grey)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Evet, Sil', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: Text('Evet, Sil', style: AppFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -156,7 +156,7 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                           children: [
                             Text(
                               '${_currentExam.className} • ${_currentExam.subjectName}',
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.primary,
@@ -165,7 +165,7 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                             const SizedBox(height: 2),
                             Text(
                               _currentExam.examTitle,
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
                                 color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -229,7 +229,7 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                       icon: const Icon(Icons.picture_as_pdf_rounded, color: Colors.white, size: 18),
                       label: Text(
                         'Resmî MEB Sınav Analiz Raporunu İndir (PDF)',
-                        style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                        style: AppFonts.outfit(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent,
@@ -315,7 +315,7 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                         const SizedBox(width: 8),
                         Text(
                           'Soru Bazlı Başarı & Zorluk Analizi',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 14.5,
                             fontWeight: FontWeight.bold,
                             color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -354,7 +354,7 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                                   children: [
                                     Text(
                                       'S${qIdx + 1} (${maxP.toStringAsFixed(0)}p)',
-                                      style: GoogleFonts.outfit(
+                                      style: AppFonts.outfit(
                                         fontSize: 12.5,
                                         fontWeight: FontWeight.bold,
                                         color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -380,7 +380,7 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                                 ),
                                 Text(
                                   'Ort: ${avgP.toStringAsFixed(1)}p  (%${rate.toStringAsFixed(0)})',
-                                  style: GoogleFonts.outfit(
+                                  style: AppFonts.outfit(
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w700,
                                     color: color,
@@ -427,7 +427,7 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                       const SizedBox(width: 8),
                       Text(
                         'Not Dağılım Aralıkları',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 14.5,
                           fontWeight: FontWeight.bold,
                           color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -462,7 +462,7 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                             children: [
                               Text(
                                 '${e.value}',
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w900,
                                   color: color,
@@ -471,7 +471,7 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                               const SizedBox(height: 2),
                               Text(
                                 e.key.split(' ').first,
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w600,
                                   color: isDark ? Colors.white70 : Colors.black87,
@@ -510,7 +510,7 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                           const SizedBox(width: 8),
                           Text(
                             'Öğrenci Not Listesi (${sortedStudents.length})',
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 14.5,
                               fontWeight: FontWeight.bold,
                               color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -527,7 +527,7 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                         ),
                         label: Text(
                           _sortByScoreDescending ? 'Puana Göre' : 'Numaraya Göre',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 11.5,
                             fontWeight: FontWeight.bold,
                             color: AppColors.primary,
@@ -560,7 +560,7 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                               ),
                               child: Text(
                                 s.studentNumber > 0 ? s.studentNumber.toString() : '${index + 1}',
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                   color: isPassed ? Colors.green : Colors.red,
@@ -574,7 +574,7 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                                 children: [
                                   Text(
                                     s.studentName,
-                                    style: GoogleFonts.outfit(
+                                    style: AppFonts.outfit(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                       color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -586,7 +586,7 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                                     const SizedBox(height: 2),
                                     Text(
                                       s.questionScores.asMap().entries.map((e) => 'S${e.key + 1}:${e.value.toStringAsFixed(0)}').join('  '),
-                                      style: GoogleFonts.outfit(
+                                      style: AppFonts.outfit(
                                         fontSize: 10.5,
                                         color: isDark ? Colors.white54 : Colors.grey.shade600,
                                       ),
@@ -604,7 +604,7 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                               ),
                               child: Text(
                                 '${s.totalScore.toStringAsFixed(0)} Puan',
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.w800,
                                   color: isPassed ? Colors.green : Colors.red,
@@ -659,7 +659,7 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
               children: [
                 Text(
                   label,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 10.5,
                     color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                   ),
@@ -669,7 +669,7 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                 const SizedBox(height: 1),
                 Text(
                   value,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: isDark ? Colors.white : const Color(0xFF0F172A),

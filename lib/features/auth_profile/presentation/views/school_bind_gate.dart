@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/glass_card.dart';
 import '../../../auth/screens/welcome_screen.dart';
@@ -132,7 +132,7 @@ class _ForcedSchoolBindScreen extends ConsumerWidget {
           ),
           title: Text(
             'Okul Seçimi',
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : AppColors.textPrimaryLight,
@@ -185,7 +185,7 @@ class _ForcedSchoolBindScreen extends ConsumerWidget {
                                       profile.fullName.trim().isNotEmpty
                                           ? profile.fullName
                                           : (profile.email.isNotEmpty ? profile.email : 'Öğretmen Hesabı'),
-                                      style: GoogleFonts.outfit(
+                                      style: AppFonts.outfit(
                                         fontSize: 13,
                                         fontWeight: FontWeight.bold,
                                         color: isDark ? Colors.white : AppColors.textPrimaryLight,
@@ -197,7 +197,7 @@ class _ForcedSchoolBindScreen extends ConsumerWidget {
                                       profile.email.isNotEmpty
                                           ? profile.email
                                           : 'Google ile giriş yapıldı',
-                                      style: GoogleFonts.outfit(
+                                      style: AppFonts.outfit(
                                         fontSize: 11,
                                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                                       ),
@@ -215,7 +215,7 @@ class _ForcedSchoolBindScreen extends ConsumerWidget {
                                 ),
                                 child: Text(
                                   'Öğretmen',
-                                  style: GoogleFonts.outfit(
+                                  style: AppFonts.outfit(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
                                     color: const Color(0xFF10B981),
@@ -254,7 +254,7 @@ class _ForcedSchoolBindScreen extends ConsumerWidget {
                         Text(
                           'Okulunuzu Belirleyin',
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
                             color: isDark ? Colors.white : AppColors.textPrimaryLight,
@@ -266,7 +266,7 @@ class _ForcedSchoolBindScreen extends ConsumerWidget {
                           child: Text(
                             'SınıfCepte\'de sınıf, BEP, evrak ve veli ekosistemini kullanabilmek için görev yaptığınız okulu eşlemeniz gerekmektedir.',
                             textAlign: TextAlign.center,
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 13.5,
                               height: 1.45,
                               color: isDark ? Colors.white70 : Colors.black54,
@@ -292,7 +292,7 @@ class _ForcedSchoolBindScreen extends ConsumerWidget {
                           icon: const Icon(Icons.search_rounded, size: 20),
                           label: Text(
                             'MEB Okul Dizininden Seç',
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
                             ),
@@ -320,7 +320,7 @@ class _ForcedSchoolBindScreen extends ConsumerWidget {
                           ),
                           label: Text(
                             'Farklı Hesapla Giriş Yap / Çıkış',
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 13.5,
                               fontWeight: FontWeight.w600,
                               color: isDark ? Colors.white70 : Colors.black87,

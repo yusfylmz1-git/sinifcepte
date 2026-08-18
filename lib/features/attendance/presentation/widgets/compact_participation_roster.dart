@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/models/classroom_participation_model.dart';
 import '../../providers/classroom_participation_provider.dart';
@@ -28,7 +28,7 @@ class CompactParticipationRoster extends ConsumerWidget {
               const SizedBox(height: 12),
               Text(
                 'Bu sınıfta kayıtlı öğrenci bulunamadı.',
-                style: GoogleFonts.outfit(fontSize: 14, color: Colors.grey),
+                style: AppFonts.outfit(fontSize: 14, color: Colors.grey),
               ),
             ],
           ),
@@ -59,7 +59,7 @@ class CompactParticipationRoster extends ConsumerWidget {
                 width: 32,
                 child: Text(
                   '${student.studentNumber}',
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w900,
                     color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -75,7 +75,7 @@ class CompactParticipationRoster extends ConsumerWidget {
                   children: [
                     Text(
                       student.studentName,
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -88,7 +88,7 @@ class CompactParticipationRoster extends ConsumerWidget {
                         student.customTags.isNotEmpty
                             ? student.customTags.first
                             : student.note!,
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 10,
                           color: AppColors.primary,
                           fontWeight: FontWeight.w500,
@@ -195,7 +195,7 @@ class CompactParticipationRoster extends ConsumerWidget {
             const SizedBox(width: 3),
             Text(
               text,
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
                 color: bg,
@@ -269,7 +269,7 @@ class CompactParticipationRoster extends ConsumerWidget {
               const SizedBox(width: 2),
               Text(
                 '${student.starsCount}',
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontSize: 11,
                   fontWeight: FontWeight.w900,
                   color: Colors.amber.shade800,

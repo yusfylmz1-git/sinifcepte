@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../../shared/widgets/glass_card.dart';
@@ -281,7 +281,7 @@ class _TeacherProfileSetupViewState extends ConsumerState<TeacherProfileSetupVie
                                     const SizedBox(width: 6),
                                     Text(
                                       'GÖREV YAPILAN OKUL',
-                                      style: GoogleFonts.outfit(
+                                      style: AppFonts.outfit(
                                         fontSize: 10.5,
                                         fontWeight: FontWeight.bold,
                                         color: isDark ? Colors.white70 : const Color(0xFF475569),
@@ -317,7 +317,7 @@ class _TeacherProfileSetupViewState extends ConsumerState<TeacherProfileSetupVie
                                         const SizedBox(width: 4),
                                         Text(
                                           '81 İlden Seç',
-                                          style: GoogleFonts.outfit(
+                                          style: AppFonts.outfit(
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold,
                                             color: AppColors.primary,
@@ -348,7 +348,7 @@ class _TeacherProfileSetupViewState extends ConsumerState<TeacherProfileSetupVie
                                 }
                               },
                               validator: (v) => _validateName(v, 'Okul Adı'),
-                              style: GoogleFonts.outfit(fontSize: 13.5, fontWeight: FontWeight.w600),
+                              style: AppFonts.outfit(fontSize: 13.5, fontWeight: FontWeight.w600),
                               decoration: InputDecoration(
                                 isDense: true,
                                 hintText: 'Okulunuzu dizininden seçin',
@@ -399,7 +399,7 @@ class _TeacherProfileSetupViewState extends ConsumerState<TeacherProfileSetupVie
                                         const SizedBox(width: 3),
                                         Text(
                                           '$_selectedCity${_selectedDistrict != null ? ' / $_selectedDistrict' : ''}',
-                                          style: GoogleFonts.outfit(
+                                          style: AppFonts.outfit(
                                             fontSize: 10.5,
                                             fontWeight: FontWeight.bold,
                                             color: const Color(0xFF059669),
@@ -417,7 +417,7 @@ class _TeacherProfileSetupViewState extends ConsumerState<TeacherProfileSetupVie
                                       ),
                                       child: Text(
                                         _selectedSchoolType!,
-                                        style: GoogleFonts.outfit(
+                                        style: AppFonts.outfit(
                                           fontSize: 10.5,
                                           fontWeight: FontWeight.bold,
                                           color: AppColors.primary,

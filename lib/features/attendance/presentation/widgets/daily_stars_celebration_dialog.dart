@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../data/models/classroom_participation_model.dart';
 import '../../utils/participation_whatsapp_helper.dart';
 
@@ -70,7 +70,7 @@ class DailyStarsCelebrationDialog extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               '${session.className} Kaydedildi! 🎉',
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
                 color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -80,7 +80,7 @@ class DailyStarsCelebrationDialog extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               '✨ Günün Yıldız Öğrencileri',
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
                 color: const Color(0xFFD97706),
@@ -117,7 +117,7 @@ class DailyStarsCelebrationDialog extends StatelessWidget {
                           backgroundColor: avatarBg,
                           child: Text(
                             '${s.studentNumber}',
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
@@ -128,7 +128,7 @@ class DailyStarsCelebrationDialog extends StatelessWidget {
                         Expanded(
                           child: Text(
                             s.studentName,
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
                               color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -145,7 +145,7 @@ class DailyStarsCelebrationDialog extends StatelessWidget {
                             const SizedBox(width: 2),
                             Text(
                               '${s.starsCount} ⭐',
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.bold,
                                 color: isDark ? Colors.amber.shade300 : const Color(0xFFB45309),
@@ -197,7 +197,7 @@ class DailyStarsCelebrationDialog extends StatelessWidget {
                 onPressed: () => Navigator.pop(context),
                 child: Text(
                   'Kapat',
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     color: isDark ? Colors.white60 : Colors.black54,
                     fontWeight: FontWeight.bold,
                   ),

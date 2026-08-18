@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -401,7 +401,7 @@ Sayın Velimiz,
                             children: [
                               Text(
                                 'Veli Bağlantı Kartı',
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                   color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -411,7 +411,7 @@ Sayın Velimiz,
                               ),
                               Text(
                                 '${widget.student.fullName} (${widget.classModel.name} • No: ${widget.student.schoolNumber})',
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 12,
                                   color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                                 ),
@@ -471,13 +471,13 @@ Sayın Velimiz,
         const SizedBox(height: 16),
         Text(
           'Veli Bağlantı Kodu Oluşturun',
-          style: GoogleFonts.outfit(fontSize: 17, fontWeight: FontWeight.bold),
+          style: AppFonts.outfit(fontSize: 17, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
         Text(
           'Öğrencinin velisi (anne/baba), üreteceğiniz 8 haneli referans kodu veya QR kod ile SınıfCepte Veli Modülüne güvenle bağlanabilir.',
-          style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey),
+          style: AppFonts.outfit(fontSize: 13, color: Colors.grey),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 20),
@@ -489,7 +489,7 @@ Sayın Velimiz,
             icon: _isLoading
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                 : const Icon(Icons.vpn_key_rounded, size: 18),
-            label: Text('7 Günlük Güvenli Kod & QR Üret 🚀', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+            label: Text('7 Günlük Güvenli Kod & QR Üret 🚀', style: AppFonts.outfit(fontWeight: FontWeight.bold)),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
@@ -526,7 +526,7 @@ Sayın Velimiz,
             children: [
               Text(
                 'VELİ REFERANS KODU',
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontSize: 10.5,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.2,
@@ -539,7 +539,7 @@ Sayın Velimiz,
                 children: [
                   Text(
                     token.code,
-                    style: GoogleFonts.firaCode(
+                    style: AppFonts.firaCode(
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 2,
@@ -620,7 +620,7 @@ Sayın Velimiz,
                     const SizedBox(width: 4),
                     Text(
                       '${token.remainingDays} gün geçerli',
-                      style: GoogleFonts.outfit(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF059669)),
+                      style: AppFonts.outfit(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF059669)),
                     ),
                   ],
                 ),
@@ -639,7 +639,7 @@ Sayın Velimiz,
                   const SizedBox(width: 4),
                   Text(
                     'Bağlı Veli: ${token.linkedParentCount} / ${token.maxLinkedParents}',
-                    style: GoogleFonts.outfit(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                    style: AppFonts.outfit(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
                   ),
                 ],
               ),
@@ -662,7 +662,7 @@ Sayın Velimiz,
               Expanded(
                 child: Text(
                   'Veli girişinde 2. faktör olarak Öğrenci Okul No (${widget.student.schoolNumber}) doğrulanacaktır.',
-                  style: GoogleFonts.outfit(fontSize: 11, color: isDark ? Colors.white70 : const Color(0xFF475569)),
+                  style: AppFonts.outfit(fontSize: 11, color: isDark ? Colors.white70 : const Color(0xFF475569)),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -689,7 +689,7 @@ Sayın Velimiz,
                   children: [
                     Text(
                       'BAĞLI VELİLER (${linkedParents.length})',
-                      style: GoogleFonts.outfit(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                      style: AppFonts.outfit(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
                     ),
                     const Icon(Icons.verified_user_rounded, color: Colors.green, size: 16),
                   ],
@@ -709,7 +709,7 @@ Sayın Velimiz,
                       Expanded(
                         child: Text(
                           '${lp.relation}: ${lp.parentName}',
-                          style: GoogleFonts.outfit(fontSize: 12.5, fontWeight: FontWeight.w600),
+                          style: AppFonts.outfit(fontSize: 12.5, fontWeight: FontWeight.w600),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),

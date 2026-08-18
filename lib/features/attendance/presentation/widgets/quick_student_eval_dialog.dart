@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../auth_profile/providers/teacher_profile_provider.dart';
@@ -158,7 +158,7 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
                               ),
                               child: Text(
                                 'No: ${currentEval.studentNumber}',
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontWeight: FontWeight.w900,
                                   color: Colors.white,
                                   fontSize: 12,
@@ -169,7 +169,7 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
                             Expanded(
                               child: Text(
                                 currentEval.studentName,
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 16.5,
                                   fontWeight: FontWeight.w800,
                                   color: headerTextColor,
@@ -183,7 +183,7 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
                         const SizedBox(height: 4),
                         Text(
                           '${widget.subjectName} • ${widget.date}',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w600,
                             color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
@@ -227,7 +227,7 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
             // 2. ÖDEV DURUMU SEÇİCİ
             Text(
               '📝 Ödev Durumu',
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
                 color: sectionHeaderColor,
@@ -293,7 +293,7 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
                     children: [
                       Text(
                         '📚 Defter / Kitap',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
                           color: sectionHeaderColor,
@@ -341,7 +341,7 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
                     children: [
                       Text(
                         '⏰ Derse Geliş',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
                           color: sectionHeaderColor,
@@ -387,7 +387,7 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
             // 4. DERSE KATILIM DERECESİ (NET 3 YILDIZ SİSTEMİ)
             Text(
               '⭐ Derse Katılım Derecesi',
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
                 color: sectionHeaderColor,
@@ -447,7 +447,7 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
             // 5. HIZLI DAVRANIŞ VE GÖZLEM ETİKETLERİ (Yüksek Kontrastlı Pill Butonlar)
             Text(
               '🏷️ Hızlı Davranış & Gözlem',
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
                 color: sectionHeaderColor,
@@ -481,7 +481,7 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
                     ),
                     child: Text(
                       tag,
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 12,
                         fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
                         color: isSelected
@@ -498,7 +498,7 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
             // 6. ÖZEL GÖZLEM NOTU
             Text(
               '📝 Özel Öğretmen Notu',
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
                 color: sectionHeaderColor,
@@ -507,14 +507,14 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
             const SizedBox(height: 6),
             TextField(
               controller: _noteController,
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: isDark ? Colors.white : const Color(0xFF0F172A),
               ),
               decoration: InputDecoration(
                 hintText: 'Öğrenci hakkında özel not veya gözlem ekleyin...',
-                hintStyle: GoogleFonts.outfit(
+                hintStyle: AppFonts.outfit(
                   fontSize: 12.5,
                   color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
                 ),
@@ -567,7 +567,7 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
                 ),
                 child: Text(
                   'Tamam',
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
                     letterSpacing: 0.5,
@@ -609,7 +609,7 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
                   const SizedBox(width: 4),
                   Text(
                     'Son Ders Eğilimi (Dokununca Detay)',
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                       color: isDark ? Colors.white70 : Colors.black54,
@@ -671,7 +671,7 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
                               const SizedBox(width: 4),
                               Text(
                                 shortDate,
-                                style: GoogleFonts.outfit(
+                                style: AppFonts.outfit(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                   color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -749,7 +749,7 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
                       children: [
                         Text(
                           '$subject • $lessonHour. Ders',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
                             color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -757,7 +757,7 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
                         ),
                         Text(
                           '$fullDateStr ${weekStr.isNotEmpty ? "($weekStr)" : ""}',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 12,
                             color: isDark ? Colors.white60 : Colors.black54,
                           ),
@@ -807,7 +807,7 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
       children: [
         Text(
           label,
-          style: GoogleFonts.outfit(
+          style: AppFonts.outfit(
             fontSize: 12.5,
             fontWeight: FontWeight.bold,
             color: isDark ? Colors.white70 : Colors.black87,
@@ -817,7 +817,7 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
         Expanded(
           child: Text(
             value,
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
               color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -856,7 +856,7 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
           child: Center(
             child: Text(
               label,
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
                 color: isSelected
@@ -897,7 +897,7 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
         child: Center(
           child: Text(
             label,
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 11.5,
               fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
               color: isSelected
@@ -946,7 +946,7 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
             const SizedBox(height: 4),
             Text(
               subtitle,
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
                 color: isSelected

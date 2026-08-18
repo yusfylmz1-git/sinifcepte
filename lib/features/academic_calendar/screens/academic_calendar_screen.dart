@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../sync/services/sync_service.dart';
@@ -74,7 +74,7 @@ class _AcademicCalendarScreenState
       appBar: AppBar(
         title: Text(
           'MEB Çalışma Takvimi',
-          style: GoogleFonts.outfit(
+          style: AppFonts.outfit(
             fontWeight: FontWeight.w700,
             fontSize: 16.5,
             color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -130,7 +130,7 @@ class _AcademicCalendarScreenState
                     ? Center(
                         child: Text(
                           'Kayıtlı takvim olayı bulunamadı.',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             color: isDark ? Colors.white54 : Colors.black45,
                           ),
                         ),
@@ -216,7 +216,7 @@ class _AcademicCalendarScreenState
                   ),
                   child: Text(
                     countdownText,
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
@@ -226,7 +226,7 @@ class _AcademicCalendarScreenState
                 const SizedBox(height: 6),
                 Text(
                   next.title,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 15.5,
                     fontWeight: FontWeight.w800,
                     color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -236,7 +236,7 @@ class _AcademicCalendarScreenState
                 ),
                 Text(
                   '${_shortDateFormat.format(next.startDate)} - ${_shortDateFormat.format(next.endDate)} • ${next.durationInDays} Gün',
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 11.5,
                     color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                   ),
@@ -364,7 +364,7 @@ class _AcademicCalendarScreenState
               children: [
                 Text(
                   event.title,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: isPast
@@ -374,7 +374,7 @@ class _AcademicCalendarScreenState
                 ),
                 Text(
                   '${_shortDateFormat.format(event.startDate)} - ${_dateFormat.format(event.endDate)} (${event.durationInDays} Gün)',
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 11,
                     color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                   ),
@@ -402,7 +402,7 @@ class _AcademicCalendarScreenState
                     : (isPast
                         ? 'Geçti'
                         : '${event.daysRemaining} Gün'),
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
                   color: isToday

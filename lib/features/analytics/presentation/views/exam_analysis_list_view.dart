@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../../shared/widgets/custom_bottom_nav_bar.dart';
@@ -65,10 +65,10 @@ class _ExamAnalysisListViewState extends ConsumerState<ExamAnalysisListView> {
                       // Arama Alanı
                       TextField(
                         onChanged: (val) => setState(() => _searchQuery = val),
-                        style: GoogleFonts.outfit(fontSize: 13),
+                        style: AppFonts.outfit(fontSize: 13),
                         decoration: InputDecoration(
                           hintText: 'Sınav adı veya ders ara...',
-                          hintStyle: GoogleFonts.outfit(fontSize: 13, color: Colors.grey),
+                          hintStyle: AppFonts.outfit(fontSize: 13, color: Colors.grey),
                           prefixIcon: const Icon(Icons.search_rounded, size: 20),
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -102,7 +102,7 @@ class _ExamAnalysisListViewState extends ConsumerState<ExamAnalysisListView> {
                                     }
                                   },
                                   selectedColor: AppColors.primary,
-                                  labelStyle: GoogleFonts.outfit(
+                                  labelStyle: AppFonts.outfit(
                                     fontSize: 12,
                                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                                     color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
@@ -152,7 +152,7 @@ class _ExamAnalysisListViewState extends ConsumerState<ExamAnalysisListView> {
           icon: const Icon(Icons.add_chart_rounded, color: Colors.white),
           label: Text(
             'Yeni Sınav Analizi',
-            style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white),
+            style: AppFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white),
           ),
         ),
       ),
@@ -241,7 +241,7 @@ class _ExamAnalysisListViewState extends ConsumerState<ExamAnalysisListView> {
                                 ),
                                 child: Text(
                                   exam.className,
-                                  style: GoogleFonts.outfit(
+                                  style: AppFonts.outfit(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                     color: AppColors.primary,
@@ -252,7 +252,7 @@ class _ExamAnalysisListViewState extends ConsumerState<ExamAnalysisListView> {
                               Expanded(
                                 child: Text(
                                   exam.subjectName,
-                                  style: GoogleFonts.outfit(
+                                  style: AppFonts.outfit(
                                     fontSize: 12,
                                     color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                                   ),
@@ -265,7 +265,7 @@ class _ExamAnalysisListViewState extends ConsumerState<ExamAnalysisListView> {
                           const SizedBox(height: 3),
                           Text(
                             exam.examTitle,
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 14.5,
                               fontWeight: FontWeight.bold,
                               color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -346,7 +346,7 @@ class _ExamAnalysisListViewState extends ConsumerState<ExamAnalysisListView> {
         children: [
           Text(
             label,
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 9.5,
               color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
             ),
@@ -354,7 +354,7 @@ class _ExamAnalysisListViewState extends ConsumerState<ExamAnalysisListView> {
           const SizedBox(height: 1),
           Text(
             value,
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 11.5,
               fontWeight: FontWeight.bold,
               color: color,
@@ -383,7 +383,7 @@ class _ExamAnalysisListViewState extends ConsumerState<ExamAnalysisListView> {
             const SizedBox(height: 16),
             Text(
               noExamsAtAll ? 'Henüz Sınav Analizi Eklenmedi' : 'Filtreye Uygun Sınav Bulunamadı',
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -395,7 +395,7 @@ class _ExamAnalysisListViewState extends ConsumerState<ExamAnalysisListView> {
                   ? 'Soru bazlı sınav analizi oluşturarak başarı grafiklerini inceleyebilir ve resmi MEB PDF raporları alabilirsiniz.'
                   : 'Farklı bir arama terimi veya sınıf filtresi deneyebilirsiniz.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 12.5,
                 color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                 height: 1.4,

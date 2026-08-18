@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_fonts.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/firebase/firebase_bootstrap.dart';
 import '../../../core/theme/app_colors.dart';
@@ -164,7 +164,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
             Expanded(
               child: Text(
                 'Farklı hesapla giriş yaptınız',
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -182,7 +182,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
               'Sınıf ve öğrenci bilgileriniz gizlilik gereği internete '
               'gönderilmez; yalnızca bu cihazda ve giriş yaptığınız hesapta '
               'saklanır.',
-              style: GoogleFonts.outfit(fontSize: 13, height: 1.45),
+              style: AppFonts.outfit(fontSize: 13, height: 1.45),
             ),
             const SizedBox(height: 10),
             Container(
@@ -195,7 +195,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                 'Bu nedenle her hesabın kendi sınıf listesi vardır. '
                 'Önceki hesabınızdaki sınıflar silinmedi — o hesapla giriş '
                 'yaptığınızda yerinde duruyor olacak.',
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontSize: 12.5,
                   height: 1.4,
                   color: isDark ? Colors.white70 : Colors.black87,
@@ -330,7 +330,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                           Text(
                             'Öğretmen ve Veliler İçin Dijital Eğitim Köprüsü',
                             textAlign: TextAlign.center,
-                            style: GoogleFonts.outfit(
+                            style: AppFonts.outfit(
                               fontSize: 14,
                               color: Colors.white70,
                             ),
@@ -390,7 +390,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                                 Expanded(
                                   child: Text(
                                     'İnternet paketi gerektirmez! %100 yerel ve güvenli mimariyle çalışır.',
-                                    style: GoogleFonts.outfit(
+                                    style: AppFonts.outfit(
                                       fontSize: 11.5,
                                       color: Colors.white70,
                                     ),
@@ -466,7 +466,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                 children: [
                   Text(
                     title,
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 16.5,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -477,7 +477,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 12,
                       color: Colors.white70,
                       height: 1.3,

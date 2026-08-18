@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/class_model.dart';
 import '../models/lesson_model.dart';
@@ -250,7 +250,7 @@ class _AddLessonDialogState extends State<AddLessonDialog> {
                       children: [
                         Text(
                           isEditing ? 'Dersi Düzenle' : 'Yeni Ders Ekle',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
                             color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -258,7 +258,7 @@ class _AddLessonDialogState extends State<AddLessonDialog> {
                         ),
                         Text(
                           '${widget.settings.calculateTimeRange(_selectedLessonHourIndex)} • $_selectedDay',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 11.5,
                             color: AppColors.primary,
                             fontWeight: FontWeight.w600,
@@ -286,7 +286,7 @@ class _AddLessonDialogState extends State<AddLessonDialog> {
                       if (widget.availableClasses.isNotEmpty) ...[
                         Text(
                           'Kayıtlı Sınıflardan Seçin:',
-                          style: GoogleFonts.outfit(
+                          style: AppFonts.outfit(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -415,7 +415,7 @@ class _AddLessonDialogState extends State<AddLessonDialog> {
                       // 4. KART RENK PALETİ
                       Text(
                         'Kart Rengi:',
-                        style: GoogleFonts.outfit(
+                        style: AppFonts.outfit(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -490,7 +490,7 @@ class _AddLessonDialogState extends State<AddLessonDialog> {
                       ),
                       child: Text(
                         isEditing ? 'Dersi Güncelle' : 'Dersi Kaydet',
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 13.5),
+                        style: AppFonts.outfit(fontWeight: FontWeight.w600, fontSize: 13.5),
                       ),
                     ),
                   ),

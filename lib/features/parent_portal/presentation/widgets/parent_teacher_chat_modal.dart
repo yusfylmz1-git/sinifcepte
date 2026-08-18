@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/app_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/repositories/cloud_communication_repository.dart';
@@ -274,7 +274,7 @@ class _ParentTeacherChatModalState
               children: [
                 Text(
                   widget.counterpartName,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                   ),
@@ -283,7 +283,7 @@ class _ParentTeacherChatModalState
                 ),
                 Text(
                   '${widget.studentName} hakkında',
-                  style: GoogleFonts.outfit(fontSize: 11.5, color: Colors.grey),
+                  style: AppFonts.outfit(fontSize: 11.5, color: Colors.grey),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -323,7 +323,7 @@ class _ParentTeacherChatModalState
               Text(
                 _error!,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey),
+                style: AppFonts.outfit(fontSize: 13, color: Colors.grey),
               ),
               const SizedBox(height: 12),
               TextButton.icon(
@@ -348,7 +348,7 @@ class _ParentTeacherChatModalState
               const SizedBox(height: 12),
               Text(
                 'Henüz mesaj yok',
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
@@ -359,7 +359,7 @@ class _ParentTeacherChatModalState
                     ? 'Veliye ilk mesajı siz gönderebilirsiniz.'
                     : 'Öğretmene ${widget.studentName} hakkında ilk mesajı gönderebilirsiniz.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontSize: 12.5,
                   color: Colors.grey,
                   height: 1.4,
@@ -413,7 +413,7 @@ class _ParentTeacherChatModalState
                 padding: const EdgeInsets.only(bottom: 3),
                 child: Text(
                   m.authorName,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: AppColors.primary,
@@ -422,7 +422,7 @@ class _ParentTeacherChatModalState
               ),
             Text(
               m.body,
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 13,
                 height: 1.35,
                 color: isMine
@@ -433,7 +433,7 @@ class _ParentTeacherChatModalState
             const SizedBox(height: 3),
             Text(
               timeStr,
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 9.5,
                 color: isMine ? Colors.white70 : Colors.grey,
               ),
@@ -469,7 +469,7 @@ class _ParentTeacherChatModalState
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
                   hintText: 'Mesajınızı yazın...',
-                  hintStyle: GoogleFonts.outfit(fontSize: 13, color: Colors.grey),
+                  hintStyle: AppFonts.outfit(fontSize: 13, color: Colors.grey),
                   filled: true,
                   fillColor: isDark
                       ? Colors.white.withValues(alpha: 0.06)
@@ -481,7 +481,7 @@ class _ParentTeacherChatModalState
                     borderSide: BorderSide.none,
                   ),
                 ),
-                style: GoogleFonts.outfit(fontSize: 13),
+                style: AppFonts.outfit(fontSize: 13),
               ),
             ),
             const SizedBox(width: 8),

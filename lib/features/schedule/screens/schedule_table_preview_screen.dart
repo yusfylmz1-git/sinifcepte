@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth_profile/data/models/teacher_profile_model.dart';
 import '../../auth_profile/providers/teacher_profile_provider.dart';
@@ -49,7 +49,7 @@ class _ScheduleTablePreviewScreenState
       appBar: AppBar(
         title: Text(
           'Haftalık Ders Dağıtım Tablosu',
-          style: GoogleFonts.outfit(
+          style: AppFonts.outfit(
             fontWeight: FontWeight.w700,
             fontSize: 16.5,
             color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -75,7 +75,7 @@ class _ScheduleTablePreviewScreenState
               icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
               label: Text(
                 'PDF / Yazdır',
-                style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w700),
+                style: AppFonts.outfit(fontSize: 12, fontWeight: FontWeight.w700),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
@@ -153,7 +153,7 @@ class _ScheduleTablePreviewScreenState
                 icon: const Icon(Icons.share_rounded, size: 17),
                 label: Text(
                   'WhatsApp / Paylaş',
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 13),
+                  style: AppFonts.outfit(fontWeight: FontWeight.w600, fontSize: 13),
                 ),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(0, 42),
@@ -168,7 +168,7 @@ class _ScheduleTablePreviewScreenState
                 icon: const Icon(Icons.print_rounded, size: 17),
                 label: Text(
                   'A4 PDF Çıktısı Al',
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 13),
+                  style: AppFonts.outfit(fontWeight: FontWeight.w700, fontSize: 13),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
@@ -230,7 +230,7 @@ class _ScheduleTablePreviewScreenState
               children: [
                 Text(
                   school.toUpperCase(),
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: AppColors.primary,
@@ -241,7 +241,7 @@ class _ScheduleTablePreviewScreenState
                 ),
                 Text(
                   '$teacher • $branch',
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -262,11 +262,11 @@ class _ScheduleTablePreviewScreenState
               children: [
                 Text(
                   'Haftalık',
-                  style: GoogleFonts.outfit(fontSize: 9, color: isDark ? Colors.white54 : Colors.grey.shade600),
+                  style: AppFonts.outfit(fontSize: 9, color: isDark ? Colors.white54 : Colors.grey.shade600),
                 ),
                 Text(
                   '$totalLessonCount Saat',
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
                     color: AppColors.primary,
@@ -381,7 +381,7 @@ class _ScheduleTablePreviewScreenState
               Flexible(
                 child: Text(
                   title,
-                  style: GoogleFonts.outfit(
+                  style: AppFonts.outfit(
                     fontSize: 11.5,
                     fontWeight: isActive ? FontWeight.w700 : FontWeight.w600,
                     color: isActive
@@ -475,7 +475,7 @@ class _ScheduleTablePreviewScreenState
             child: Text(
               'DERS / SAAT',
               textAlign: TextAlign.center,
-              style: GoogleFonts.outfit(
+              style: AppFonts.outfit(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w800,
                 color: Colors.white,
@@ -491,7 +491,7 @@ class _ScheduleTablePreviewScreenState
               child: Text(
                 day.toUpperCase(),
                 textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(
+                style: AppFonts.outfit(
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
@@ -543,7 +543,7 @@ class _ScheduleTablePreviewScreenState
                 children: [
                   Text(
                     '${lessonIndex + 1}. Ders',
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w800,
                       color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -553,7 +553,7 @@ class _ScheduleTablePreviewScreenState
                     const SizedBox(height: 2),
                     Text(
                       timeRange,
-                      style: GoogleFonts.outfit(
+                      style: AppFonts.outfit(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w500,
                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -624,7 +624,7 @@ class _ScheduleTablePreviewScreenState
           // Sınıf Adı
           Text(
             lesson.className,
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 12,
               fontWeight: FontWeight.w800,
               color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -636,7 +636,7 @@ class _ScheduleTablePreviewScreenState
           // Ders Adı
           Text(
             lesson.lessonName,
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 10,
               fontWeight: FontWeight.w600,
               color: lesson.color,
@@ -672,7 +672,7 @@ class _ScheduleTablePreviewScreenState
           const SizedBox(width: 6),
           Text(
             'ÖĞLE ARASI ${lunchTime.isNotEmpty ? '($lunchTime • ${settings.lunchBreakDuration} dk)' : ''}',
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 11,
               fontWeight: FontWeight.w800,
               color: const Color(0xFFD97706),
@@ -705,7 +705,7 @@ class _ScheduleTablePreviewScreenState
         children: [
           Text(
             'Yukarıdaki haftalık ders dağıtım çizelgesi 2025-2026 Eğitim Öğretim Yılı için düzenlenmiştir.',
-            style: GoogleFonts.outfit(
+            style: AppFonts.outfit(
               fontSize: 10.5,
               color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
             ),
@@ -720,7 +720,7 @@ class _ScheduleTablePreviewScreenState
                 children: [
                   Text(
                     teacher,
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -728,7 +728,7 @@ class _ScheduleTablePreviewScreenState
                   ),
                   Text(
                     'Ders Öğretmeni',
-                    style: GoogleFonts.outfit(fontSize: 10, color: isDark ? Colors.white54 : Colors.grey.shade600),
+                    style: AppFonts.outfit(fontSize: 10, color: isDark ? Colors.white54 : Colors.grey.shade600),
                   ),
                   const SizedBox(height: 18),
                   Text('İmza: ...................', style: TextStyle(fontSize: 10, color: Colors.grey.shade400)),
@@ -740,7 +740,7 @@ class _ScheduleTablePreviewScreenState
                 children: [
                   Text(
                     principal,
-                    style: GoogleFonts.outfit(
+                    style: AppFonts.outfit(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -748,7 +748,7 @@ class _ScheduleTablePreviewScreenState
                   ),
                   Text(
                     'Okul Müdürü',
-                    style: GoogleFonts.outfit(fontSize: 10, color: isDark ? Colors.white54 : Colors.grey.shade600),
+                    style: AppFonts.outfit(fontSize: 10, color: isDark ? Colors.white54 : Colors.grey.shade600),
                   ),
                   const SizedBox(height: 18),
                   Text('Mühür / İmza: ...................', style: TextStyle(fontSize: 10, color: Colors.grey.shade400)),

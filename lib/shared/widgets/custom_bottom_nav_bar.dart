@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../core/theme/app_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 
 /// Navigation Item Model
@@ -142,7 +142,7 @@ class CustomBottomNavBar extends StatelessWidget {
                             fit: BoxFit.scaleDown,
                             child: AnimatedDefaultTextStyle(
                               duration: const Duration(milliseconds: 200),
-                              style: GoogleFonts.outfit(
+                              style: AppFonts.outfit(
                                 fontSize: isSelected ? 10.5 : 10.0,
                                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                                 color: isSelected
