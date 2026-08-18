@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_fonts.dart';
-import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../sync/services/sync_service.dart';
 import '../data/models/academic_calendar_event_model.dart';
 import '../providers/academic_calendar_provider.dart';
@@ -21,8 +21,10 @@ class _AcademicCalendarScreenState
   CalendarEventCategory? _selectedCategory;
   bool _isSyncing = false;
 
-  final DateFormat _dateFormat = DateFormat('d MMMM y', 'tr_TR');
-  final DateFormat _shortDateFormat = DateFormat('d MMM', 'tr_TR');
+  // Sabit Türkçe biçimlendirme: 'tr_TR' yerel verisi yüklü değilse
+  // DateFormat çağrısı ana iş parçacığını kilitliyor.
+  String _dateFormat(DateTime d) => AppDateFormatter.gunAyYil(d);
+  String _shortDateFormat(DateTime d) => AppDateFormatter.gunAy(d);
 
   Future<void> _handleSync() async {
     setState(() => _isSyncing = true);
@@ -235,7 +237,7 @@ class _AcademicCalendarScreenState
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  '${_shortDateFormat.format(next.startDate)} - ${_shortDateFormat.format(next.endDate)} • ${next.durationInDays} Gün',
+                  '${_shortDateFormat(next.startDate)} - ${_shortDateFormat(next.endDate)} • ${next.durationInDays} Gün',
                   style: AppFonts.outfit(
                     fontSize: 11.5,
                     color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -373,7 +375,7 @@ class _AcademicCalendarScreenState
                   ),
                 ),
                 Text(
-                  '${_shortDateFormat.format(event.startDate)} - ${_dateFormat.format(event.endDate)} (${event.durationInDays} Gün)',
+                  '${_shortDateFormat(event.startDate)} - ${_dateFormat(event.endDate)} (${event.durationInDays} Gün)',
                   style: AppFonts.outfit(
                     fontSize: 11,
                     color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),

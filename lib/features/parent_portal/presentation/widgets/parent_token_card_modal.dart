@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_fonts.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 
 import '../../../../core/cloud/cloud_ids.dart';
 import '../../../../core/utils/perf_trace.dart';
@@ -415,7 +416,9 @@ class _ParentTokenCardModalState extends ConsumerState<ParentTokenCardModal> {
 
   /// Aktif Kod & QR Kod Görünümü
   Widget _buildActiveTokenView(ParentTokenModel token, List<ParentLinkModel> linkedParents, bool isDark) {
-    final expFormatted = DateFormat('dd MMMM yyyy, HH:mm', 'tr_TR').format(token.expiresAt);
+    // Yerel yükleyiciye bağlı DateFormat yerine sabit Türkçe biçimlendirme:
+    // 'tr_TR' verisi yüklü değilse çağrı bloke oluyor ve kart hiç açılmıyordu.
+    final expFormatted = AppDateFormatter.gunAyYilSaat(token.expiresAt);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,

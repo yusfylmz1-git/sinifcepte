@@ -13,6 +13,40 @@ class AppDateFormatter {
     'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'
   ];
 
+  /// Türkçe tarih biçimlendirmesi — `intl` yerel yükleyicisine bağlı değil.
+  ///
+  /// ## Neden elle yazılıyor
+  /// `DateFormat('d MMMM yyyy', 'tr_TR')` çağrısı, Türkçe yerel verisinin
+  /// çalışma zamanında yüklenmiş olmasını şart koşar. Yüklenmemişse çağrı
+  /// ana iş parçacığında bloke oluyor: istisna atmadığı için `try/catch`
+  /// yakalayamıyor, ekran hiç boyanmıyor ve dokunma olayları işlenmiyor.
+  ///
+  /// Kullanıcı bunu "öğrenciye basınca donuyor" olarak bildirdi. Sebep
+  /// ikili bölme yöntemiyle bulundu: kart yalnızca kod ÜRETİLDİKTEN sonra
+  /// bu satırı çalıştırıyor; bu yüzden ilk açılış sorunsuzdu.
+  ///
+  /// Ay ve gün adları on iki ve yedi tanedir, hiç değişmez. Bir paketin
+  /// çalışma zamanı yükleyicisine bağlamak gereksiz risk taşıyordu.
+
+  /// `18 Ağustos 2026`
+  static String gunAyYil(DateTime d) =>
+      '${d.day} ${_turkishMonths[d.month - 1]} ${d.year}';
+
+  /// `18 Ağustos`
+  static String gunAy(DateTime d) =>
+      '${d.day} ${_turkishMonths[d.month - 1]}';
+
+  /// `18 Ağustos 2026, Salı`
+  static String gunAyYilGun(DateTime d) =>
+      '${gunAyYil(d)}, ${_turkishDays[d.weekday - 1]}';
+
+  /// `18 Ağustos 2026, 14:30`
+  static String gunAyYilSaat(DateTime d) {
+    final saat = d.hour.toString().padLeft(2, '0');
+    final dakika = d.minute.toString().padLeft(2, '0');
+    return '${gunAyYil(d)}, $saat:$dakika';
+  }
+
   /// Verilen veya aktif tarihe göre MEB Eğitim-Öğretim Yılı Başlangıcı (Eylül Pazartesi)
   static DateTime getAcademicYearStartDate([DateTime? targetDate]) {
     final now = targetDate ?? DateTime.now();
@@ -62,8 +96,8 @@ class AppDateFormatter {
       final endDate = startDate.add(const Duration(days: 39 * 7 - 3));
       final nextStart = startDate.add(const Duration(days: 365));
       try {
-        final startStr = DateFormat('d MMMM', 'tr_TR').format(endDate.add(const Duration(days: 1)));
-        final endStr = DateFormat('d MMMM yyyy', 'tr_TR').format(nextStart.subtract(const Duration(days: 1)));
+        final startStr = gunAy(endDate.add(const Duration(days: 1)));
+        final endStr = gunAyYil(nextStart.subtract(const Duration(days: 1)));
         return '$startStr - $endStr';
       } catch (_) {
         return '20 Haziran - 7 Eylül ${endDate.year}';
@@ -74,8 +108,8 @@ class AppDateFormatter {
     final weekEnd = weekStart.add(const Duration(days: 4)); // Pazartesi - Cuma
 
     try {
-      final startStr = DateFormat('d MMMM', 'tr_TR').format(weekStart);
-      final endStr = DateFormat('d MMMM yyyy', 'tr_TR').format(weekEnd);
+      final startStr = gunAy(weekStart);
+      final endStr = gunAyYil(weekEnd);
       return '$startStr - $endStr';
     } catch (_) {
       final startMonth = _turkishMonths[weekStart.month - 1];
@@ -87,7 +121,7 @@ class AppDateFormatter {
   /// Tarih gösterim formatı (Örn: 12 Ağustos 2026, Çarşamba)
   static String formatFullDate(DateTime date) {
     try {
-      return DateFormat('d MMMM yyyy, EEEE', 'tr_TR').format(date);
+      return gunAyYilGun(date);
     } catch (_) {
       final month = _turkishMonths[date.month - 1];
       final dayName = _turkishDays[date.weekday - 1];
@@ -98,7 +132,7 @@ class AppDateFormatter {
   /// Kısa Türkçe tarih gösterim formatı (Örn: 12 Ağustos 2026)
   static String formatTurkishDate(DateTime date) {
     try {
-      return DateFormat('d MMMM yyyy', 'tr_TR').format(date);
+      return gunAyYil(date);
     } catch (_) {
       final month = _turkishMonths[date.month - 1];
       return '${date.day} $month ${date.year}';
