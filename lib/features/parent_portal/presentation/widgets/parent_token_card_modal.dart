@@ -54,6 +54,21 @@ class _ParentTokenCardModalState extends ConsumerState<ParentTokenCardModal> {
   bool _isLoading = false;
 
   Future<void> _generateNewToken() async {
+    // Öğrenci henüz veritabanına yazılmamışsa kimliği yoktur; bu durumda
+    // üretilecek kod hiçbir öğrenciye bağlanamaz ve ekranda görünmez.
+    // Sessizce başarısız olmak yerine sebebi söylenir.
+    if (widget.student.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Bu öğrenci henüz kaydedilmemiş. Listeyi yenileyip tekrar deneyin.',
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       final repo = ref.read(parentTokenRepositoryProvider);
@@ -92,18 +107,64 @@ class _ParentTokenCardModalState extends ConsumerState<ParentTokenCardModal> {
         );
       }
     } catch (e, stackTrace) {
-      debugPrint('Token üretme hatası: $e\n$stackTrace');
+      debugPrint('---------------- HATA DETAYI (kod üretme) ----------------');
+      debugPrint('Hata Mesajı : $e');
+      debugPrint('Kod Satırı   : $stackTrace');
+      debugPrint('---------------------------------------------------------');
+
       if (mounted) {
+        // Teknik metin kullanıcıya doğrudan gösterilmez (proje kuralı),
+        // ama sessizce kaybolmamalı: "Ayrıntı" ile sebep görülebilir.
+        // Neden olduğunu anlayamamak, hatanın kendisinden can sıkıcı.
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Kod oluşturulurken bir hata oluştu.'),
+          SnackBar(
+            content: const Text('Kod oluşturulamadı. Lütfen tekrar deneyin.'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 8),
+            action: SnackBarAction(
+              label: 'Ayrıntı',
+              textColor: Colors.white,
+              onPressed: () => _showErrorDetail(e.toString()),
+            ),
           ),
         );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  /// Teknik hata ayrıntısını isteyen kullanıcıya gösterir.
+  ///
+  /// Normalde kullanıcıya teknik metin gösterilmez (proje kuralı), ancak
+  /// destek istendiğinde sebebi görebilmek gerekir. Bu yüzden hata
+  /// varsayılan olarak gizli, istendiğinde açılabilir tutulur.
+  void _showErrorDetail(String detail) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Teknik ayrıntı'),
+        content: SingleChildScrollView(
+          child: SelectableText(
+            detail,
+            style: const TextStyle(fontSize: 12),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: detail));
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Kopyala'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Kapat'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _revokeCurrentToken(String tokenId, String codeHash) async {
