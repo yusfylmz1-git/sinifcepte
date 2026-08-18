@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/glass_card.dart';
 import '../../../auth/screens/welcome_screen.dart';
 import '../../../auth_profile/providers/user_role_provider.dart';
+import '../../data/services/kvkk_consent_service.dart';
 import '../../providers/parent_token_provider.dart';
 import 'parent_dashboard_screen.dart';
 
@@ -188,46 +189,74 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
     });
 
     try {
+      final inputCode = _tokenController.text.trim();
+      final inputNumber = _schoolNumberController.text.trim();
+      final parentName = _parentNameController.text.trim();
+      final parentPhone = _parentPhoneController.text.trim().isNotEmpty
+          ? _parentPhoneController.text.trim()
+          : null;
+
+      final identity = ref.read(parentAuthServiceProvider).currentIdentity;
+      final bridge = ref.read(parentLinkBridgeProvider);
       final repo = ref.read(parentTokenRepositoryProvider);
 
-      // 1. Token Doğrulama
-      final inputCode = _tokenController.text.trim().toUpperCase();
-      final inputNumber = _schoolNumberController.text.trim();
-
-      final verifyResult = await repo.verifyToken(
+      // 1. Önce Bulut Köprüsü ile Doğrula
+      final bridgeResult = await bridge.verifyAndLink(
         inputCode: inputCode,
         inputStudentNumber: inputNumber,
-      );
-
-      if (!verifyResult.isSuccess || verifyResult.token == null) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = verifyResult.errorMessage ?? 'Referans kodu doğrulanamadı.';
-        });
-        return;
-      }
-
-      final validToken = verifyResult.token!;
-
-      // 2. Veli Kullanıcı Kimliği Al / Oluştur
-      final parentUserId = await repo.getOrCreateLocalParentUserId();
-
-      // 3. Veli Bağlantısı Oluştur
-      final link = await repo.linkParent(
-        token: validToken,
-        parentUserId: parentUserId,
-        parentName: _parentNameController.text.trim(),
-        parentPhone: _parentPhoneController.text.trim().isNotEmpty ? _parentPhoneController.text.trim() : null,
+        parentUid: identity?.uid ?? '',
+        parentName: parentName,
         relation: _selectedRelation,
       );
 
-      if (link == null) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Bağlantı kaydedilemedi. Lütfen tekrar deneyin.';
-        });
-        return;
+      String connectedStudentName = '';
+
+      if (bridgeResult.success && bridgeResult.link != null) {
+        connectedStudentName = bridgeResult.link!.studentName;
+        // Yerel önbelleğe yaz
+        await repo.cacheParentLinkLocally(bridgeResult.link!);
+      } else {
+        // 2. Bulut bulunamadıysa (aynı cihaz testi veya offline), yerel depoyu dene
+        final verifyResult = await repo.verifyToken(
+          inputCode: inputCode,
+          inputStudentNumber: inputNumber,
+        );
+
+        if (!verifyResult.isSuccess || verifyResult.token == null) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = bridgeResult.message.isNotEmpty
+                ? bridgeResult.message
+                : (verifyResult.errorMessage ?? 'Referans kodu doğrulanamadı.');
+          });
+          return;
+        }
+
+        final validToken = verifyResult.token!;
+        connectedStudentName = validToken.studentName;
+        final parentUserId = identity?.uid ?? await repo.getOrCreateLocalParentUserId();
+
+        final link = await repo.linkParent(
+          token: validToken,
+          parentUserId: parentUserId,
+          parentName: parentName,
+          parentPhone: parentPhone,
+          relation: _selectedRelation,
+        );
+
+        if (link == null) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = 'Bağlantı kaydedilemedi. Lütfen tekrar deneyin.';
+          });
+          return;
+        }
       }
+
+      // 3. KVKK Kaydı
+      await KvkkConsentService.recordConsent(
+        userId: identity?.uid ?? 'puser_${DateTime.now().millisecondsSinceEpoch}',
+      );
 
       // 4. Rolü Veli Olarak Kaydet ve Listeyi Yenile
       await ref.read(userRoleProvider.notifier).selectParentRole();
@@ -246,7 +275,7 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '🎉 ${validToken.studentName} başarıyla bağlandı!',
+                    '🎉 $connectedStudentName başarıyla bağlandı!',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),

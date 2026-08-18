@@ -30,7 +30,7 @@ class FirestoreClient {
   ///
   /// Offline-first ilkesi gereği doğru davranış beklemek değil, hızlıca
   /// vazgeçip yerel veriyle devam etmektir.
-  static const Duration _networkTimeout = Duration(seconds: 8);
+  static const Duration _networkTimeout = Duration(seconds: 3);
 
   FirebaseFirestore? _db;
   bool _configured = false;
@@ -43,19 +43,23 @@ class FirestoreClient {
   /// Ayarlar yalnızca ilk erişimden önce uygulanabilir; bu yüzden tek
   /// noktadan ve bir kez yapılır.
   Future<void> ensureConfigured() async {
-    if (_configured) return;
+    if (_configured && _db != null) return;
     try {
       await FirebaseBootstrap.ensureInitialized()
           .timeout(_networkTimeout, onTimeout: () {});
       if (!FirebaseBootstrap.ready) return;
 
       final db = FirebaseFirestore.instance;
-      db.settings = const Settings(
-        persistenceEnabled: true,
-        // Sınırsız önbellek: veli tarafında veri hacmi küçük (duyuru, mesaj)
-        // ama ağsız kullanımda tamamının elde olması gerekiyor.
-        cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-      );
+      try {
+        db.settings = const Settings(
+          persistenceEnabled: true,
+          // Sınırsız önbellek: veli tarafında veri hacmi küçük (duyuru, mesaj)
+          // ama ağsız kullanımda tamamının elde olması gerekiyor.
+          cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+        );
+      } catch (_) {
+        // Önceden ayarlanmışsa veya SDK kısıtında sessizce devam et
+      }
       _db = db;
       _configured = true;
     } catch (e, stackTrace) {

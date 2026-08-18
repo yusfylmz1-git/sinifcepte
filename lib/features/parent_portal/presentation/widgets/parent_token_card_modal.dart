@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,7 +58,6 @@ class _ParentTokenCardModalState extends ConsumerState<ParentTokenCardModal> {
   Future<void> _generateNewToken() async {
     // Öğrenci henüz veritabanına yazılmamışsa kimliği yoktur; bu durumda
     // üretilecek kod hiçbir öğrenciye bağlanamaz ve ekranda görünmez.
-    // Sessizce başarısız olmak yerine sebebi söylenir.
     if (widget.student.id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -74,41 +74,50 @@ class _ParentTokenCardModalState extends ConsumerState<ParentTokenCardModal> {
     try {
       final repo = ref.read(parentTokenRepositoryProvider);
       final teacher = ref.read(teacherProfileProvider);
+      final activeUid = FirebaseAuth.instance.currentUser?.uid;
+      final teacherUid = (activeUid != null && activeUid.isNotEmpty)
+          ? activeUid
+          : (teacher.id.isNotEmpty ? teacher.id : 'local_teacher');
 
       final token = await PerfTrace.run(
         'kod üretimi (yerel)',
         () => repo.generateTokenForStudent(
           student: widget.student,
           classModel: widget.classModel,
-          teacher: teacher,
+          teacher: teacher.copyWith(id: teacherUid),
         ),
       );
 
-      // Kodu buluta yayımla: veli başka bir cihazdan ancak bu sayede
-      // doğrulama yapabilir. Başarısız olursa öğretmen açıkça uyarılır,
-      // çünkü kod yerelde görünse de veli bağlanamaz.
-      final publishedToCloud = await PerfTrace.run(
-        'kod buluta yayımlama',
-        () => ref.read(parentLinkBridgeProvider).publishTokenToCloud(
-              token: token,
-              teacherUid: teacher.id,
-              teacherName: teacher.fullName,
-            ),
-      );
-
+      // Yerel üretim tamamlandı; UI'ı hemen güncelle ki öğretmen beklemesin
       if (mounted) {
         HapticFeedback.mediumImpact();
         ref.invalidate(studentActiveTokenProvider(widget.student.id ?? 0));
+      }
+
+      // Kodu buluta yayımla (zaman aşımı korumalı, arayüzü kilitlemez)
+      final publishedToCloud = await PerfTrace.run(
+        'kod buluta yayımlama',
+        () => ref
+            .read(parentLinkBridgeProvider)
+            .publishTokenToCloud(
+              token: token,
+              teacherUid: teacherUid,
+              teacherName: teacher.fullName,
+            )
+            .timeout(const Duration(seconds: 3), onTimeout: () => false),
+      );
+
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               publishedToCloud
                   ? 'Veli referans kodu ve QR kod başarıyla oluşturuldu! 🚀'
-                  : 'Kod oluşturuldu ancak internete gönderilemedi. '
-                      'Veliniz bağlanamaz — bağlantı gelince kodu yeniden oluşturun.',
+                  : 'Kod oluşturuldu ancak buluta gönderilemedi. '
+                      'İnternet bağlantınızı kontrol ediniz.',
             ),
             backgroundColor: publishedToCloud ? Colors.green : Colors.orange,
-            duration: Duration(seconds: publishedToCloud ? 4 : 7),
+            duration: Duration(seconds: publishedToCloud ? 4 : 6),
           ),
         );
       }
@@ -119,9 +128,6 @@ class _ParentTokenCardModalState extends ConsumerState<ParentTokenCardModal> {
       debugPrint('---------------------------------------------------------');
 
       if (mounted) {
-        // Teknik metin kullanıcıya doğrudan gösterilmez (proje kuralı),
-        // ama sessizce kaybolmamalı: "Ayrıntı" ile sebep görülebilir.
-        // Neden olduğunu anlayamamak, hatanın kendisinden can sıkıcı.
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Kod oluşturulamadı. Lütfen tekrar deneyin.'),

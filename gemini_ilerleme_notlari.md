@@ -59,6 +59,18 @@ Kullanıcı testlerinde ortaya çıkan kritik akış ve UX sorunları çözüld�
   13. `lib/features/schedule/models/schedule_settings.dart`
   14. `lib/features/schools/data/repositories/school_repository.dart`
 
+### ⚡ QR Kod & Referans Kodu Üretiminde Kilitlenme / Donma Çözümü
+* **Kök Neden:**
+  1. `TeacherProfileNotifier` yerel depoya `profil_id` kaydetmediği ve geri yüklemediği için uygulama yeniden açıldığında `teacher.id` `'local_teacher'` olarak kalıyordu.
+  2. Firestore kurallarında `request.auth.uid == teacherUid` eşleşmesi `'local_teacher'` != `Firebase UID` olduğundan Firestore batch yazması reddediliyor ve 8-10 saniyelik ağ zaman aşımı süresince arayüzü kilitliyordu.
+  3. `FirestoreClient.ensureConfigured()` içinde `db.settings` zaten uygulanmışken hata fırlatıp `_configured = false` bırakabiliyordu.
+  4. `ParentStudentConnectScreen` bulut köprüsünü çağırmayıp yalnızca yerel depodan doğrulamaya çalışıyordu.
+* **Uygulanan Çözüm:**
+  1. `ParentTokenCardModal`: Kod yerelde anında (1 ms) üretilip arayüz (`studentActiveTokenProvider`) hemen tetiklenir; öğretmen QR kodu ve referans kodunu anında ekranda görür. Buluta yükleme işlemi arka planda 3 saniye zaman aşımı korumalı çalışır ve arayüzü asla dondurmaz.
+  2. `TeacherProfileNotifier`: `profil_id` yerel depoya yazıldı, `loadProfileFromStorage` içinde aktif `FirebaseAuth.instance.currentUser?.uid` ile senkronize edildi.
+  3. `FirestoreClient`: Zaman aşımı 3 saniyeye çekildi, `db.settings` korumalı hale getirildi.
+  4. `ParentStudentConnectScreen`: `ParentLinkBridge.verifyAndLink` (bulut) ve `repo.verifyToken` (yerel/offline) ardışık fallback mimarisiyle birbirine bağlandı.
+
 ### 🧪 Test ve Analiz Durumu
 * `flutter test` → **206/206 test EKSİKSİZ BAŞARILI**
 * `flutter analyze` → **0 issue / Hata Yok**

@@ -38,6 +38,8 @@ class TeacherProfileNotifier extends StateNotifier<TeacherProfileModel> {
     try {
       final prefs = await PrefsService.instance();
       if (prefs == null) return;
+      final savedId = prefs.getString('profil_id');
+      final id = (savedId != null && savedId.isNotEmpty) ? savedId : state.id;
       final firstName = prefs.getString('profil_ad') ?? state.firstName;
       final lastName = prefs.getString('profil_soyad') ?? state.lastName;
       final gender = prefs.getString('profil_cinsiyet') ?? state.gender;
@@ -52,6 +54,7 @@ class TeacherProfileNotifier extends StateNotifier<TeacherProfileModel> {
       final photoUrl = prefs.getString('profil_foto') ?? state.photoUrl;
 
       state = state.copyWith(
+        id: id,
         firstName: firstName,
         lastName: lastName,
         gender: gender,
@@ -75,6 +78,7 @@ class TeacherProfileNotifier extends StateNotifier<TeacherProfileModel> {
     try {
       final prefs = await PrefsService.instance();
       if (prefs == null) return false;
+      await prefs.setString('profil_id', updated.id);
       await prefs.setString('profil_ad', updated.firstName);
       await prefs.setString('profil_soyad', updated.lastName);
       await prefs.setString('profil_cinsiyet', updated.gender);
@@ -107,6 +111,7 @@ class TeacherProfileNotifier extends StateNotifier<TeacherProfileModel> {
       final prefs = await PrefsService.instance();
       if (prefs != null) {
         for (final k in [
+          'profil_id',
           'profil_ad',
           'profil_soyad',
           'profil_cinsiyet',
