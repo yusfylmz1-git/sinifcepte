@@ -36,6 +36,7 @@ class ParentTokenCardModal extends ConsumerStatefulWidget {
     required StudentModel student,
     required ClassModel classModel,
   }) {
+    debugPrint('IZLEME 1: kart acilis istegi (ogrenci id=${student.id})');
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -55,6 +56,7 @@ class _ParentTokenCardModalState extends ConsumerState<ParentTokenCardModal> {
   bool _isLoading = false;
 
   Future<void> _generateNewToken() async {
+    debugPrint('IZLEME 4: kod uret butonuna basildi');
     // Öğrenci henüz veritabanına yazılmamışsa kimliği yoktur; bu durumda
     // üretilecek kod hiçbir öğrenciye bağlanamaz ve ekranda görünmez.
     // Sessizce başarısız olmak yerine sebebi söylenir.
@@ -354,8 +356,10 @@ Sayın Velimiz,
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('IZLEME 2: kart build basladi');
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final tokenAsync = ref.watch(studentActiveTokenProvider(widget.student.id ?? 0));
+    debugPrint('IZLEME 3: token provider okundu, durum=${tokenAsync.runtimeType}');
     final linkedParentsAsync = ref.watch(studentLinkedParentsProvider(widget.student.id ?? 0));
 
     return Container(
