@@ -7,7 +7,6 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/cloud/cloud_ids.dart';
@@ -21,7 +20,7 @@ import '../../data/models/parent_token_model.dart';
 import '../../providers/parent_token_provider.dart';
 import 'parent_teacher_chat_modal.dart';
 
-/// SınıfCepte - Öğrenci Veli Bağlantı Kartı & QR Modalı
+/// SınıfCepte - Öğrenci Veli Bağlantı Kartı Modalı
 class ParentTokenCardModal extends ConsumerStatefulWidget {
   final StudentModel student;
   final ClassModel classModel;
@@ -594,19 +593,36 @@ Sayın Velimiz,
               ),
             ],
           ),
-          child: QrImageView(
-            data: token.code,
-            version: QrVersions.auto,
-            size: 150.0,
-            gapless: false,
-            eyeStyle: const QrEyeStyle(
-              eyeShape: QrEyeShape.square,
-              color: Color(0xFF0F172A),
-            ),
-            dataModuleStyle: const QrDataModuleStyle(
-              dataModuleShape: QrDataModuleShape.square,
-              color: Color(0xFF0F172A),
-            ),
+          // QR kaldırıldı (Karar: 18 Ağustos 2026).
+          //
+          // qr_flutter platform seviyesinde çizim yapıyor ve bu ekranın
+          // açılışında donmaya yol açıyordu. Referans kodu tek başına
+          // yeterli: veli kodu elle giriyor, QR taramak zorunlu değildi.
+          // Bir ekranın hiç açılmaması, QR kolaylığından çok daha kötü.
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.vpn_key_rounded,
+                size: 34,
+                color: AppColors.primary.withValues(alpha: 0.85),
+              ),
+              const SizedBox(height: 10),
+              SelectableText(
+                token.code,
+                style: AppFonts.firaCode(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Veliye bu kodu iletin',
+                style: AppFonts.outfit(fontSize: 11.5, color: Colors.grey),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 12),
