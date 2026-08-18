@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../firebase/firebase_bootstrap.dart';
@@ -21,6 +22,16 @@ class FirestoreClient {
 
   static final FirestoreClient instance = FirestoreClient._();
 
+  /// Bulut işlemleri için üst sınır.
+  ///
+  /// Firestore çağrılarının varsayılan zaman aşımı yoktur: ağ yanıt
+  /// vermezse istek süresiz bekler ve arayüz donar. Android bunu ANR
+  /// olarak raporlar ("uygulama yanıt vermiyor").
+  ///
+  /// Offline-first ilkesi gereği doğru davranış beklemek değil, hızlıca
+  /// vazgeçip yerel veriyle devam etmektir.
+  static const Duration _networkTimeout = Duration(seconds: 8);
+
   FirebaseFirestore? _db;
   bool _configured = false;
 
@@ -34,7 +45,8 @@ class FirestoreClient {
   Future<void> ensureConfigured() async {
     if (_configured) return;
     try {
-      await FirebaseBootstrap.ensureInitialized();
+      await FirebaseBootstrap.ensureInitialized()
+          .timeout(_networkTimeout, onTimeout: () {});
       if (!FirebaseBootstrap.ready) return;
 
       final db = FirebaseFirestore.instance;
@@ -64,7 +76,7 @@ class FirestoreClient {
   Future<Map<String, dynamic>?> getDoc(String path) async {
     if (!isReady) return null;
     try {
-      final snap = await _db!.doc(path).get();
+      final snap = await _db!.doc(path).get().timeout(_networkTimeout);
       await FirestoreBudgetGuard.instance.recordRead();
       if (!snap.exists) return null;
       return snap.data();
@@ -86,7 +98,10 @@ class FirestoreClient {
     if (!await FirestoreBudgetGuard.instance.allowWrite()) return false;
 
     try {
-      await _db!.doc(path).set(data, SetOptions(merge: merge));
+      await _db!
+          .doc(path)
+          .set(data, SetOptions(merge: merge))
+          .timeout(_networkTimeout);
       return true;
     } catch (e, stackTrace) {
       debugPrint('Firestore setDoc hatası ($path): $e\n$stackTrace');
@@ -103,7 +118,7 @@ class FirestoreClient {
     if (!await FirestoreBudgetGuard.instance.allowWrite()) return false;
 
     try {
-      await _db!.doc(path).delete();
+      await _db!.doc(path).delete().timeout(_networkTimeout);
       return true;
     } catch (e, stackTrace) {
       debugPrint('Firestore deleteDoc hatası ($path): $e\n$stackTrace');
@@ -139,7 +154,7 @@ class FirestoreClient {
             batch.set(ref, entry.value!, SetOptions(merge: true));
           }
         }
-        await batch.commit();
+        await batch.commit().timeout(_networkTimeout);
       }
       return true;
     } catch (e, stackTrace) {

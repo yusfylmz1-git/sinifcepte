@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -322,6 +323,13 @@ class CloudCommunicationRepository {
 
   final FirestoreClient _client;
 
+  /// Sorgu zaman aşımı.
+  ///
+  /// Firestore sorgularının varsayılan zaman aşımı yoktur; ağ yanıt
+  /// vermezse arayüz süresiz bekler ve Android ANR raporlar. Offline-first
+  /// ilkesi gereği hızlıca vazgeçip boş liste dönmek doğru davranıştır.
+  static const Duration _queryTimeout = Duration(seconds: 8);
+
   static const String _classRooms = 'class_rooms';
 
   /// Duyuruları getirir.
@@ -353,7 +361,7 @@ class CloudCommunicationRepository {
       }
 
       final snap =
-          await query.orderBy('updatedAt', descending: true).limit(limit).get();
+          await query.orderBy('updatedAt', descending: true).limit(limit).get().timeout(_queryTimeout);
 
       await _client.recordQueryReads(snap.docs.length);
 
@@ -493,7 +501,7 @@ class CloudCommunicationRepository {
           .doc(announcementId)
           .collection('reads')
           .count()
-          .get();
+          .get().timeout(_queryTimeout);
       // Toplama sorgusu 1000 dokümana kadar tek okuma ücretlendirilir.
       await _client.recordQueryReads(1);
       return agg.count ?? 0;
@@ -529,7 +537,7 @@ class CloudCommunicationRepository {
       }
 
       final snap =
-          await query.orderBy('createdAt', descending: true).limit(limit).get();
+          await query.orderBy('createdAt', descending: true).limit(limit).get().timeout(_queryTimeout);
 
       await _client.recordQueryReads(snap.docs.length);
 
@@ -596,7 +604,7 @@ class CloudCommunicationRepository {
           .collection(_classRooms)
           .doc(classCloudId)
           .collection('staff')
-          .get();
+          .get().timeout(_queryTimeout);
 
       await _client.recordQueryReads(snap.docs.length);
 
@@ -828,7 +836,7 @@ class CloudCommunicationRepository {
           .collection(subcollection)
           .where(dateField, isLessThan: cutoff)
           .limit(50) // tek seferde makul bir parça
-          .get();
+          .get().timeout(_queryTimeout);
 
       if (snap.docs.isEmpty) return 0;
       await _client.recordQueryReads(snap.docs.length);
@@ -910,7 +918,7 @@ class CloudCommunicationRepository {
       }
 
       final snap =
-          await query.orderBy('createdAt', descending: true).limit(limit).get();
+          await query.orderBy('createdAt', descending: true).limit(limit).get().timeout(_queryTimeout);
 
       await _client.recordQueryReads(snap.docs.length);
 
@@ -1019,7 +1027,7 @@ class CloudCommunicationRepository {
           .where('timeSlot', isEqualTo: timeSlot)
           .where('appointmentDate', isEqualTo: appointmentDate.toIso8601String())
           .limit(5)
-          .get();
+          .get().timeout(_queryTimeout);
 
       // İptal/reddedilmiş randevular dilimi meşgul etmez.
       return snap.docs.any((d) {
@@ -1055,7 +1063,7 @@ class CloudCommunicationRepository {
       }
 
       final snap =
-          await query.orderBy('createdAt', descending: true).limit(limit).get();
+          await query.orderBy('createdAt', descending: true).limit(limit).get().timeout(_queryTimeout);
 
       await _client.recordQueryReads(snap.docs.length);
 

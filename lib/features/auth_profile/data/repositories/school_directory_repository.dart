@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../../../../core/cloud/firestore_client.dart';
 
@@ -95,7 +96,7 @@ class SchoolDirectoryRepository {
           .collection(_collection)
           .where('schoolId', isEqualTo: schoolId)
           .limit(200)
-          .get();
+          .get().timeout(const Duration(seconds: 8));
 
       await _client.recordQueryReads(snap.docs.length);
 

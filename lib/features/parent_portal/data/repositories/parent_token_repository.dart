@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/storage/prefs_keys.dart';
+import '../../../../core/utils/perf_trace.dart';
 import '../../../../core/storage/prefs_migrator.dart';
 import '../../../../data/models/class_model.dart';
 import '../../../../data/models/student_model.dart';
@@ -62,6 +63,10 @@ class ParentTokenRepository {
   /// Tüm Tokenları Yükleme
   Future<List<ParentTokenModel>> _loadTokens() async {
     if (_cachedTokens != null) return _cachedTokens!;
+    return PerfTrace.run('token listesi yükleme', _loadTokensUncached);
+  }
+
+  Future<List<ParentTokenModel>> _loadTokensUncached() async {
     await PrefsMigrator.migrateParentStores();
     try {
       final prefs = await SharedPreferences.getInstance();

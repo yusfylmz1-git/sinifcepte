@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../../../../core/cloud/firestore_client.dart';
@@ -105,7 +106,7 @@ class SchoolAdminRepository {
           .where('school_id', isEqualTo: schoolId)
           .where('status', isEqualTo: 'pending')
           .limit(50)
-          .get();
+          .get().timeout(const Duration(seconds: 8));
 
       return snap.docs
           .map((d) => SchoolAdminRequestModel.fromMap(d.data()))
@@ -171,7 +172,7 @@ class SchoolAdminRepository {
       final snap = await query
           .orderBy('reportedAt', descending: true)
           .limit(limit)
-          .get();
+          .get().timeout(const Duration(seconds: 8));
 
       return snap.docs.map((d) {
         final data = d.data();

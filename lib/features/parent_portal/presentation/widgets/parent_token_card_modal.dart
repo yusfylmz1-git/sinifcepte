@@ -10,6 +10,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/cloud/cloud_ids.dart';
+import '../../../../core/utils/perf_trace.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../data/models/class_model.dart';
 import '../../../../data/models/student_model.dart';
@@ -74,21 +75,26 @@ class _ParentTokenCardModalState extends ConsumerState<ParentTokenCardModal> {
       final repo = ref.read(parentTokenRepositoryProvider);
       final teacher = ref.read(teacherProfileProvider);
 
-      final token = await repo.generateTokenForStudent(
-        student: widget.student,
-        classModel: widget.classModel,
-        teacher: teacher,
+      final token = await PerfTrace.run(
+        'kod üretimi (yerel)',
+        () => repo.generateTokenForStudent(
+          student: widget.student,
+          classModel: widget.classModel,
+          teacher: teacher,
+        ),
       );
 
       // Kodu buluta yayımla: veli başka bir cihazdan ancak bu sayede
       // doğrulama yapabilir. Başarısız olursa öğretmen açıkça uyarılır,
       // çünkü kod yerelde görünse de veli bağlanamaz.
-      final publishedToCloud =
-          await ref.read(parentLinkBridgeProvider).publishTokenToCloud(
-                token: token,
-                teacherUid: teacher.id,
-                teacherName: teacher.fullName,
-              );
+      final publishedToCloud = await PerfTrace.run(
+        'kod buluta yayımlama',
+        () => ref.read(parentLinkBridgeProvider).publishTokenToCloud(
+              token: token,
+              teacherUid: teacher.id,
+              teacherName: teacher.fullName,
+            ),
+      );
 
       if (mounted) {
         HapticFeedback.mediumImpact();
