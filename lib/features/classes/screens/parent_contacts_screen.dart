@@ -551,48 +551,45 @@ class _ParentContactsScreenState extends ConsumerState<ParentContactsScreen> {
                     ),
                   ],
                 ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: () => ParentTokenCardModal.show(
-                        context,
-                        student: student,
-                        classModel: widget.classModel,
-                      ),
-                      icon: const Icon(Icons.qr_code_2_rounded, size: 15, color: AppColors.primary),
-                      label: const Text(
-                        'Veli Kodu',
-                        style: TextStyle(fontSize: 11.5, color: AppColors.primary),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    OutlinedButton.icon(
-                      onPressed: () => _openSingleEditModal(context, student),
-                      icon: const Icon(Icons.add_rounded, size: 16),
-                      label: const Text(
-                        'Numara Ekle',
-                        style: TextStyle(fontSize: 11.5),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.orange.shade800,
-                        side: BorderSide(color: Colors.orange.shade400),
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
-                  ],
+                // Butonlar ayrı ayrı Wrap çocuğu: 320px ekranda ikisi yan
+                // yana sığmadığında biri alt satıra iner. Tek Row içinde
+                // tutulsalardı Wrap onları bölünemez sayar ve 69px taşardı.
+                OutlinedButton.icon(
+                  onPressed: () => ParentTokenCardModal.show(
+                    context,
+                    student: student,
+                    classModel: widget.classModel,
+                  ),
+                  icon: const Icon(Icons.qr_code_2_rounded, size: 15, color: AppColors.primary),
+                  label: const Text(
+                    'Veli Kodu',
+                    style: TextStyle(fontSize: 11.5, color: AppColors.primary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _openSingleEditModal(context, student),
+                  icon: const Icon(Icons.add_rounded, size: 16),
+                  label: const Text(
+                    'Numara Ekle',
+                    style: TextStyle(fontSize: 11.5),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.orange.shade800,
+                    side: BorderSide(color: Colors.orange.shade400),
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
                 ),
               ],
             ),
@@ -718,16 +715,26 @@ class _ParentContactsScreenState extends ConsumerState<ParentContactsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.flash_on_rounded, color: Colors.amber, size: 20),
-                            SizedBox(width: 6),
-                            Text(
-                              'Seri Veli Bilgi Girişi',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                            ),
-                          ],
+                        const Expanded(
+                          child: Row(
+                            children: [
+                              Icon(Icons.flash_on_rounded, color: Colors.amber, size: 20),
+                              SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  'Seri Veli Bilgi Girişi',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(

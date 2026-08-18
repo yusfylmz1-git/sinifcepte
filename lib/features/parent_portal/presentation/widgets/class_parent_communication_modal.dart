@@ -212,16 +212,26 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Başlık uzun olabilir; rozet sabit genişlikte.
+                          // Başlık Expanded içine alınmazsa rozetle birlikte
+                          // taşar (AGENTS.md Madde 8).
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                children: [
-                                  Icon(a.priorityIcon, size: 16, color: a.priorityColor),
-                                  const SizedBox(width: 6),
-                                  Text(a.title, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13.5)),
-                                ],
+                              Icon(a.priorityIcon, size: 16, color: a.priorityColor),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  a.title,
+                                  style: GoogleFonts.outfit(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13.5,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
+                              const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
@@ -229,14 +239,26 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
-                                  '👁️ ${a.readCount} Veli Okudu',
-                                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                                  '👁️ ${a.readCount}',
+                                  style: const TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF10B981),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 4),
-                          Text(a.content, style: GoogleFonts.outfit(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87)),
+                          Text(
+                            a.content,
+                            style: GoogleFonts.outfit(
+                              fontSize: 12,
+                              color: isDark ? Colors.white70 : Colors.black87,
+                            ),
+                            maxLines: 4,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           const SizedBox(height: 6),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,

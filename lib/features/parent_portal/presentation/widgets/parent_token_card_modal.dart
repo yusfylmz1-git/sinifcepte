@@ -332,25 +332,33 @@ Sayın Velimiz,
                           child: const Icon(Icons.qr_code_2_rounded, color: AppColors.primary, size: 20),
                         ),
                         const SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Veli Bağlantı Kartı',
-                              style: GoogleFonts.outfit(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        // Öğrenci adı uzun olabilir: Expanded olmadan
+                        // başlık satırı taşar (AGENTS.md Madde 8).
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Veli Bağlantı Kartı',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                            Text(
-                              '${widget.student.fullName} (${widget.classModel.name} • No: ${widget.student.schoolNumber})',
-                              style: GoogleFonts.outfit(
-                                fontSize: 12,
-                                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                              Text(
+                                '${widget.student.fullName} (${widget.classModel.name} • No: ${widget.student.schoolNumber})',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 12,
+                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),
