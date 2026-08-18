@@ -352,6 +352,8 @@ class CloudCommunicationRepository {
       final snap =
           await query.orderBy('updatedAt', descending: true).limit(limit).get();
 
+      await _client.recordQueryReads(snap.docs.length);
+
       return snap.docs.map((d) {
         final data = d.data();
         return CloudAnnouncement(
@@ -489,6 +491,8 @@ class CloudCommunicationRepository {
           .collection('reads')
           .count()
           .get();
+      // Toplama sorgusu 1000 dokümana kadar tek okuma ücretlendirilir.
+      await _client.recordQueryReads(1);
       return agg.count ?? 0;
     } catch (e, stackTrace) {
       debugPrint('countReads hatası: $e\n$stackTrace');
@@ -523,6 +527,8 @@ class CloudCommunicationRepository {
 
       final snap =
           await query.orderBy('createdAt', descending: true).limit(limit).get();
+
+      await _client.recordQueryReads(snap.docs.length);
 
       return snap.docs.map((d) {
         final data = d.data();
@@ -588,6 +594,8 @@ class CloudCommunicationRepository {
           .doc(classCloudId)
           .collection('staff')
           .get();
+
+      await _client.recordQueryReads(snap.docs.length);
 
       return snap.docs.map((d) {
         final data = d.data();
@@ -790,6 +798,8 @@ class CloudCommunicationRepository {
       final snap =
           await query.orderBy('createdAt', descending: true).limit(limit).get();
 
+      await _client.recordQueryReads(snap.docs.length);
+
       return snap.docs.map((d) {
         final data = d.data();
         return CloudStatusReport(
@@ -932,6 +942,8 @@ class CloudCommunicationRepository {
 
       final snap =
           await query.orderBy('createdAt', descending: true).limit(limit).get();
+
+      await _client.recordQueryReads(snap.docs.length);
 
       return snap.docs.map((d) {
         final data = d.data();

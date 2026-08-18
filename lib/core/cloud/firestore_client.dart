@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../firebase/firebase_bootstrap.dart';
+import 'firestore_budget_guard.dart';
 
 /// Firestore erişiminin tek kapısı.
 ///
@@ -64,6 +65,7 @@ class FirestoreClient {
     if (!isReady) return null;
     try {
       final snap = await _db!.doc(path).get();
+      await FirestoreBudgetGuard.instance.recordRead();
       if (!snap.exists) return null;
       return snap.data();
     } catch (e, stackTrace) {
@@ -79,6 +81,10 @@ class FirestoreClient {
     bool merge = true,
   }) async {
     if (!isReady) return false;
+
+    // Bütçe freni: kaçak bir döngü faturayı patlatmadan burada durur.
+    if (!await FirestoreBudgetGuard.instance.allowWrite()) return false;
+
     try {
       await _db!.doc(path).set(data, SetOptions(merge: merge));
       return true;
@@ -94,6 +100,8 @@ class FirestoreClient {
   /// tutmak yerine silmek hem maliyeti hem KVKK yüzeyini azaltır.
   Future<bool> deleteDoc(String path) async {
     if (!isReady) return false;
+    if (!await FirestoreBudgetGuard.instance.allowWrite()) return false;
+
     try {
       await _db!.doc(path).delete();
       return true;
@@ -109,6 +117,12 @@ class FirestoreClient {
   /// Firestore batch sınırı 500 işlemdir; daha fazlası parçalara bölünür.
   Future<bool> commitBatch(Map<String, Map<String, dynamic>?> writes) async {
     if (!isReady || writes.isEmpty) return false;
+
+    // Batch, işlem sayısı kadar yazma sayılır.
+    if (!await FirestoreBudgetGuard.instance.allowWrite(count: writes.length)) {
+      return false;
+    }
+
     try {
       const chunkSize = 500;
       final entries = writes.entries.toList();
@@ -132,6 +146,17 @@ class FirestoreClient {
       debugPrint('Firestore commitBatch hatası: $e\n$stackTrace');
       return false;
     }
+  }
+
+  /// Sorgu sonucundaki doküman sayısını okuma sayacına işler.
+  ///
+  /// [getDoc] tek doküman okumasını kendi sayar, ancak sorgular (`where`
+  /// + `get()`) doğrudan `db` üzerinden yapılır. Firestore sorguyu dönen
+  /// doküman sayısı kadar ücretlendirdiği için sayaç da öyle işler.
+  /// Boş sorgu bile en az bir okuma sayılır.
+  Future<void> recordQueryReads(int documentCount) {
+    return FirestoreBudgetGuard.instance
+        .recordRead(count: documentCount > 0 ? documentCount : 1);
   }
 
   /// Sunucu zaman damgası (istemci saati güvenilmez).
