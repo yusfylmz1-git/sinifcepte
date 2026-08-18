@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'core/ads/ad_gate.dart';
+import 'core/cloud/remote_manifest_service.dart';
 import 'core/firebase/firebase_bootstrap.dart';
 import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
@@ -40,6 +41,14 @@ Future<void> main() async {
     await AdGate.instance.initialize();
   } catch (e, stackTrace) {
     debugPrint('Reklam kapısı başlatma hatası: $e\n$stackTrace');
+  }
+
+  // Uzak yapılandırma (sürüm, bakım modu). Ücretsiz ve kotasızdır;
+  // ağ yoksa güvenli varsayılanlarla devam eder.
+  try {
+    await RemoteManifestService.instance.initialize();
+  } catch (e, stackTrace) {
+    debugPrint('Uzak yapılandırma başlatma hatası: $e\n$stackTrace');
   }
 
   // Windows / Masaüstü için SQLite FFI Başlatması

@@ -30,11 +30,30 @@ class _AcademicCalendarScreenState
     await ref.read(academicCalendarProvider.notifier).loadEvents();
     if (mounted) {
       setState(() => _isSyncing = false);
+
+      // Bakım modu ve zorunlu güncelleme, sıradan senkron sonucundan
+      // farklı ele alınır: kullanıcıya ne yapması gerektiği söylenmeli.
+      final String text;
+      final Color color;
+      if (result.maintenanceMode) {
+        text = result.maintenanceMessage;
+        color = Colors.orange;
+      } else if (result.updateRequired) {
+        text = 'Uygulamanızın yeni bir sürümü yayınlandı. '
+            'Bazı özellikler güncellenene kadar sınırlı çalışabilir.';
+        color = Colors.orange;
+      } else {
+        text = result.message ?? 'Takvim senkronize edildi';
+        color = result.success ? Colors.green : Colors.red;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result.message ?? 'Takvim senkronize edildi'),
-          backgroundColor: result.success ? Colors.green : Colors.red,
-          duration: const Duration(seconds: 2),
+          content: Text(text),
+          backgroundColor: color,
+          duration: Duration(
+            seconds: (result.maintenanceMode || result.updateRequired) ? 6 : 2,
+          ),
         ),
       );
     }

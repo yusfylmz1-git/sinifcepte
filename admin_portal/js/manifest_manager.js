@@ -72,6 +72,50 @@ class ManifestManager {
     return this.manifest.outcomesVersion;
   }
 
+  /**
+   * Manifesti Firebase Remote Config parametrelerine çevirir.
+   *
+   * Panel tarayıcıda çalıştığı ve Remote Config'e yazmak Admin SDK
+   * gerektirdiği için buradan doğrudan yayın yapılamaz. Bunun yerine
+   * konsola/dosyaya hazır komut üretilir; komut geliştirici makinesinde
+   * çalıştırılır.
+   *
+   * Mobil taraf bu parametreleri RemoteManifestService ile okur.
+   */
+  toRemoteConfigParams() {
+    return {
+      calendar_version: this.manifest.calendarVersion,
+      outcomes_version: this.manifest.outcomesVersion,
+      announcements_version: this.manifest.announcementsVersion,
+      school_directory_version: this.manifest.schoolDirectoryVersion || 1,
+      min_app_version: this.manifest.minRequiredAppVersion,
+      latest_app_version: this.manifest.latestAppVersion,
+      maintenance_mode: this.manifest.maintenanceMode,
+      maintenance_message: this.manifest.maintenanceMessage || '',
+    };
+  }
+
+  /** Remote Config parametrelerini JSON dosyası olarak indirir. */
+  downloadRemoteConfigJson() {
+    const params = this.toRemoteConfigParams();
+    const blob = new Blob([JSON.stringify(params, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'remote_config_params.json';
+    a.click();
+    URL.revokeObjectURL(url);
+
+    console.info(
+      'Yayınlamak için:
+' +
+        '  node scripts/admin/publish_remote_config.mjs remote_config_params.json'
+    );
+    return params;
+  }
+
   setMaintenanceMode(enabled, message = null) {
     this.manifest.maintenanceMode = enabled;
     if (message) this.manifest.maintenanceMessage = message;

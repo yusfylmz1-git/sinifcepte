@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/cloud/firestore_client.dart';
 import '../../../../core/storage/prefs_keys.dart';
 import '../models/school_model.dart';
 import '../models/school_types.dart';
@@ -221,10 +223,48 @@ class SchoolRepository {
       final raw = prefs.getStringList(PrefsKeys.pendingSchoolSubmissions) ?? [];
       raw.add(jsonEncode(pending.toMap()));
       await prefs.setStringList(PrefsKeys.pendingSchoolSubmissions, raw);
+
+      // Öneriyi onay kuyruğuna da gönder: yalnızca yerelde kalırsa okul
+      // dizinine hiçbir zaman eklenmez ve aynı okulu ekleyen her öğretmen
+      // ayrı bir kayıt oluşturmaya devam eder.
+      //
+      // Başarısız olması akışı bozmaz: öğretmen okulunu yerelde seçip
+      // çalışmaya devam eder (offline-first).
+      unawaited(_submitToMergeQueue(pending));
+
       return pending;
     } catch (e, stackTrace) {
       debugPrint('SchoolRepository addCustomSchool hatası: $e\n$stackTrace');
       return null;
+    }
+  }
+
+  /// Kullanıcı önerisini bulut onay kuyruğuna yazar.
+  ///
+  /// Kuyruğu yalnızca moderatörler okur (`firestore.rules`); istemci
+  /// yazdıktan sonra kaydı ne okuyabilir ne değiştirebilir.
+  Future<void> _submitToMergeQueue(SchoolModel pending) async {
+    try {
+      await FirestoreClient.instance.ensureConfigured();
+      if (!FirestoreClient.instance.isReady) return;
+
+      await FirestoreClient.instance.setDoc(
+        'school_merge_queue/${pending.id}',
+        {
+          'name': pending.name,
+          'city': pending.city,
+          'cityCode': pending.cityCode,
+          'district': pending.district,
+          'type': pending.type,
+          'status': 'pending_review',
+          'source': 'manuel_onayli',
+          'submittedAt': DateTime.now().toIso8601String(),
+        },
+        merge: false,
+      );
+    } catch (e, stackTrace) {
+      debugPrint('Okul önerisi kuyruğa gönderilemedi: $e');
+      debugPrint('$stackTrace');
     }
   }
 
