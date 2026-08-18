@@ -38,6 +38,15 @@ class ParentTokenRepository {
   static const String _linksPrefKey = PrefsKeys.parentLinks;
   static const String _auditLogsPrefKey = PrefsKeys.auditLogs;
 
+  /// Cihazda tutulacak azami token sayısı.
+  ///
+  /// Her öğrenci için tek aktif kod yeterlidir; bu sınır yalnızca
+  /// beklenmedik birikmelere karşı güvenlik ağıdır.
+  static const int _maxStoredTokens = 200;
+
+  /// Denetim günlüğünde tutulacak azami kayıt sayısı.
+  static const int _maxAuditLogs = 300;
+
   List<ParentTokenModel>? _cachedTokens;
   List<ParentLinkModel>? _cachedLinks;
 
@@ -162,6 +171,13 @@ class ParentTokenRepository {
         'timestamp': DateTime.now().toIso8601String(),
       };
       rawLogs.add(jsonEncode(logEntry));
+
+      // Günlük sınırsız büyürse her okuma yavaşlar ve depo şişer.
+      // En eski kayıtlar düşürülür (yeni kayıtlar listenin sonundadır).
+      if (rawLogs.length > _maxAuditLogs) {
+        rawLogs.removeRange(0, rawLogs.length - _maxAuditLogs);
+      }
+
       await prefs.setStringList(_auditLogsPrefKey, rawLogs);
     } catch (e, stackTrace) {
       debugPrint('ParentTokenRepository _logAudit hatası: $e\n$stackTrace');
@@ -177,11 +193,27 @@ class ParentTokenRepository {
   }) async {
     final tokens = await _loadTokens();
 
-    // 1. Varsa eski aktif tokenı iptal et (revoked)
-    for (var i = 0; i < tokens.length; i++) {
-      if (tokens[i].studentId == student.id && tokens[i].status == 'active') {
-        tokens[i] = tokens[i].copyWith(status: 'revoked');
-      }
+    // 1. Bu öğrencinin ESKİ kayıtlarını tamamen kaldır.
+    //
+    // Önceden yalnızca 'revoked' işaretleniyor ama listede bırakılıyordu.
+    // Her kod üretiminde liste büyüyor, her okumada tamamı JSON olarak
+    // ayrıştırılıp yeniden yazılıyordu. Birkaç denemeden sonra ekran
+    // açılmaz hale geliyordu — kullanıcı "ilk açılışta çalıştı, sonra
+    // bozuldu" diye bildirdi.
+    //
+    // İptal edilmiş kodun saklanması için bir gerekçe yok: veli o kodla
+    // bağlanamaz, denetim izi ayrıca audit log'da tutulur.
+    tokens.removeWhere((t) => t.studentId == student.id);
+
+    // 2. Güvenlik ağı: toplam kayıt sayısını sınırla.
+    //
+    // Sınıf sayısı arttıkça liste yine büyüyebilir. Süresi dolmuş
+    // kayıtlar zaten işe yaramaz, temizlenir.
+    final now0 = DateTime.now();
+    tokens.removeWhere((t) => t.expiresAt.isBefore(now0));
+    if (tokens.length > _maxStoredTokens) {
+      tokens.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      tokens.removeRange(_maxStoredTokens, tokens.length);
     }
 
     final classTag = _sanitizeClassName(classModel.name);

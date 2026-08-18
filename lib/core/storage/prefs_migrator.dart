@@ -50,9 +50,27 @@ class PrefsMigrator {
         }
       }
 
-      absorb(prefs.getStringList(canonicalKey) ?? const []);
+      final current = prefs.getStringList(canonicalKey) ?? const <String>[];
+      absorb(current);
+
+      var hadLegacy = false;
       for (final key in legacyKeys) {
-        absorb(prefs.getStringList(key) ?? const []);
+        final legacy = prefs.getStringList(key);
+        if (legacy != null && legacy.isNotEmpty) {
+          hadLegacy = true;
+          absorb(legacy);
+        }
+      }
+
+      // Devralınacak eski veri yoksa YAZMA YAPMA.
+      //
+      // Önceden her çağrıda tüm liste diske yeniden yazılıyordu. Liste
+      // büyüdükçe (her kod üretimi bir kayıt ekliyordu) bu yazma
+      // yavaşlıyor ve ekran açılışını kilitliyordu. Göç yalnızca gerçekten
+      // taşınacak veri varsa çalışmalıdır.
+      if (!hadLegacy && merged.length == current.length) {
+        _done.add(stamp);
+        return;
       }
 
       await prefs.setStringList(canonicalKey, merged);
