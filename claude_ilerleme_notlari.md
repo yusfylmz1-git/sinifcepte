@@ -385,15 +385,68 @@ Maliyet endişenizin teknik karşılığı. **Blaze planında Firebase varsayıl
 
 ---
 
+## ⏸️ FAZ 7 — REKLAM AÇILIŞI (ertelendi, kullanıcı kararı)
+
+**Durum:** Altyapı Faz 1'de kuruldu ve **kapalı** duruyor. Kod tarafında hazır; açılış bilinçli olarak ertelendi.
+
+**Neden ertelendi:** Kullanıcı sayısı olmadan reklam geliri de yok. SDK'yı şimdi eklemek uygulamaya ~2 MB ve Android/iOS yapılandırma yükü getirir, üstelik geliştirme sırasında reklam görmek rahatsız eder. Ürün yayına yaklaşınca yapılması daha mantıklı.
+
+### Şu an hazır olanlar
+| Bileşen | Dosya | Durum |
+| :--- | :--- | :--- |
+| Reklam kapısı | `lib/core/ads/ad_gate.dart` | ✅ Kapalı, tercih kalıcı |
+| Yer tutucu widget | `lib/core/ads/ad_slot_widget.dart` | ✅ Kapalıyken sıfır yer kaplar |
+| Açma düğmesi | `AdGate.instance.setEnabled(true)` | ✅ Çalışıyor |
+| Yerleşim noktaları | `AdSlot` enum (3 yer) | ✅ Tanımlı |
+| Testler | `test/auth_roles_and_ads_test.dart` | ✅ 15 test |
+
+### Açılış için yapılacaklar
+1. **`pubspec.yaml`'a `google_mobile_ads` ekle** (~2 MB)
+2. **`AdGate._initializeSdk()` gövdesini doldur** — yorum satırı olarak hazır bekliyor:
+   ```dart
+   await MobileAds.instance.initialize();
+   await MobileAds.instance.updateRequestConfiguration(
+     RequestConfiguration(
+       tagForChildDirectedTreatment: TagForChildDirectedTreatment.yes,
+       maxAdContentRating: MaxAdContentRating.g,
+     ),
+   );
+   ```
+3. **`AdSlotWidget.build()` içine gerçek banner/native reklamı koy**
+4. **AdMob hesabı + reklam birimi kimlikleri** (Android/iOS ayrı)
+5. **Android `AndroidManifest.xml` + iOS `Info.plist`** App ID tanımı
+6. **`AdGate.instance.setEnabled(true)`** ile aç
+
+### ⛔ Değişmez kısıtlar (mağazada kalabilmek için)
+1. **Reklamlar kişiselleştirilmemiş olmak ZORUNDA.** Uygulama öğrenci verisi işlediği için Google Play **Families** politikası kapsamındasınız. Bu bir tercih değil; aksi halde uygulama mağazadan kaldırılır. eCPM'i düşürür — maliyet planındaki $0,25 tahmini zaten buna göre yapıldı.
+2. **Öğrenci verisi görünen hiçbir ekranda reklam gösterilemez.** `AdGate.isAllowedSlot(showsStudentData: true)` bunu mimari olarak imkânsız kılıyor.
+3. **Ders içi katılım ekranı kesinlikle reklamsız** — öğrenciler ekranı görüyor.
+4. Reklam SDK'sı öğrenci verisine erişmemeli.
+
+### Gelir beklentisi (maliyet planından)
+| Kalem | Temkinli | İyimser |
+| :--- | :--- | :--- |
+| Aylık gösterim (9,5M veli × ~8) | 76M | 76M |
+| eCPM (kişiselleştirilmemiş, TR) | $0,25 | $0,50 |
+| **Brüt gelir** | **~$3.500/ay** | **~$7.000/ay** |
+| Firestore maliyeti | −$260 | −$260 |
+| **Net** | **~$3.240** | **~$6.740** |
+
+**İkinci gelir fikri:** Öğretmene reklamsızlık satmak tutarsız olur (zaten reklam görmüyor). Bunun yerine **ek özellik** satılabilir: bulut yedek, gelişmiş analiz, sınırsız PDF.
+
+---
+
 ## 🎯 SIRADAKİ ADIM
 
-**Faz 7 — Reklam açılışı.** Altyapı Faz 1'de kuruldu (kapalı); kalan iş:
-- `google_mobile_ads` SDK eklenmesi
-- **Kişiselleştirilmemiş** reklam yapılandırması (Google Play Families + KVKK gereği — tercih değil, zorunluluk)
-- Banner/native yer tutucuların gerçek reklamla doldurulması
-- `AdGate.setEnabled(true)` ile açılış
+Faz 7 ertelendiğine göre sıradaki mantıklı iş **uygulamayı gerçekten çalıştırmak**.
 
-Bu faz **kullanıcı sayısı olmadan gelir getirmez**; ürün yayına yaklaşınca yapılması daha mantıklı.
+12 adımlık zincirin tamamı kodda hazır ve 161 Dart + 78 kural testiyle korunuyor, ancak **hiç gerçek cihazda çalıştırılmadı**. Yalnızca gerçek ortamda görünecek sorunlar:
+- Google Sign-In yapılandırması (SHA-1 parmak izi, OAuth istemci kimliği)
+- Firestore kural izinleri (emülatörde geçen kural canlıda farklı davranabilir)
+- Eksik bileşik indeksler (`where` + `orderBy` birleşimleri indeks ister)
+- `firestore.rules` ve Remote Config'in canlıya yayınlanması
+
+**Ön koşul:** Süper admin kurulumu (yukarıdaki bölüm) ve `firebase deploy --only firestore:rules`.
 
 ---
 
