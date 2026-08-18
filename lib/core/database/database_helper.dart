@@ -1007,11 +1007,15 @@ class DatabaseHelper {
       final jsonString = await rootBundle.loadString('assets/data/official_maarif_kazanimlar.json');
       final List<dynamic> list = json.decode(jsonString) as List<dynamic>;
 
+      // Tek tek insert yerine toplu batch: 2300 kayıt için 2300 ayrı
+      // sorgu çalıştırmak hem yavaş hem bellek baskısı yaratıyordu.
+      // Batch, hepsini tek turda yazar.
       await db.transaction((txn) async {
         await txn.delete('curriculum_outcomes');
+        final batch = txn.batch();
         for (final item in list) {
           final m = item as Map<String, dynamic>;
-          await txn.insert('curriculum_outcomes', {
+          batch.insert('curriculum_outcomes', {
             'doc_id': m['id'] ?? '',
             'grade_level': m['gradeLevel'] ?? 5,
             'subject_code': m['subjectCode'] ?? 'GENEL',
@@ -1029,6 +1033,9 @@ class DatabaseHelper {
             'holiday_note': m['holidayNote'],
           });
         }
+        // noResult: sonuçları biriktirme — 2300 sonuç nesnesi belleği
+        // gereksiz şişiriyordu.
+        await batch.commit(noResult: true);
       });
       debugPrint('DatabaseHelper: ${list.length} resmî kazanım assets üzerinden SQLite veritabanına başarıyla yüklendi 🚀');
     } catch (e, stackTrace) {
