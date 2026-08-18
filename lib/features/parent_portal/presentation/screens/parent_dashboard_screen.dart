@@ -15,6 +15,7 @@ import '../../data/models/parent_link_model.dart';
 import '../../data/services/kvkk_consent_service.dart';
 import '../../data/services/parent_lifecycle_service.dart';
 import '../../data/repositories/cloud_communication_repository.dart';
+import '../../data/services/parent_link_bridge.dart';
 import '../../providers/cloud_communication_provider.dart';
 import '../../providers/parent_token_provider.dart';
 import '../widgets/help_support_modal.dart';
@@ -601,6 +602,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
         parentUid: identity?.uid ?? '',
         parentName: parentName,
         relation: _quickRelation,
+        confirm: _confirmLinkTarget,
       );
 
       // Bağ kurulduysa yerele önbellekle: ağ yokken de çocuk listesi görünsün.
@@ -1107,6 +1109,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                             parentUid: identity?.uid ?? '',
                             parentName: parentName,
                             relation: relation,
+                            confirm: _confirmLinkTarget,
                           );
                   if (res.success && res.link != null) {
                     await ref
@@ -1536,6 +1539,127 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
         },
       ),
     );
+  }
+
+  /// Bağlantı kurulmadan önce "doğru çocuk mu?" onayını sorar.
+  ///
+  /// Veliye okul/sınıf seçtirilmez — kod zaten bunları taşır. Ancak yanlış
+  /// kod girildiğinde (örneğin öğretmen iki öğrencinin kodunu karıştırdığında)
+  /// bağ kurulmadan fark edilmelidir.
+  Future<bool> _confirmLinkTarget(BridgeLinkPreview preview) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.person_search_rounded,
+                color: Color(0xFF10B981), size: 22),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Bu öğrenci doğru mu?',
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    preview.studentName,
+                    style: GoogleFonts.outfit(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Okul No: ${preview.studentNumber}',
+                    style: GoogleFonts.outfit(
+                      fontSize: 12.5,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  if (preview.locationLine.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.apartment_rounded,
+                            size: 14, color: Colors.grey),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            preview.locationLine,
+                            style: GoogleFonts.outfit(
+                              fontSize: 12.5,
+                              color: isDark ? Colors.white70 : Colors.black87,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Onayladığınızda bu öğrencinin duyuru, mesaj ve '
+              'bilgilendirmelerine erişeceksiniz.',
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                color: Colors.grey,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Hayır, farklı'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            icon: const Icon(Icons.check_rounded, size: 18),
+            label: const Text('Evet, bağla'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return result ?? false;
   }
 
   /// Veli tarafından öğretmenle birebir yazışma ekranını açar.

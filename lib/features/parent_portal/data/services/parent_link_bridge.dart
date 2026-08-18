@@ -36,6 +36,27 @@ class BridgeLinkResult {
       BridgeLinkResult(success: false, message: message);
 }
 
+/// Bağlantı kurulmadan önce veliye gösterilen özet.
+///
+/// Veli "doğru çocuğa mı bağlanıyorum?" sorusunu bu ekranda yanıtlar.
+class BridgeLinkPreview {
+  final String studentName;
+  final String className;
+  final String schoolName;
+  final int studentNumber;
+
+  const BridgeLinkPreview({
+    required this.studentName,
+    required this.className,
+    required this.schoolName,
+    required this.studentNumber,
+  });
+
+  /// "Cumhuriyet Ortaokulu · 7-B" biçiminde tek satırlık konum bilgisi.
+  String get locationLine =>
+      [schoolName, className].where((p) => p.isNotEmpty).join(' · ');
+}
+
 /// Öğretmen ↔ veli token köprüsü.
 ///
 /// Projenin kopuk halkasını kapatan servis. İki yönü vardır:
@@ -85,6 +106,7 @@ class ParentLinkBridge {
     required String parentUid,
     required String parentName,
     required String relation,
+    Future<bool> Function(BridgeLinkPreview preview)? confirm,
   }) async {
     final cleanCode = inputCode.replaceAll(' ', '').toUpperCase().trim();
     final cleanNumber = inputStudentNumber.replaceAll(' ', '').trim();
@@ -133,6 +155,30 @@ class ParentLinkBridge {
         return BridgeLinkResult.failure(
           'Öğrenci okul numarası eşleşmedi! Güvenlik nedeniyle bağlantı kurulamadı.',
         );
+      }
+
+      // Bağlanmadan ÖNCE veliye "kime bağlanıyorsun?" diye sor.
+      //
+      // Veliye okul/sınıf SEÇTİRİLMEZ: kod zaten tek bir öğrenciye aittir ve
+      // okul, sınıf, öğrenci bilgisini kendi taşır. Seçim yaptırmak hem
+      // gereksiz sürtünme yaratır (55 bin okul arasında arama) hem de
+      // seçimle kodun çelişmesi gibi çözülmesi gereken yeni bir durum doğurur.
+      //
+      // Ama veli neye bağlandığını ONAYLAMALIDIR: yanlış kod girildiğinde
+      // (örneğin öğretmen iki öğrenciye ait kodu karıştırdığında) bağ
+      // kurulmadan fark edilsin.
+      if (confirm != null) {
+        final accepted = await confirm(
+          BridgeLinkPreview(
+            studentName: token.studentName ?? '',
+            className: token.className ?? '',
+            schoolName: token.schoolName ?? '',
+            studentNumber: token.studentNumber,
+          ),
+        );
+        if (!accepted) {
+          return BridgeLinkResult.failure('Bağlantı iptal edildi.');
+        }
       }
 
       final committed = await _cloud.commitParentLink(

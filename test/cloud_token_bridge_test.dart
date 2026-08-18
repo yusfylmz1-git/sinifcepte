@@ -258,7 +258,103 @@ void main() {
     });
   });
 
-  group('3. Token İptali', () {
+  group('3. Bağlantı Onayı (veli doğru çocuğa mı bağlanıyor?)', () {
+    late FakeCloudTokenRepository fake;
+    late ParentLinkBridge bridge;
+    final codeHash = ParentTokenModel.generateSha256('SC-7B-9402');
+
+    setUp(() {
+      fake = FakeCloudTokenRepository();
+      bridge = ParentLinkBridge(cloudRepo: fake);
+      fake.tokens[codeHash] = buildToken();
+    });
+
+    Future<BridgeLinkResult> attempt({
+      Future<bool> Function(BridgeLinkPreview)? confirm,
+    }) {
+      return bridge.verifyAndLink(
+        inputCode: 'SC-7B-9402',
+        inputStudentNumber: '112',
+        parentUid: 'parentAyse',
+        parentName: 'Ayşe Yılmaz',
+        relation: 'Anne',
+        confirm: confirm,
+      );
+    }
+
+    test('Onay isteyen veliye öğrenci bilgisi gösterilir', () async {
+      BridgeLinkPreview? shown;
+
+      await attempt(confirm: (p) async {
+        shown = p;
+        return true;
+      });
+
+      expect(shown, isNotNull);
+      expect(shown!.studentName, 'Ali Yılmaz');
+      expect(shown!.studentNumber, 112);
+      expect(shown!.className, '7-B');
+      expect(shown!.schoolName, 'Cumhuriyet Ortaokulu');
+    });
+
+    test('Okul ve sınıf tek satırda birleştirilir', () async {
+      BridgeLinkPreview? shown;
+      await attempt(confirm: (p) async {
+        shown = p;
+        return true;
+      });
+
+      expect(shown!.locationLine, 'Cumhuriyet Ortaokulu · 7-B');
+    });
+
+    test('KRİTİK: Veli reddederse bağ KURULMAZ', () async {
+      final result = await attempt(confirm: (_) async => false);
+
+      expect(result.success, isFalse);
+      expect(result.message, contains('iptal'));
+      // En önemlisi: buluta hiçbir şey yazılmamalı.
+      expect(fake.committedLinks, isEmpty);
+    });
+
+    test('Veli onaylarsa bağ kurulur', () async {
+      final result = await attempt(confirm: (_) async => true);
+
+      expect(result.success, isTrue);
+      expect(fake.committedLinks, contains('parentAyse_stu_teacherAhmet_42'));
+    });
+
+    test('Onay geri çağrısı verilmezse akış eskisi gibi çalışır', () async {
+      // Geriye uyumluluk: onay isteğe bağlıdır.
+      final result = await attempt();
+
+      expect(result.success, isTrue);
+      expect(fake.committedLinks, isNotEmpty);
+    });
+
+    test('Onay YALNIZCA doğrulama geçtikten sonra sorulur', () async {
+      // Yanlış okul numarasıyla onay ekranı hiç açılmamalı: veli
+      // olmayan bir çocuğun adını görmemelidir.
+      var asked = false;
+
+      final result = await bridge.verifyAndLink(
+        inputCode: 'SC-7B-9402',
+        inputStudentNumber: '999', // yanlış
+        parentUid: 'parentAyse',
+        parentName: 'Ayşe',
+        relation: 'Anne',
+        confirm: (_) async {
+          asked = true;
+          return true;
+        },
+      );
+
+      expect(result.success, isFalse);
+      expect(asked, isFalse,
+          reason: 'ikinci faktör geçilmeden öğrenci adı sızdırılmamalı');
+    });
+  });
+
+  group('4. Token İptali', () {
     test('İptal bulut deposuna iletilir', () async {
       final fake = FakeCloudTokenRepository();
       final bridge = ParentLinkBridge(cloudRepo: fake);
@@ -269,7 +365,7 @@ void main() {
     });
   });
 
-  group('4. Güvenlik: düz kod buluta çıkmaz', () {
+  group('5. Güvenlik: düz kod buluta çıkmaz', () {
     test('CloudTokenLookup düz kod alanı içermez', () {
       final token = buildToken();
 
