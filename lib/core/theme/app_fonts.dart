@@ -17,10 +17,22 @@ class AppFonts {
   AppFonts._();
 
   /// Ana arayüz fontu.
-  static const String display = 'Outfit';
+  ///
+  /// `null` = sistem fontu. Gömülü Outfit **variable font** idi ve Flutter
+  /// variable font'larda her farklı `fontWeight` için çalışma zamanında
+  /// ağır bir dönüşüm yapıyor. Çok sayıda farklı kalınlık kullanan
+  /// ekranlarda (veli bağlantı kartı gibi) bu, çizimi kilitleyecek kadar
+  /// yavaşlatıyordu.
+  ///
+  /// Sistem fontu her cihazda hazırdır, sıfır maliyetlidir ve Türkçe
+  /// karakterleri sorunsuz gösterir. Statik ağırlıklı Outfit dosyaları
+  /// temin edilirse buraya geri dönülebilir.
+  static const String? display = null;
 
-  /// Kod/numara gösterimi için tek aralıklı font (referans kodları).
-  static const String mono = 'FiraCode';
+  /// Kod/numara gösterimi için tek aralıklı font.
+  ///
+  /// Aynı gerekçeyle sistem monospace fontu kullanılıyor.
+  static const String mono = 'monospace';
 
   /// [GoogleFonts.outfit] yerine kullanılır — aynı imza, sıfır ağ isteği.
   static TextStyle outfit({
