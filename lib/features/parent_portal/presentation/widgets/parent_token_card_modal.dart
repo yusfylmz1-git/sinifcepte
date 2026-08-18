@@ -363,17 +363,21 @@ Sayın Velimiz,
     final tokenAsync = ref.watch(studentActiveTokenProvider(widget.student.id ?? 0));
     final linkedParentsAsync = ref.watch(studentLinkedParentsProvider(widget.student.id ?? 0));
 
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.90,
-      ),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0F172A) : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+    // Sabit yükseklik: `isScrollControlled: true` ile açılan bir sayfada
+    // `MainAxisSize.min` + `Flexible` birleşimi, içeriğin yüksekliği
+    // asenkron geldiği için sıfır yükseklik üretebiliyordu. Modal açılıyor
+    // ama boş görünüyordu ("açılıyormuş gibi yapıyor ama olmuyor").
+    //
+    // Ölçüyü ekrana oranlamak hem küçük hem büyük cihazlarda çalışır.
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.85,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0F172A) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          children: [
           // Üst Tutamaç & Başlık
           Container(
             padding: const EdgeInsets.fromLTRB(20, 12, 16, 12),
@@ -461,7 +465,8 @@ Sayın Velimiz,
               ),
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
