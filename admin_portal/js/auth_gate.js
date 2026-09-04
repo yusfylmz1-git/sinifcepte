@@ -153,6 +153,18 @@ window.SinifCepteAdminAuth = {
     const sonuc = await cagir({ params });
     return sonuc.data;
   },
+
+  /**
+   * ÖSYM takvimini çeker ve mevcut veriyle karşılaştırır.
+   *
+   * YAYINLAMAZ — yalnızca farkları döndürür. Yayın ayrı bir çağrı ve
+   * yöneticinin onayını gerektirir.
+   */
+  async fetchOsymTakvim(mevcut) {
+    const cagir = httpsCallable(functions, 'fetchOsymTakvim');
+    const sonuc = await cagir({ mevcut });
+    return sonuc.data;
+  },
 };
 
 onAuthStateChanged(auth, async (user) => {

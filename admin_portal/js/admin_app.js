@@ -1160,7 +1160,10 @@ class AdminApp {
         return `
           <tr>
             <td style="font-weight: 700; color: var(--text-muted); width: 40px;">${idx + 1}</td>
-            <td>${instBadge}</td>
+            <td>
+              ${instBadge}
+              ${this.kaynakBaglantisi(exam.institution)}
+            </td>
             <td>
               <div style="font-weight: 700; color: var(--text-main); font-size: 13.5px;">${exam.title}</div>
               ${exam.description ? `<div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">${exam.description}</div>` : ''}
@@ -1351,6 +1354,218 @@ class AdminApp {
     }
   }
 
+  /**
+   * ÖSYM takvimini çeker ve farkları gösterir.
+   *
+   * YAYINLAMAZ. Sunucu sayfayı okuyup mevcut veriyle karşılaştırıyor;
+   * yönetici ne değiştiğini görüp onaylıyor.
+   *
+   * Sebep: sayfa yapısı ÖSYM'nin kontrolünde. Bir gün değişirse
+   * ayrıştırma bozulur ve yanlış tarih 30.000 öğretmene gider.
+   */
+  async osymdenCek() {
+    const dugme = document.querySelector('[data-fetch-osym]');
+    if (dugme) {
+      dugme.disabled = true;
+      dugme.textContent = '⏳ ÖSYM okunuyor…';
+    }
+
+    try {
+      const mevcut = this.examsManager.getAllExams();
+      const sonuc = await window.SinifCepteAdminAuth.fetchOsymTakvim(mevcut);
+      this._osymSonuc = sonuc;
+      this.osymFarkGoster(sonuc);
+    } catch (e) {
+      this.showToast(this.yayinHatasi(e), 'error');
+      console.error('ÖSYM çekme hatası:', e);
+    } finally {
+      if (dugme) {
+        dugme.disabled = false;
+        dugme.textContent = "🔄 ÖSYM'den Güncelle";
+      }
+    }
+  }
+
+  /** Fark ekranını doldurur ve açar. */
+  osymFarkGoster(sonuc) {
+    const govde = document.getElementById('osym-diff-body');
+    const uygulaBtn = document.getElementById('osym-apply-btn');
+    if (!govde) return;
+
+    const yeni = sonuc.yeni || [];
+    const degisen = sonuc.degisen || [];
+    const tarihYaz = (iso) => {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      return d.toLocaleDateString('tr-TR', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      });
+    };
+
+    let html = `
+      <p style="margin: 0 0 16px; font-size: 13.5px; line-height: 1.6;">
+        ÖSYM takviminde <strong>${sonuc.toplam}</strong> sınav bulundu.
+        ${sonuc.atlanan > 0 ? `<span style="color: var(--text-secondary);">(${sonuc.atlanan} satır tarihsiz olduğu için atlandı)</span>` : ''}
+      </p>`;
+
+    if (degisen.length === 0 && yeni.length === 0) {
+      html += `
+        <div style="padding: 20px; text-align: center; background: rgba(16,185,129,0.08);
+                    border-radius: 12px; border: 1px solid rgba(16,185,129,0.3);">
+          <div style="font-size: 30px;">✅</div>
+          <p style="margin: 8px 0 0; font-weight: 700;">Takviminiz güncel</p>
+          <p style="margin: 4px 0 0; font-size: 12.5px; color: var(--text-secondary);">
+            ${sonuc.ayniSayisi} sınav zaten aynı tarihte kayıtlı.
+          </p>
+        </div>`;
+      if (uygulaBtn) uygulaBtn.style.display = 'none';
+    } else {
+      if (uygulaBtn) {
+        uygulaBtn.style.display = '';
+        uygulaBtn.textContent =
+          `${degisen.length + yeni.length} Değişikliği Uygula`;
+      }
+
+      if (degisen.length > 0) {
+        html += `<h4 style="margin: 18px 0 8px; font-size: 14px;">
+                   📅 Tarihi değişen (${degisen.length})</h4>`;
+        for (const d of degisen) {
+          html += `
+            <div style="padding: 11px 13px; margin-bottom: 7px; border-radius: 10px;
+                        background: rgba(245,158,11,0.09);
+                        border: 1px solid rgba(245,158,11,0.3);">
+              <div style="font-weight: 600; font-size: 13px; margin-bottom: 3px;">
+                ${this.kacisliMetin(d.yeni.title)}
+              </div>
+              <div style="font-size: 12.5px;">
+                <span style="text-decoration: line-through; color: var(--text-secondary);">
+                  ${tarihYaz(d.eski.examDate)}
+                </span>
+                <span style="margin: 0 6px;">→</span>
+                <strong>${tarihYaz(d.yeni.examDate)}</strong>
+              </div>
+            </div>`;
+        }
+      }
+
+      if (yeni.length > 0) {
+        html += `<h4 style="margin: 18px 0 8px; font-size: 14px;">
+                   ➕ Yeni sınav (${yeni.length})</h4>
+                 <div style="max-height: 220px; overflow-y: auto;">`;
+        for (const y of yeni) {
+          html += `
+            <div style="padding: 9px 13px; margin-bottom: 6px; border-radius: 10px;
+                        background: rgba(99,102,241,0.07);
+                        border: 1px solid rgba(99,102,241,0.25);">
+              <div style="font-size: 12.5px; font-weight: 600;">
+                ${this.kacisliMetin(y.title)}
+              </div>
+              <div style="font-size: 12px; color: var(--text-secondary);">
+                ${tarihYaz(y.examDate)}
+              </div>
+            </div>`;
+        }
+        html += '</div>';
+      }
+
+      html += `
+        <p style="margin: 16px 0 0; font-size: 12px; color: var(--text-secondary);
+                  line-height: 1.5;">
+          Uygulamak yalnızca paneli günceller. Öğretmenlere ulaşması için
+          ardından <strong>"Mobil Uygulamaya Yayınla"</strong> demeniz gerekir.
+        </p>`;
+    }
+
+    html += `
+      <p style="margin: 14px 0 0; font-size: 11.5px; color: var(--text-secondary);">
+        Kaynak: <a href="${sonuc.kaynak}" target="_blank" rel="noopener">${sonuc.kaynak}</a>
+      </p>`;
+
+    govde.innerHTML = html;
+    this.openModal('osym-diff-modal');
+  }
+
+  /** Çekilen değişiklikleri panele işler. */
+  osymFarkUygula() {
+    const sonuc = this._osymSonuc;
+    if (!sonuc) return;
+
+    let sayac = 0;
+
+    // Tarihi değişenler güncellenir.
+    for (const d of sonuc.degisen || []) {
+      const mevcut = this.examsManager
+        .getAllExams()
+        .find((x) => x.doc_id === d.yeni.doc_id);
+      if (mevcut) {
+        this.examsManager.updateExam({ ...mevcut, ...d.yeni });
+        sayac++;
+      }
+    }
+
+    // Yeniler eklenir.
+    for (const y of sonuc.yeni || []) {
+      this.examsManager.addExam(y);
+      sayac++;
+    }
+
+    this.renderExamsTable();
+    this.updateDashboardStats();
+    this.osymFarkKapat();
+    this._osymSonuc = null;
+
+    this.showToast(
+      `${sayac} sınav güncellendi. Öğretmenlere ulaşması için ` +
+        '"Mobil Uygulamaya Yayınla" deyin.',
+      'success'
+    );
+  }
+
+  osymFarkKapat() {
+    this.closeModal('osym-diff-modal');
+  }
+
+  /**
+   * Kurumun takvim kaynağına bağlantı.
+   *
+   * ## Neden var
+   * Sınav tarihleri elle giriliyor ve yönetici her seferinde "bu sınav
+   * nerede yayımlanıyordu?" diye aramak zorunda kalıyordu. Kaynak
+   * adresi satırın yanında duruyor.
+   *
+   * ÖSYM sınavları otomatik çekiliyor ama bağlantı yine gösteriliyor:
+   * çekilen veriyi doğrulamak isteyebilir.
+   */
+  kaynakBaglantisi(kurum) {
+    const k = window.SinavKaynaklari?.bul(kurum);
+    if (!k) return '';
+
+    const isaret = k.otomatik ? '🔄' : '🔗';
+    const ipucu = `${k.ad}\n${k.aciklama}\nGüncelleme dönemi: ${k.nezaman}`;
+
+    return `
+      <a href="${k.url}" target="_blank" rel="noopener"
+         title="${this.kacisliMetin(ipucu)}"
+         style="display: block; margin-top: 4px; font-size: 10.5px;
+                color: var(--text-muted); text-decoration: none;">
+        ${isaret} kaynak ↗
+      </a>`;
+  }
+
+  /**
+   * HTML kaçışı.
+   *
+   * Sınav adı dış bir siteden geliyor; doğrudan innerHTML'e basmak
+   * script enjeksiyonuna açık olurdu.
+   */
+  kacisliMetin(x) {
+    const d = document.createElement('div');
+    d.textContent = x ?? '';
+    return d.innerHTML;
+  }
+
   /** Fonksiyon hatasını öğretmenin anlayacağı dile çevirir. */
   yayinHatasi(e) {
     switch (e?.code) {
@@ -1364,7 +1579,10 @@ class AdminApp {
       case 'functions/deadline-exceeded':
         return 'Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin.';
       case 'functions/not-found':
-        return 'Yayın işlevi bulunamadı. Önce `firebase deploy --only functions` çalıştırın.';
+        return 'İşlev bulunamadı. Önce `firebase deploy --only functions` çalıştırın.';
+      case 'functions/failed-precondition':
+        // Ayrıştırma bozuldu: kaynak sitenin yapısı değişmiş olabilir.
+        return e.message;
       default:
         return `Yayın başarısız: ${e?.message || e}`;
     }

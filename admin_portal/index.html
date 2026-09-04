@@ -399,6 +399,10 @@
                   ➕ Yeni Sınav Ekle
                 </button>
 
+                <button class="btn btn-secondary" data-fetch-osym title="ÖSYM sınav takvimini çeker ve değişiklikleri gösterir. Onaylamadan hiçbir şey yayınlanmaz." onclick="window.adminApp.osymdenCek()">
+                  🔄 ÖSYM'den Güncelle
+                </button>
+
                 <button class="btn btn-success" data-publish-exams title="Sınav takvimini mobil uygulamalara gönderir. Öğretmenler uygulamayı güncellemeden yeni tarihleri görür." onclick="window.adminApp.publishExamsToMobile()">
                   🚀 Mobil Uygulamaya Yayınla
                 </button>
@@ -1115,6 +1119,7 @@
   <script src="js/calendar_manager.js"></script>
   <script src="js/outcomes_manager.js"></script>
   <script src="js/exams_manager.js"></script>
+  <script src="js/exam_sources.js"></script>
   <script src="js/manifest_manager.js"></script>
   <script src="js/cloud_exporter.js"></script>
   <script src="js/admin_app.js"></script>
@@ -1124,6 +1129,29 @@
     Diger scriptlerden SONRA yuklenir; giris gelince window.adminApp
     hazir olsun diye.
   -->
+  <!--
+    OSYM FARK EKRANI
+    Cekilen veri DOGRUDAN uygulanmaz: yonetici ne degistigini gorup
+    onaylar. Ayristirma bozulursa yanlis tarih 30.000 ogretmene gider.
+  -->
+  <div id="osym-diff-modal" class="modal-backdrop">
+    <div class="modal-box" style="max-width: 720px;">
+      <div class="modal-header">
+        <h3>🔄 ÖSYM Takvim Karşılaştırması</h3>
+        <button class="btn btn-secondary" onclick="window.adminApp.osymFarkKapat()">&times;</button>
+      </div>
+      <div id="osym-diff-body" class="modal-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="window.adminApp.osymFarkKapat()">
+          Vazgeç
+        </button>
+        <button class="btn btn-primary" id="osym-apply-btn" onclick="window.adminApp.osymFarkUygula()">
+          Değişiklikleri Uygula
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="js/auth_gate.js"></script>
 </body>
 </html>
