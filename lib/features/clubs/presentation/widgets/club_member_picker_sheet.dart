@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_fonts.dart';
-import '../../../../core/widgets/responsive_bottom_sheet.dart';
 import '../../../../data/models/class_model.dart';
 import '../../../../data/models/student_model.dart';
 import '../../../classes/providers/class_provider.dart';
@@ -23,14 +22,40 @@ import '../../providers/club_provider.dart';
 /// `club_members` tablosundaki `UNIQUE(club_id, student_id)` kısıtı
 /// yinelenen kaydı zaten engelliyor, ama öğretmen bunu ekranda görmeli.
 class ClubMemberPickerSheet extends ConsumerStatefulWidget {
-  const ClubMemberPickerSheet({super.key, required this.clubId});
+  const ClubMemberPickerSheet({
+    super.key,
+    required this.clubId,
+    this.kaydirma,
+  });
+
+  /// DraggableScrollableSheet'in kaydirma denetleyicisi.
+  final ScrollController? kaydirma;
 
   final int clubId;
 
+  /// Sayfayi acar.
+  ///
+  /// `ResponsiveBottomSheet` degil: o yardimci icerige sinirsiz
+  /// yukseklik veriyor ve icerideki `Expanded` cokuyor (bkz.
+  /// `ClubCatalogSheet.show`).
   static Future<void> show(BuildContext context, {required int clubId}) {
-    return ResponsiveBottomSheet.show(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return showModalBottomSheet<void>(
       context: context,
-      child: ClubMemberPickerSheet(clubId: clubId),
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: isDark ? AppColors.darkCardBackground : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.85,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (_, kaydirma) =>
+            ClubMemberPickerSheet(clubId: clubId, kaydirma: kaydirma),
+      ),
     );
   }
 
@@ -61,7 +86,7 @@ class _ClubMemberPickerSheetState
       mainAxisSize: MainAxisSize.min,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -208,6 +233,7 @@ class _ClubMemberPickerSheetState
         }
 
         return ListView.builder(
+          controller: widget.kaydirma,
           padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
           itemCount: liste.length,
           itemBuilder: (context, i) {

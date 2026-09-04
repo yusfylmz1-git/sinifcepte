@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_fonts.dart';
-import '../../../../core/widgets/responsive_bottom_sheet.dart';
 import '../../data/models/club_model.dart';
 import '../../providers/club_provider.dart';
 import '../screens/clubs_hub_screen.dart' show temaIkonu, temaRengi;
@@ -19,12 +18,34 @@ import '../screens/clubs_hub_screen.dart' show temaIkonu, temaRengi;
 /// Yönetmelik MADDE 8/1 öğretmenler kurulu kararıyla farklı kulüp
 /// kurulmasına izin verir. Listenin en altındaki seçenek bunun için.
 class ClubCatalogSheet extends ConsumerStatefulWidget {
-  const ClubCatalogSheet({super.key});
+  const ClubCatalogSheet({super.key, this.kaydirma});
 
+  /// DraggableScrollableSheet'in kaydirma denetleyicisi.
+  final ScrollController? kaydirma;
+
+  /// Sayfayi acar.
+  ///
+  /// `ResponsiveBottomSheet` KULLANILMIYOR: o yardimci icerigi
+  /// `SingleChildScrollView` icine koyuyor, yani sinirsiz yukseklik
+  /// veriyor. Icerideki `Expanded` orada sifir yukseklik alir ve liste
+  /// hic cizilmez. `DraggableScrollableSheet` kendi yuksekligini bilir.
   static Future<void> show(BuildContext context) {
-    return ResponsiveBottomSheet.show(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return showModalBottomSheet<void>(
       context: context,
-      child: const ClubCatalogSheet(),
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: isDark ? AppColors.darkCardBackground : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.85,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (_, kaydirma) => ClubCatalogSheet(kaydirma: kaydirma),
+      ),
     );
   }
 
@@ -72,7 +93,7 @@ class _ClubCatalogSheetState extends ConsumerState<ClubCatalogSheet> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -157,6 +178,7 @@ class _ClubCatalogSheetState extends ConsumerState<ClubCatalogSheet> {
                       .toList();
 
               return ListView.separated(
+                controller: widget.kaydirma,
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
                 itemCount: suzulmus.length + 1,
                 separatorBuilder: (_, _) => const SizedBox(height: 8),

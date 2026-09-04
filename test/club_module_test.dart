@@ -151,6 +151,35 @@ void main() {
           reason: 'renk devralan cip etiketi: ${bozuk.join(", ")}');
     });
 
+    test('KRITIK: Expanded kullanan sayfa ResponsiveBottomSheet ile acilmiyor',
+        () {
+      // YASANDI: "Kulup Kur"a basinca sayfa BOS aciliyordu.
+      //
+      // ResponsiveBottomSheet icerigi SingleChildScrollView'a koyuyor,
+      // yani SINIRSIZ yukseklik veriyor. Icerideki `Expanded` orada
+      // sifir yukseklik alir ve liste hic cizilmez — hata sessiz,
+      // analiz de yakalamiyor.
+      //
+      // Kural: `Expanded` kullanan sayfa kendi yuksekligini bilen bir
+      // kapsayiciyla (DraggableScrollableSheet) acilmali.
+      const sayfalar = [
+        'lib/features/clubs/presentation/widgets/club_catalog_sheet.dart',
+        'lib/features/clubs/presentation/widgets/club_member_picker_sheet.dart',
+      ];
+
+      for (final d in sayfalar) {
+        final kod = File(d).readAsStringSync();
+        if (!kod.contains('Expanded(')) continue;
+        // Aciklama yorumlarinda ad gecebilir; aranan CAGRIDIR.
+        expect(kod.contains('ResponsiveBottomSheet.show'), isFalse,
+            reason: '$d hem Expanded kullaniyor hem '
+                'ResponsiveBottomSheet ile aciliyor — liste cizilmez');
+        expect(kod.contains('DraggableScrollableSheet'), isTrue,
+            reason: '$d Expanded kullaniyor; kendi yuksekligini bilen '
+                'bir kapsayiciyla acilmali');
+      }
+    });
+
     test('KRITIK: ogretim yili sabitlenmemis', () {
       // Sinif belgelerinde "2024-2025" elle yazilmisti ve her yil
       // eskiyordu. Kulup belgeleri yili AppDateFormatter'dan alir.
