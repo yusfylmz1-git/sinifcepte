@@ -5,12 +5,11 @@ import '../../../core/theme/app_colors.dart';
 import '../../academic_calendar/data/models/academic_calendar_event_model.dart';
 import '../../academic_calendar/providers/academic_calendar_provider.dart';
 import '../../academic_calendar/screens/academic_calendar_screen.dart';
-import '../../analytics/presentation/views/analytics_dashboard_view.dart';
+import '../../documents/presentation/views/other_documents_view.dart';
 import '../../attendance/presentation/views/classroom_participation_view.dart';
 import '../../attendance/providers/classroom_participation_provider.dart';
 import '../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../classes/providers/class_provider.dart';
-import '../../classes/screens/my_class_hub_screen.dart';
 import '../../documents/presentation/views/documents_hub_view.dart';
 import '../../exam_operations/data/models/exam_model.dart';
 import '../../exam_operations/presentation/views/exam_operations_menu_view.dart';
@@ -22,6 +21,8 @@ import '../../schedule/models/lesson_model.dart';
 import '../../schedule/models/schedule_settings.dart';
 import '../../schedule/providers/schedule_provider.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../providers/activity_feed_provider.dart';
+import '../../guidance/presentation/screens/guidance_hub_screen.dart';
 
 /// SınıfCepte - Ultra Modern Öğretmen Paneli & Bento Dashboard (UI-UX-MAX)
 class DashboardScreen extends ConsumerWidget {
@@ -117,18 +118,13 @@ class DashboardScreen extends ConsumerWidget {
 
                 // 2. ÖĞRETMEN HIZLI MODÜLLERİ (Bento Grid)
                 _buildTeacherBentoGrid(context, isDark),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
 
-                // 3. YAKLAŞAN SINAVLAR & GERİ SAYIM
-                _buildUpcomingExamsSection(
-                  context: context,
-                  ref: ref,
-                  isDark: isDark,
-                  upcomingExams: examState.upcomingExams,
-                ),
-                const SizedBox(height: 16),
-
-                // 4. GÜNÜN DERS PROGRAMI & AKILLI TATİL AKIŞI
+                // 3. GÜNÜN DERS PROGRAMI
+                //
+                // Sınavların ÜSTÜNE alındı: öğretmen ana sayfayı açtığında
+                // önce "bugün hangi derse gireceğim" bilmek istiyor.
+                // Sınav geri sayımı günlük değil, haftalık bir bilgi.
                 _buildTodayScheduleTimeline(
                   context: context,
                   ref: ref,
@@ -141,6 +137,19 @@ class DashboardScreen extends ConsumerWidget {
                   isWeekend: isWeekend,
                   todayCalendarEvent: todayCalendarEvent,
                 ),
+                const SizedBox(height: 12),
+
+                // 4. YAKLAŞAN SINAVLAR
+                _buildUpcomingExamsSection(
+                  context: context,
+                  ref: ref,
+                  isDark: isDark,
+                  upcomingExams: examState.upcomingExams,
+                ),
+                const SizedBox(height: 12),
+
+                // 5. AKIŞ — velilerden gelenler + yönetici duyurusu
+                _buildActivityFeed(context, ref, isDark),
                 const SizedBox(height: 95), // Floating Bottom Nav için güvenli boşluk
               ],
             ),
@@ -151,6 +160,152 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   /// 1. Kompakt Karşılama ve Tarih Alanı (Zarif Tek Satır - Yer Tasarruflu)
+  /// AKIŞ — velilerden gelenler ve yöneticiden gelen duyuru.
+  ///
+  /// Öğretmen bir mesaj geldiğini ancak sınıf sayfasına girip bakınca
+  /// öğreniyordu. Ana sayfada tek bir yerde toplanması istendi.
+  ///
+  /// Yönetici duyurusu Remote Config'den gelir: ücretsiz, kotasız ve
+  /// Cloud Functions gerektirmez. Kullanıcı kapattığında bir daha
+  /// gösterilmez.
+  Widget _buildActivityFeed(
+    BuildContext context,
+    WidgetRef ref,
+    bool isDark,
+  ) {
+    final feedAsync = ref.watch(dashboardFeedProvider);
+
+    return feedAsync.when(
+      // Yükleme ve hata durumunda ana sayfa boş yer kaplamamalı.
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (items) {
+        if (items.isEmpty) return const SizedBox.shrink();
+
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.bolt_rounded,
+                        size: 16, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Akış',
+                    style: AppFonts.outfit(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              for (var i = 0; i < items.length; i++) ...[
+                if (i > 0)
+                  Divider(
+                    height: 12,
+                    color:
+                        isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+                  ),
+                _buildFeedRow(context, ref, isDark, items[i]),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFeedRow(
+    BuildContext context,
+    WidgetRef ref,
+    bool isDark,
+    FeedItem item,
+  ) {
+    final (ikon, renk) = switch (item.kind) {
+      FeedKind.admin => (Icons.campaign_rounded, const Color(0xFF8B5CF6)),
+      FeedKind.message => (Icons.chat_bubble_rounded, AppColors.primary),
+      FeedKind.appointment =>
+        (Icons.event_available_rounded, const Color(0xFF0EA5E9)),
+      FeedKind.report => (Icons.info_rounded, const Color(0xFFF59E0B)),
+      FeedKind.specialDay =>
+        (Icons.event_available_rounded, const Color(0xFF10B981)),
+    };
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(ikon, size: 15, color: renk),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.title,
+                style: AppFonts.outfit(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (item.subtitle.trim().isNotEmpty)
+                Text(
+                  item.subtitle,
+                  style: AppFonts.outfit(
+                    fontSize: 11,
+                    color: isDark
+                        ? const Color(0xFF94A3B8)
+                        : const Color(0xFF64748B),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+            ],
+          ),
+        ),
+        // Yönetici duyurusu kapatılabilir; diğerleri kalıcıdır.
+        if (item.kind == FeedKind.admin)
+          InkWell(
+            onTap: () async {
+              await dismissAdminNotice(
+                item.id.replaceFirst('admin_', ''),
+              );
+              ref.invalidate(dashboardFeedProvider);
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(3),
+              child: Icon(
+                Icons.close_rounded,
+                size: 15,
+                color: isDark ? Colors.white38 : Colors.black26,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildModernGreetingHero({
     required BuildContext context,
     required bool isDark,
@@ -361,6 +516,10 @@ class DashboardScreen extends ConsumerWidget {
               fontWeight: FontWeight.w800,
               color: isDark ? Colors.white : const Color(0xFF0F172A),
             ),
+            // Ikisi de ogretmenin yazdigi serbest metin; uzun ders adi
+            // dar ekranda tasiyordu.
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 2),
           Text(
@@ -377,6 +536,38 @@ class DashboardScreen extends ConsumerWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () async {
+                    // Bu dugme tek dokunusla tum sinifin degerlendirmesini
+                    // veritabanina yaziyor. Onay olmadan yanlis sinifa
+                    // basilmasi geri alinamaz; hangi sinifa yazilacagi
+                    // acikca sorulmali.
+                    final onay = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: Text(
+                          'Tüm Sınıfa Tam Puan',
+                          style: AppFonts.outfit(
+                              fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                        content: Text(
+                          '$className sınıfının $lessonHour. ders '
+                          '($subjectName) değerlendirmesi 3 yıldız ve tam '
+                          'katılım olarak kaydedilecek.',
+                          style: AppFonts.outfit(fontSize: 13),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('İptal'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('Kaydet'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (onay != true) return;
+
                     final success = await ref
                         .read(currentParticipationSessionProvider.notifier)
                         .fillAndSaveLiveLesson(
@@ -469,9 +660,12 @@ class DashboardScreen extends ConsumerWidget {
         'target': const ClassroomParticipationView(),
       },
       {
-        'title': 'Evraklarım',
-        'subtitle': 'Plan & Resmî Evrak',
-        'icon': Icons.folder_shared_rounded,
+        // "Evraklarim" adi genisti: icinde YALNIZCA iki kurul tutanagi
+        // var, oysa uygulamada onlarca baska belge uretiliyor. Ad
+        // icerigi anlatsin.
+        'title': 'Kurullar',
+        'subtitle': 'Zümre & ŞÖK Tutanağı',
+        'icon': Icons.groups_rounded,
         'gradient': [const Color(0xFF0284C7), const Color(0xFF06B6D4)],
         'accent': const Color(0xFF0EA5E9),
         'target': const DocumentsHubView(),
@@ -486,19 +680,31 @@ class DashboardScreen extends ConsumerWidget {
       },
       {
         'title': 'Rehberlik',
-        'subtitle': 'Öğrenci & Veli Takibi',
+        'subtitle': 'BEP & Sınıf Rehberliği',
         'icon': Icons.psychology_rounded,
         'gradient': [const Color(0xFF7C3AED), const Color(0xFFA855F7)],
         'accent': const Color(0xFF8B5CF6),
-        'target': const MyClassHubScreen(),
+        // Once Sinifim sayfasina gidiyordu; rehberlik isleri o sayfanin
+        // altindaki belge listesine gomuluydu. Ogretmen BEP'e ulasmak
+        // icin sinif secip kategoriler arasinda aramak zorundaydi.
+        'target': const GuidanceHubScreen(),
       },
       {
-        'title': 'Analiz & Rapor',
-        'subtitle': 'Başarı Grafikleri',
-        'icon': Icons.insights_rounded,
+        // "Analiz & Rapor" bir IS degil, bir cikti turuydu: ogretmen
+        // "rapor isi yapayim" diye dusunmuyor, "sinav sonucuna
+        // bakayim" diyor. Raporlar kendi islerinin altina tasindi
+        // (soru analizi + karne gorusu -> Sinav Islemleri, katilim
+        // raporu -> Ders Ici Katilim).
+        //
+        // Kartin yeri bos kalmasin diye degil: ogretmen dosyasi,
+        // sosyal kulup, belirli gun ve haftalar gibi SINIF DISI
+        // evraklar buraya gelecek.
+        'title': 'Diğer Evraklar',
+        'subtitle': 'Öğretmen Dosyası & Planlar',
+        'icon': Icons.folder_copy_rounded,
         'gradient': [const Color(0xFFDB2777), const Color(0xFFF43F5E)],
         'accent': const Color(0xFFEC4899),
-        'target': const AnalyticsDashboardView(),
+        'target': const OtherDocumentsView(),
       },
     ];
 
@@ -715,7 +921,9 @@ class DashboardScreen extends ConsumerWidget {
     final hasExams = upcomingExams.isNotEmpty;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      // Dolgu 16 -> 12: iki bolum de "cok fazla yer kapliyor" geri
+      // bildirimi geldi. Icerik ayni, cerceve daha derli toplu.
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(18),
@@ -826,7 +1034,8 @@ class DashboardScreen extends ConsumerWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: upcomingExams.take(3).length,
-              separatorBuilder: (context, index) => const SizedBox(height: 8),
+              // Satirlar arasi bosluk 8 -> 6: liste uzadikca fark buyuyor.
+              separatorBuilder: (context, index) => const SizedBox(height: 6),
               itemBuilder: (context, idx) {
                 final exam = upcomingExams[idx];
                 return _buildUpcomingExamCard(context, isDark, exam);
@@ -1123,7 +1332,7 @@ class DashboardScreen extends ConsumerWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(18),
@@ -1150,15 +1359,17 @@ class DashboardScreen extends ConsumerWidget {
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(7),
+                      // Baslik ikonu kuculdu: "gunun akisi cok genis yer
+                      // kapliyor" geri bildirimi. Icerik ayni kaldi.
+                      padding: const EdgeInsets.all(5),
                       decoration: BoxDecoration(
                         color: timelineAccent.withValues(alpha: isDark ? 0.25 : 0.15),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
                         timelineIcon,
                         color: timelineAccent,
-                        size: 18,
+                        size: 15,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -1166,7 +1377,7 @@ class DashboardScreen extends ConsumerWidget {
                       child: Text(
                         timelineTitle,
                         style: AppFonts.outfit(
-                          fontSize: 14.5,
+                          fontSize: 13.5,
                           fontWeight: FontWeight.w700,
                           color: isDark ? Colors.white : const Color(0xFF0F172A),
                         ),
@@ -1203,7 +1414,7 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
 
           // İçerik: Tatil mi, Hafta Sonu mu, Boş Gün mü yoksa Ders Listesi mi?
           if (isSummerHoliday)
@@ -1214,24 +1425,36 @@ class DashboardScreen extends ConsumerWidget {
             _buildWeekendCard(context, isDark, todayName)
           else if (todayLessons.isEmpty)
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              alignment: Alignment.center,
-              child: Column(
+              // Bos durum sadelestirildi: 32px ikon + uc satir yerine
+              // tek satir. Ders yokken bu kartin ekranin ucte birini
+              // kaplamasi gereksizdi.
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
                 children: [
-                  Icon(Icons.event_available_rounded, size: 32, color: Colors.grey.shade400),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Bugün için kayıtlı dersiniz bulunmuyor.',
-                    style: AppFonts.outfit(
-                      fontSize: 12.5,
-                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                  Icon(Icons.event_available_rounded,
+                      size: 16, color: Colors.grey.shade400),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Bugün için kayıtlı dersiniz yok.',
+                      style: AppFonts.outfit(
+                        fontSize: 12,
+                        color: isDark
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF64748B),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  TextButton.icon(
+                  TextButton(
                     onPressed: () => onNavigateTab?.call(3),
-                    icon: const Icon(Icons.add_rounded, size: 16),
-                    label: const Text('Ders Programına Git & Ekle', style: TextStyle(fontSize: 12)),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: const Size(0, 30),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: const Text('Ekle', style: TextStyle(fontSize: 12)),
                   ),
                 ],
               ),
@@ -1623,7 +1846,7 @@ class DashboardScreen extends ConsumerWidget {
         onTap: () => _openOutcomeForLesson(context, ref, lesson),
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
             color: isActive
                 ? (isDark

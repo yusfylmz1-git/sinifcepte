@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/cloud/firestore_client.dart';
@@ -26,6 +25,13 @@ class CloudAnnouncement {
   /// doldurulur.
   final bool readByMe;
 
+  /// Duyurunun işaret ettiği tarih (sınav günü, etkinlik tarihi).
+  ///
+  /// Sınav takvimi için ayrı bir koleksiyon açılmadı: öğretmen sınavı
+  /// duyuru olarak yayımlar, yalnızca görünümü farklıdır. Böylece ek
+  /// yazma/okuma maliyeti doğmaz. Tarihi olmayan duyurularda null.
+  final DateTime? eventAt;
+
   const CloudAnnouncement({
     required this.id,
     required this.title,
@@ -36,10 +42,34 @@ class CloudAnnouncement {
     required this.updatedAt,
     this.readCount = 0,
     this.readByMe = false,
+    this.eventAt,
   });
 
   bool get isUrgent => priority == 'urgent';
   bool get isEvent => priority == 'event';
+
+  /// Sınav duyurusu mu?
+  bool get isExam => priority == 'exam';
+
+  /// Takvimde yer alır mı? (tarihi olan her duyuru)
+  bool get hasDate => eventAt != null;
+
+  /// Tarihi henüz gelmemiş mi?
+  bool get isUpcoming {
+    final at = eventAt;
+    if (at == null) return false;
+    return at.isAfter(DateTime.now());
+  }
+
+  /// Sınava/etkinliğe kalan gün (geçmişse negatif, tarihsizse null).
+  int? get daysUntil {
+    final at = eventAt;
+    if (at == null) return null;
+    final now = DateTime.now();
+    final target = DateTime(at.year, at.month, at.day);
+    final today = DateTime(now.year, now.month, now.day);
+    return target.difference(today).inDays;
+  }
 
   CloudAnnouncement copyWith({bool? readByMe, int? readCount}) {
     return CloudAnnouncement(
@@ -52,6 +82,7 @@ class CloudAnnouncement {
       updatedAt: updatedAt,
       readCount: readCount ?? this.readCount,
       readByMe: readByMe ?? this.readByMe,
+      eventAt: eventAt,
     );
   }
 
@@ -59,6 +90,8 @@ class CloudAnnouncement {
     switch (priority) {
       case 'urgent':
         return Icons.notification_important_rounded;
+      case 'exam':
+        return Icons.assignment_rounded;
       case 'event':
         return Icons.event_available_rounded;
       case 'normal':
@@ -71,6 +104,8 @@ class CloudAnnouncement {
     switch (priority) {
       case 'urgent':
         return const Color(0xFFEF4444);
+      case 'exam':
+        return const Color(0xFF0EA5E9);
       case 'event':
         return const Color(0xFF8B5CF6);
       case 'normal':
@@ -91,6 +126,14 @@ class CloudMessage {
   final String body;
   final DateTime createdAt;
 
+  /// Yazismanin karsi tarafindaki ogretmen.
+  ///
+  /// Bu alan yoktu: mesajlar yalnizca `studentCloudId` ile filtrelendigi
+  /// icin velinin TUM ogretmenlerle yazismasi tek sohbette birikiyordu.
+  /// Veli matematik ogretmenine yazdigini beden egitimi ogretmeni de
+  /// goruyordu. Sohbetler bu alanla ayrisir.
+  final String teacherUid;
+
   const CloudMessage({
     required this.id,
     required this.studentCloudId,
@@ -98,6 +141,7 @@ class CloudMessage {
     required this.authorRole,
     required this.authorName,
     this.authorUid = '',
+    this.teacherUid = '',
     required this.body,
     required this.createdAt,
   });
@@ -267,16 +311,13 @@ class CloudAppointment {
 /// 2. **Etkin**: branş öğretmeni [joinCode] ile katılır, kayıt kendi
 ///    UID'siyle yeniden yazılır ve mesajlaşma açılır.
 class CloudStaffMember {
-  /// Etkin üyelerde Firebase UID; beklemede olanlarda `pending_{kod}`.
+  /// Öğretmenin Firebase UID'si.
   final String teacherUid;
   final String teacherName;
   final String branch;
   final bool isHomeroom;
   final String meetingDay;
   final String meetingTime;
-
-  /// Branş öğretmeninin kadroya katılmak için gireceği kod.
-  final String joinCode;
 
   const CloudStaffMember({
     required this.teacherUid,
@@ -285,13 +326,7 @@ class CloudStaffMember {
     this.isHomeroom = false,
     this.meetingDay = '',
     this.meetingTime = '',
-    this.joinCode = '',
   });
-
-  /// Öğretmen henüz katılım kodunu girmedi; mesajlaşma kapalı.
-  static const String pendingPrefix = 'pending_';
-
-  bool get isPending => teacherUid.startsWith(pendingPrefix);
 
   /// Veliye gösterilecek etiket: "Selin Demir — Fizik"
   String get displayTitle =>
@@ -403,15 +438,36 @@ class CloudCommunicationRepository {
     required String teacherName,
     String schoolId = '',
     String schoolName = '',
+    String meetingDay = '',
+    String meetingTime = '',
   }) {
-    return _client.setDoc('$_classRooms/$classCloudId', {
-      'classCloudId': classCloudId,
-      'className': className,
-      'teacherUid': teacherUid,
-      'teacherName': teacherName,
-      'schoolId': schoolId,
-      'schoolName': schoolName,
-      'updatedAt': DateTime.now().toIso8601String(),
+    // Sınıf öğretmeni kendi kadrosuna da yazılır.
+    //
+    // Önceden yazılmıyordu: `isHomeroom` hiçbir yerde true olmadığı için
+    // sınıf öğretmeni kadroda hiç görünmüyordu. Veli onunla yazışmak
+    // istediğinde "öğretmen bağlı değil" uyarısı alıyordu — oysa sınıfın
+    // sahibi zaten oydu.
+    //
+    // Tek batch: oda var olup kadro satırı olmazsa hata yine sürerdi.
+    return _client.commitBatch(<String, Map<String, dynamic>?>{
+      '$_classRooms/$classCloudId': {
+        'classCloudId': classCloudId,
+        'className': className,
+        'teacherUid': teacherUid,
+        'teacherName': teacherName,
+        'schoolId': schoolId,
+        'schoolName': schoolName,
+        'updatedAt': DateTime.now().toIso8601String(),
+      },
+      '$_classRooms/$classCloudId/staff/$teacherUid': {
+        'teacherUid': teacherUid,
+        'teacherName': teacherName,
+        'branch': 'Sınıf Öğretmeni',
+        'isHomeroom': true,
+        'meetingDay': meetingDay,
+        'meetingTime': meetingTime,
+        'updatedAt': DateTime.now().toIso8601String(),
+      },
     });
   }
 
@@ -426,6 +482,7 @@ class CloudCommunicationRepository {
     required String authorName,
     required String authorUid,
     String priority = 'normal',
+    DateTime? eventAt,
   }) async {
     final now = DateTime.now().toIso8601String();
     return _client.setDoc(
@@ -438,6 +495,8 @@ class CloudCommunicationRepository {
         'authorUid': authorUid,
         'createdAt': now,
         'updatedAt': now,
+        // Sınav/etkinlik tarihi; tarihsiz duyurularda yazılmaz.
+        if (eventAt != null) 'eventAt': eventAt.toIso8601String(),
       },
     );
   }
@@ -515,9 +574,15 @@ class CloudCommunicationRepository {
   ///
   /// Veli yalnızca kendi çocuğuna ait mesajları görür; kural motoru bunu
   /// `parentHasStudent` ile zorunlu kılar, sorgu da aynı filtreyi uygular.
+  /// Bir ogrenci-ogretmen ikilisinin yazismasini getirir.
+  ///
+  /// [teacherUid] verilmezse ogrencinin tum yazismalari doner (ogretmen
+  /// tarafinda toplu gorunum icin). Veli sohbetinde MUTLAKA verilmelidir:
+  /// aksi halde velinin diger ogretmenlerle yazismasi da ekrana gelir.
   Future<List<CloudMessage>> fetchMessages({
     required String classCloudId,
     required String studentCloudId,
+    String? teacherUid,
     DateTime? since,
     int limit = 50,
   }) async {
@@ -531,6 +596,12 @@ class CloudCommunicationRepository {
           .doc(classCloudId)
           .collection('messages')
           .where('studentCloudId', isEqualTo: studentCloudId);
+
+      // Sunucu tarafinda filtrelenir: ek okuma maliyeti yoktur, aksine
+      // her sohbette daha az dokuman cekilir.
+      if (teacherUid != null && teacherUid.isNotEmpty) {
+        query = query.where('teacherUid', isEqualTo: teacherUid);
+      }
 
       if (since != null) {
         query = query.where('createdAt', isGreaterThan: since.toIso8601String());
@@ -550,6 +621,7 @@ class CloudCommunicationRepository {
           authorRole: data['authorRole'] as String? ?? 'teacher',
           authorName: data['authorName'] as String? ?? '',
           authorUid: data['authorUid'] as String? ?? '',
+          teacherUid: data['teacherUid'] as String? ?? '',
           body: data['body'] as String? ?? '',
           createdAt:
               DateTime.tryParse(data['createdAt'] as String? ?? '') ??
@@ -574,6 +646,7 @@ class CloudCommunicationRepository {
     required String authorRole,
     required String authorName,
     required String authorUid,
+    required String teacherUid,
     required String body,
   }) {
     return _client.setDoc(
@@ -584,6 +657,9 @@ class CloudCommunicationRepository {
         'authorRole': authorRole,
         'authorName': authorName,
         'authorUid': authorUid,
+        // Yazismanin hangi ogretmenle oldugunu belirler; olmadan tum
+        // ogretmenlerin yazismalari tek sohbette birikiyordu.
+        'teacherUid': teacherUid,
         'body': body,
         'createdAt': DateTime.now().toIso8601String(),
       },
@@ -617,35 +693,12 @@ class CloudCommunicationRepository {
           isHomeroom: data['isHomeroom'] as bool? ?? false,
           meetingDay: data['meetingDay'] as String? ?? '',
           meetingTime: data['meetingTime'] as String? ?? '',
-          joinCode: data['joinCode'] as String? ?? '',
         );
       }).toList();
     } catch (e, stackTrace) {
       debugPrint('fetchStaff hatası: $e\n$stackTrace');
       return const [];
     }
-  }
-
-  /// Sınıf öğretmeni kadroya branş öğretmeni ekler/günceller.
-  ///
-  /// Kadro üyeliği mesajlaşma yetkisini belirler: yalnızca burada kayıtlı
-  /// öğretmenler velilerle yazışabilir.
-  Future<bool> upsertStaff({
-    required String classCloudId,
-    required CloudStaffMember member,
-  }) {
-    return _client.setDoc(
-      '$_classRooms/$classCloudId/staff/${member.teacherUid}',
-      {
-        'teacherUid': member.teacherUid,
-        'teacherName': member.teacherName,
-        'branch': member.branch,
-        'isHomeroom': member.isHomeroom,
-        'meetingDay': member.meetingDay,
-        'meetingTime': member.meetingTime,
-        'updatedAt': DateTime.now().toIso8601String(),
-      },
-    );
   }
 
   /// Kadrodan öğretmen çıkarır (mesajlaşma yetkisi de kalkar).
@@ -663,8 +716,10 @@ class CloudCommunicationRepository {
   /// beklemeye ve karşı tarafın işlem yapmasına gerek kalmaz —
   /// eklendiği anda mesajlaşma açılır.
   ///
-  /// [addPendingStaff] yalnızca dizinde bulunmayan öğretmenler için
-  /// (henüz uygulamayı açmamış veya farklı okul seçmiş) yedek yoldur.
+  /// Kadroya eklemenin tek yolu budur. Eskiden katılım kodlu bir yedek
+  /// yol da vardı; kaldırıldı. Uygulamaya hiç girmemiş öğretmen zaten
+  /// mesajlaşamadığı için kadroda görünmesi veliye yanlış bir söz
+  /// veriyordu: veli mesaj atıyor, karşılık gelmiyordu.
   Future<bool> addStaffDirectly({
     required String classCloudId,
     required String teacherUid,
@@ -685,97 +740,6 @@ class CloudCommunicationRepository {
     });
   }
 
-  /// Sınıf öğretmeni kadroya "beklemede" bir satır ekler.
-  ///
-  /// Branş öğretmeninin UID'si henüz bilinmediği için doküman kimliği
-  /// geçici olarak `pending_{kod}` olur. Öğretmen [joinStaffByCode] ile
-  /// katıldığında kayıt kendi UID'siyle yeniden yazılır ve bu satır silinir.
-  ///
-  /// Bu aşamada veli öğretmeni listede görür (kimin dersine girdiğini bilir)
-  /// ama mesajlaşma açılmaz — kural motoru `pending_` kimliğine yetki vermez.
-  Future<bool> addPendingStaff({
-    required String classCloudId,
-    required String teacherName,
-    required String branch,
-    String meetingDay = '',
-    String meetingTime = '',
-    bool isHomeroom = false,
-  }) async {
-    final code = _generateJoinCode();
-    final pendingId = '${CloudStaffMember.pendingPrefix}$code';
-
-    return _client.setDoc('$_classRooms/$classCloudId/staff/$pendingId', {
-      'teacherName': teacherName,
-      'branch': branch,
-      'isHomeroom': isHomeroom,
-      'meetingDay': meetingDay,
-      'meetingTime': meetingTime,
-      'joinCode': code,
-      'createdAt': DateTime.now().toIso8601String(),
-    });
-  }
-
-  /// Branş öğretmeni katılım kodunu girerek kadroya dahil olur.
-  ///
-  /// Beklemedeki satırı kendi UID'siyle yeniden yazar ve geçici kaydı siler.
-  /// İkisi tek batch'te yapılır; yarım kalırsa öğretmen ne eski ne yeni
-  /// kimlikle görünürdü.
-  ///
-  /// Kodu bilmek kadroya katılmaya yeter — kod sınıf öğretmeni tarafından
-  /// doğrudan ilgili kişiye iletilir.
-  Future<bool> joinStaffByCode({
-    required String classCloudId,
-    required String joinCode,
-    required String teacherUid,
-    required String teacherName,
-  }) async {
-    await _client.ensureConfigured();
-    final db = _client.db;
-    if (db == null) return false;
-
-    try {
-      final code = joinCode.trim().toUpperCase();
-      final pendingId = '${CloudStaffMember.pendingPrefix}$code';
-      final pendingPath = '$_classRooms/$classCloudId/staff/$pendingId';
-
-      final pending = await _client.getDoc(pendingPath);
-      if (pending == null) return false;
-
-      // Kadro satırını öğretmenin gerçek UID'siyle yeniden yaz, geçici
-      // kaydı sil. Tek batch: yarım kalırsa öğretmen kadroda görünmezdi.
-      //
-      // `joinedVia` kural motoru için zorunludur: yeni kaydın gerçekten bir
-      // davete dayandığını kanıtlar. Bu alan olmadan giriş yapmış herkes
-      // kendini kadroya ekleyip mesajlaşma yetkisi kazanabilirdi.
-      return await _client.commitBatch({
-        '$_classRooms/$classCloudId/staff/$teacherUid': {
-          'teacherUid': teacherUid,
-          // Öğretmenin kendi hesabındaki adı esas alınır; sınıf
-          // öğretmeninin yazdığı ad yalnızca yer tutucuydu.
-          'teacherName':
-              teacherName.isNotEmpty ? teacherName : pending['teacherName'],
-          'branch': pending['branch'] ?? '',
-          'isHomeroom': pending['isHomeroom'] ?? false,
-          'meetingDay': pending['meetingDay'] ?? '',
-          'meetingTime': pending['meetingTime'] ?? '',
-          'joinedVia': pendingId,
-          'joinedAt': DateTime.now().toIso8601String(),
-        },
-        pendingPath: null, // geçici kaydı sil
-      });
-    } catch (e, stackTrace) {
-      debugPrint('joinStaffByCode hatası: $e\n$stackTrace');
-      return false;
-    }
-  }
-
-  /// Karışması kolay karakterler (0/O, 1/I) dışlanarak 6 haneli kod üretir.
-  String _generateJoinCode() {
-    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    final rnd = Random.secure();
-    return List.generate(6, (_) => alphabet[rnd.nextInt(alphabet.length)])
-        .join();
-  }
 
   // --- Durum bildirimleri (veli → öğretmen) ---
 
@@ -793,6 +757,19 @@ class CloudCommunicationRepository {
 
   /// Randevu kayıtlarının saklama süresi.
   static const Duration appointmentRetention = Duration(days: 90);
+
+  /// Mesaj ve duyuruların saklama süresi: **bir öğretim yılı**.
+  ///
+  /// KVKK "gerektiği kadar sakla" diyor; öğretim yılı bu iş için doğal
+  /// sınır. Eylül'de başlayan yazışma ertesi Haziran'da anlamını yitirir:
+  /// öğrenci sınıf değiştirir, veli bağı kapanır.
+  ///
+  /// Süresiz saklamak hem KVKK açısından savunulamaz hem de her sınıfın
+  /// mesaj koleksiyonu yıllar içinde sınırsız büyür.
+  static const Duration messageRetention = Duration(days: 365);
+
+  /// Duyurular da aynı süre saklanır.
+  static const Duration announcementRetention = Duration(days: 365);
 
   /// Saklama süresi dolmuş durum bildirimlerini siler.
   ///
@@ -814,6 +791,26 @@ class CloudCommunicationRepository {
       subcollection: 'appointments',
       dateField: 'createdAt',
       retention: appointmentRetention,
+    );
+  }
+
+  /// Saklama süresi dolmuş mesajları siler (bir öğretim yılı).
+  Future<int> purgeExpiredMessages(String classCloudId) async {
+    return _purgeExpired(
+      classCloudId: classCloudId,
+      subcollection: 'messages',
+      dateField: 'createdAt',
+      retention: messageRetention,
+    );
+  }
+
+  /// Saklama süresi dolmuş duyuruları siler (bir öğretim yılı).
+  Future<int> purgeExpiredAnnouncements(String classCloudId) async {
+    return _purgeExpired(
+      classCloudId: classCloudId,
+      subcollection: 'announcements',
+      dateField: 'createdAt',
+      retention: announcementRetention,
     );
   }
 

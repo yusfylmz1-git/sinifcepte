@@ -51,12 +51,12 @@ void main() {
       );
 
       expect(linkResult['success'], isTrue);
-      expect(linkResult['message'], contains('Ali Yılmaz'));
+      expect(linkResult['message'], contains('Ali YILMAZ'));
 
       // 2. Bağlanan çocuk veli listesinde görünmeli
       final children = await tokenRepo.getMyConnectedChildren();
       expect(children.length, equals(1));
-      expect(children.first.studentName, equals('Ali Yılmaz'));
+      expect(children.first.studentName, equals('Ali YILMAZ'));
     });
 
     test('Teacher verification by admin grants blue badge and logs audit', () async {

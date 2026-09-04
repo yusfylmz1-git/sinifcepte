@@ -1,16 +1,41 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Yönetici mi?
+    //
+    // `adminRole` anahtarının VARLIĞI önce kontrol edilir: sıradan
+    // kullanıcının token'ında bu alan yoktur ve doğrudan karşılaştırma
+    // "Property adminRole is undefined" hatasıyla kuralı düşürür.
+    // Bu, `isAdmin()` bir `||` zincirinin başında kullanıldığında
+    // meşru erişimi de engelliyordu.
     function isAdmin() {
       return request.auth != null
+        && 'adminRole' in request.auth.token
         && (request.auth.token.adminRole == 'super'
             || request.auth.token.adminRole == 'moderator');
     }
     function isSuper() {
-      return request.auth != null && request.auth.token.adminRole == 'super';
+      return request.auth != null
+        && 'adminRole' in request.auth.token
+        && request.auth.token.adminRole == 'super';
     }
+    // Veli mi?
+    //
+    // ESKİDEN `request.auth.token.role == 'parent'` custom claim'ine
+    // bakıyordu. Custom claim yalnızca Admin SDK ile yazılabilir; bu
+    // projede Cloud Functions YOK, dolayısıyla claim hiçbir zaman
+    // yazılmıyordu. Sonuç: koşul HER ZAMAN false döndü — veli mesaj
+    // gönderemiyor, randevu isteyemiyor, durum bildirimi yapamıyordu.
+    // Cihazdaki log bunu PERMISSION_DENIED olarak gösteriyordu.
+    //
+    // Gerçek koruma zaten claim'de değil, bağ kaydında: bu fonksiyonun
+    // kullanıldığı her yerde `parentHasStudent(...)` ya da
+    // `parentUserId == request.auth.uid` koşulu birlikte aranır. Bağ
+    // kaydı, velinin O ÖĞRENCİYE bağlı olduğunu kanıtlar — claim'in
+    // veremeyeceği bir güvence. Burada yalnızca oturum açık olması
+    // yeterlidir; yetkiyi eşlik eden koşullar verir.
     function isParent() {
-      return request.auth != null && request.auth.token.role == 'parent';
+      return request.auth != null;
     }
 
     // Onaylı okul yöneticisi mi?
@@ -48,6 +73,29 @@ service cloud.firestore {
 
     // --- Token köprüsü yardımcıları (Faz 2) ---
 
+    // Velinin dayandığı referans kodu GERÇEKTEN var mı ve bu öğrenciye
+    // mi ait?
+    //
+    // GÜVENLİK AÇIĞI DÜZELTMESİ (31 Ağustos 2026):
+    // Kural yorumunda "dayandığı token hâlâ kullanılabilir olmalı"
+    // yazıyordu ama **böyle bir kontrol yoktu**. Giriş yapmış herhangi
+    // biri, referans kodu olmadan, yalnızca sınıf kimliğini tahmin
+    // ederek (`cls_{ogretmenUid}_{sayi}` — tahmin edilebilir bir desen)
+    // kendine veli bağı yazabiliyor ve **sınıf duyurularını
+    // okuyabiliyordu**. Emülatörde kanıtlandı.
+    //
+    // Artık bağ kurmak için kodun hash'i doküman olarak var olmalı ve
+    // içindeki öğrenci kimliği bağdakiyle aynı olmalı. Kodu bilmeyen
+    // kimse bağ kuramaz.
+    function tokenGecerli(codeHash, studentCloudId) {
+      return codeHash is string
+        && codeHash.size() > 0
+        && exists(/databases/$(database)/documents/parent_tokens/$(codeHash))
+        && get(/databases/$(database)/documents/parent_tokens/$(codeHash))
+             .data.studentCloudId == studentCloudId;
+    }
+
+
     // Öğretmen, kimliğinde kendi uid'si geçen kaynakların sahibidir.
     // Sahiplik denetimi doküman okumadan, yalnızca kimlik deseninden yapılır:
     // bu hem ücretsiz hem gecikmesizdir.
@@ -72,10 +120,9 @@ service cloud.firestore {
     // çıkarılamayan tek yetkidir. Yalnızca mesajlaşma yollarında kullanılır,
     // sık çağrılan duyuru/okuma yollarında değil.
     // Not: Kimlik olarak kullanıcının kendi UID'si aranır. Sınıf öğretmeni
-    // henüz UID'sini bilmediği bir öğretmeni "pending_{kod}" kimliğiyle
-    // ekleyebilir; bu kayıt hiç kimsenin UID'si olmadığı için mesajlaşma
-    // yetkisi vermez. Yetki ancak öğretmen katılım kodunu girip kayıt kendi
-    // UID'siyle yeniden yazıldığında açılır.
+    // Kadroya yalnızca sınıf öğretmeni ekleme yapar ve yalnızca okul
+    // dizininde kayıtlı (yani uygulamaya girmiş) öğretmenleri ekleyebilir;
+    // bu yüzden kadrodaki her satır gerçek bir Firebase UID'sidir.
     function isClassStaff(classCloudId) {
       return request.auth != null && exists(
         /databases/$(database)/documents/class_rooms/$(classCloudId)/staff/$(request.auth.uid)
@@ -117,17 +164,21 @@ service cloud.firestore {
     // veya not verisi ASLA. Aynı okuldaki öğretmenler birbirini görür
     // (gerçek hayatta da öyle); veliler bu listeye erişemez.
     match /school_teachers/{id} {
-      // Öğretmen rolündeki kullanıcılar okur (kadro seçimi için).
+      // Dizini yalnızca AYNI OKULDA kayıtlı öğretmenler okur.
       //
-      // Veli rolü hariç tutulur: velinin öğretmen dizinine ihtiyacı yok,
-      // dersine giren öğretmenleri sınıf kadrosundan görür.
+      // Eski kural `request.auth.token.role != 'parent'` claim'ine
+      // bakıyordu. O claim hiçbir zaman yazılmadığı için (Admin SDK
+      // gerekir, projede Cloud Functions yok) koşul herkese açıktı —
+      // veli de dizini okuyabiliyordu. Testler bunu kaçırdı çünkü
+      // veliye sahte claim veriyorlardı.
       //
-      // Not: `!isParent()` YETMEZ. Öğretmenlerde `role` claim'i hiç
-      // tanımlı olmadığı için `request.auth.token.role` erişimi kural
-      // motorunda değerlendirme hatası verir ve erişim tümden reddedilir.
-      // Bu yüzden claim'in VARLIĞI ayrıca denetlenir.
-      allow read: if request.auth != null
-        && (!('role' in request.auth.token) || request.auth.token.role != 'parent');
+      // Yeni koşul kanıta dayanır: okuyan kişinin kendi kaydı bu okulda
+      // olmalı. Öğretmen okulunu seçtiğinde bu kayıt oluşur; velinin
+      // böyle bir kaydı hiç olmaz. `get()` yerine `exists()` kullanılır
+      // ve yalnızca bu yolda çağrılır (sık değil).
+      allow read: if request.auth != null && exists(
+        /databases/$(database)/documents/school_teachers/$(resource.data.schoolId + '_' + request.auth.uid)
+      );
 
       // Herkes yalnızca KENDİ kaydını yazabilir: doküman kimliği
       // "{schoolId}_{uid}" olduğu için kimlik ve içerik birlikte denetlenir.
@@ -157,15 +208,42 @@ service cloud.firestore {
     }
 
     match /parent_links/{id} {
-      allow read: if isOwnParentLink(id);
+      // Veli kendi bağını okur; öğrencinin sahibi öğretmen de okur.
+      //
+      // Öğretmen yetkisi gerekli: mesaj kutusunda "hangi veli bağlandı"
+      // listesini buradan alır. Bu izin olmadan öğretmen kime yazacağını
+      // hiç göremiyordu — veli mesaj gönderiyor ama öğretmende hiçbir
+      // yerde görünmüyordu.
+      //
+      // `list` de açıktır (sorgu için); `ownsStudent` deseni öğretmeni
+      // yalnızca KENDİ öğrencilerinin bağlarıyla sınırlar.
+      // Sorgular `where(teacherUid == uid)` ile daraltılır; kural da
+      // aynı kısıtı arar, böylece kimse tüm bağları tarayamaz.
+      // `teacherUid` alani da kabul edilir.
+      //
+      // Ogretmen mesaj kutusu icin `where('teacherUid', isEqualTo: uid)`
+      // ile SORGU yapiyor. `ownsStudent` yalnizca dokuman kimligi
+      // desenine bakiyor ve liste sorgusunda degerlendirilemiyordu:
+      // her sorgu PERMISSION_DENIED aliyordu. Ana sayfa akisi eklenince
+      // bu hata gorunur hale geldi.
+      allow read: if isOwnParentLink(id)
+        || ownsStudent(resource.data.studentCloudId)
+        || (request.auth != null
+            && resource.data.teacherUid == request.auth.uid);
 
       // Veli bağı kendi adına kurar. Üç koşul birlikte sağlanmalıdır:
       //  1. Doküman kimliği kendi uid'siyle başlamalı,
       //  2. içindeki parentUid kendi uid'si olmalı,
       //  3. dayandığı token hâlâ kullanılabilir olmalı.
+      // Üçüncü koşul (token doğrulaması) yorumda yazılıydı ama KODDA
+      // YOKTU; bu bir güvenlik açığıydı. Bkz. `tokenGecerli`.
       allow create: if isOwnParentLink(id)
         && request.resource.data.parentUid == request.auth.uid
-        && request.resource.data.status == 'active';
+        && request.resource.data.status == 'active'
+        && tokenGecerli(
+             request.resource.data.codeHash,
+             request.resource.data.studentCloudId
+           );
 
       // Veli yalnızca bağı arşivleyebilir (bağlantıyı kendi kaldırabilir).
       allow update: if isOwnParentLink(id)
@@ -180,11 +258,31 @@ service cloud.firestore {
     match /parent_class_access/{id} {
       allow read: if isOwnParentLink(id);
 
-      allow create: if isOwnParentLink(id)
-        && request.resource.data.parentUid == request.auth.uid;
+      // Oluşturma: veli kendi bağını kurarken, öğretmen ise şube
+      // değişikliğinde yeni sınıfın erişimini yazar.
+      // Veli tarafı için bağın GERÇEKTEN kurulmuş olması şart:
+      // `parent_class_access` tek başına yazılabilseydi, sahte erişimle
+      // sınıf duyuruları okunabilirdi (emülatörde kanıtlandı).
+      allow create: if (isOwnParentLink(id)
+          && request.resource.data.parentUid == request.auth.uid
+          && exists(/databases/$(database)/documents/parent_links/$(
+               request.auth.uid + '_' + request.resource.data.studentCloudId
+             )))
+        || ownsStudent(request.resource.data.studentCloudId);
 
-      allow delete: if isOwnParentLink(id);
-      allow update: if false;
+      // Silme: veli kendi erişimini bırakabilir; öğrencinin sahibi
+      // öğretmen de kaldırabilir.
+      //
+      // Öğretmen yetkisi zorunludur: öğrenci okuldan ayrıldığında
+      // (mezuniyet, başka okula nakil, kayıt silme) ya da şube
+      // değiştirdiğinde bu kaydın kalkması gerekir. Yalnızca veli
+      // silebilseydi, ayrılmış öğrencinin velisi sınıf duyurularını
+      // görmeye devam ederdi.
+      allow delete: if isOwnParentLink(id)
+        || ownsStudent(resource.data.studentCloudId);
+
+      // Şube değişikliğinde öğretmen yeni erişimi yazar.
+      allow update: if ownsStudent(resource.data.studentCloudId);
     }
 
     // Okul yöneticiliği başvuruları. Öğretmen kendi başvurusunu görür ve
@@ -242,7 +340,29 @@ service cloud.firestore {
       // ayrı bir alt koleksiyona düşer (aşağıya bakınız).
       match /announcements/{id} {
         allow read: if ownsClassRoom(classCloudId) || parentHasClass(classCloudId);
-        allow create, update, delete: if ownsClassRoom(classCloudId);
+
+        // Duyuru yazma yetkisi KADROYA açıldı.
+        //
+        // Önceden yalnızca sınıf öğretmeni yazabiliyordu. Ama matematik
+        // öğretmeni de "yarın quiz var" ya da "sayfa 42 ödev" duyurusu
+        // yapmak istiyor; şu an bunu ancak rehber öğretmenden rica
+        // ederek yapabiliyordu.
+        //
+        // `isClassStaff` doküman okur (exists) — bu yol duyuru
+        // YAZMADA çalışır, sık çağrılan okuma yolunda değil.
+        //
+        // Yazarın kimliği doğrulanır: kadrodaki öğretmen başkasının
+        // adına duyuru yayımlayamaz.
+        allow create: if (ownsClassRoom(classCloudId)
+            || isClassStaff(classCloudId))
+          && request.resource.data.authorUid == request.auth.uid;
+
+        // Düzenleme ve silme YALNIZCA yazarına ya da sınıf öğretmenine
+        // açıktır: kadrodaki bir öğretmen başkasının duyurusunu
+        // değiştiremez.
+        allow update, delete: if ownsClassRoom(classCloudId)
+          || (isClassStaff(classCloudId)
+              && resource.data.authorUid == request.auth.uid);
 
         // Okundu bilgisi (maliyet kararı #1).
         // Eskiden duyuru dokümanı içinde readBy[] dizisiydi: 30 velinin her
@@ -295,19 +415,34 @@ service cloud.firestore {
       // burada sınıf sahipliği tek yeterli koşul değildir: sınıf kadrosunda
       // kayıtlı olan öğretmen de yazışabilir.
       match /messages/{id} {
+        // Branş öğretmeni YALNIZCA kendi sohbetini okur. Aksi hâlde
+        // kadrodaki her öğretmen, velinin diğer öğretmenlerle yazışmasını
+        // da görebiliyordu. Sınıf öğretmeni (oda sahibi) tümünü görür.
         allow read: if ownsClassRoom(classCloudId)
-          || isClassStaff(classCloudId)
+          || (isClassStaff(classCloudId)
+              && resource.data.teacherUid == request.auth.uid)
           || (isParent() && parentHasStudent(resource.data.studentCloudId));
 
+        // `teacherUid` yazışmanın hangi öğretmenle olduğunu belirler.
+        // Zorunludur: bu alan olmadan mesajlar yalnızca öğrenciye göre
+        // filtrelendiği için velinin tüm öğretmenlerle yazışması tek
+        // sohbette birikiyor, her öğretmen diğerlerininkini görebiliyordu.
+        //
+        // Doğrulama `request.resource.data` üzerinden yapılır; ek `get()`
+        // gerektirmediği için faturalanan okuma doğurmaz.
         allow create: if (
             (ownsClassRoom(classCloudId) || isClassStaff(classCloudId))
             && request.resource.data.authorRole == 'teacher'
             && request.resource.data.authorUid == request.auth.uid
+            // Öğretmen yalnızca kendi sohbetine yazabilir.
+            && request.resource.data.teacherUid == request.auth.uid
           ) || (
             isParent()
             && parentHasStudent(request.resource.data.studentCloudId)
             && request.resource.data.parentUserId == request.auth.uid
             && request.resource.data.authorRole == 'parent'
+            && request.resource.data.teacherUid is string
+            && request.resource.data.teacherUid != ''
           );
 
         // Mesaj gönderildikten sonra içeriği değiştirilemez.
@@ -326,28 +461,10 @@ service cloud.firestore {
         // Sınıf öğretmeni kadroyu yönetir.
         allow create, update, delete: if ownsClassRoom(classCloudId);
 
-        // Branş öğretmeni katılım kodunu girdiğinde kendi kaydını yazar.
-        //
-        // Kimlik koşulları tek başına YETMEZ: aksi halde giriş yapmış
-        // herkes (veli dahil) kendi UID'siyle kadroya girip mesajlaşma
-        // yetkisi kazanırdı. Bu yüzden katılım, sınıf öğretmeninin açtığı
-        // gerçek bir "pending_{kod}" kaydının VARLIĞINA bağlanır —
-        // yani davet edilmemiş kimse kadroya giremez.
-        //
-        // İstemci kodu bu kaydı okuyup kendi UID'siyle yeniden yazar ve
-        // aynı batch içinde geçici kaydı siler.
-        allow create: if request.auth != null
-          && staffId == request.auth.uid
-          && request.resource.data.teacherUid == request.auth.uid
-          && request.resource.data.joinedVia is string
-          && exists(/databases/$(database)/documents/class_rooms/$(classCloudId)/staff/$(request.resource.data.joinedVia))
-          && request.resource.data.joinedVia.matches('pending_.*');
-
-        // Katılan öğretmen yalnızca kendisini davet eden geçici kaydı
-        // silebilir; bunu katılımını tamamlarken yapar.
-        allow delete: if request.auth != null
-          && staffId.matches('pending_.*')
-          && exists(/databases/$(database)/documents/class_rooms/$(classCloudId)/staff/$(request.auth.uid));
+        // Katılım kodlu ("pending_{kod}") yol kaldırıldı. Kadroyu
+        // yalnızca sınıf öğretmeni yönetir (yukarıdaki kural); öğretmen
+        // kendini kadroya EKLEYEMEZ. Bu, davet edilmemiş hiç kimsenin
+        // mesajlaşma yetkisi kazanamayacağını garanti eder.
       }
 
       // Durum bildirimleri (ilaç, erken çıkış, not).
@@ -371,6 +488,50 @@ service cloud.firestore {
 
         allow delete: if ownsClassRoom(classCloudId);
       }
+    }
+
+    // ---------------------------------------------------------------
+    // DESTEK TALEPLERİ
+    // ---------------------------------------------------------------
+    //
+    // Modal "Destek Talebini Gönder" diyor ve "24 saat içinde yanıtlanır"
+    // vaat ediyordu; oysa talep yalnızca cihazdaki yerel denetim
+    // günlüğüne yazılıyor, kimse görmüyordu.
+    //
+    // Okuma YALNIZCA kendi talebi icin. Kullanici "Taleplerim" ekraninda
+    // gonderdigi talebi ve verilen cevabi gorur; baskasinin talebini
+    // goremez (talepler ogrenci adi, okul ve sorun aciklamasi tasiyabilir).
+    match /support_requests/{requestId} {
+      // Kullanıcı kendi talebini okur ("Taleplerim" ekranı).
+      //
+      // YÖNETİCİ DE OKUYABİLMELİ: aksi hâlde destek talebi kimsenin
+      // göremediği bir kuyuya düşer. Bağımsız denetimde yakalandı:
+      // "talep Firestore'a yazılır ama yönetici okuyamaz; bu bir
+      // operasyon değildir."
+      allow read: if (request.auth != null
+            && resource.data.userId == request.auth.uid)
+        || isAdmin();
+
+      // Yönetici talebi "çözüldü" olarak işaretleyebilir.
+      allow update: if isAdmin();
+
+      // Herkes YALNIZCA kendi adına talep oluşturabilir.
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.subject is string
+        && request.resource.data.subject.size() > 0
+        && request.resource.data.subject.size() <= 120
+        && request.resource.data.message is string
+        && request.resource.data.message.size() > 0
+        && request.resource.data.message.size() <= 2000
+        // Durum alanı istemciden 'open' dışında gelemez: kullanıcı
+        // kendi talebini "çözüldü" işaretleyemez.
+        && request.resource.data.status == 'open';
+
+      // Gönderen kullanıcı talebini değiştiremez ve silemez: aksi hâlde
+      // yanıtlanmış bir talebi sonradan değiştirip yazışmayı
+      // anlamsızlaştırabilirdi. (Yönetici güncellemesi yukarıda.)
+      allow delete: if false;
     }
   }
 }

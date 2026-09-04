@@ -53,11 +53,30 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       context: context,
       initialSettings: currentSettings,
       onSaved: (newSettings) {
+        // Günlük ders sayısı azaltılırsa sınır dışında kalan dersler
+        // veritabanında kalır ama tabloda çizilmez.
+        //
+        // Önceden hiçbir uyarı yoktu: öğretmen için ders "kayboluyor",
+        // sayıyı geri artırınca aniden geri geliyordu. Silmek de yanlış
+        // olurdu (veri kaybı); doğru davranış haber vermek.
+        final hidden = ref
+            .read(scheduleProvider)
+            .where((l) => l.lessonHourIndex >= newSettings.dailyLessonCount)
+            .length;
+
         ref.read(scheduleSettingsProvider.notifier).updateSettings(newSettings);
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ders programı saat ayarları güncellendi ⏱️'),
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: Text(
+              hidden > 0
+                  ? 'Ayarlar güncellendi. $hidden ders, günlük ders '
+                      'saatinin dışında kaldığı için tabloda görünmüyor '
+                      '(silinmedi). Saat sayısını artırırsanız geri gelir.'
+                  : 'Ders programı saat ayarları güncellendi ⏱️',
+            ),
+            duration: Duration(seconds: hidden > 0 ? 7 : 2),
+            backgroundColor: hidden > 0 ? Colors.orange : null,
           ),
         );
       },

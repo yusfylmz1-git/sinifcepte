@@ -38,13 +38,24 @@ class StudentExamScore {
     );
   }
 
+  /// Sinava girmeyen ogrenci icin diske yazilan isaret degeri.
+  ///
+  /// Ayri bir `girmedi` sutunu eklemek yerine negatif puan kullaniliyor:
+  /// `fromMap` zaten `total < 0` kosulunu okuyordu, sema degisikligi
+  /// gerektirmiyor ve gecerli puanlar hicbir zaman negatif olamaz.
+  static const double absentMarker = -1.0;
+
   Map<String, dynamic> toMap({required int sinavId}) {
+    // Girmeyen ogrenci 0 olarak yazilirsa GERCEK bir 0 gibi geri okunur ve
+    // ortalamayi, basari yuzdesini, sapmayi bozar. Negatif isaretle yazilir.
+    final double kayitliPuan = isAbsent ? absentMarker : totalScore;
+
     return {
       'sinav_id': sinavId,
       'ogrenci_id': studentId,
       'ogrenci_ad_soyad': studentName,
-      'notu': totalScore.round(),
-      'toplam_not': totalScore,
+      'notu': kayitliPuan.round(),
+      'toplam_not': kayitliPuan,
       'soru_bazli_notlar': jsonEncode(questionScores),
     };
   }
@@ -68,13 +79,17 @@ class StudentExamScore {
         (map['notu'] as num?)?.toDouble() ??
         (qScores.isNotEmpty ? qScores.fold<double>(0.0, (double a, double b) => a + b) : 0.0);
 
+    final bool girmedi = total < 0;
+
     return StudentExamScore(
       studentId: map['ogrenci_id'] as int?,
       studentName: map['ogrenci_ad_soyad'] as String? ?? 'İsimsiz Öğrenci',
       studentNumber: (map['numara'] ?? map['school_number'] ?? map['student_number'] ?? 0) as int,
       questionScores: qScores,
-      totalScore: total,
-      isAbsent: total < 0,
+      // Isaret degeri disariya sizmasin: girmeyen ogrencinin puani 0
+      // gorunur ama `isAbsent` sayesinde hicbir istatistige katilmaz.
+      totalScore: girmedi ? 0.0 : total,
+      isAbsent: girmedi,
     );
   }
 }

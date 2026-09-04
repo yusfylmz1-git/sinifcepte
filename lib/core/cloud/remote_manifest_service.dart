@@ -15,6 +15,17 @@ class RemoteManifest {
   final bool maintenanceMode;
   final String maintenanceMessage;
 
+  /// Yöneticiden gelen genel duyuru (ana sayfa akışında görünür).
+  ///
+  /// Remote Config üzerinden yayımlanır: ücretsiz, kotasız ve
+  /// Cloud Functions gerektirmez. Boşsa hiçbir şey gösterilmez.
+  final String adminNotice;
+
+  /// Duyurunun kimliği. Kullanıcı kapattığında bu kimlik saklanır;
+  /// aynı duyuru bir daha gösterilmez. Yeni duyuru yayımlarken bu
+  /// değer de değiştirilmelidir.
+  final String adminNoticeId;
+
   const RemoteManifest({
     this.calendarVersion = 1,
     this.outcomesVersion = 1,
@@ -24,6 +35,8 @@ class RemoteManifest {
     this.latestAppVersion = '1.0.0',
     this.maintenanceMode = false,
     this.maintenanceMessage = '',
+    this.adminNotice = '',
+    this.adminNoticeId = '',
   });
 
   /// Ağ hiç kurulamadığında kullanılan güvenli varsayılan.
@@ -104,6 +117,8 @@ class RemoteManifestService {
         'latest_app_version': '1.0.0',
         'maintenance_mode': false,
         'maintenance_message': '',
+        'admin_notice': '',
+        'admin_notice_id': '',
       });
 
       _config = config;
@@ -148,6 +163,8 @@ class RemoteManifestService {
         latestAppVersion: config.getString('latest_app_version'),
         maintenanceMode: config.getBool('maintenance_mode'),
         maintenanceMessage: config.getString('maintenance_message'),
+        adminNotice: config.getString('admin_notice'),
+        adminNoticeId: config.getString('admin_notice_id'),
       );
 
       // Zorlamalı çekimden sonra normal aralığa dön.

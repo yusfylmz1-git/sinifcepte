@@ -13,8 +13,10 @@ import '../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../auth_profile/providers/user_role_provider.dart';
 import '../../auth_profile/presentation/views/school_bind_gate.dart';
 import '../../parent_portal/data/services/parent_auth_service.dart';
-import '../../parent_portal/presentation/screens/parent_dashboard_screen.dart';
+import '../../parent_portal/presentation/screens/parent_shell_screen.dart';
 import '../../parent_portal/providers/parent_token_provider.dart';
+import '../../../core/cloud/cloud_ids.dart';
+import '../../../core/database/account_switch.dart';
 
 /// SınıfCepte - Rol Seçim & Giriş Ekranı (Öğretmen / Veli)
 class WelcomeScreen extends ConsumerStatefulWidget {
@@ -27,6 +29,12 @@ class WelcomeScreen extends ConsumerStatefulWidget {
 class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
   bool _hasCheckedSavedRole = false;
   bool _teacherSigningIn = false;
+
+  /// Masaüstü yerel modunun sabit veritabanı kimliği.
+  ///
+  /// Bulut UID'i olmadığı için sabit bir ad kullanılır; böylece uygulama
+  /// her açılışta aynı yerel veritabanını bulur.
+  static const String _desktopLocalUid = 'local_desktop';
   bool _parentSigningIn = false;
 
   @override
@@ -63,7 +71,13 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
       if (signedIn) {
         final uid = FirebaseAuth.instance.currentUser!.uid;
         await DatabaseHelper.instance.openForUid(uid);
-        await ref.read(teacherProfileProvider.notifier).ensureLoaded();
+        // `ensureLoaded` sonucu önbelleğe alır; kimlik ancak burada belli
+        // olduğu için hesabın KENDİ anahtarlarından taze okumak gerekir.
+        // Aksi hâlde okul ve branş bilgisi okunmuyor ve kurulum ekranı
+        // her açılışta yeniden çıkıyordu.
+        await ref
+            .read(teacherProfileProvider.notifier)
+            .loadProfileFromStorage();
         // Yönetici yetkisi yalnızca sunucudaki claim'den okunur.
         await ref.read(userRoleProvider.notifier).refreshClaims();
       }
@@ -85,20 +99,25 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
 
       if (children.isNotEmpty) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
+          MaterialPageRoute(builder: (_) => const ParentShellScreen()),
         );
       }
     }
   }
 
+  /// Masaüstünde (Windows/Linux/macOS) Google girişi yapılamaz.
+  ///
+  /// `google_sign_in` paketi yalnızca android, ios, macos ve web'i destekler;
+  /// Windows için bir uygulama yoktur. Ancak öğretmen tarafı %100 çevrimdışı
+  /// çalıştığı için bulut oturumu olmadan da kullanılabilir: sınıflar,
+  /// öğrenciler ve kazanımlar cihazdaki SQLite'ta durur.
+  bool get _isDesktopWithoutGoogleSignIn =>
+      !kIsWeb && (Platform.isWindows || Platform.isLinux);
+
   /// Öğretmen Olarak Giriş Yap
   Future<void> _handleTeacherLogin(BuildContext context) async {
-    if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Öğretmen Google girişi Android / iOS uygulamasında yapılır.'),
-        ),
-      );
+    if (_isDesktopWithoutGoogleSignIn) {
+      await _handleDesktopTeacherEntry(context);
       return;
     }
 
@@ -113,6 +132,38 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
         );
         switchedAccount = result.switchedAccount;
       }
+
+      // Hesabın kendi veritabanını aç.
+      //
+      // Bu çağrı eksikti: `openForUid` yazılmış ama hiçbir yerden
+      // çağrılmıyordu, bu yüzden bütün hesaplar aynı veritabanı
+      // dosyasını paylaşıyor ve ikinci öğretmen birincinin sınıflarını
+      // ve öğrencilerini görüyordu. Öğrenci verisinin cihazda kalması
+      // kararı, o verinin başka bir öğretmene de görünmemesini gerektirir.
+      final uid = ref.read(teacherProfileProvider).id;
+      if (CloudIds.isValidUid(uid)) {
+        await DatabaseHelper.instance.openForUid(uid);
+
+        // Profili BU hesabin anahtarlarindan yeniden yukle.
+        //
+        // Profil anahtarlari hesaba bagli (`profil_okul__{uid}`); kimlik
+        // ancak giristen sonra belli olur. Yeniden yuklenmezse hesabin
+        // kayitli okul bilgisi okunmaz ve kurulum ekrani her defasinda
+        // yeniden acilir.
+        await ref
+            .read(teacherProfileProvider.notifier)
+            .loadProfileFromStorage();
+
+        // Yerel veri sağlayıcılarını tazele.
+        //
+        // Veritabanı hesap başına ayrı açılıyordu ama SAĞLAYICILAR
+        // tazelenmiyordu: ikinci hesapla giren öğretmen ekranda hâlâ
+        // birinci hesabın sınıflarını görüyordu. "Rehberlik sınıfım yap"
+        // denince yazma yeni ve boş veritabanına gidiyor, ardından liste
+        // tazelenince sınıflar "kayboluyordu".
+        AccountSwitch.invalidateLocalData(ref);
+      }
+
       await ref.read(userRoleProvider.notifier).selectTeacherRole();
       // Okul yöneticisi yetkisi varsa claim'den okunur (opsiyonel rol).
       await ref.read(userRoleProvider.notifier).refreshClaims(forceRefresh: true);
@@ -141,6 +192,100 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
     } finally {
       if (mounted) setState(() => _teacherSigningIn = false);
     }
+  }
+
+  /// Masaüstünde öğretmen olarak yerel modda devam eder.
+  ///
+  /// Bulut oturumu açılmaz; sınıf ve öğrenci verisi zaten cihazda tutulduğu
+  /// için öğretmen tarafının tamamı çalışır. Yalnızca bulut bağlantısı
+  /// gerektiren özellikler (okul dizini, veli bağlama, yönetici yetkisi)
+  /// devre dışı kalır.
+  Future<void> _handleDesktopTeacherEntry(BuildContext context) async {
+    final proceed = await _showDesktopLocalModeNotice(context);
+    if (proceed != true || !context.mounted) return;
+
+    setState(() => _teacherSigningIn = true);
+    try {
+      // Bulut UID'i yok; yerel veritabanı paylaşılan masaüstü alanında açılır.
+      await DatabaseHelper.instance.openForUid(_desktopLocalUid);
+      await ref.read(teacherProfileProvider.notifier).ensureLoaded();
+      await ref.read(userRoleProvider.notifier).selectTeacherRole();
+
+      if (context.mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const SchoolBindGate()),
+        );
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Masaüstü yerel giriş hatası: $e\n$stackTrace');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Yerel mod açılamadı. Uygulamayı yeniden başlatın.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _teacherSigningIn = false);
+    }
+  }
+
+  /// Masaüstü yerel modunun sınırlarını anlatır ve onay ister.
+  Future<bool?> _showDesktopLocalModeNotice(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.desktop_windows_rounded, color: Color(0xFF4F46E5)),
+            SizedBox(width: 10),
+            Expanded(child: Text('Masaüstü Yerel Modu')),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Google girişi masaüstünde kullanılamıyor. Yerel modda '
+              'devam edebilirsiniz:',
+              style: TextStyle(fontSize: 13.5, height: 1.4),
+            ),
+            const SizedBox(height: 12),
+            _DesktopModeRow(
+              icon: Icons.check_circle_rounded,
+              color: const Color(0xFF10B981),
+              text: 'Sınıflar, öğrenciler, kazanımlar ve ders programı çalışır.',
+            ),
+            _DesktopModeRow(
+              icon: Icons.cloud_off_rounded,
+              color: const Color(0xFFF59E0B),
+              text: 'Veli bağlama, okul dizini ve yönetici yetkisi kapalıdır.',
+            ),
+            _DesktopModeRow(
+              icon: Icons.phone_android_rounded,
+              color: const Color(0xFF6366F1),
+              text: 'Bu moddaki veriler telefonla eşleşmez, cihazda kalır.',
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Yerel Modda Devam Et'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Hesap değişikliğini açıklayan bilgilendirme.
@@ -240,7 +385,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
       await ref.read(userRoleProvider.notifier).selectParentRole();
       if (context.mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
+          MaterialPageRoute(builder: (_) => const ParentShellScreen()),
         );
       }
     } catch (e, stackTrace) {
@@ -496,6 +641,39 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Masaüstü yerel modu bilgilendirme diyaloğundaki tek satır.
+class _DesktopModeRow extends StatelessWidget {
+  const _DesktopModeRow({
+    required this.icon,
+    required this.color,
+    required this.text,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 17, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 12.5, height: 1.35),
+            ),
+          ),
+        ],
       ),
     );
   }

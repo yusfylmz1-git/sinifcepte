@@ -4,7 +4,7 @@
 
 Uygulama kodu doğru davransa bile kural yanlışsa veri sızar. Bu testler doğrudan kural motoruna karşı yazılmıştır: "veli başka bir velinin çocuğunu okuyabiliyor mu?", "öğretmen kendini yönetici ilan edebiliyor mu?" gibi soruları uygulama katmanını atlayarak sorar.
 
-**Durum: 33/33 test geçiyor** ✅ (son çalıştırma: 18 Ağustos 2026)
+**Durum: 87/87 test geçiyor** ✅ (son çalıştırma: 29 Ağustos 2026)
 
 ---
 
@@ -45,6 +45,23 @@ Betik JDK'yı şu sırayla arar:
 Belirli bir JDK'yı zorlamak için:
 ```powershell
 .\run-tests.ps1 -JdkPath "C:\Program Files\Eclipse Adoptium\jdk-21.0.5+11"
+```
+
+### ⚠️ "Java kurulu değil" diyorsa ama JDK duruyorsa
+
+Betik otomatik aramada `bin\java.exe` dosyasının **varlığına** bakar, çalışıp
+çalışmadığına bakmaz. Yarım inmiş taşınabilir bir JDK (ör. 196 MB yerine 26 MB)
+dosyayı bırakır ama çalıştırınca `0xC0000135` ile düşer; emülatör o zaman
+yanıltıcı bir "Please make sure Java is installed" hatası verir.
+
+Önce JDK'nın gerçekten çalıştığını doğrulayın:
+
+```powershell
+& "C:\yol\jdk-21\bin\java.exe" -version
+```
+
+Sürüm yazdırmıyorsa JDK bozuktur: silip yeniden indirin, sonra çalışan yolu
+`-JdkPath` ile açıkça verin.
 ```
 
 ---

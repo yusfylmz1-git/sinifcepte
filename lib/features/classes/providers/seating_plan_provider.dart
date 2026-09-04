@@ -48,6 +48,27 @@ class SeatingPlanNotifier extends StateNotifier<AsyncValue<SeatingPlanModel>> {
     }
   }
 
+  /// Sinifta artik bulunmayan ogrencilerin koltuk atamalarini siler.
+  ///
+  /// Atamalar JSON metni icinde tutuldugu icin ogrenci satiri silindiginde
+  /// SQLite'in ON DELETE CASCADE kurali bunlari temizleyemiyor. Sonucta
+  /// koltuk ekranda bos gorunuyor ama dolu sayiliyor, "23/30 yerlesti"
+  /// sayaci sisiyor ve o koltuk bir daha kullanilamiyordu.
+  Future<void> pruneMissingStudents(Iterable<int> liveStudentIds) async {
+    final currentPlan = state.value;
+    if (currentPlan == null || currentPlan.assignments.isEmpty) return;
+
+    final liveIds = liveStudentIds.toSet();
+    final pruned = Map<int, String>.from(currentPlan.assignments)
+      ..removeWhere((studentId, _) => !liveIds.contains(studentId));
+
+    if (pruned.length == currentPlan.assignments.length) return;
+
+    final updatedPlan = currentPlan.copyWith(assignments: pruned);
+    state = AsyncValue.data(updatedPlan);
+    await _service.saveSeatingPlan(updatedPlan);
+  }
+
   /// Blok düzenini değiştirir (2 Blok, 3 Blok, 4 Blok) ve satırları öğrenci sayısına göre ayarlar
   Future<void> updateBlocksLayout(int blockCount, int studentCount) async {
     final currentPlan = state.value;
@@ -234,8 +255,18 @@ class SeatingPlanNotifier extends StateNotifier<AsyncValue<SeatingPlanModel>> {
     final seatsPerRow = blocks * 2;
     final requiredRows = max(currentPlan.rows, (students.length / seatsPerRow).ceil());
 
-    final girls = students.where((s) => s.gender.toLowerCase().contains('kız')).toList()..shuffle(Random());
-    final boys = students.where((s) => s.gender.toLowerCase().contains('erkek')).toList()..shuffle(Random());
+    // Cinsiyeti 'Kiz'/'Erkek' olarak yazmayan ogrenciler (e-Okul listesinde
+    // bu sutun bos gelebiliyor) her iki kumeye de girmedigi icin dagitim
+    // disinda kaliyor, ekranda kayboluyordu. Artik erkek kumesine
+    // eklenerek mutlaka bir koltuk aliyorlar.
+    final girls = students
+        .where((s) => s.gender.toLowerCase().contains('kız'))
+        .toList()
+      ..shuffle(Random());
+    final boys = students
+        .where((s) => !s.gender.toLowerCase().contains('kız'))
+        .toList()
+      ..shuffle(Random());
 
     final Map<int, String> newAssignments = {};
     int girlIndex = 0;

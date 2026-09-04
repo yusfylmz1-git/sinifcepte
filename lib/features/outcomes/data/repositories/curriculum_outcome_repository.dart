@@ -21,6 +21,7 @@ class CurriculumOutcomeRepository {
   Future<void> ensureSeeded({bool force = false}) async {
     if (_isSeeded && !force) return;
     await _dbHelper.seedCurriculumOutcomesFromAssets(force: force);
+    clearCache();
     _isSeeded = true;
   }
 
@@ -87,6 +88,25 @@ class CurriculumOutcomeRepository {
 
     _outcomesCache[cacheKey] = list;
     return list;
+  }
+
+  /// BEP tohumu: haftalık tekrarı eler, kod+metin tekilleştirilir.
+  ///
+  /// Kazanım BEP değildir. Öğretmen bunu kısa amacın *davranış*
+  /// cümlesine tohum olarak alır; koşul ve ölçütü kendisi yazar.
+  Future<List<UniqueOutcomeHit>> searchUniqueOutcomes({
+    required int gradeLevel,
+    String? subjectCode,
+    String query = '',
+    int limit = 40,
+  }) async {
+    await ensureSeeded();
+    final raw = await _dbHelper.kazanimlariGetir(
+      gradeLevel: gradeLevel,
+      subjectCode: subjectCode,
+      searchQuery: query.trim().isEmpty ? null : query.trim(),
+    );
+    return uniqueOutcomeHits(raw, limit: limit);
   }
 
   /// Önbelleği temizle (yeni veri yüklendiğinde)

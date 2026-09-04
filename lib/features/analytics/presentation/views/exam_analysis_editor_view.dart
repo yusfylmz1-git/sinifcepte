@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -136,8 +137,36 @@ class _ExamAnalysisEditorViewState extends ConsumerState<ExamAnalysisEditorView>
     });
   }
 
+  /// Ogrenciyi "sinava girmedi" olarak isaretler ya da isareti kaldirir.
+  ///
+  /// Bu dugme olmadan girmeyen ogrenci 0 olarak kaliyordu ve GERCEK bir 0
+  /// gibi sayiliyordu: 30 kisilik sinifta 2 girmeyen, ortalamayi 4.67 puan
+  /// dusuruyor ve %100 basariyi %93.3 gosteriyordu.
+  void _toggleAbsent(int index) {
+    if (index >= _studentScores.length) return;
+
+    final girmedi = !_studentScores[index].isAbsent;
+
+    setState(() {
+      _studentScores[index] = _studentScores[index].copyWith(
+        isAbsent: girmedi,
+        // Girmediyse girilmis puanlari temizle; geri alinirsa ogretmen
+        // yeniden girer. Yarim kalmis puanin sessizce durmasi yaniltir.
+        totalScore: girmedi ? 0.0 : _studentScores[index].totalScore,
+        questionScores: girmedi
+            ? List<double>.filled(_parsedQuestionScores.length, 0.0)
+            : _studentScores[index].questionScores,
+      );
+      if (girmedi) {
+        _studentScoreControllers[index]?.clear();
+      }
+    });
+  }
+
   void _onStudentScoreInputChanged(int index, String rawInput) {
     if (index >= _studentScores.length) return;
+    // Girmeyen ogrenciye puan yazilamaz.
+    if (_studentScores[index].isAbsent) return;
 
     if (_examType == 'soru_bazli') {
       final scores = InputSanitizer.parseSpaceSeparatedScores(rawInput);
@@ -577,7 +606,12 @@ class _ExamAnalysisEditorViewState extends ConsumerState<ExamAnalysisEditorView>
                             ],
                           ),
                         ),
-                        if (_studentScores.isNotEmpty)
+                        // "Ornek Not" gercek notlarin uzerine uydurma puan
+                        // yaziyor. Yayindaki ogretmenin not girisi ekraninda
+                        // boyle bir dugmenin isi yok: tek dokunusla 30
+                        // ogrencinin gercek notu geri alinamaz sekilde gider.
+                        // Yalnizca gelistirme derlemesinde gorunur.
+                        if (kDebugMode && _studentScores.isNotEmpty)
                           TextButton.icon(
                             onPressed: _fillSampleScores,
                             icon: const Icon(Icons.auto_awesome_rounded, size: 16, color: Colors.amber),
@@ -666,15 +700,50 @@ class _ExamAnalysisEditorViewState extends ConsumerState<ExamAnalysisEditorView>
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: (s.totalScore >= 50 ? Colors.green : Colors.red).withValues(alpha: 0.15),
+                                        color: s.isAbsent
+                                            ? Colors.grey.withValues(alpha: 0.18)
+                                            : (s.totalScore >= 50 ? Colors.green : Colors.red)
+                                                .withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
-                                        'Toplam: ${s.totalScore.toStringAsFixed(0)}',
+                                        s.isAbsent
+                                            ? 'Girmedi'
+                                            : 'Toplam: ${s.totalScore.toStringAsFixed(0)}',
                                         style: AppFonts.outfit(
                                           fontSize: 11.5,
                                           fontWeight: FontWeight.bold,
-                                          color: s.totalScore >= 50 ? Colors.green : Colors.red,
+                                          color: s.isAbsent
+                                              ? Colors.grey.shade600
+                                              : (s.totalScore >= 50 ? Colors.green : Colors.red),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    // Sinava girmeyeni isaretleme dugmesi.
+                                    //
+                                    // Onceden boyle bir secenek yoktu: girmeyen
+                                    // ogrenci 0 olarak kaliyor ve gercek bir 0
+                                    // gibi ortalamaya, basari yuzdesine ve not
+                                    // dagilimina katiliyordu.
+                                    Tooltip(
+                                      message: s.isAbsent
+                                          ? 'Sınava girdi olarak işaretle'
+                                          : 'Sınava girmedi olarak işaretle',
+                                      child: InkWell(
+                                        onTap: () => _toggleAbsent(index),
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(4),
+                                          child: Icon(
+                                            s.isAbsent
+                                                ? Icons.person_off_rounded
+                                                : Icons.person_outline_rounded,
+                                            size: 18,
+                                            color: s.isAbsent
+                                                ? Colors.orange.shade700
+                                                : Colors.grey.shade500,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -683,10 +752,13 @@ class _ExamAnalysisEditorViewState extends ConsumerState<ExamAnalysisEditorView>
                                 const SizedBox(height: 6),
                                 TextFormField(
                                   controller: controller,
+                                  enabled: !s.isAbsent,
                                   keyboardType: TextInputType.text,
                                   style: AppFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
                                   decoration: InputDecoration(
-                                    hintText: 'Soru puanları (Örn: 8 10 12 15 20 20 veya 8,10,12...)',
+                                    hintText: s.isAbsent
+                                        ? 'Sınava girmedi — ortalamaya katılmaz'
+                                        : 'Soru puanları (Örn: 8 10 12 15 20 20 veya 8,10,12...)',
                                     hintStyle: AppFonts.outfit(fontSize: 11.5, color: Colors.grey),
                                     isDense: true,
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),

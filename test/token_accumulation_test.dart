@@ -125,18 +125,18 @@ void main() {
       expect(await repo.getActiveTokenForStudent(43), isNotNull);
     });
 
-    test('Süresi dolmuş kayıtlar temizlenir', () async {
+    test('Farklı öğrencilerin kodları birikmez, her biri tek kayıt tutar', () async {
+      // Kodların gün bazlı süresi kaldırıldığı için "süresi dolmuş kayıt"
+      // artık üretilemiyor. Asıl korunması gereken davranış şu: her
+      // öğrencinin tek ortak kodu olur ve liste şişmez.
       final repo = ParentTokenRepository();
 
-      // Süresi geçmiş bir kayıt kur.
       await repo.generateTokenForStudent(
         student: student,
         classModel: cls,
         teacher: teacher,
-        validityDays: -1, // zaten dolmuş
       );
 
-      // Başka bir öğrenci için kod üretmek temizliği tetikler.
       final other = StudentModel(
         id: 99,
         classId: 7,
@@ -151,8 +151,107 @@ void main() {
         teacher: teacher,
       );
 
-      // Süresi dolan kayıt düşmeli; yalnızca geçerli olan kalmalı.
-      expect(await storedTokenCount(), 1);
+      // İki öğrenci, iki kayıt.
+      expect(await storedTokenCount(), 2);
+
+      // Aynı öğrenciye yeniden üretmek kaydı çoğaltmaz.
+      await repo.generateTokenForStudent(
+        student: student,
+        classModel: cls,
+        teacher: teacher,
+      );
+      expect(await storedTokenCount(), 2);
+    });
+  });
+
+  group('İkinci veli kodu (ayrı yaşayan aileler)', () {
+    test('KRİTİK: anne kodu üretmek baba kodunu silmez', () async {
+      // generateTokenForStudent, öğrencinin eski kayıtlarını siliyordu.
+      // Etiket gözetilmezse anneye kod üretmek babanınkini yok ederdi.
+      final repo = ParentTokenRepository();
+
+      final baba = await repo.generateTokenForStudent(
+        student: student,
+        classModel: cls,
+        teacher: teacher,
+        parentLabel: 'Baba',
+      );
+      final anne = await repo.generateTokenForStudent(
+        student: student,
+        classModel: cls,
+        teacher: teacher,
+        parentLabel: 'Anne',
+      );
+
+      final tokens = await repo.getTokensForStudent(student.id!);
+      final labels = tokens.map((t) => t.parentLabel).toSet();
+
+      expect(tokens.length, 2, reason: 'Bir kod digerini sildi');
+      expect(labels, containsAll(<String>['Anne', 'Baba']));
+      expect(anne.code, isNot(baba.code));
+    });
+
+    test('KRİTİK: bir tarafın kodunu iptal etmek diğerini etkilemez', () async {
+      final repo = ParentTokenRepository();
+
+      final baba = await repo.generateTokenForStudent(
+        student: student,
+        classModel: cls,
+        teacher: teacher,
+        parentLabel: 'Baba',
+      );
+      await repo.generateTokenForStudent(
+        student: student,
+        classModel: cls,
+        teacher: teacher,
+        parentLabel: 'Anne',
+      );
+
+      await repo.revokeToken(baba.id);
+
+      final kalan = await repo.getTokensForStudent(student.id!);
+      expect(kalan.length, 1);
+      expect(kalan.single.parentLabel, 'Anne');
+    });
+
+    test('Aynı etiketle yeniden üretmek kaydı çoğaltmaz', () async {
+      final repo = ParentTokenRepository();
+
+      await repo.generateTokenForStudent(
+        student: student,
+        classModel: cls,
+        teacher: teacher,
+        parentLabel: 'Anne',
+      );
+      await repo.generateTokenForStudent(
+        student: student,
+        classModel: cls,
+        teacher: teacher,
+        parentLabel: 'Anne',
+      );
+
+      final tokens = await repo.getTokensForStudent(student.id!);
+      expect(tokens.length, 1);
+    });
+
+    test('Ortak kod ve etiketli kod bir arada durabilir', () async {
+      final repo = ParentTokenRepository();
+
+      await repo.generateTokenForStudent(
+        student: student,
+        classModel: cls,
+        teacher: teacher,
+      );
+      await repo.generateTokenForStudent(
+        student: student,
+        classModel: cls,
+        teacher: teacher,
+        parentLabel: 'Baba',
+      );
+
+      final tokens = await repo.getTokensForStudent(student.id!);
+      expect(tokens.length, 2);
+      expect(tokens.where((t) => t.parentLabel.isEmpty).length, 1);
     });
   });
 

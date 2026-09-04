@@ -48,6 +48,59 @@ Bu belgedeki ilkeler, **Senior Yazılım Mimarı, Siber Güvenlik Uzmanı, Ürü
 - **GridView Oranları**: `childAspectRatio` değerleri metinlerin taşmayacağı güvenli oranlarda tutulacak.
 - **Çift Rozet/Başlık Koruması**: Kart başlıklarında sağ rozet varsa sol metin bloku mutlaka `Expanded` içine alınacak.
 
+## 9. 🔒 VERİ BÜTÜNLÜĞÜ VE MÜKERRERLİK ÖNLEME STANDARDI (Zero-Duplicate & Data Integrity)
+- **Sınıf İçi Okul Numarası Benzersizliği**: Bir sınıf içerisinde aynı okul numarasına sahip birden fazla öğrenci KESİNLİKLE bulunamaz.
+- **Çift Yönlü Kontrol**: Öğrenci ekleme, düzenleme ve Excel/e-Okul içe aktarma işlemlerinde numara çakışmaları anında tespit edilip engellenecektir.
+- **Token & Kod Tekilliği**: Üretilen referans kodları ve SHA-256 hash'leri daima tekil ve çakışmasız olacaktır.
+
+## 10. 🏛️ MEB REHBERLİK & ŞUBE SINIFI MİMARİSİ (Single Homeroom Class Architecture)
+- **En Fazla 1 Rehberlik Sınıfı**: Bir öğretmenin ders verdiği birden fazla sınıfı olabilir (Branş), ancak **EN FAZLA 1 ADET** sınıfı "Rehberlik / Şube Sınıfı" olarak atanabilir.
+- **Sınıfım Evrak & Yönetim Ayrımı**: "Sınıfım" sekmesi yalnızca öğretmenin aktif Rehberlik Sınıfının resmî evraklarına (Sosyal Kulüp, Oturma Planı, Sosyometri, Rehberlik Dosyası, Veli Portalı) odaklanacaktır.
+- **Rehberlik Aktarımı**: Başka bir sınıf rehberlik sınıfı seçildiğinde önceki sınıftan rehberlik unvanı güvenle yeni sınıfa devredilecektir.
+
+## 11. 🛡️ 4 KATMANLI DOĞRULAMA STANDARDI (Multi-Layer Validation)
+- Kullanıcı girdileri yalnızca tek bir yerde değil, 4 katmanda birden güvence altına alınacaktır:
+  1. **UI Katmanı**: Form validator ile anlık klavye geri bildirimi.
+  2. **State / Provider Katmanı**: Notifier seviyesinde durum doğrulaması.
+  3. **Repository / Domain Katmanı**: İş kuralları ve veri kısıtları.
+  4. **SQLite / Veritabanı Katmanı**: Tablo kısıtları, indeksler ve atomik işlemler.
+
+---
+
+## 12. 📦 DERLEME ADIMLARI (Build)
+
+### Varlık sıkıştırma — **derlemeden önce zorunlu**
+```
+dart run tool/compress_assets.dart
+```
+Müfredat ve okul verisi APK'ya **yalnızca sıkıştırılmış** (`.json.gz`)
+olarak paketlenir; `pubspec.yaml` düz `.json` sürümlerini artık
+listelemez. Bu adım atlanırsa varlıklar bulunamaz.
+
+Kazanç: 34.5 MB → 2.6 MB. Okuma `GzipAsset.loadString` üzerinden yapılır;
+sıkıştırılmış dosya yoksa düz dosyaya geri düşer.
+
+JSON değiştirildiğinde bu komut **yeniden çalıştırılmalıdır**.
+
+### Yayın çıktısı — tek APK **kullanılmaz**
+Tek APK üç işlemci mimarisini birden taşır (`arm64-v8a`, `armeabi-v7a`,
+`x86_64`); öğretmen üçünü de indirir ama yalnızca birini kullanır.
+Ayrıca `x86_64` neredeyse tamamen emülatör içindir.
+
+| Yöntem | Öğretmenin indirdiği |
+|---|---|
+| `flutter build apk --release` | 83.7 MB ❌ |
+| `flutter build apk --release --split-per-abi` | **31.7 MB** ✅ |
+| `flutter build appbundle --release` | ~30 MB ✅ (Play Store böler) |
+
+**Play Store için `appbundle` kullanılır.** Elden dağıtım gerekirse
+`--split-per-abi` ile üretilen `arm64-v8a` APK'sı verilir.
+
+### Çökme raporlama
+Release derlemesi `com.google.firebase.crashlytics` eklentisini
+çalıştırır; bu eklenti **google-services 4.4.1+** ister (projede 4.4.2).
+Sürüm düşürülürse derleme kırılır.
+
 ---
 
 ## 🤝 ÇALIŞMA PRENSİBİ

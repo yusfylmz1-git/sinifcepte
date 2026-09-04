@@ -8,45 +8,10 @@ import '../../../auth/screens/welcome_screen.dart';
 import '../../../auth_profile/providers/user_role_provider.dart';
 import '../../data/services/kvkk_consent_service.dart';
 import '../../providers/parent_token_provider.dart';
-import 'parent_dashboard_screen.dart';
-
-/// Türkiye Telefon Numarası Maskeleme Formatlayıcısı
-class _TurkishPhoneInputFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final text = newValue.text;
-    final digitsOnly = text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digitsOnly.isEmpty) return newValue.copyWith(text: '');
-
-    final trimmed = digitsOnly.length > 11 ? digitsOnly.substring(0, 11) : digitsOnly;
-    final buffer = StringBuffer();
-
-    if (trimmed.startsWith('0')) {
-      for (int i = 0; i < trimmed.length; i++) {
-        if (i == 1) buffer.write(' (');
-        if (i == 4) buffer.write(') ');
-        if (i == 7 || i == 9) buffer.write(' ');
-        buffer.write(trimmed[i]);
-      }
-    } else {
-      for (int i = 0; i < trimmed.length; i++) {
-        if (i == 0) buffer.write('0 (');
-        if (i == 3) buffer.write(') ');
-        if (i == 6 || i == 8) buffer.write(' ');
-        buffer.write(trimmed[i]);
-      }
-    }
-
-    final formatted = buffer.toString();
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
-    );
-  }
-}
+import 'parent_shell_screen.dart';
+import '../../../../core/cloud/cloud_ids.dart';
+import '../../data/models/parent_token_model.dart';
+import '../../../../core/utils/name_formatter.dart';
 
 /// SınıfCepte - Veli Kayıt & Öğrenci Bağlama Ekranı (ParentStudentConnectScreen)
 class ParentStudentConnectScreen extends ConsumerStatefulWidget {
@@ -66,7 +31,6 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
   final _tokenController = TextEditingController();
   final _schoolNumberController = TextEditingController();
   final _parentNameController = TextEditingController();
-  final _parentPhoneController = TextEditingController();
 
   String _selectedRelation = 'Anne';
   bool _isKvkkAccepted = false;
@@ -85,7 +49,6 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
     _tokenController.dispose();
     _schoolNumberController.dispose();
     _parentNameController.dispose();
-    _parentPhoneController.dispose();
     super.dispose();
   }
 
@@ -191,11 +154,11 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
     try {
       final inputCode = _tokenController.text.trim();
       final inputNumber = _schoolNumberController.text.trim();
-      final parentName = _parentNameController.text.trim();
-      final parentPhone = _parentPhoneController.text.trim().isNotEmpty
-          ? _parentPhoneController.text.trim()
-          : null;
-
+      // Standart yazim: "yusuf yilmaz" -> "Yusuf YILMAZ".
+      // Veli adi buluta gidiyor ve ogretmen ekraninda gorunuyor;
+      // ham hali kaydedilirse her veli farkli bicimde yaziliyordu.
+      final parentName =
+          NameFormatter.formatFull(_parentNameController.text);
       final identity = ref.read(parentAuthServiceProvider).currentIdentity;
       final bridge = ref.read(parentLinkBridgeProvider);
       final repo = ref.read(parentTokenRepositoryProvider);
@@ -236,12 +199,52 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
         connectedStudentName = validToken.studentName;
         final parentUserId = identity?.uid ?? await repo.getOrCreateLocalParentUserId();
 
+        // Bulut kimlikleri bağda MUTLAKA bulunmalı: boş kalırsa
+        // `hasCloudBinding` false döner ve velinin duyuru/kadro/mesaj
+        // sorguları sessizce boş liste verir ("öğretmen eklenmemiş").
+        //
+        // Öğretmen kimliği üç kaynaktan aranır. Yerel token'a güvenmek
+        // tek başına YETMEZ: `teacherUid` alanı sonradan eklendiği için
+        // daha önce üretilmiş kodlarda bu alan yoktur ve bağ boş
+        // kimliklerle kurulur. Buluttaki token kaydı ise bu bilgiyi
+        // baştan beri taşır.
+        var tokenTeacherUid = validToken.teacherUid;
+        if (!CloudIds.isValidUid(tokenTeacherUid)) {
+          final cloudLookup = await ref
+              .read(cloudTokenRepositoryProvider)
+              .lookupByCodeHash(
+                ParentTokenModel.generateSha256(validToken.code),
+              );
+          tokenTeacherUid = cloudLookup.teacherUid ?? '';
+        }
         final link = await repo.linkParent(
           token: validToken,
           parentUserId: parentUserId,
           parentName: parentName,
-          parentPhone: parentPhone,
+          // Veliden telefon ARTIK SORULMUYOR.
+          //
+          // Alan vardı ama hiçbir yerde kullanılmıyordu: veli girdiği
+          // numara bağ kaydında kalıyor, öğretmen hiçbir ekranda
+          // göremiyordu. Toplanan ama kullanılmayan kişisel veri KVKK
+          // açısından savunulamaz.
+          //
+          // Veli zaten uygulamadan mesajlaşıyor; öğretmen numaraya
+          // ihtiyaç duyarsa kendisi Veli Rehberi'ne giriyor.
+          parentPhone: null,
           relation: _selectedRelation,
+          teacherUid: tokenTeacherUid,
+          classCloudId: CloudIds.isValidUid(tokenTeacherUid)
+              ? CloudIds.classId(
+                  teacherUid: tokenTeacherUid,
+                  localClassId: validToken.classId,
+                )
+              : '',
+          studentCloudId: CloudIds.isValidUid(tokenTeacherUid)
+              ? CloudIds.studentId(
+                  teacherUid: tokenTeacherUid,
+                  localStudentId: validToken.studentId,
+                )
+              : '',
         );
 
         if (link == null) {
@@ -289,7 +292,7 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
 
         // Dashboard'a yönlendir
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
+          MaterialPageRoute(builder: (_) => const ParentShellScreen()),
           (route) => false,
         );
       }
@@ -641,42 +644,6 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
                 const SizedBox(height: 14),
 
                 // 6. Veli Telefon Numarası (Opsiyonel)
-                Text(
-                  '📱 İletişim Telefon Numarası (İsteğe Bağlı)',
-                  style: AppFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 6),
-                TextFormField(
-                  controller: _parentPhoneController,
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [_TurkishPhoneInputFormatter()],
-                  style: AppFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600),
-                  decoration: InputDecoration(
-                    hintText: '0 (5XX) XXX XX XX',
-                    prefixIcon: const Icon(Icons.phone_rounded, color: AppColors.primary),
-                    filled: true,
-                    fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(
-                        color: isDark ? Colors.white24 : Colors.black12,
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(
-                        color: isDark ? Colors.white24 : Colors.black12,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 18),
-
                 // 7. KVKK Onay Kutusu
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,

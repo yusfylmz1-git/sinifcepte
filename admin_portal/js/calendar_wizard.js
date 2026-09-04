@@ -54,24 +54,31 @@ class CalendarWizard {
 
     // 1. Dönem Başlangıcı
     const donem1Start = new Date(startDate);
-    
-    // 1. Ara Tatil (9. Hafta = Başlangıçtan yaklaşık 63 gün sonraki Pazartesi)
-    const araTatil1Start = addDays(donem1Start, 9 * 7);
+
+    // Hafta numarasından o haftanın pazartesisini verir.
+    // N. hafta, başlangıçtan (N-1) hafta sonradır; eskiden N ile çarpılıyordu
+    // ve bu yüzden tüm tatiller bir hafta ileri kayıyordu.
+    const weekMonday = (weekNo) => addDays(donem1Start, (weekNo - 1) * 7);
+
+    // MEB standart yapısı (39 takvim haftası):
+    //   10. hafta        -> 1. Dönem Ara Tatili
+    //   19-20. hafta     -> Yarıyıl (sömestr) tatili, 2 hafta
+    //   21. hafta        -> 2. Dönem başlangıcı
+    //   28. hafta        -> 2. Dönem Ara Tatili
+    //   39. hafta Cuma   -> Kapanış / karne
+    const araTatil1Start = weekMonday(10);
     const araTatil1End = addDays(araTatil1Start, 4); // Cuma
 
-    // Sömestr (19. Hafta sonu = Yaklaşık 19 hafta sonra)
-    const somestrStart = addDays(donem1Start, 19 * 7);
-    const somestrEnd = addDays(somestrStart, 11); // 2 hafta Cuma
+    const somestrStart = weekMonday(19);
+    const somestrEnd = addDays(somestrStart, 11); // 2. haftanın Cuma'sı
 
-    // 2. Dönem Başlangıcı
-    const donem2Start = addDays(somestrEnd, 3); // Pazartesi
+    const donem2Start = weekMonday(21);
 
-    // 2. Ara Tatil (2. Dönemin 9. Haftası = Nisan)
-    const araTatil2Start = addDays(donem2Start, 9 * 7);
+    const araTatil2Start = weekMonday(28);
     const araTatil2End = addDays(araTatil2Start, 4);
 
-    // Kapanış / Karne Günü (36. Hafta Sonu = Haziran ortası)
-    const kapanisDate = addDays(donem2Start, 18 * 7 + 4);
+    // Kapanış: 39. haftanın Cuma günü
+    const kapanisDate = addDays(weekMonday(39), 4);
 
     // Dini Bayramlar
     const religious = this.getReligiousHolidays(nextYear);

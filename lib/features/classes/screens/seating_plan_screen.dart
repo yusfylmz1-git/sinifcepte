@@ -7,6 +7,7 @@ import '../models/seating_plan_model.dart';
 import '../providers/student_provider.dart';
 import '../providers/seating_plan_provider.dart';
 import '../utils/seating_plan_pdf_generator.dart';
+import '../../../core/utils/turkish_text.dart';
 
 /// SınıfCepte - Mobil Uyumlu Gerçekçi Sınıf Oturma Planı Ekranı (Sıfır Overflow Garantili)
 class SeatingPlanScreen extends ConsumerStatefulWidget {
@@ -32,10 +33,16 @@ class _SeatingPlanScreenState extends ConsumerState<SeatingPlanScreen> {
     final plan = planAsync.valueOrNull;
 
     // Öğrenci sayısına göre satır sayısını otomatik garanti et (İlk yüklemede)
+    // ve sınıftan silinmiş öğrencilerin koltuklarını boşalt.
     if (students.isNotEmpty && plan != null && !_hasEnsuredCapacity) {
       _hasEnsuredCapacity = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(seatingPlanProvider(widget.classModel.id!).notifier).ensureCapacityForStudents(students.length);
+      final notifier =
+          ref.read(seatingPlanProvider(widget.classModel.id!).notifier);
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await notifier.pruneMissingStudents(
+          students.map((s) => s.id).whereType<int>(),
+        );
+        await notifier.ensureCapacityForStudents(students.length);
       });
     }
 
@@ -834,12 +841,14 @@ class _SeatingPlanScreenState extends ConsumerState<SeatingPlanScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             final filtered = unassigned.where((s) {
-              final q = query.toLowerCase();
-              return s.fullName.toLowerCase().contains(q) || s.schoolNumber.toString().contains(q);
+              // `toLowerCase` Turkce'de yaniltiyordu: ogretmen Turkce
+              // karakter yazmadan aradiginda sonuc bulunamiyordu.
+              return trContains(s.fullName, query) ||
+                  s.schoolNumber.toString().contains(query.trim());
             }).toList();
 
             return Container(
-              height: MediaQuery.of(context).size.height * 0.65,
+              height: MediaQuery.sizeOf(context).height * 0.65,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

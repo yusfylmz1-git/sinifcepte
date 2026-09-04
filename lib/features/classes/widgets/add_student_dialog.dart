@@ -5,6 +5,9 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/models/student_model.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../providers/student_provider.dart';
+import '../providers/class_provider.dart';
+import '../../../core/utils/input_sanitizer.dart';
+import '../../../core/utils/name_formatter.dart';
 
 /// Öğrenci Ekleme ve Düzenleme Diyaloğu (AddStudentDialog)
 class AddStudentDialog extends ConsumerStatefulWidget {
@@ -23,6 +26,7 @@ class _AddStudentDialogState extends ConsumerState<AddStudentDialog> {
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   String _selectedGender = 'Erkek';
+  int? _selectedClassId;
   bool _isLoading = false;
   late bool _isEditing;
 
@@ -30,6 +34,7 @@ class _AddStudentDialogState extends ConsumerState<AddStudentDialog> {
   void initState() {
     super.initState();
     _isEditing = widget.student != null;
+    _selectedClassId = widget.student?.classId ?? widget.classId;
     if (_isEditing) {
       _numController.text = widget.student!.schoolNumber.toString();
       _firstNameController.text = widget.student!.firstName;
@@ -52,12 +57,17 @@ class _AddStudentDialogState extends ConsumerState<AddStudentDialog> {
     setState(() => _isLoading = true);
 
     final numText = _numController.text.trim();
-    final firstName = _firstNameController.text.trim();
-    final lastName = _lastNameController.text.trim();
+    // Standart yazim baştan uygulanir: "yusuf" / "yilmaz" ->
+    // "Yusuf" / "YILMAZ". Ham hali kaydedilirse liste, PDF ve veli
+    // ekrani her yerde farkli gorunuyordu.
+    final firstName = NameFormatter.formatFirstName(_firstNameController.text);
+    final lastName = NameFormatter.formatLastName(_lastNameController.text);
 
-    bool success;
+    bool success = false;
+    String? errorMessage;
+
     if (_isEditing) {
-      success = await ref
+      final result = await ref
           .read(studentListProvider(widget.classId).notifier)
           .updateStudent(
             id: widget.student!.id!,
@@ -65,7 +75,13 @@ class _AddStudentDialogState extends ConsumerState<AddStudentDialog> {
             firstName: firstName,
             lastName: lastName,
             gender: _selectedGender,
+            newClassId: _selectedClassId,
           );
+      success = result.success;
+      errorMessage = result.error;
+      if (success && _selectedClassId != null && _selectedClassId != widget.classId) {
+        ref.invalidate(studentListProvider(_selectedClassId!));
+      }
     } else {
       success = await ref
           .read(studentListProvider(widget.classId).notifier)
@@ -85,7 +101,9 @@ class _AddStudentDialogState extends ConsumerState<AddStudentDialog> {
           SnackBar(
             content: Text(
               _isEditing
-                  ? 'Öğrenci bilgileri güncellendi! ✏️'
+                  ? (_selectedClassId != widget.classId
+                      ? 'Öğrenci bilgileri ve sınıfı güncellendi! 🔄'
+                      : 'Öğrenci bilgileri güncellendi! ✏️')
                   : 'Öğrenci başarıyla eklendi! 🎓',
             ),
             backgroundColor: AppColors.success,
@@ -93,8 +111,8 @@ class _AddStudentDialogState extends ConsumerState<AddStudentDialog> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Bir hata oluştu, lütfen tekrar deneyin.'),
+          SnackBar(
+            content: Text(errorMessage ?? 'Bir hata oluştu, lütfen tekrar deneyin.'),
             backgroundColor: AppColors.danger,
           ),
         );
@@ -165,9 +183,26 @@ class _AddStudentDialogState extends ConsumerState<AddStudentDialog> {
                     if (val == null || val.trim().isEmpty) {
                       return 'Okul nosu girin';
                     }
-                    if (int.tryParse(val.trim()) == null) {
+                    final num = int.tryParse(val.trim());
+                    if (num == null) {
                       return 'Sadece sayı girin';
                     }
+                    if (num <= 0) {
+                      return 'Geçerli bir numara girin';
+                    }
+
+                    // Sınıf içi mükerrer numara kontrolü (1. Katman - Anlık UI Doğrulama)
+                    final currentStudents =
+                        ref.read(studentListProvider(widget.classId)).valueOrNull ?? [];
+                    final duplicateStudent = currentStudents.where((s) {
+                      if (_isEditing && s.id == widget.student?.id) return false;
+                      return s.schoolNumber == num;
+                    }).firstOrNull;
+
+                    if (duplicateStudent != null) {
+                      return 'Bu numara (${duplicateStudent.firstName} ${duplicateStudent.lastName}) zaten kayıtlı!';
+                    }
+
                     return null;
                   },
                 ),
@@ -208,6 +243,64 @@ class _AddStudentDialogState extends ConsumerState<AddStudentDialog> {
                       val == null || val.trim().isEmpty ? 'Soyadı girin' : null,
                 ),
                 const SizedBox(height: 14),
+
+                // Sınıf / Şube Değiştirme (Düzenleme Modunda - Yalnızca Aynı Kademedeki Şubeler)
+                if (_isEditing) ...[
+                  Builder(
+                    builder: (context) {
+                      final allClasses = ref.watch(classListProvider).valueOrNull ?? [];
+                      final currentClass = allClasses.where((c) => c.id == widget.classId).firstOrNull;
+                      final currentGrade = currentClass != null
+                          ? InputSanitizer.extractGradeLevel(currentClass.name)
+                          : null;
+
+                      final availableClasses = allClasses.where((c) {
+                        if (c.id == widget.classId) return true; // Mevcut sınıf listede kalsın
+                        if (currentGrade != null) {
+                          return InputSanitizer.extractGradeLevel(c.name) == currentGrade;
+                        }
+                        return true;
+                      }).toList();
+
+                      if (availableClasses.length <= 1) return const SizedBox.shrink();
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          DropdownButtonFormField<int>(
+                            initialValue: _selectedClassId,
+                            dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                            style: TextStyle(color: isDark ? Colors.white : AppColors.textPrimaryLight, fontSize: 14),
+                            decoration: _buildInputDecoration(
+                              currentGrade != null ? '$currentGrade. Sınıf Şubesi' : 'Kayıtlı Olduğu Sınıf',
+                              'Sınıf seçin',
+                              Icons.school_rounded,
+                              isDark,
+                            ),
+                            items: availableClasses.map((c) {
+                              return DropdownMenuItem<int>(
+                                value: c.id,
+                                child: Text(
+                                  c.isHomeroom ? '${c.name} (Rehberlik Sınıfı)' : c.name,
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                                    fontWeight: c.id == widget.classId ? FontWeight.bold : FontWeight.normal,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (newId) {
+                              if (newId != null) {
+                                setState(() => _selectedClassId = newId);
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 14),
+                        ],
+                      );
+                    },
+                  ),
+                ],
 
                 // Cinsiyet Seçimi
                 Padding(

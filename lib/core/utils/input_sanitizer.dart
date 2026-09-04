@@ -48,6 +48,22 @@ class InputSanitizer {
     return cleaned;
   }
 
+  /// Sınıf adından sınıf seviyesini/kademesini ayıklar (Örn: "5-A", "5/B", "5. Sınıf D", "11-F" -> "5" veya "11")
+  static String? extractGradeLevel(String className) {
+    if (className.trim().isEmpty) return null;
+    final cleaned = cleanClassName(className);
+    final match = RegExp(r'^(\d{1,2})-[A-ZÇĞİÖŞÜ]').firstMatch(cleaned);
+    if (match != null) {
+      return match.group(1);
+    }
+    // Genel sayısal eşleşme (örn: "5. Sınıf", "10 Sınıf")
+    final numMatch = RegExp(r'\b(\d{1,2})\b').firstMatch(className);
+    if (numMatch != null) {
+      return numMatch.group(1);
+    }
+    return null;
+  }
+
   /// Öğrenci Okul Numarası Sanitizer (Sadece Rakam)
   static String sanitizeStudentNumber(String input) {
     return input.replaceAll(RegExp(r'[^\d]'), '');

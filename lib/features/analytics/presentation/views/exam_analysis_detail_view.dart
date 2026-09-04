@@ -104,7 +104,12 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
 
     final sortedStudents = List<StudentExamScore>.from(_currentExam.studentScores);
     if (_sortByScoreDescending) {
-      sortedStudents.sort((a, b) => b.totalScore.compareTo(a.totalScore));
+      // Girmeyenler puana gore siralamada en sona: 0 puanla siralanirlarsa
+      // sinavdan gercekten dusuk alan ogrencilerle karisiyorlar.
+      sortedStudents.sort((a, b) {
+        if (a.isAbsent != b.isAbsent) return a.isAbsent ? 1 : -1;
+        return b.totalScore.compareTo(a.totalScore);
+      });
     } else {
       sortedStudents.sort((a, b) => a.studentNumber.compareTo(b.studentNumber));
     }
@@ -161,6 +166,8 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.primary,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 2),
                             Text(
@@ -544,7 +551,12 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                     separatorBuilder: (context, index) => const Divider(height: 1),
                     itemBuilder: (context, index) {
                       final s = sortedStudents[index];
-                      final isPassed = s.totalScore >= 50.0;
+                      // Girmeyen ogrenci "0 Puan / kirmizi" gosterilmemeli:
+                      // sinava girip kalan ogrenciyle ayni sey degil.
+                      final isPassed = !s.isAbsent && s.totalScore >= 50.0;
+                      final rowColor = s.isAbsent
+                          ? Colors.grey
+                          : (isPassed ? Colors.green : Colors.red);
 
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -555,7 +567,7 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                               height: 28,
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
-                                color: (isPassed ? Colors.green : Colors.red).withValues(alpha: 0.12),
+                                color: rowColor.withValues(alpha: 0.12),
                                 shape: BoxShape.circle,
                               ),
                               child: Text(
@@ -563,7 +575,7 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                                 style: AppFonts.outfit(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
-                                  color: isPassed ? Colors.green : Colors.red,
+                                  color: rowColor,
                                 ),
                               ),
                             ),
@@ -582,7 +594,9 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  if (_currentExam.isQuestionBased && s.questionScores.isNotEmpty) ...[
+                                  if (!s.isAbsent &&
+                                      _currentExam.isQuestionBased &&
+                                      s.questionScores.isNotEmpty) ...[
                                     const SizedBox(height: 2),
                                     Text(
                                       s.questionScores.asMap().entries.map((e) => 'S${e.key + 1}:${e.value.toStringAsFixed(0)}').join('  '),
@@ -599,15 +613,17 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: (isPassed ? Colors.green : Colors.red).withValues(alpha: 0.15),
+                                color: rowColor.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
-                                '${s.totalScore.toStringAsFixed(0)} Puan',
+                                s.isAbsent
+                                    ? 'Girmedi'
+                                    : '${s.totalScore.toStringAsFixed(0)} Puan',
                                 style: AppFonts.outfit(
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.w800,
-                                  color: isPassed ? Colors.green : Colors.red,
+                                  color: rowColor,
                                 ),
                               ),
                             ),

@@ -29,12 +29,26 @@ class FirestoreBudgetGuard {
   static final FirestoreBudgetGuard instance = FirestoreBudgetGuard._();
 
   /// Günde tek cihazdan yapılabilecek azami yazma sayısı.
-  /// Normal kullanım: ~2 yazma/gün. Sınır: 100 yazma/gün (50 kat).
-  static const int dailyWriteLimit = 100;
+  ///
+  /// Sınır 100'dü ve "normal kullanım ~2 yazma/gün" varsayımına
+  /// dayanıyordu. Bu varsayım yanlış çıktı: dönem başında öğretmen her
+  /// öğrenci için referans kodu yayımlar ve her kod 3 yazma tüketir
+  /// (sınıf odası + kadro satırı + token). 30 kişilik tek sınıf ~50
+  /// yazma demek; ikinci sınıfta bütçe doluyor ve yazmalar SESSİZCE
+  /// duruyordu — veli hiçbir şey göremiyordu, sebebi de görünmüyordu.
+  ///
+  /// Yeni sınır bir öğretmenin en yoğun gününü (birkaç sınıfın tüm
+  /// kodları + günlük duyuru/mesaj trafiği) karşılar; kaçak bir yazma
+  /// döngüsünü yakalama amacını da korur. Firestore ücretsiz katmanı
+  /// günde 20.000 yazma verir; 1500 hâlâ bunun çok altındadır.
+  static const int dailyWriteLimit = 1500;
 
   /// Bu okuma sayısına ulaşıldığında loglara uyarı basılır (engellenmez).
-  /// Normal kullanım: ~10 okuma/gün. Uyarı: 200 okuma/gün (20 kat).
-  static const int dailyReadWarnThreshold = 200;
+  ///
+  /// Okuma doğal olarak yazmadan sıktır (her duyuru listesi, her kadro
+  /// sorgusu). Eşik yazma tavanının üzerinde tutulur; aksi hâlde normal
+  /// bir gün bile uyarı üretir ve gerçek kaçaklar gürültüde kaybolur.
+  static const int dailyReadWarnThreshold = 3000;
 
   static const String _kDateKey = 'sinifcepte_budget_date';
   static const String _kWritesKey = 'sinifcepte_budget_writes';

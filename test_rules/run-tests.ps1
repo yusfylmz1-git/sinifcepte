@@ -37,7 +37,24 @@ function Find-Jdk21 {
         }
     }
 
-    # 3. Claude oturumunun indirdiği taşınabilir JDK (varsa)
+    # 3. Android Studio'nun paketledigi JDK.
+    #
+    # Bu makinede en guvenilir kaynak bu: Flutter zaten kullaniyor
+    # (`flutter doctor -v` -> "Java binary at"). Klasor adi kuruluma gore
+    # degisebiliyor ("Android Studio", "Android Studio1", ...), o yuzden
+    # desenle aranir.
+    foreach ($root in @("$env:ProgramFiles\Android", "$env:LOCALAPPDATA\Programs")) {
+        if (Test-Path $root) {
+            $candidates += Get-ChildItem $root -Directory -ErrorAction SilentlyContinue |
+                Where-Object { $_.Name -like 'Android Studio*' } |
+                ForEach-Object { Get-Item (Join-Path $_.FullName 'jbr') -ErrorAction SilentlyContinue }
+        }
+    }
+
+    # 4. Claude oturumunun indirdigi tasinabilir JDK (varsa).
+    #
+    # EN SONA birakildi: oturum klasorleri silinince geride BOZUK bir yol
+    # kalabiliyor. Once kalici kurulumlar denenir.
     $scratch = Join-Path $env:LOCALAPPDATA "Temp\claude"
     if (Test-Path $scratch) {
         $candidates += Get-ChildItem $scratch -Directory -Recurse -Depth 4 -ErrorAction SilentlyContinue |
@@ -45,7 +62,13 @@ function Find-Jdk21 {
     }
 
     foreach ($c in $candidates) {
-        if (Test-Path "$($c.FullName)\bin\java.exe") { return $c.FullName }
+        if (-not $c) { continue }
+        $exe = Join-Path $c.FullName 'bin\java.exe'
+        # Yalnizca java.exe'nin varligi YETMEZ: yarim inen ya da silinmis
+        # bir JDK'da dosya durur ama jvm.cfg olmadigi icin calismaz ve
+        # emulator "Java kurulu degil" gibi yaniltici hata verir.
+        $cfg = Join-Path $c.FullName 'lib\jvm.cfg'
+        if ((Test-Path $exe) -and (Test-Path $cfg)) { return $c.FullName }
     }
     return ""
 }

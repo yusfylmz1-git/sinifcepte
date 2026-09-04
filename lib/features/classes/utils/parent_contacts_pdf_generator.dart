@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:printing/printing.dart';
 import '../../../../data/models/student_model.dart';
 import '../../../../data/models/class_model.dart';
+import '../../../core/pdf/pdf_tr_fonts.dart';
 
 /// MEB Standartlarında Resmî Sınıf Veli İletişim ve Acil Durum Çizelgesi PDF Motoru
 class ParentContactsPdfGenerator {
@@ -35,7 +36,7 @@ class ParentContactsPdfGenerator {
     required List<StudentModel> students,
   }) async {
     try {
-      final pdf = pw.Document();
+      final pdf = await PdfTrFonts.document();
 
       final fontRegular = await PdfGoogleFonts.robotoRegular();
       final fontBold = await PdfGoogleFonts.robotoBold();
@@ -65,7 +66,7 @@ class ParentContactsPdfGenerator {
 
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/Veli_Iletisim_Listesi_${classModel.name}.pdf');
-      await file.writeAsBytes(await pdf.save());
+      await file.writeAsBytes(await PdfTrFonts.kaydet(pdf));
 
       await SharePlus.instance.share(
         ShareParams(

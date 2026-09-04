@@ -7,8 +7,9 @@ import '../../../../data/models/student_model.dart';
 import '../../../../data/models/class_model.dart';
 import '../providers/student_provider.dart';
 import '../utils/parent_contacts_pdf_generator.dart';
-import '../../parent_portal/presentation/widgets/parent_token_card_modal.dart';
-import '../../parent_portal/presentation/widgets/class_parent_communication_modal.dart';
+import '../../parent_portal/data/services/phone_formatter.dart';
+import '../../../core/utils/search_debouncer.dart';
+import '../../../core/utils/turkish_text.dart';
 
 /// Türkiye Telefon Numarası Otomatik Maskeleme Formatlayıcısı
 /// Örn: 5321234567 -> 0 (532) 123 45 67 veya 05321234567 -> 0 (532) 123 45 67
@@ -67,10 +68,14 @@ class ParentContactsScreen extends ConsumerStatefulWidget {
 class _ParentContactsScreenState extends ConsumerState<ParentContactsScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+
+  /// 1173 satirlik ekranin her tusta bastan cizilmesini onler.
+  final SearchDebouncer _searchDebouncer = SearchDebouncer();
   String _selectedFilter = 'all'; // 'all', 'missing', 'has_phone'
 
   @override
   void dispose() {
+    _searchDebouncer.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -162,18 +167,6 @@ class _ParentContactsScreenState extends ConsumerState<ParentContactsScreen> {
               );
             },
           ),
-
-          // 3. 📢 Veli İletişim & Duyuru Merkezi Butonu
-          IconButton(
-            icon: const Icon(Icons.hub_rounded, color: AppColors.primary),
-            tooltip: 'Veli İletişim & Duyuru Merkezi',
-            onPressed: () {
-              ClassParentCommunicationModal.show(
-                context,
-                classModel: widget.classModel,
-              );
-            },
-          ),
         ],
       ),
       body: studentsAsync.when(
@@ -184,11 +177,13 @@ class _ParentContactsScreenState extends ConsumerState<ParentContactsScreen> {
 
           // Filtreleme ve Arama
           final filteredStudents = students.where((s) {
-            final query = _searchQuery.toLowerCase().trim();
+            // `toLowerCase` Turkce'de yaniltiyordu: ogretmen "Gulsah"
+            // yazinca "Gulsah" velisi bulunamiyordu.
+            final query = _searchQuery.trim();
             final matchesQuery = query.isEmpty ||
-                s.fullName.toLowerCase().contains(query) ||
+                trContains(s.fullName, query) ||
                 s.schoolNumber.toString().contains(query) ||
-                (s.parentName?.toLowerCase().contains(query) ?? false) ||
+                trContains(s.parentName ?? '', query) ||
                 (s.parentPhone?.contains(query) ?? false);
 
             if (!matchesQuery) return false;
@@ -269,7 +264,10 @@ class _ParentContactsScreenState extends ConsumerState<ParentContactsScreen> {
           // Arama Girişi
           TextField(
             controller: _searchController,
-            onChanged: (val) => setState(() => _searchQuery = val),
+            onChanged: (val) => _searchDebouncer.run(() {
+              if (!mounted) return;
+              setState(() => _searchQuery = val);
+            }),
             decoration: InputDecoration(
               hintText: 'Öğrenci adı, okul no veya veli ara...',
               hintStyle: const TextStyle(fontSize: 13),
@@ -496,36 +494,10 @@ class _ParentContactsScreenState extends ConsumerState<ParentContactsScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
-                const SizedBox(width: 4),
-
-                // 📱 QR KOD BUTONU
-                ElevatedButton.icon(
-                  onPressed: () => ParentTokenCardModal.show(
-                    context,
-                    student: student,
-                    classModel: widget.classModel,
-                  ),
-                  icon: const Icon(Icons.qr_code_2_rounded, size: 14),
-                  label: const Text('QR', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    minimumSize: const Size(0, 32),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    visualDensity: VisualDensity.compact,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
               ],
             ),
           ] else ...[
             // Telefon Kayıtlı Değilse Uyarı ve Hızlı Ekle.
-            //
-            // Uyarı metni ve iki buton tek satıra sığmıyordu (dar ekranda
-            // 34px taşma). Wrap kullanılıyor: yer varsa yan yana, yoksa
-            // buton grubu alt satıra iner. Böylece 320px ekranda bile
-            // taşma olmaz (AGENTS.md Madde 8).
             Wrap(
               alignment: WrapAlignment.spaceBetween,
               crossAxisAlignment: WrapCrossAlignment.center,
@@ -550,29 +522,6 @@ class _ParentContactsScreenState extends ConsumerState<ParentContactsScreen> {
                       ),
                     ),
                   ],
-                ),
-                // Butonlar ayrı ayrı Wrap çocuğu: 320px ekranda ikisi yan
-                // yana sığmadığında biri alt satıra iner. Tek Row içinde
-                // tutulsalardı Wrap onları bölünemez sayar ve 69px taşardı.
-                OutlinedButton.icon(
-                  onPressed: () => ParentTokenCardModal.show(
-                    context,
-                    student: student,
-                    classModel: widget.classModel,
-                  ),
-                  icon: const Icon(Icons.qr_code_2_rounded, size: 15, color: AppColors.primary),
-                  label: const Text(
-                    'Veli Kodu',
-                    style: TextStyle(fontSize: 11.5, color: AppColors.primary),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
                 ),
                 OutlinedButton.icon(
                   onPressed: () => _openSingleEditModal(context, student),
@@ -685,13 +634,13 @@ class _ParentContactsScreenState extends ConsumerState<ParentContactsScreen> {
             }
 
             return Container(
-              height: MediaQuery.of(context).size.height * 0.85,
+              height: MediaQuery.sizeOf(context).height * 0.85,
               decoration: BoxDecoration(
                 color: isDark ? AppColors.darkCardBackground : Colors.white,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               ),
               padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                bottom: MediaQuery.viewInsetsOf(context).bottom + 16,
                 top: 14,
                 left: 18,
                 right: 18,
@@ -1005,7 +954,7 @@ class _ParentContactsScreenState extends ConsumerState<ParentContactsScreen> {
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+            bottom: MediaQuery.viewInsetsOf(context).bottom + 20,
             top: 14,
             left: 20,
             right: 20,
@@ -1157,8 +1106,8 @@ class _ParentContactsScreenState extends ConsumerState<ParentContactsScreen> {
   /// Telefon Arama Fonksiyonu (Dual Error Handling & Doğrulama)
   Future<void> _makePhoneCall(String phoneNumber) async {
     try {
-      final cleaned = phoneNumber.replaceAll(RegExp(r'[^0-9+]'), '');
-      if (cleaned.length < 10) {
+      final cleaned = PhoneFormatter.toDial(phoneNumber);
+      if (cleaned == null) {
         _showSnack('Geçersiz telefon numarası ($phoneNumber)');
         return;
       }
@@ -1181,16 +1130,12 @@ class _ParentContactsScreenState extends ConsumerState<ParentContactsScreen> {
   /// WhatsApp Sohbet Açma Fonksiyonu (Dual Error Handling & Doğrulama)
   Future<void> _openWhatsApp(String phoneNumber, String studentName) async {
     try {
-      String cleaned = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
-      if (cleaned.length < 10) {
+      // '0090 532...' gibi uluslararasi yazim eskiden
+      // '900905321234567' oluyor ve WhatsApp acilmiyordu.
+      final cleaned = PhoneFormatter.toWhatsApp(phoneNumber);
+      if (cleaned == null) {
         _showSnack('Geçersiz WhatsApp telefon numarası ($phoneNumber)');
         return;
-      }
-
-      if (cleaned.startsWith('0')) {
-        cleaned = '90${cleaned.substring(1)}';
-      } else if (!cleaned.startsWith('90')) {
-        cleaned = '90$cleaned';
       }
 
       final message = Uri.encodeComponent('Merhaba, $studentName öğrencimiz hakkında bilgi vermek için yazıyorum.');

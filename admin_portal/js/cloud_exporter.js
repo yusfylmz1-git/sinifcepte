@@ -27,12 +27,13 @@ class CloudExporter {
   }
 
   static exportOutcomes(outcomesManager, gradeLevel = null, subjectCode = null) {
-    let list = outcomesManager.outcomes;
     if (gradeLevel && subjectCode) {
-      list = outcomesManager.getFilteredOutcomes(gradeLevel, subjectCode);
+      // getFilteredOutcomes imzası (schoolType, gradeLevel, subjectCode, ...)
+      // ile başlar; ilk parametreyi atlamak tüm kayıtları eliyordu.
+      const list = outcomesManager.getFilteredOutcomes('ALL', gradeLevel, subjectCode);
       this.downloadFile(`outcomes_${gradeLevel}_${subjectCode}.json`, JSON.stringify(list, null, 2));
     } else {
-      this.downloadFile('curriculum_outcomes_all.json', JSON.stringify(list, null, 2));
+      this.downloadFile('official_maarif_kazanimlar.json', JSON.stringify(outcomesManager.outcomes, null, 2));
     }
   }
 
@@ -53,6 +54,10 @@ class CloudExporter {
       version: '1.1.0',
     };
     this.downloadFile('sinifcepte_cloud_bundle.json', JSON.stringify(bundle, null, 2));
+  }
+
+  static exportAllBundle(calendarManager, outcomesManager, manifestManager, examsManager = null) {
+    return this.exportFullBackup(calendarManager, outcomesManager, manifestManager, examsManager);
   }
 }
 

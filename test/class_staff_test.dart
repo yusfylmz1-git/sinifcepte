@@ -3,28 +3,19 @@ import 'package:sinifcepte/features/parent_portal/data/repositories/cloud_commun
 
 void main() {
   group('Ders öğretmeni kadrosu (mesajlaşma yetki ekseni)', () {
-    test('Beklemedeki üye pending_ öneki ile ayırt edilir', () {
-      const pending = CloudStaffMember(
-        teacherUid: 'pending_K7M2P9',
-        teacherName: 'Selin Demir',
-        branch: 'Fizik',
-        joinCode: 'K7M2P9',
-      );
-
-      expect(pending.isPending, isTrue);
-      expect(pending.joinCode, 'K7M2P9');
-    });
-
-    test('Katılmış üye gerçek UID taşır ve beklemede değildir', () {
-      const joined = CloudStaffMember(
+    test('Kadro üyesi gerçek Firebase UID taşır', () {
+      // Katılım kodlu 'pending_' yolu kaldırıldı: uygulamaya hiç girmemiş
+      // öğretmen zaten mesajlaşamıyordu, kadroda görünmesi veliye
+      // tutulamayan bir söz veriyordu. Artık kadroya yalnızca okul
+      // dizininde kayıtlı (yani uygulamaya girmiş) öğretmen eklenir.
+      const member = CloudStaffMember(
         teacherUid: 'firebaseUid123',
         teacherName: 'Selin Demir',
         branch: 'Fizik',
       );
 
-      expect(joined.isPending, isFalse);
-      // Katılım sonrası kod artık gereksizdir.
-      expect(joined.joinCode, isEmpty);
+      expect(member.teacherUid, isNotEmpty);
+      expect(member.teacherUid.startsWith('pending_'), isFalse);
     });
 
     test('Veliye gösterilen etiket ad ve branşı birleştirir', () {
@@ -42,18 +33,6 @@ void main() {
       expect(withBranch.displayTitle, 'Selin Demir — Fizik');
       // Branş boşsa yalnızca ad gösterilir, boş tire kalmaz.
       expect(withoutBranch.displayTitle, 'Ahmet Yılmaz');
-    });
-
-    test('pending_ öneki sabit olarak paylaşılır', () {
-      // Kural dosyası da bu deseni bekler: staffId.matches('pending_.*')
-      expect(CloudStaffMember.pendingPrefix, 'pending_');
-
-      const member = CloudStaffMember(
-        teacherUid: '${CloudStaffMember.pendingPrefix}ABC123',
-        teacherName: 'Test',
-        branch: '',
-      );
-      expect(member.isPending, isTrue);
     });
 
     test('Sınıf rehber öğretmeni işaretlenebilir', () {
@@ -140,6 +119,44 @@ void main() {
 
       expect(fromTeacher.isFromTeacher, isTrue);
       expect(fromParent.isFromTeacher, isFalse);
+    });
+
+    test('KRİTİK: mesaj hangi öğretmene ait olduğunu taşır', () {
+      // Bu alan yoktu: mesajlar yalnızca studentCloudId ile
+      // filtrelendiği için velinin TÜM öğretmenlerle yazışması tek
+      // sohbette birikiyordu. Veli matematik öğretmenine yazdığını
+      // beden eğitimi öğretmeni de görüyordu.
+      final toMath = CloudMessage(
+        id: 'm1',
+        studentCloudId: 'stu_uid_1',
+        parentUserId: 'parentAyse',
+        authorRole: 'parent',
+        authorName: 'Ayşe Yılmaz',
+        teacherUid: 'uid_matematik',
+        body: 'Özel bir konu',
+        createdAt: DateTime(2026, 8, 18),
+      );
+      final toPe = CloudMessage(
+        id: 'm2',
+        studentCloudId: 'stu_uid_1',
+        parentUserId: 'parentAyse',
+        authorRole: 'parent',
+        authorName: 'Ayşe Yılmaz',
+        teacherUid: 'uid_beden',
+        body: 'Başka bir konu',
+        createdAt: DateTime(2026, 8, 18),
+      );
+
+      expect(toMath.teacherUid, isNot(toPe.teacherUid),
+          reason: 'Sohbetler ayrışmıyor: aynı öğrenci için iki farklı '
+              'öğretmene yazılan mesaj aynı sohbete düşer');
+
+      // Matematik sohbetini süzdüğümüzde beden mesajı gelmemeli.
+      final mathThread = [toMath, toPe]
+          .where((m) => m.teacherUid == 'uid_matematik')
+          .toList();
+      expect(mathThread.length, 1);
+      expect(mathThread.single.body, 'Özel bir konu');
     });
   });
 }

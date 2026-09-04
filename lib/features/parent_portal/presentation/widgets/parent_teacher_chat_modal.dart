@@ -6,6 +6,10 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/repositories/cloud_communication_repository.dart';
 import '../../providers/cloud_communication_provider.dart';
+import '../../data/services/communication_ids.dart';
+import '../../data/services/messaging_window.dart';
+import '../../../../core/cloud/firestore_budget_guard.dart';
+import '../../../../core/moderation/content_guard.dart';
 
 /// Öğretmen ↔ veli birebir yazışma ekranı.
 ///
@@ -45,6 +49,26 @@ class ParentTeacherChatModal extends ConsumerStatefulWidget {
   /// Karşı tarafın adı (başlıkta gösterilir).
   final String counterpartName;
 
+  /// Yazışmanın ait olduğu öğretmenin UID'si.
+  ///
+  /// Sohbetleri ayırır: bu alan olmadan velinin tüm öğretmenlerle
+  /// yazışması tek listede birikiyor, her öğretmen diğerlerinin
+  /// yazışmasını görebiliyordu.
+  final String teacherUid;
+
+  /// Sınıf öğretmeninin belirlediği görüşme günü (boşsa kısıt yok).
+  final String meetingDay;
+
+  /// Görüşme saat aralığı, örn. "13:30 - 14:15" (boşsa kısıt yok).
+  final String meetingTime;
+
+  /// Alt sayfa (modal) olarak mı gösteriliyor?
+  ///
+  /// false ise sabit yükseklik ve yuvarlatılmış üst köşeler uygulanmaz;
+  /// bileşen bulunduğu alanı doldurur. Geniş ekranda mesajlar sekmesinin
+  /// sağ panelinde böyle kullanılır.
+  final bool asSheet;
+
   const ParentTeacherChatModal({
     super.key,
     required this.classCloudId,
@@ -55,6 +79,10 @@ class ParentTeacherChatModal extends ConsumerStatefulWidget {
     required this.selfUid,
     required this.asTeacher,
     required this.counterpartName,
+    required this.teacherUid,
+    this.meetingDay = '',
+    this.meetingTime = '',
+    this.asSheet = true,
   });
 
   static Future<void> show(
@@ -67,6 +95,9 @@ class ParentTeacherChatModal extends ConsumerStatefulWidget {
     required String selfUid,
     required bool asTeacher,
     required String counterpartName,
+    required String teacherUid,
+    String meetingDay = '',
+    String meetingTime = '',
   }) {
     return showModalBottomSheet<void>(
       context: context,
@@ -81,6 +112,9 @@ class ParentTeacherChatModal extends ConsumerStatefulWidget {
         selfUid: selfUid,
         asTeacher: asTeacher,
         counterpartName: counterpartName,
+        teacherUid: teacherUid,
+        meetingDay: meetingDay,
+        meetingTime: meetingTime,
       ),
     );
   }
@@ -97,6 +131,17 @@ class _ParentTeacherChatModalState
 
   List<CloudMessage> _messages = const [];
   bool _loading = true;
+
+  /// Veli şu an bu öğretmene yazabilir mi?
+  ///
+  /// Sunucuya hiç sorulmaz: `meetingDay`/`meetingTime` kadro satırından
+  /// gelir ve o satır ekran açılırken zaten okunmuştur. Bu yüzden
+  /// kısıtlamanın ek Firestore maliyeti yoktur.
+  bool get _windowOpen => MessagingWindow.isOpen(
+        meetingDay: widget.meetingDay,
+        meetingTime: widget.meetingTime,
+        now: DateTime.now(),
+      );
   bool _sending = false;
   String? _error;
 
@@ -122,6 +167,7 @@ class _ParentTeacherChatModalState
       final list = await ref.read(cloudCommunicationRepositoryProvider).fetchMessages(
             classCloudId: widget.classCloudId,
             studentCloudId: widget.studentCloudId,
+            teacherUid: widget.teacherUid,
           );
       if (!mounted) return;
 
@@ -151,13 +197,83 @@ class _ParentTeacherChatModalState
   }
 
   Future<void> _send() async {
-    final body = _bodyCtrl.text.trim();
+    final body = CommunicationIds.clampBody(_bodyCtrl.text.trim());
     if (body.isEmpty || _sending) return;
+
+    // Görüşme saati kısıtı yalnızca veli tarafında uygulanır; öğretmen
+    // kendi belirlediği saate bağlı değildir.
+    if (!widget.asTeacher && !_windowOpen) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(MessagingWindow.closedReason(
+            meetingDay: widget.meetingDay,
+            meetingTime: widget.meetingTime,
+            now: DateTime.now(),
+          )),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+      return;
+    }
+
+    // Icerik denetimi: argo uyarir, spam engeller.
+    //
+    // Onceden HICBIR denetim yoktu; hakaret ve mesaj bombardimani
+    // dogrudan gidiyordu. Denetim cihazda calisir (sifir bulut maliyeti);
+    // kararli bir saldirgan atlatabilir, o yuzden sikayet mekanizmasi
+    // ikinci katman olarak durur.
+    final denetim = ContentGuard.instance.check(
+      userId: widget.selfUid,
+      body: body,
+    );
+
+    if (denetim.blocks) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(denetim.message!),
+          backgroundColor: Colors.orange.shade700,
+        ),
+      );
+      return;
+    }
+
+    if (denetim.verdict == ContentVerdict.offensive) {
+      // Engellemez, dusundurur: Turkce'de yanlis alarm kacinilmaz
+      // ("beden dersine top getirsin mi?" gibi). Kullaniciyi kilitlemek
+      // filtrenin hic olmamasindan kotu olurdu.
+      final devam = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(
+            'Mesajınızı Gözden Geçirin',
+            style: AppFonts.outfit(fontSize: 15, fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            denetim.message!,
+            style: AppFonts.outfit(fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Düzenle'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Yine de Gönder'),
+            ),
+          ],
+        ),
+      );
+      if (devam != true || !mounted) return;
+    }
 
     setState(() => _sending = true);
 
-    final messageId =
-        'msg_${widget.selfUid}_${DateTime.now().millisecondsSinceEpoch}';
+    // Kimlik yalnizca zaman damgasiydi: ayni milisaniyede gonderilen
+    // iki mesaj ayni dokumana yaziliyor ve merge:false oldugu icin
+    // ilki tamamen siliniyordu.
+    final messageId = CommunicationIds.message(authorUid: widget.selfUid);
 
     try {
       final ok = await ref.read(cloudCommunicationRepositoryProvider).sendMessage(
@@ -169,6 +285,7 @@ class _ParentTeacherChatModalState
             authorRole: widget.asTeacher ? 'teacher' : 'parent',
             authorName: widget.selfName,
             authorUid: widget.selfUid,
+            teacherUid: widget.teacherUid,
             body: body,
           );
 
@@ -176,16 +293,31 @@ class _ParentTeacherChatModalState
 
       if (!ok) {
         setState(() => _sending = false);
+        // Bütçe freni devredeyse sorun internet değil; "bağlantınızı
+        // kontrol edin" demek kullanıcıyı boşuna uğraştırır.
+        final frenli = FirestoreBudgetGuard.instance.isWriteBlocked;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Mesaj gönderilemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.',
+              frenli
+                  ? 'Günlük mesaj sınırına ulaşıldı. Mesajınız gönderilmedi; '
+                      'yarın tekrar deneyebilirsiniz.'
+                  : 'Mesaj gönderilemedi. İnternet bağlantınızı kontrol edip '
+                      'tekrar deneyin.',
             ),
             backgroundColor: Colors.orange,
+            duration: Duration(seconds: frenli ? 6 : 4),
           ),
         );
         return;
       }
+
+      // Sayac yalnizca GONDERILEN mesaj icin ilerler: uyariyi gorup
+      // vazgecen kullanici hiz sinirini doldurmamali.
+      ContentGuard.instance.recordSent(
+        userId: widget.selfUid,
+        body: body,
+      );
 
       HapticFeedback.selectionClick();
       _bodyCtrl.clear();
@@ -202,6 +334,7 @@ class _ParentTeacherChatModalState
             authorRole: widget.asTeacher ? 'teacher' : 'parent',
             authorName: widget.selfName,
             authorUid: widget.selfUid,
+            teacherUid: widget.teacherUid,
             body: body,
             createdAt: DateTime.now(),
           ),
@@ -226,24 +359,43 @@ class _ParentTeacherChatModalState
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    // `MediaQuery.of(context)` TÜM MediaQuery değişimlerine abone olur.
+    // Klavye açılırken `viewInsets` her karede değiştiği için bu, ekranın
+    // saniyede 60 kez baştan çizilmesine yol açıyordu — klavye "yavaş
+    // açılıyor" hissinin sebebi buydu.
+    //
+    // Hedefli izleyiciler yalnızca ilgili değer değiştiğinde yeniden
+    // çizer.
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+
+    final content = Column(
+      children: [
+        _buildHeader(isDark),
+        const Divider(height: 1),
+        Expanded(child: _buildBody(isDark)),
+        _buildComposer(isDark),
+      ],
+    );
+
+    // Panel modunda (geniş ekran, sağ bölme) sabit yükseklik ve yuvarlak
+    // üst köşeler istemiyoruz: bileşen bulunduğu alanı doldurur.
+    if (!widget.asSheet) {
+      return Container(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        child: content,
+      );
+    }
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
       child: Container(
-        height: MediaQuery.of(context).size.height * 0.8,
+        height: MediaQuery.sizeOf(context).height * 0.8,
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1E293B) : Colors.white,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        child: Column(
-          children: [
-            _buildHeader(isDark),
-            const Divider(height: 1),
-            Expanded(child: _buildBody(isDark)),
-            _buildComposer(isDark),
-          ],
-        ),
+        child: content,
       ),
     );
   }
@@ -389,7 +541,7 @@ class _ParentTeacherChatModalState
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.72,
+          maxWidth: MediaQuery.sizeOf(context).width * 0.72,
         ),
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
@@ -466,6 +618,15 @@ class _ParentTeacherChatModalState
                 enabled: !_sending,
                 minLines: 1,
                 maxLines: 4,
+                // Sınır zaten CommunicationIds.clampBody ile uygulanıyordu
+                // ama kullanıcıya gösterilmiyordu: metin sessizce
+                // kırpılıyordu.
+                maxLength: 4000,
+                buildCounter: (_, {required currentLength, required isFocused, maxLength}) =>
+                    currentLength > 3500
+                        ? Text('$currentLength / $maxLength',
+                            style: const TextStyle(fontSize: 11, color: Colors.orange))
+                        : null,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
                   hintText: 'Mesajınızı yazın...',
@@ -510,6 +671,57 @@ class _ParentTeacherChatModalState
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Sohbeti alt sayfa olmadan, bulunduğu alanı doldurarak gösterir.
+///
+/// Mesajlar sekmesinin geniş ekran düzeninde sağ panelde kullanılır
+/// (solda öğretmen listesi, sağda yazışma).
+class ParentTeacherChatPanel extends StatelessWidget {
+  final String classCloudId;
+  final String studentCloudId;
+  final String studentName;
+  final String parentUserId;
+  final String selfName;
+  final String selfUid;
+  final bool asTeacher;
+  final String counterpartName;
+  final String teacherUid;
+  final String meetingDay;
+  final String meetingTime;
+
+  const ParentTeacherChatPanel({
+    super.key,
+    required this.classCloudId,
+    required this.studentCloudId,
+    required this.studentName,
+    required this.parentUserId,
+    required this.selfName,
+    required this.selfUid,
+    required this.asTeacher,
+    required this.counterpartName,
+    required this.teacherUid,
+    this.meetingDay = '',
+    this.meetingTime = '',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ParentTeacherChatModal(
+      classCloudId: classCloudId,
+      studentCloudId: studentCloudId,
+      studentName: studentName,
+      parentUserId: parentUserId,
+      selfName: selfName,
+      selfUid: selfUid,
+      asTeacher: asTeacher,
+      counterpartName: counterpartName,
+      teacherUid: teacherUid,
+      meetingDay: meetingDay,
+      meetingTime: meetingTime,
+      asSheet: false,
     );
   }
 }

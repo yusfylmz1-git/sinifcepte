@@ -1,3 +1,5 @@
+import '../../core/utils/name_formatter.dart';
+
 /// Öğrenci Model Sınıfı (StudentModel)
 class StudentModel {
   final int? id;
@@ -22,7 +24,16 @@ class StudentModel {
     this.notes,
   });
 
-  String get fullName => '$firstName $lastName'.trim();
+  /// Standart yazım: **Yusuf YILMAZ**.
+  ///
+  /// Ham birleştirme yapılıyordu; kullanıcı "yusuf yılmaz" yazınca öyle
+  /// kalıyor, listede, PDF'te ve veli ekranında böyle görünüyordu.
+  String get fullName =>
+      NameFormatter.format(firstName: firstName, lastName: lastName);
+
+  /// Dar alanlar için: **Yusuf Y.**
+  String get shortName =>
+      NameFormatter.formatShort(firstName: firstName, lastName: lastName);
 
   Map<String, dynamic> toMap() {
     return {

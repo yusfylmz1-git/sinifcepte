@@ -109,8 +109,7 @@ class ManifestManager {
     URL.revokeObjectURL(url);
 
     console.info(
-      'Yayınlamak için:
-' +
+      'Yayınlamak için:\n' +
         '  node scripts/admin/publish_remote_config.mjs remote_config_params.json'
     );
     return params;

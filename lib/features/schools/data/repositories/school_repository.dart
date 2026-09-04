@@ -8,6 +8,7 @@ import '../../../../core/storage/prefs_service.dart';
 import '../models/school_model.dart';
 import '../models/school_types.dart';
 import '../utils/normalized_levenshtein.dart';
+import '../../../../core/utils/gzip_asset.dart';
 
 /// İl bazlı gzip shard yükler. 55k okul RAM'e alınmaz; aynı anda tek il tutulur.
 class SchoolRepository {
@@ -87,7 +88,7 @@ class SchoolRepository {
   Future<Map<String, dynamic>?> loadManifest() async {
     if (_manifest != null) return _manifest;
     try {
-      final raw = await rootBundle.loadString(_manifestAsset);
+      final raw = await GzipAsset.loadString(_manifestAsset);
       final decoded = jsonDecode(raw);
       if (decoded is Map<String, dynamic>) {
         _manifest = decoded;
@@ -122,7 +123,7 @@ class SchoolRepository {
 
     for (final asset in candidates) {
       try {
-        final jsonStr = await rootBundle.loadString(asset);
+        final jsonStr = await GzipAsset.loadString(asset);
         final decoded = jsonDecode(jsonStr);
         final list = <SchoolModel>[];
         if (decoded is List) {
@@ -146,6 +147,27 @@ class SchoolRepository {
       }
     }
     return [];
+  }
+
+  /// Okulu kimliğinden bulur.
+  ///
+  /// Profilde yalnızca `schoolId` ve şehir saklanıyor olabilir; okul ADI
+  /// eski kayıtlarda boş kalmış. Kurulum ekranı adı buradan tamamlar,
+  /// aksi hâlde öğretmen okulunu yeniden seçmek zorunda kalır.
+  Future<SchoolModel?> findById({
+    required String schoolId,
+    required String city,
+  }) async {
+    if (schoolId.isEmpty || city.isEmpty) return null;
+    try {
+      await ensureProvinceLoaded(city);
+      for (final sch in _loadedProvinceSchools) {
+        if (sch.id == schoolId) return sch;
+      }
+    } catch (e, stackTrace) {
+      debugPrint('findById hatası: $e\n$stackTrace');
+    }
+    return null;
   }
 
   Future<List<SchoolModel>> searchSchools({

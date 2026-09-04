@@ -7,6 +7,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../classes/providers/class_provider.dart';
 import '../../../attendance/providers/classroom_participation_provider.dart';
 import '../../providers/smart_comment_generator_provider.dart';
+import '../../../../core/utils/search_debouncer.dart';
+import '../../../../core/utils/turkish_text.dart';
 
 enum CommentFilterStatus { all, excellent, good, needsSupport }
 
@@ -42,6 +44,9 @@ class _ClassReportCardCommentsModalState
   final FocusNode _searchFocusNode = FocusNode();
   String _searchQuery = '';
 
+  /// 974 satirlik modalin her tusta bastan cizilmesini onler.
+  final SearchDebouncer _searchDebouncer = SearchDebouncer();
+
   // Öğrenci bazlı seçilen varyasyon indexi (studentId -> variationIndex)
   final Map<int, int> _studentVariationMap = {};
   // Kopyalanan öğrencilerin seti (studentId -> kopyalandı işareti)
@@ -66,6 +71,7 @@ class _ClassReportCardCommentsModalState
 
   @override
   void dispose() {
+    _searchDebouncer.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -432,19 +438,20 @@ class _ClassReportCardCommentsModalState
       if (_filterStatus == CommentFilterStatus.needsSupport && grade >= 70) return false;
 
       if (_searchQuery.isEmpty) return true;
-      final name = (s['studentName']?.toString() ?? '').toLowerCase();
+      // `toLowerCase` Turkce'de yaniltiyordu: ogretmen "Isil" yazinca
+      // "Isil" ogrencisi bulunamiyordu.
+      final name = s['studentName']?.toString() ?? '';
       final numStr = s['studentNumber']?.toString() ?? '';
-      final q = _searchQuery.toLowerCase();
-      return name.contains(q) || numStr.contains(q);
+      return trContains(name, _searchQuery) || numStr.contains(_searchQuery);
     }).toList();
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.92,
+      height: MediaQuery.sizeOf(context).height * 0.92,
       padding: EdgeInsets.only(
         left: 18,
         right: 18,
         top: 14,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 18,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + 18,
       ),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
@@ -624,7 +631,10 @@ class _ClassReportCardCommentsModalState
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 8),
               ),
-              onChanged: (val) => setState(() => _searchQuery = val.trim()),
+              onChanged: (val) => _searchDebouncer.run(() {
+                if (!mounted) return;
+                setState(() => _searchQuery = val.trim());
+              }),
             ),
           ),
           const SizedBox(height: 8),

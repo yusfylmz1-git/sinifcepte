@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_fonts.dart';
 import '../../data/models/classroom_participation_model.dart';
+import '../../providers/classroom_participation_provider.dart';
 import 'quick_student_eval_dialog.dart';
+import '../../../../core/utils/turkish_text.dart';
 
 /// SınıfCepte - Tek Sayfada Sıralı & Cinsiyet Temalı Mini Öğrenci Kartları Izgarası (UI-UX-MAX)
 class CompactStudentParticipationGrid extends ConsumerWidget {
@@ -24,7 +27,8 @@ class CompactStudentParticipationGrid extends ConsumerWidget {
     final evaluations = query.isEmpty
         ? session.evaluations
         : session.evaluations.where((e) {
-            final nameMatches = e.studentName.toLowerCase().contains(query);
+            // `toLowerCase` Turkce'de yaniltiyordu.
+            final nameMatches = trContains(e.studentName, searchQuery);
             final numMatches = e.studentNumber.toString().contains(query);
             return nameMatches || numMatches;
           }).toList();
@@ -152,7 +156,30 @@ class CompactStudentParticipationGrid extends ConsumerWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
+        // TEK DOKUNUS = +1 soz hakki.
+        //
+        // Eskiden dokunmak 962 satirlik diyalogu aciyordu; 30 ogrenci
+        // icin ~120 dokunus gerekiyordu. Ders 40 dakika ve ogretmen
+        // ayni anda ders anlatiyor. Modul bu yuzden cihazda SIFIR
+        // kayitla duruyordu.
         onTap: () {
+          HapticFeedback.selectionClick();
+          ref
+              .read(currentParticipationSessionProvider.notifier)
+              .addSpeakingTurn(student.studentId);
+        },
+        // Yanlis ogrenciye dokunulursa geri alinir.
+        onDoubleTap: () {
+          HapticFeedback.lightImpact();
+          ref
+              .read(currentParticipationSessionProvider.notifier)
+              .removeSpeakingTurn(student.studentId);
+        },
+        // UZUN BAS = detayli degerlendirme (odev, materyal, not).
+        // Nadiren gerekir; ders sonunda ya da "bu cocuk bugun cok
+        // dagilmis" dendiginde.
+        onLongPress: () {
+          HapticFeedback.mediumImpact();
           QuickStudentEvalDialog.show(
             context: context,
             evaluation: student,
@@ -240,12 +267,68 @@ class CompactStudentParticipationGrid extends ConsumerWidget {
                 ),
               ),
 
-              // 3. Alt: Durum Rozetleri Satırı (Ödev, Kitap, Zamanlama, Yıldız)
+              // 3. SOZ HAKKI — modulun asil derdi.
+              //
+              // Hic konusmayan ogrenci GRI NOKTA ile gorunur; ogretmen
+              // bir bakista "kimi atladim" der. Eskiden bu bilgi hicbir
+              // yerde yoktu.
+              _buildSpeakingTurns(student, isDark),
+
+              // 4. Alt: Durum Rozetleri Satırı (Ödev, Kitap, Zamanlama, Yıldız)
               _buildMiniStatusRow(student, isDark),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  /// Söz hakkı göstergesi.
+  ///
+  /// Üçe kadar yıldız çizilir; fazlası sayıyla gösterilir (⭐×5).
+  /// Hiç konuşmamış öğrenci gri nokta alır — ekranda "boş" görünmesi
+  /// öğretmene kimi atladığını anlatır.
+  Widget _buildSpeakingTurns(
+    StudentParticipationEvaluation student,
+    bool isDark,
+  ) {
+    if (student.isSilent) {
+      return Text(
+        '·',
+        style: AppFonts.outfit(
+          fontSize: 15,
+          fontWeight: FontWeight.w900,
+          color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
+          height: 1.0,
+        ),
+      );
+    }
+
+    const renk = Color(0xFFF59E0B);
+
+    if (student.speakingTurns <= 3) {
+      return Text(
+        '⭐' * student.speakingTurns,
+        style: const TextStyle(fontSize: 10, height: 1.1),
+      );
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text('⭐', style: TextStyle(fontSize: 10)),
+        const SizedBox(width: 1),
+        Text(
+          '×${student.speakingTurns}',
+          style: AppFonts.outfit(
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            color: renk,
+            height: 1.1,
+          ),
+        ),
+      ],
     );
   }
 
@@ -255,6 +338,12 @@ class CompactStudentParticipationGrid extends ConsumerWidget {
     Color hwColor;
     String hwText;
     switch (student.homeworkStatus) {
+      // Isaretlenmemis: notr gri nokta. Onceden varsayilan "done" oldugu
+      // icin ogretmen hicbir sey yapmadan da yesil onay goruyordu.
+      case HomeworkStatus.unknown:
+        hwColor = const Color(0xFF94A3B8);
+        hwText = '·';
+        break;
       case HomeworkStatus.done:
         hwColor = const Color(0xFF10B981);
         hwText = '✓';

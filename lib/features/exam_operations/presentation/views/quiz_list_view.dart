@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -9,6 +10,7 @@ import '../../../classes/providers/class_provider.dart';
 import '../../../classes/providers/student_provider.dart';
 import '../../../navigation/providers/navigation_provider.dart';
 import '../../data/models/quiz_tracking_model.dart';
+import '../../data/services/score_input.dart';
 import '../../providers/quiz_tracking_provider.dart';
 
 /// SınıfCepte - 1/3: Quiz & Sözlü Takip Dinamik Çizelgesi (Şirin & Kompakt Tasarım)
@@ -452,6 +454,8 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                                 fontWeight: FontWeight.w600,
                                 color: isDark ? Colors.white : const Color(0xFF0F172A),
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
@@ -695,6 +699,12 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
               TextField(
                 controller: controller,
                 keyboardType: TextInputType.number,
+                // Klavye tipi tek basina yetmiyor: Android'de bircok klavye
+                // sayi modunda bile "-" ve "," tuslarini gosteriyor.
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(3),
+                ],
                 autofocus: true,
                 textAlign: TextAlign.center,
                 style: AppFonts.outfit(
@@ -790,11 +800,26 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
             ),
             ElevatedButton(
               onPressed: () {
-                final score = int.tryParse(controller.text.trim());
+                // Eskiden dogrudan int.tryParse okunuyordu. "abc" yazilinca
+                // null donuyor ve mevcut not SESSIZCE siliniyordu; 955
+                // yazilinca da haber vermeden 100'e kirpiliyordu.
+                final parsed = parseScoreInput(controller.text);
+
+                if (!parsed.canSave) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(
+                      content: Text(parsed.errorMessage!),
+                      backgroundColor: Colors.red.shade600,
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
+                  return; // Diyalog acik kalir, ogretmen duzeltebilir.
+                }
+
                 ref.read(quizTableProvider.notifier).updateScore(
                       columnId: kolon.id!,
                       studentId: student.id!,
-                      score: score,
+                      score: parsed.score,
                     );
                 Navigator.pop(ctx);
               },
@@ -952,6 +977,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
                     const SizedBox(height: 6),
                     TextField(
                       controller: titleController,
+                      maxLength: 40,
                       style: AppFonts.outfit(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -1160,12 +1186,29 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
   }
 
   void _confirmDeleteColumn(BuildContext context, QuizKolonModel kolon) {
+    // Kac notun gidecegini onceden goster. "tum notlar" ifadesi tek basina
+    // ogretmene 3 not mu 30 not mu kaybedecegini soylemiyordu.
+    final notSayisi = ref
+        .read(quizTableProvider)
+        .studentScores
+        .values
+        .where((kolonlar) => kolonlar.containsKey(kolon.id))
+        .length;
+
     showDialog(
       context: context,
       builder: (ctx) {
         return AlertDialog(
           title: Text('Kolonu Sil', style: AppFonts.outfit(fontSize: 15, fontWeight: FontWeight.bold)),
-          content: Text('"${kolon.title}" kolonunu ve girilen tüm notları silmek istediğinizden emin misiniz?', style: AppFonts.outfit(fontSize: 13)),
+          content: Text(
+            notSayisi > 0
+                ? '"${kolon.title}" kolonu ve bu kolona girilmiş '
+                    '$notSayisi öğrenci notu kalıcı olarak silinecek. '
+                    'Bu işlem geri alınamaz.'
+                : '"${kolon.title}" kolonunu silmek istediğinizden emin misiniz? '
+                    'Bu kolona henüz not girilmemiş.',
+            style: AppFonts.outfit(fontSize: 13),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),

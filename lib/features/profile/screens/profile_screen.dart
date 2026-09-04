@@ -3,16 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../../shared/widgets/glass_card.dart';
+import 'about_screen.dart';
 import '../../auth_profile/presentation/views/teacher_profile_setup_view.dart';
 import '../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../auth_profile/presentation/views/school_admin_panel_view.dart';
 import '../../auth_profile/presentation/views/school_admin_request_view.dart';
 import '../../auth_profile/providers/user_role_provider.dart';
-import '../../parent_portal/presentation/screens/parent_dashboard_screen.dart';
-import '../../parent_portal/presentation/screens/parent_student_connect_screen.dart';
-import '../../parent_portal/presentation/widgets/staff_join_modal.dart';
-import '../../parent_portal/providers/parent_token_provider.dart';
 import '../../settings/screens/settings_screen.dart';
+import '../../parent_portal/presentation/widgets/help_support_modal.dart';
 
 /// SınıfCepte - Profil Sekmesi Ekranı
 class ProfileScreen extends ConsumerWidget {
@@ -408,31 +406,33 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 24),
 
-              // Sınıf Kadrosuna Katılma Kartı
+              // Yardım ve Destek
               //
-              // Branş öğretmeni, başka bir öğretmenin sınıfına derse
-              // giriyorsa katılım koduyla o sınıfın kadrosuna dahil olur ve
-              // velilerle yazışma yetkisi kazanır. Duyuru yayınlama yetkisi
-              // yalnızca sınıf öğretmeninde kalır.
+              // `HelpSupportModal` yazılmıştı ama hiçbir yerden
+              // açılmıyordu: kullanıcı takıldığında gidecek yeri yoktu.
               GlassCard(
                 padding: EdgeInsets.zero,
                 child: ListTile(
-                  onTap: () => StaffJoinModal.show(context),
+                  onTap: () => HelpSupportModal.show(
+                    context,
+                    userId: teacherProfile.id,
+                    userRole: 'teacher',
+                  ),
                   leading: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                      color: AppColors.accent.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
-                      Icons.group_add_rounded,
-                      color: Color(0xFF3B82F6),
+                      Icons.help_outline_rounded,
+                      color: AppColors.accent,
                     ),
                   ),
                   title: Text(
-                    'Sınıf Kadrosuna Katıl',
+                    'Yardım ve Destek',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       color: isDark
@@ -441,7 +441,7 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ),
                   subtitle: Text(
-                    'Derse girdiğiniz sınıfın velileriyle yazışın',
+                    'Sık sorulanlar ve bizimle iletişim',
                     style: TextStyle(
                       fontSize: 12,
                       color: isDark
@@ -460,64 +460,64 @@ class ProfileScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
 
-              // Veli Moduna Geçiş Kartı
+              // Hakkında
+              //
+              // Kullanım Koşulları ve Gizlilik Politikası uygulamanın
+              // hiçbir yerinde görünmüyordu. Play Store gizlilik
+              // politikasını zorunlu tutuyor; KVKK ise kullanıcının
+              // verisinin ne olduğunu okuyabilmesini gerektiriyor.
+              //
+              // Menüyü şişirmemek için tek başlık altında toplandılar.
               GlassCard(
                 padding: EdgeInsets.zero,
                 child: ListTile(
-                  onTap: () async {
-                    await ref.read(userRoleProvider.notifier).selectParentRole();
-                    if (context.mounted) {
-                      final repo = ref.read(parentTokenRepositoryProvider);
-                      final children = await repo.getMyConnectedChildren();
-                      if (context.mounted) {
-                        if (children.isNotEmpty) {
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
-                            (route) => false,
-                          );
-                        } else {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const ParentStudentConnectScreen()),
-                          );
-                        }
-                      }
-                    }
-                  },
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => const AboutScreen(),
+                    ),
+                  ),
                   leading: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                      color: AppColors.primary.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
-                      Icons.family_restroom_rounded,
-                      color: Color(0xFF10B981),
+                      Icons.info_outline_rounded,
+                      color: AppColors.primary,
                     ),
                   ),
                   title: Text(
-                    'Veli Moduna Geç',
+                    'Hakkında',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                      color: isDark
+                          ? AppColors.textPrimaryDark
+                          : AppColors.textPrimaryLight,
                     ),
                   ),
                   subtitle: Text(
-                    'Çocuğunuzun durumunu ve sınıf duyurularını takip edin',
+                    'Kullanım koşulları, gizlilik politikası ve SSS',
                     style: TextStyle(
                       fontSize: 12,
-                      color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                      color: isDark
+                          ? AppColors.textSecondaryDark
+                          : AppColors.textSecondaryLight,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   trailing: Icon(
                     Icons.arrow_forward_ios_rounded,
                     size: 16,
-                    color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                    color: isDark
+                        ? AppColors.textSecondaryDark
+                        : AppColors.textSecondaryLight,
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
 
               // Bilgi ve Destek Kartı
               GlassCard(

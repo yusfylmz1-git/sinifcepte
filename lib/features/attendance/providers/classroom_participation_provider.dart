@@ -1,19 +1,56 @@
+import 'dart:math';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/classroom_participation_model.dart';
 import '../data/repositories/classroom_participation_repository.dart';
+import '../../../core/utils/lesson_clock.dart';
 
 enum ParticipationViewMode {
   compactList, // 📋 Hızlı Kompakt Liste
   seatingGrid, // 🪑 Oturma Planı Düzeni
 }
 
-final classroomParticipationRepoProvider = Provider<ClassroomParticipationRepository>((ref) {
-  return ClassroomParticipationRepository();
+final classroomParticipationRepoProvider =
+    Provider<ClassroomParticipationRepository>((ref) {
+      return ClassroomParticipationRepository();
+    });
+
+/// Aktif ders tespitini tetikleyen saat dilimi.
+///
+/// Zamanla ilerleyen bir sayı üretir; [activeTimetableLessonProvider] bunu
+/// izlediği için dilim değişince aktif ders kendiliğinden yeniden
+/// hesaplanır. Ekranda kalan bir zamanlayıcı yerine bunu kullanmak, ana
+/// sayfanın her saniye yeniden çizilmesini önler.
+final lessonClockProvider = StreamProvider<int>((ref) async* {
+  yield currentBucket();
+
+  // Dilim boyunun altında bir aralıkla bakılır: tam dilim boyunda
+  // beklenirse sınır kayması yüzünden bir dilim atlanabilir.
+  final tick = Duration(seconds: kLessonClockInterval.inSeconds ~/ 2);
+  int last = currentBucket();
+
+  await for (final _ in Stream.periodic(tick)) {
+    final now = currentBucket();
+    if (now != last) {
+      last = now;
+      yield now;
+    }
+  }
 });
 
-/// Ders programından o anki aktif dersi algılayan provider
-final activeTimetableLessonProvider = FutureProvider<Map<String, dynamic>?>((ref) async {
+/// Ders programından o anki aktif dersi algılayan provider.
+///
+/// Eskiden düz bir `FutureProvider` idi ve **hiçbir zaman tazelenmiyordu**.
+/// Ana sayfa `IndexedStack` içinde oturum boyunca ekranda kaldığı için
+/// sabah 08:30'da hesaplanan ders akşama kadar öyle kalıyordu: öğretmen
+/// 11:00'de başka sınıftayken kart hâlâ "5-A / 1. ders" diyor, karttaki
+/// "tüm sınıfa tam puan" düğmesi de o **yanlış sınıfa** yazıyordu.
+final activeTimetableLessonProvider = FutureProvider<Map<String, dynamic>?>((
+  ref,
+) async {
+  // Saat dilimini izlemek yeniden hesaplamayı tetikler.
+  ref.watch(lessonClockProvider);
   final repo = ref.watch(classroomParticipationRepoProvider);
   return await repo.detectActiveLessonFromTimetable();
 });
@@ -30,28 +67,50 @@ final selectedParticipationDateProvider = StateProvider<String>((ref) {
 final selectedParticipationLessonHourProvider = StateProvider<int>((ref) => 1);
 
 /// Arayüz Görünüm Modu (Oturma Planı / Kompakt Liste)
-final participationViewModeProvider = StateProvider<ParticipationViewMode>((ref) {
+final participationViewModeProvider = StateProvider<ParticipationViewMode>((
+  ref,
+) {
   return ParticipationViewMode.compactList;
 });
 
 /// Aktif Değerlendirme Oturumu StateNotifier
-final currentParticipationSessionProvider = StateNotifierProvider<
-    ClassroomParticipationNotifier, AsyncValue<ClassroomParticipationSession?>>((ref) {
-  final repo = ref.watch(classroomParticipationRepoProvider);
-  return ClassroomParticipationNotifier(repo);
-});
+final currentParticipationSessionProvider =
+    StateNotifierProvider<
+      ClassroomParticipationNotifier,
+      AsyncValue<ClassroomParticipationSession?>
+    >((ref) {
+      final repo = ref.watch(classroomParticipationRepoProvider);
+      return ClassroomParticipationNotifier(repo);
+    });
 
 /// Tek bir öğrencinin geçmiş son ders katılım ve ödev kayıtlarını getiren FutureProvider
-final studentRecentHistoryProvider = FutureProvider.family<List<Map<String, dynamic>>, int>((ref, studentId) async {
-  final repo = ref.watch(classroomParticipationRepoProvider);
-  return await repo.getStudentRecentHistory(studentId, limit: 4);
-});
+final studentRecentHistoryProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, int>((
+      ref,
+      studentId,
+    ) async {
+      final repo = ref.watch(classroomParticipationRepoProvider);
+      return await repo.getStudentRecentHistory(studentId, limit: 4);
+    });
 
 class ClassroomParticipationNotifier
     extends StateNotifier<AsyncValue<ClassroomParticipationSession?>> {
   final ClassroomParticipationRepository _repo;
 
-  ClassroomParticipationNotifier(this._repo) : super(const AsyncValue.data(null));
+  ClassroomParticipationNotifier(this._repo)
+    : super(const AsyncValue.data(null));
+
+  /// Kaydedilmemiş değişiklik var mı?
+  ///
+  /// Değerlendirme yalnızca "Kaydet" düğmesiyle veritabanına yazılıyor.
+  /// Bu bayrak olmadan öğretmen 30 öğrenciyi değerlendirip geri tuşuna
+  /// basınca hepsi SESSİZCE kayboluyordu — hiçbir uyarı yoktu.
+  bool _hasUnsavedChanges = false;
+
+  bool get hasUnsavedChanges => _hasUnsavedChanges;
+
+  /// Bir değerlendirme değiştiğinde işaretlenir.
+  void _markDirty() => _hasUnsavedChanges = true;
 
   /// Belirtilen oturumu veritabanından yükler veya yeni oluşturur
   Future<void> loadSession({
@@ -72,7 +131,9 @@ class ClassroomParticipationNotifier
       );
       state = AsyncValue.data(session);
     } catch (e, stackTrace) {
-      debugPrint('ClassroomParticipationNotifier.loadSession hatası: $e\n$stackTrace');
+      debugPrint(
+        'ClassroomParticipationNotifier.loadSession hatası: $e\n$stackTrace',
+      );
       state = AsyncValue.error(e, stackTrace);
     }
   }
@@ -86,6 +147,7 @@ class ClassroomParticipationNotifier
       return e.copyWith(homeworkStatus: status);
     }).toList();
 
+    _markDirty();
     state = AsyncValue.data(current.copyWith(evaluations: updatedEvals));
   }
 
@@ -98,6 +160,7 @@ class ClassroomParticipationNotifier
       return e.copyWith(materialsStatus: status);
     }).toList();
 
+    _markDirty();
     state = AsyncValue.data(current.copyWith(evaluations: updatedEvals));
   }
 
@@ -110,6 +173,7 @@ class ClassroomParticipationNotifier
       return e.copyWith(starsCount: count.clamp(0, 3));
     }).toList();
 
+    _markDirty();
     state = AsyncValue.data(current.copyWith(evaluations: updatedEvals));
   }
 
@@ -122,6 +186,7 @@ class ClassroomParticipationNotifier
       return e.copyWith(arrivalStatus: status);
     }).toList();
 
+    _markDirty();
     state = AsyncValue.data(current.copyWith(evaluations: updatedEvals));
   }
 
@@ -139,6 +204,7 @@ class ClassroomParticipationNotifier
       );
     }).toList();
 
+    _markDirty();
     state = AsyncValue.data(current.copyWith(evaluations: updatedEvals));
   }
 
@@ -154,6 +220,7 @@ class ClassroomParticipationNotifier
       return e;
     }).toList();
 
+    _markDirty();
     state = AsyncValue.data(current.copyWith(evaluations: updatedEvals));
   }
 
@@ -169,6 +236,7 @@ class ClassroomParticipationNotifier
       return e;
     }).toList();
 
+    _markDirty();
     state = AsyncValue.data(current.copyWith(evaluations: updatedEvals));
   }
 
@@ -184,6 +252,7 @@ class ClassroomParticipationNotifier
       return e;
     }).toList();
 
+    _markDirty();
     state = AsyncValue.data(current.copyWith(evaluations: updatedEvals));
   }
 
@@ -196,6 +265,10 @@ class ClassroomParticipationNotifier
       if (e.studentId == studentId) {
         HomeworkStatus nextStatus;
         switch (e.homeworkStatus) {
+          // Isaretlenmemisten ilk dokunusla "yapti"ya gecer.
+          case HomeworkStatus.unknown:
+            nextStatus = HomeworkStatus.done;
+            break;
           case HomeworkStatus.done:
             nextStatus = HomeworkStatus.partial;
             break;
@@ -214,6 +287,7 @@ class ClassroomParticipationNotifier
       return e;
     }).toList();
 
+    _markDirty();
     state = AsyncValue.data(current.copyWith(evaluations: updatedEvals));
   }
 
@@ -232,6 +306,7 @@ class ClassroomParticipationNotifier
       return e;
     }).toList();
 
+    _markDirty();
     state = AsyncValue.data(current.copyWith(evaluations: updatedEvals));
   }
 
@@ -247,6 +322,7 @@ class ClassroomParticipationNotifier
       return e;
     }).toList();
 
+    _markDirty();
     state = AsyncValue.data(current.copyWith(evaluations: updatedEvals));
   }
 
@@ -262,6 +338,7 @@ class ClassroomParticipationNotifier
       return e;
     }).toList();
 
+    _markDirty();
     state = AsyncValue.data(current.copyWith(evaluations: updatedEvals));
   }
 
@@ -277,10 +354,71 @@ class ClassroomParticipationNotifier
       return e;
     }).toList();
 
+    _markDirty();
     state = AsyncValue.data(current.copyWith(evaluations: updatedEvals));
   }
 
   /// Öğrenciye özel etiket ekler/çıkarır
+  /// Öğrenciye bir söz hakkı ekler.
+  ///
+  /// Modülün yeniden kurgulanmasındaki ana değişiklik: eskiden öğrenci
+  /// adına dokunmak 962 satırlık bir diyalog açıyordu ve 30 öğrenci için
+  /// ~120 dokunuş gerekiyordu. Ders 40 dakika ve öğretmen aynı anda ders
+  /// anlatıyor; bu yüzden modül cihazda **sıfır kayıtla** duruyordu.
+  ///
+  /// Artık tek dokunuş yeter.
+  void addSpeakingTurn(int studentId) {
+    final current = state.valueOrNull;
+    if (current == null) return;
+
+    _markDirty();
+    state = AsyncValue.data(current.copyWith(
+      evaluations: current.evaluations.map((e) {
+        if (e.studentId != studentId) return e;
+        return e.copyWith(speakingTurns: e.speakingTurns + 1);
+      }).toList(),
+    ));
+  }
+
+  /// Söz hakkını geri alır (yanlış öğrenciye dokunulduğunda).
+  void removeSpeakingTurn(int studentId) {
+    final current = state.valueOrNull;
+    if (current == null) return;
+
+    _markDirty();
+    state = AsyncValue.data(current.copyWith(
+      evaluations: current.evaluations.map((e) {
+        if (e.studentId != studentId) return e;
+        if (e.speakingTurns == 0) return e;
+        return e.copyWith(speakingTurns: e.speakingTurns - 1);
+      }).toList(),
+    ));
+  }
+
+  /// Sırada kim var? **En az söz almış** öğrenciler arasından seçer.
+  ///
+  /// `random_student_picker_modal.dart` kendini "Adaletli Kura" diye
+  /// tanıtıyordu ama kod saf `_rnd.nextInt(list.length)` idi: aynı
+  /// öğrenci üst üste üç kez çıkabiliyor, bir öğrenci hiç çıkmayabiliyordu.
+  /// Bu adalet değil, sadece rastgelelikti.
+  ///
+  /// Öğretmenin gerçek derdi "kime söz vermedim" — bu yüzden havuz
+  /// en az konuşanlarla sınırlanır, aralarından rastgele seçilir.
+  StudentParticipationEvaluation? pickFairStudent({Random? rng}) {
+    final current = state.valueOrNull;
+    if (current == null || current.evaluations.isEmpty) return null;
+
+    final enAz = current.evaluations
+        .map((e) => e.speakingTurns)
+        .reduce((a, b) => a < b ? a : b);
+
+    final havuz =
+        current.evaluations.where((e) => e.speakingTurns == enAz).toList();
+
+    final r = rng ?? Random();
+    return havuz[r.nextInt(havuz.length)];
+  }
+
   void toggleTag(int studentId, String tag) {
     final current = state.valueOrNull;
     if (current == null) return;
@@ -298,6 +436,7 @@ class ClassroomParticipationNotifier
       return e;
     }).toList();
 
+    _markDirty();
     state = AsyncValue.data(current.copyWith(evaluations: updatedEvals));
   }
 
@@ -313,10 +452,12 @@ class ClassroomParticipationNotifier
       return e;
     }).toList();
 
+    _markDirty();
     state = AsyncValue.data(current.copyWith(evaluations: updatedEvals));
   }
 
   /// Mevcut oturumu ve değerlendirmeleri veritabanına kaydeder
+  /// Oturumu kaydeder ve kaydedilmemiş değişiklik bayrağını temizler.
   Future<bool> saveCurrentSession() async {
     final current = state.valueOrNull;
     if (current == null) return false;
@@ -324,6 +465,8 @@ class ClassroomParticipationNotifier
     try {
       final newId = await _repo.saveSession(current);
       state = AsyncValue.data(current.copyWith(id: newId));
+      // Kayıt başarılı: artık kaydedilmemiş değişiklik yok.
+      _hasUnsavedChanges = false;
       return true;
     } catch (e, stackTrace) {
       debugPrint('saveCurrentSession hatası: $e\n$stackTrace');
@@ -368,13 +511,18 @@ class ClassroomParticipationNotifier
   }
 
   /// Akademik yıl boyunca henüz girilmemiş tüm dersleri tam puanla ön doldurur
-  Future<int> autoFillAcademicYearBaseline({DateTime? startDate, DateTime? endDate}) async {
+  Future<int> autoFillAcademicYearBaseline({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
     try {
-      return await _repo.autoFillAcademicYearBaseline(startDate: startDate, endDate: endDate);
+      return await _repo.autoFillAcademicYearBaseline(
+        startDate: startDate,
+        endDate: endDate,
+      );
     } catch (e, stackTrace) {
       debugPrint('autoFillAcademicYearBaseline hatası: $e\n$stackTrace');
       return 0;
     }
   }
 }
-

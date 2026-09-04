@@ -6,11 +6,19 @@ class ResponsiveBottomSheet {
 
   static Future<T?> show<T>({
     required BuildContext context,
-    required Widget child,
+    Widget? child,
+    Widget Function(BuildContext context, StateSetter setState)? builder,
     String? title,
     bool isDismissible = true,
     double maxFactor = 0.88,
+    Widget? bottomAction,
+    Widget Function(BuildContext context, StateSetter setState)? bottomActionBuilder,
   }) {
+    assert(
+      child != null || builder != null,
+      'child veya builder parametrelerinden en az biri sağlanmalıdır.',
+    );
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return showModalBottomSheet<T>(
@@ -22,11 +30,13 @@ class ResponsiveBottomSheet {
       builder: (ctx) {
         final bottomInset = MediaQuery.viewInsetsOf(ctx).bottom;
 
-        return AnimatedPadding(
-          padding: EdgeInsets.only(bottom: bottomInset),
-          duration: const Duration(milliseconds: 100),
-          curve: Curves.easeOutQuad,
-          child: Container(
+        Widget buildContent(StateSetter? setStateModal) {
+          final content = builder != null ? builder(ctx, setStateModal!) : child!;
+          final footer = bottomActionBuilder != null
+              ? bottomActionBuilder(ctx, setStateModal!)
+              : bottomAction;
+
+          return Container(
             constraints: BoxConstraints(
               maxHeight: MediaQuery.sizeOf(ctx).height * maxFactor,
             ),
@@ -73,13 +83,41 @@ class ResponsiveBottomSheet {
                 Flexible(
                   child: SingleChildScrollView(
                     physics: const ClampingScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
-                    child: child,
+                    padding: EdgeInsets.fromLTRB(20, 10, 20, footer != null ? 10 : 24),
+                    child: content,
                   ),
                 ),
+                // Sabit Alt Aksiyon Butonu (Pinned Bottom Action)
+                if (footer != null) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                      border: Border(
+                        top: BorderSide(
+                          color: isDark ? Colors.white12 : Colors.grey.shade200,
+                          width: 0.8,
+                        ),
+                      ),
+                    ),
+                    child: footer,
+                  ),
+                ],
               ],
             ),
-          ),
+          );
+        }
+
+        return AnimatedPadding(
+          padding: EdgeInsets.only(bottom: bottomInset),
+          duration: const Duration(milliseconds: 100),
+          curve: Curves.easeOutQuad,
+          child: (builder != null || bottomActionBuilder != null)
+              ? StatefulBuilder(
+                  builder: (ctx, setStateModal) => buildContent(setStateModal),
+                )
+              : buildContent(null),
         );
       },
     );

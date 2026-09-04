@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/cloud/cloud_ids.dart';
@@ -9,6 +8,7 @@ import '../../../auth_profile/data/repositories/school_directory_repository.dart
 import '../../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../data/repositories/cloud_communication_repository.dart';
 import '../../providers/cloud_communication_provider.dart';
+import '../../../auth_profile/data/services/teacher_identity.dart';
 
 /// Sınıfın ders öğretmeni kadrosunu yöneten modal (Faz 3).
 ///
@@ -61,9 +61,45 @@ class _ClassStaffManagerModalState
   String get _classCloudId {
     final teacher = ref.read(teacherProfileProvider);
     return CloudIds.classId(
-      teacherUid: teacher.id,
+      // Kod üretimiyle AYNI kimlik kullanılmalı; aksi hâlde kadro
+      // satırı velinin baktığından başka bir sınıf odasına yazılır.
+      teacherUid: TeacherIdentity.resolve(teacher),
       localClassId: widget.classModel.id ?? 0,
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _ensureHomeroomInStaff();
+  }
+
+  /// Sınıf öğretmeninin kadro satırını garanti eder.
+  ///
+  /// Kadro satırı eskiden yalnızca duyuru yayımlanınca ya da branş
+  /// öğretmeni eklenince oluşuyordu; yalnızca referans kodu üretilmiş
+  /// sınıflarda sınıf öğretmeni kadroda hiç görünmüyor, veli ona mesaj
+  /// atamıyordu. Yeni kodlarda bu satır kod üretilirken yazılır — burası
+  /// ise ÖNCEDEN kurulmuş sınıfları onarır: öğretmen bu ekranı bir kez
+  /// açtığında eksik satır tamamlanır.
+  Future<void> _ensureHomeroomInStaff() async {
+    final teacher = ref.read(teacherProfileProvider);
+    final uid = TeacherIdentity.resolve(teacher);
+    if (!CloudIds.isValidUid(uid)) return;
+
+    try {
+      await ref.read(cloudCommunicationRepositoryProvider).ensureClassRoom(
+            classCloudId: _classCloudId,
+            className: widget.classModel.name,
+            teacherUid: uid,
+            teacherName: teacher.fullName,
+            schoolId: teacher.schoolId ?? '',
+            schoolName: teacher.schoolName,
+          );
+      if (mounted) await _refresh();
+    } catch (e, stackTrace) {
+      debugPrint('Kadro onarımı hatası: $e\n$stackTrace');
+    }
   }
 
   Future<void> _refresh() async {
@@ -111,8 +147,20 @@ class _ClassStaffManagerModalState
     if (!mounted) return;
 
     if (picked == null) {
-      // Meslektaş seçilmedi: kodlu yedek yola geç.
-      await _addStaffByInvite();
+      // Kodlu davet yolu kaldırıldı: uygulamaya hiç girmemiş öğretmen
+      // zaten mesajlaşamıyordu, kadroda görünmesi veliye tutulamayan bir
+      // söz veriyordu (veli mesaj atıyor, karşılık gelmiyordu).
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Aradığınız öğretmen listede yoksa henüz uygulamaya '
+            'kaydolmamıştır. Kaydolup okulunu seçtikten sonra '
+            'buradan ekleyebilirsiniz.',
+          ),
+          duration: Duration(seconds: 6),
+        ),
+      );
       return;
     }
 
@@ -132,7 +180,7 @@ class _ClassStaffManagerModalState
       await repo.ensureClassRoom(
         classCloudId: _classCloudId,
         className: widget.classModel.name,
-        teacherUid: teacher.id,
+        teacherUid: TeacherIdentity.resolve(teacher),
         teacherName: teacher.fullName,
         schoolId: teacher.schoolId ?? '',
         schoolName: teacher.schoolName,
@@ -241,153 +289,6 @@ class _ClassStaffManagerModalState
   }
 
   /// Yedek yol: dizinde bulunmayan öğretmen için katılım kodu üretir.
-  Future<void> _addStaffByInvite() async {
-    final nameCtrl = TextEditingController();
-    final branchCtrl = TextEditingController();
-    final dayCtrl = TextEditingController();
-    final timeCtrl = TextEditingController();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          'Ders Öğretmeni Ekle',
-          style: AppFonts.outfit(fontSize: 17, fontWeight: FontWeight.bold),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Bu sınıfa derse giren öğretmeni ekleyin. Eklenen öğretmen, '
-                'katılım kodunu girdikten sonra velilerle yazışabilir.',
-                style: AppFonts.outfit(fontSize: 12.5, color: Colors.grey),
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: nameCtrl,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(
-                  labelText: 'Ad Soyad',
-                  hintText: 'Örn: Selin Demir',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: branchCtrl,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(
-                  labelText: 'Branş',
-                  hintText: 'Örn: Fizik',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: dayCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Görüşme Günü',
-                        hintText: 'Salı',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextField(
-                      controller: timeCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Saat',
-                        hintText: '13:30',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Vazgeç'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (nameCtrl.text.trim().isEmpty) return;
-              Navigator.of(ctx).pop(true);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Ekle'),
-          ),
-        ],
-      ),
-    );
-
-    if (saved != true || !mounted) return;
-
-    setState(() => _busy = true);
-    try {
-      final teacher = ref.read(teacherProfileProvider);
-      final repo = ref.read(cloudCommunicationRepositoryProvider);
-
-      // Sınıf odası yoksa kadro alt koleksiyonu da yazılamaz.
-      await repo.ensureClassRoom(
-        classCloudId: _classCloudId,
-        className: widget.classModel.name,
-        teacherUid: teacher.id,
-        teacherName: teacher.fullName,
-        schoolId: teacher.schoolId ?? '',
-        schoolName: teacher.schoolName,
-      );
-
-      final ok = await repo.addPendingStaff(
-        classCloudId: _classCloudId,
-        teacherName: nameCtrl.text.trim(),
-        branch: branchCtrl.text.trim(),
-        meetingDay: dayCtrl.text.trim(),
-        meetingTime: timeCtrl.text.trim(),
-      );
-
-      await _refresh();
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            ok
-                ? 'Öğretmen kadroya eklendi. Katılım kodunu kendisine iletin.'
-                : 'Öğretmen eklenemedi. İnternet bağlantınızı kontrol edin.',
-          ),
-          backgroundColor: ok ? const Color(0xFF10B981) : Colors.orange,
-        ),
-      );
-    } catch (e, stackTrace) {
-      debugPrint('Kadro ekleme hatası: $e\n$stackTrace');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Öğretmen eklenirken bir sorun oluştu.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
 
   Future<void> _removeStaff(CloudStaffMember member) async {
     final confirmed = await showDialog<bool>(
@@ -431,15 +332,6 @@ class _ClassStaffManagerModalState
     }
   }
 
-  void _shareJoinCode(CloudStaffMember member) {
-    Clipboard.setData(ClipboardData(text: member.joinCode));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Katılım kodu kopyalandı: ${member.joinCode}'),
-        backgroundColor: AppColors.primary,
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -447,7 +339,7 @@ class _ClassStaffManagerModalState
     final staffAsync = ref.watch(classStaffProvider(_classCloudId));
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.8,
+      height: MediaQuery.sizeOf(context).height * 0.8,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
@@ -553,19 +445,13 @@ class _ClassStaffManagerModalState
   }
 
   Widget _buildStaffCard(CloudStaffMember member, bool isDark) {
-    final isPending = member.isPending;
-
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isPending
-              ? Colors.orange.withValues(alpha: 0.5)
-              : Colors.transparent,
-        ),
+        border: Border.all(color: Colors.transparent),
       ),
       child: Column(
         children: [
@@ -574,7 +460,7 @@ class _ClassStaffManagerModalState
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: (isPending ? Colors.orange : const Color(0xFF3B82F6))
+                  color: const Color(0xFF3B82F6)
                       .withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
@@ -582,7 +468,7 @@ class _ClassStaffManagerModalState
                   member.isHomeroom
                       ? Icons.star_rounded
                       : Icons.person_rounded,
-                  color: isPending ? Colors.orange : const Color(0xFF3B82F6),
+                  color: const Color(0xFF3B82F6),
                   size: 20,
                 ),
               ),
@@ -618,53 +504,18 @@ class _ClassStaffManagerModalState
                   ],
                 ),
               ),
-              IconButton(
-                onPressed: _busy ? null : () => _removeStaff(member),
-                icon: const Icon(Icons.delete_outline_rounded, size: 20),
-                color: Colors.redAccent,
-                tooltip: 'Kadrodan Çıkar',
-                visualDensity: VisualDensity.compact,
-              ),
+              // Sınıf öğretmeni kadrodan çıkarılamaz: kendi sınıfının
+              // velileriyle yazışma yetkisini kesmiş olurdu.
+              if (!member.isHomeroom)
+                IconButton(
+                  onPressed: _busy ? null : () => _removeStaff(member),
+                  icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                  color: Colors.redAccent,
+                  tooltip: 'Kadrodan Çıkar',
+                  visualDensity: VisualDensity.compact,
+                ),
             ],
           ),
-          if (isPending) ...[
-            const SizedBox(height: 8),
-            InkWell(
-              onTap: () => _shareJoinCode(member),
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.key_rounded, size: 16, color: Colors.orange),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Katılım kodu: ${member.joinCode}',
-                        style: AppFonts.outfit(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.orange.shade800,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const Icon(Icons.copy_rounded, size: 14, color: Colors.orange),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Öğretmen bu kodu girene kadar velilerle yazışamaz.',
-              style: AppFonts.outfit(fontSize: 11, color: Colors.grey),
-            ),
-          ],
         ],
       ),
     );
@@ -691,7 +542,7 @@ class _ColleaguePickerSheet extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.7,
+      height: MediaQuery.sizeOf(context).height * 0.7,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,

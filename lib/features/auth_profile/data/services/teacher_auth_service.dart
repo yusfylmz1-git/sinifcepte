@@ -85,11 +85,35 @@ class TeacherAuthService {
 
     await DatabaseHelper.instance.openForUid(user.uid);
 
-    final names = (user.displayName ?? googleUser.displayName ?? '').trim().split(RegExp(r'\s+'));
-    final firstName = names.isNotEmpty && names.first.isNotEmpty ? names.first : current.firstName;
-    final lastName = names.length > 1 ? names.sublist(1).join(' ') : current.lastName;
+    // BU HESABIN kayıtlı profilini önce diskten oku.
+    //
+    // Buradaki `current`, giriş ÖNCESİNDEKİ state'tir; çıkış yapılmışsa
+    // boştur. Doğrudan `current.copyWith(...)` yazmak, diskte duran
+    // branş ve okul bilgisinin üstüne BOŞ değer geçiriyordu:
+    //
+    //   profil_brans__{uid} = "Bilişim Teknolojileri"   (kayıtlı)
+    //   giriş → saveProfile(branch: '')                  (eziliyor)
+    //   → kurulum ekranı yeniden açılıyor
+    //
+    // Kullanıcı bunu defalarca bildirdi: "profilden çıkış yapıp tekrar
+    // girince yine branş soruyor". Kimlik ancak girişten sonra belli
+    // olduğu için okuma da burada yapılmalı.
+    await profileNotifier.loadProfileFromStorage();
+    final saved = profileNotifier.currentProfile;
 
-    final updated = current.copyWith(
+    final names = (user.displayName ?? googleUser.displayName ?? '').trim().split(RegExp(r'\s+'));
+
+    // Google'dan gelen ad YALNIZCA kayıtlı ad boşsa kullanılır.
+    // Öğretmen adını düzeltmişse (ör. "Yusuf YILMAZ"), Google'ın
+    // gönderdiği ham değer onu ezmemeli.
+    final firstName = saved.firstName.trim().isNotEmpty
+        ? saved.firstName
+        : (names.isNotEmpty && names.first.isNotEmpty ? names.first : '');
+    final lastName = saved.lastName.trim().isNotEmpty
+        ? saved.lastName
+        : (names.length > 1 ? names.sublist(1).join(' ') : '');
+
+    final updated = saved.copyWith(
       id: user.uid,
       firstName: firstName,
       lastName: lastName,

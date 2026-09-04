@@ -10,6 +10,7 @@ import '../../../../data/models/student_model.dart';
 import '../../../auth_profile/data/models/teacher_profile_model.dart';
 import '../models/parent_link_model.dart';
 import '../models/parent_token_model.dart';
+import '../../../../core/cloud/cloud_ids.dart';
 
 /// Doğrulama Sonucu Modeli
 class TokenVerificationResult {
@@ -42,10 +43,10 @@ class ParentTokenRepository {
   ///
   /// Her öğrenci için tek aktif kod yeterlidir; bu sınır yalnızca
   /// beklenmedik birikmelere karşı güvenlik ağıdır.
-  static const int _maxStoredTokens = 200;
+  static const int _maxStoredTokens = 2000;
 
   /// Denetim günlüğünde tutulacak azami kayıt sayısı.
-  static const int _maxAuditLogs = 300;
+  static const int _maxAuditLogs = 1000;
 
   List<ParentTokenModel>? _cachedTokens;
   List<ParentLinkModel>? _cachedLinks;
@@ -185,11 +186,32 @@ class ParentTokenRepository {
   }
 
   /// Öğrenci İçin Yeni Veli Referans Kodu ve QR Üretme
+  /// Etiketi kimlikte kullanilabilir hale getirir (Turkce harfler dahil).
+  static String _slug(String raw) {
+    const map = {
+      'ç': 'c', 'ğ': 'g', 'ı': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u',
+      'Ç': 'c', 'Ğ': 'g', 'İ': 'i', 'Ö': 'o', 'Ş': 's', 'Ü': 'u',
+    };
+    final buffer = StringBuffer();
+    for (final ch in raw.split('')) {
+      final mapped = map[ch] ?? ch.toLowerCase();
+      if (RegExp(r'[a-z0-9]').hasMatch(mapped)) buffer.write(mapped);
+    }
+    final out = buffer.toString();
+    return out.isEmpty ? 'veli' : out;
+  }
+
+  /// Öğrenciye referans kodu üretir.
+  ///
+  /// [parentLabel] boşsa bu öğrencinin ortak kodudur (anne de baba da
+  /// aynı kodu kullanabilir) ve öğrencinin varsa eski ortak kodunun
+  /// yerine geçer. Doluysa ('Anne'/'Baba'/'Vasi') ayrı yaşayan aileler
+  /// için ikinci bir koddur; diğer kodları etkilemez.
   Future<ParentTokenModel> generateTokenForStudent({
     required StudentModel student,
     required ClassModel classModel,
     required TeacherProfileModel teacher,
-    int validityDays = 7,
+    String parentLabel = '',
   }) async {
     final tokens = await _loadTokens();
 
@@ -203,30 +225,51 @@ class ParentTokenRepository {
     //
     // İptal edilmiş kodun saklanması için bir gerekçe yok: veli o kodla
     // bağlanamaz, denetim izi ayrıca audit log'da tutulur.
-    tokens.removeWhere((t) => t.studentId == student.id);
+    //
+    // Yalnızca AYNI etiketli kod değiştirilir: ayrı yaşayan ailelerde
+    // öğrencinin birden fazla kodu olabilir ("Anne", "Baba"). Etiketten
+    // bağımsız silmek, anneye kod üretirken babanınkini yok ederdi.
+    tokens.removeWhere(
+      (t) => t.studentId == student.id && t.parentLabel == parentLabel,
+    );
 
     // 2. Güvenlik ağı: toplam kayıt sayısını sınırla.
     //
     // Sınıf sayısı arttıkça liste yine büyüyebilir. Süresi dolmuş
     // kayıtlar zaten işe yaramaz, temizlenir.
+    // Süresiz kodlar (yeni varsayılan) bu temizlikten etkilenmez;
+    // yalnızca eski sürümden kalan tarihli kodlar düşer.
     final now0 = DateTime.now();
-    tokens.removeWhere((t) => t.expiresAt.isBefore(now0));
+    tokens.removeWhere((t) => !t.isOpenEnded && t.expiresAt.isBefore(now0));
     if (tokens.length > _maxStoredTokens) {
       tokens.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       tokens.removeRange(_maxStoredTokens, tokens.length);
     }
 
     final classTag = _sanitizeClassName(classModel.name);
-    final randomDigits = _generateRandomCodeDigits();
-    final formattedCode = 'SC-$classTag-$randomDigits'; // Örn: SC-8A-9402
+    final existingCodes = tokens.map((t) => t.code).toSet();
+    String formattedCode;
+    do {
+      final randomDigits = _generateRandomCodeDigits();
+      formattedCode = 'SC-$classTag-$randomDigits'; // Örn: SC-8A-9402
+    } while (existingCodes.contains(formattedCode));
 
     final codeHash = ParentTokenModel.generateSha256(formattedCode);
     final secondFactorHash = ParentTokenModel.generateSha256(student.schoolNumber.toString());
 
     final now = DateTime.now();
-    final expiresAt = now.add(Duration(days: validityDays));
+    // Kodun gün bazlı süresi yoktur: öğrenci okulda olduğu sürece
+    // geçerlidir ve olayla kapanır (mezuniyet, başka okula nakil,
+    // öğrenci silme, öğretmenin elle iptali). Veli her dönem yeniden
+    // kod istemek zorunda kalmaz.
+    final expiresAt = ParentTokenModel.noExpiry;
 
-    final tokenId = 'tok_${student.id}_${now.millisecondsSinceEpoch}';
+    // Kimlik yalnizca zaman damgasi olsaydi, ayni ogrenciye ayni
+    // milisaniyede uretilen iki kod (anne/baba) ayni kimligi alir ve
+    // birini iptal etmek digerini kapatirdi. Etiket kimlige girer.
+    final labelTag = parentLabel.isEmpty ? 'ortak' : _slug(parentLabel);
+    final tokenId =
+        'tok_${student.id}_${labelTag}_${now.millisecondsSinceEpoch}';
 
     // QR Kod Payload (JSON formatında güvenli derin bağlantı)
     final qrMap = {
@@ -262,6 +305,8 @@ class ParentTokenRepository {
       linkedParentCount: 0,
       maxLinkedParents: 2,
       qrPayload: qrPayload,
+      parentLabel: parentLabel,
+      teacherUid: teacher.id,
     );
 
     tokens.insert(0, newToken);
@@ -272,10 +317,190 @@ class ParentTokenRepository {
       actorRole: 'teacher',
       action: 'token_generated',
       targetId: 'student_${student.id}',
-      details: 'Kod: $formattedCode üretildi (Geçerlilik: $validityDays gün)',
+      details: 'Kod: $formattedCode üretildi '
+          '(Öğrenci okuldan ayrılana kadar geçerli)',
     );
 
     return newToken;
+  }
+
+  /// Birden Fazla Öğrenci İçin Tek Seferde Toplu ve Hızlı Referans Kodu Üretme (Sıfır Donma / ANR)
+  Future<List<ParentTokenModel>> generateTokensForStudentsBatch({
+    required List<StudentModel> students,
+    required ClassModel classModel,
+    required TeacherProfileModel teacher,
+  }) async {
+    if (students.isEmpty) return const [];
+    final tokens = await _loadTokens();
+
+    final now0 = DateTime.now();
+    tokens.removeWhere((t) => t.expiresAt.isBefore(now0));
+
+    final studentIds = students.map((s) => s.id).whereType<int>().toSet();
+    tokens.removeWhere((t) => studentIds.contains(t.studentId));
+
+    final classTag = _sanitizeClassName(classModel.name);
+    final now = DateTime.now();
+    // Süre sınırı yoktur; kod olayla kapanır (bkz. generateTokenForStudent).
+    final expiresAt = ParentTokenModel.noExpiry;
+    final generatedTokens = <ParentTokenModel>[];
+
+    final existingCodes = tokens.map((t) => t.code).toSet();
+
+    for (int i = 0; i < students.length; i++) {
+      final student = students[i];
+      if (student.id == null) continue;
+
+      String formattedCode;
+      do {
+        final randomDigits = _generateRandomCodeDigits();
+        formattedCode = 'SC-$classTag-$randomDigits';
+      } while (existingCodes.contains(formattedCode));
+      existingCodes.add(formattedCode);
+
+      final codeHash = ParentTokenModel.generateSha256(formattedCode);
+      final secondFactorHash = ParentTokenModel.generateSha256(student.schoolNumber.toString());
+      final tokenId = 'tok_${student.id}_${now.millisecondsSinceEpoch}_$i';
+
+      final qrMap = {
+        'action': 'sinifcepte_parent_link',
+        'version': '2.0',
+        'token_id': tokenId,
+        'code': formattedCode,
+        'school_id': teacher.schoolId ?? '',
+        'school_name': teacher.schoolName,
+        'class_id': classModel.id ?? 0,
+        'class_name': classModel.name,
+        'student_id': student.id ?? 0,
+        'student_name': student.fullName,
+        'expires_at': expiresAt.toIso8601String(),
+      };
+      final qrPayload = jsonEncode(qrMap);
+
+      final newToken = ParentTokenModel(
+        id: tokenId,
+        schoolId: teacher.schoolId ?? '',
+        schoolName: teacher.schoolName,
+        classId: classModel.id ?? 0,
+        className: classModel.name,
+        studentId: student.id ?? 0,
+        studentName: student.fullName,
+        studentNumber: student.schoolNumber,
+        code: formattedCode,
+        codeHash: codeHash,
+        secondFactorHash: secondFactorHash,
+        createdAt: now,
+        expiresAt: expiresAt,
+        status: 'active',
+        linkedParentCount: 0,
+        maxLinkedParents: 2,
+        qrPayload: qrPayload,
+      );
+
+      generatedTokens.add(newToken);
+      tokens.insert(0, newToken);
+    }
+
+    if (tokens.length > _maxStoredTokens) {
+      tokens.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      tokens.removeRange(_maxStoredTokens, tokens.length);
+    }
+
+    await _saveTokens(tokens);
+
+    await _logAudit(
+      actorId: teacher.fullName,
+      actorRole: 'teacher',
+      action: 'tokens_batch_generated',
+      targetId: 'class_${classModel.id}',
+      details: '${generatedTokens.length} adet kod toplu üretildi',
+    );
+
+    return generatedTokens;
+  }
+
+  /// Öğrencinin TÜM aktif kodlarını getirir.
+  ///
+  /// [getActiveTokenForStudent] yalnızca ilkini döndürür; ayrı yaşayan
+  /// ailelerde öğrenciye ikinci bir veli kodu üretilebildiği için
+  /// yaşam döngüsü işlemlerinde hepsine dokunmak gerekir.
+  Future<List<ParentTokenModel>> getTokensForStudent(int studentId) async {
+    final tokens = await _loadTokens();
+    return tokens
+        .where((t) => t.studentId == studentId && t.status == 'active')
+        .toList();
+  }
+
+  /// Öğrencinin aktif kodlarını verilen durumla kapatır.
+  ///
+  /// [newStatus]: 'revoked' | 'graduated' | 'transferred'.
+  /// Kapatılan kod sayısını döndürür.
+  Future<int> closeTokensForStudent({
+    required int studentId,
+    required String newStatus,
+  }) async {
+    final tokens = await _loadTokens();
+    var count = 0;
+    for (var i = 0; i < tokens.length; i++) {
+      final t = tokens[i];
+      if (t.studentId == studentId && t.status == 'active') {
+        tokens[i] = t.copyWith(status: newStatus);
+        count++;
+      }
+    }
+    if (count > 0) await _saveTokens(tokens);
+    return count;
+  }
+
+  /// Öğrencinin aktif veli bağlarını verilen durumla kapatır.
+  Future<int> closeLinksForStudent({
+    required int studentId,
+    required String newStatus,
+  }) async {
+    final links = await _loadLinks();
+    var count = 0;
+    for (var i = 0; i < links.length; i++) {
+      final l = links[i];
+      if (l.studentId == studentId && l.status == 'active') {
+        links[i] = l.copyWith(status: newStatus);
+        count++;
+      }
+    }
+    if (count > 0) await _saveLinks(links);
+    return count;
+  }
+
+  /// Şube değişikliğinde kod ve bağ kayıtlarını yeni sınıfa taşır.
+  ///
+  /// Bağ koparılmaz: çocuk aynı çocuktur, veli aynı velidir. Yalnızca
+  /// sınıf bilgisi güncellenir; böylece veli yeniden kod almak zorunda
+  /// kalmaz ve panelinde doğru şube adını görür.
+  Future<void> moveStudentTokensAndLinks({
+    required int studentId,
+    required int newClassId,
+    required String newClassName,
+  }) async {
+    final tokens = await _loadTokens();
+    var tokenChanged = false;
+    for (var i = 0; i < tokens.length; i++) {
+      final t = tokens[i];
+      if (t.studentId == studentId && t.status == 'active') {
+        tokens[i] = t.copyWith(classId: newClassId, className: newClassName);
+        tokenChanged = true;
+      }
+    }
+    if (tokenChanged) await _saveTokens(tokens);
+
+    final links = await _loadLinks();
+    var linkChanged = false;
+    for (var i = 0; i < links.length; i++) {
+      final l = links[i];
+      if (l.studentId == studentId && l.status == 'active') {
+        links[i] = l.copyWith(classId: newClassId, className: newClassName);
+        linkChanged = true;
+      }
+    }
+    if (linkChanged) await _saveLinks(links);
   }
 
   /// Öğrencinin Aktif / Mevcut Tokenını Getirme
@@ -296,6 +521,126 @@ class ParentTokenRepository {
       return null;
     }
     return token;
+  }
+
+  /// Sınıfa Ait Tüm Öğrencilerin Aktif Tokenlarını Getirme (Varsa Getir, Yoksa Anında Üret)
+  Future<Map<int, ParentTokenModel>> getOrGenerateTokensForClass({
+    required ClassModel classModel,
+    required List<StudentModel> students,
+    required TeacherProfileModel teacher,
+  }) async {
+    final tokens = await _loadTokens();
+    final now = DateTime.now();
+    final result = <int, ParentTokenModel>{};
+    bool needsSave = false;
+
+    // 1. Mevcut geçerli tokenları topla
+    for (int i = 0; i < tokens.length; i++) {
+      final token = tokens[i];
+      if (token.classId == classModel.id && token.status == 'active') {
+        if (token.expiresAt.isBefore(now)) {
+          tokens[i] = token.copyWith(status: 'expired');
+          needsSave = true;
+        } else {
+          result[token.studentId] = token;
+        }
+      }
+    }
+
+    // 2. Kodu olmayan veya süresi dolmuş öğrencileri bul
+    final missing = students.where((s) => s.id != null && !result.containsKey(s.id)).toList();
+    if (missing.isNotEmpty) {
+      final classTag = _sanitizeClassName(classModel.name);
+      final expiresAt = ParentTokenModel.noExpiry;
+      final existingCodes = tokens.map((t) => t.code).toSet();
+
+      for (int i = 0; i < missing.length; i++) {
+        final student = missing[i];
+        String formattedCode;
+        do {
+          final randomDigits = _generateRandomCodeDigits();
+          formattedCode = 'SC-$classTag-$randomDigits';
+        } while (existingCodes.contains(formattedCode));
+        existingCodes.add(formattedCode);
+
+        final codeHash = ParentTokenModel.generateSha256(formattedCode);
+        final secondFactorHash = ParentTokenModel.generateSha256(student.schoolNumber.toString());
+        final tokenId = 'tok_${student.id}_${now.millisecondsSinceEpoch}_$i';
+
+        final qrMap = {
+          'action': 'sinifcepte_parent_link',
+          'version': '2.0',
+          'token_id': tokenId,
+          'code': formattedCode,
+          'school_id': teacher.schoolId ?? '',
+          'school_name': teacher.schoolName,
+          'class_id': classModel.id ?? 0,
+          'class_name': classModel.name,
+          'student_id': student.id ?? 0,
+          'student_name': student.fullName,
+          'expires_at': expiresAt.toIso8601String(),
+        };
+
+        final newToken = ParentTokenModel(
+          id: tokenId,
+          schoolId: teacher.schoolId ?? '',
+          schoolName: teacher.schoolName,
+          classId: classModel.id ?? 0,
+          className: classModel.name,
+          studentId: student.id ?? 0,
+          studentName: student.fullName,
+          studentNumber: student.schoolNumber,
+          code: formattedCode,
+          codeHash: codeHash,
+          secondFactorHash: secondFactorHash,
+          createdAt: now,
+          expiresAt: expiresAt,
+          status: 'active',
+          linkedParentCount: 0,
+          maxLinkedParents: 2,
+          qrPayload: jsonEncode(qrMap),
+        );
+
+        tokens.insert(0, newToken);
+        result[student.id!] = newToken;
+        needsSave = true;
+      }
+    }
+
+    if (needsSave) {
+      if (tokens.length > _maxStoredTokens) {
+        tokens.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        tokens.removeRange(_maxStoredTokens, tokens.length);
+      }
+      await _saveTokens(tokens);
+    }
+
+    return result;
+  }
+
+  /// Sınıfa Ait Tüm Öğrencilerin Aktif Tokenlarını Getirme
+  Future<Map<int, ParentTokenModel>> getActiveTokensForClass(int classId) async {
+    final tokens = await _loadTokens();
+    final now = DateTime.now();
+    final result = <int, ParentTokenModel>{};
+    bool needsSave = false;
+
+    for (int i = 0; i < tokens.length; i++) {
+      final token = tokens[i];
+      if (token.classId == classId && token.status == 'active') {
+        if (token.expiresAt.isBefore(now)) {
+          tokens[i] = token.copyWith(status: 'expired');
+          needsSave = true;
+        } else {
+          result[token.studentId] = token;
+        }
+      }
+    }
+
+    if (needsSave) {
+      await _saveTokens(tokens);
+    }
+    return result;
   }
 
   /// Tokenı İptal Etme (Revoke)
@@ -375,12 +720,22 @@ class ParentTokenRepository {
   }
 
   /// Veli ile Öğrenciyi Eşleştirme (parent_links oluşturma)
+  /// Veli ile öğrenciyi eşleştirir (yerel `parent_links` kaydı).
+  ///
+  /// [classCloudId] ve [studentCloudId] ZORUNLUDUR: bunlar boş kalırsa
+  /// `ParentLinkModel.hasCloudBinding` false döner ve velinin tüm bulut
+  /// sorguları (duyurular, kadro, mesajlar) sessizce boş liste verir.
+  /// Veli ekranında "öğretmen eklenmemiş" yazmasının sebebi buydu —
+  /// kadro bulutta duruyordu ama veli hiç sormuyordu.
   Future<ParentLinkModel?> linkParent({
     required ParentTokenModel token,
     required String parentUserId,
     required String parentName,
     String? parentPhone,
     required String relation, // 'Anne', 'Baba', 'Vasi', 'Diğer'
+    required String classCloudId,
+    required String studentCloudId,
+    String teacherUid = '',
   }) async {
     try {
       final links = await _loadLinks();
@@ -409,6 +764,9 @@ class ParentTokenRepository {
         linkedAt: DateTime.now(),
         linkedViaTokenCode: token.code,
         status: 'active',
+        classCloudId: classCloudId,
+        studentCloudId: studentCloudId,
+        teacherUid: teacherUid,
       );
 
       links.add(newLink);
@@ -465,12 +823,26 @@ class ParentTokenRepository {
       }
 
       final userId = parentUserId ?? await getOrCreateLocalParentUserId();
+      final tokenTeacherUid = result.token!.teacherUid;
       final link = await linkParent(
         token: result.token!,
         parentUserId: userId,
         parentName: parentName,
         parentPhone: parentPhone,
         relation: relation,
+        teacherUid: tokenTeacherUid,
+        classCloudId: CloudIds.isValidUid(tokenTeacherUid)
+            ? CloudIds.classId(
+                teacherUid: tokenTeacherUid,
+                localClassId: result.token!.classId,
+              )
+            : '',
+        studentCloudId: CloudIds.isValidUid(tokenTeacherUid)
+            ? CloudIds.studentId(
+                teacherUid: tokenTeacherUid,
+                localStudentId: result.token!.studentId,
+              )
+            : '',
       );
 
       if (link != null) {
@@ -495,6 +867,18 @@ class ParentTokenRepository {
   }
 
   /// Belirli Bir Öğrenciye Bağlı Velileri Getirme (Öğretmen Görünümü)
+  /// Bir sınıftaki TÜM bağlı velileri getirir.
+  ///
+  /// Öğretmenin mesaj kutusu bunu kullanır: hangi veliyle yazışabileceğini
+  /// görmesi için sınıf genelinde bakması gerekir.
+  Future<List<ParentLinkModel>> getLinkedParentsForClass(int classId) async {
+    final links = await _loadLinks();
+    return links
+        .where((l) => l.classId == classId && l.status == 'active')
+        .toList()
+      ..sort((a, b) => a.studentName.compareTo(b.studentName));
+  }
+
   Future<List<ParentLinkModel>> getLinkedParentsForStudent(int studentId) async {
     final links = await _loadLinks();
     return links.where((l) => l.studentId == studentId && l.status == 'active').toList();
@@ -541,6 +925,51 @@ class ParentTokenRepository {
   /// Bu kayıt bir **önbellektir**: yetkinin kaynağı buluttaki
   /// `parent_links` dokümanıdır ve kural motoru tarafından korunur. Yerel
   /// kopya yalnızca ağ yokken çocuk listesinin görünmesini sağlar.
+  /// Bulut kimlikleri eksik kalmış bağları onarır.
+  ///
+  /// `classCloudId` / `studentCloudId` alanları sonradan eklendi; daha
+  /// önce kurulmuş bağlarda bunlar boştur. Boş oldukları sürece
+  /// `hasCloudBinding` false döner ve velinin duyuru, kadro ve mesaj
+  /// sorguları sunucuya hiç gitmeden boş liste verir — veli ekranında
+  /// "öğretmen eklenmemiş" yazmasının sebebi buydu.
+  ///
+  /// Onarım cihazda yapılır: öğretmen kimliği bağın kendi token koduna
+  /// bakılarak değil, [teacherUidResolver] ile dışarıdan çözülür
+  /// (buluttaki token kaydı bu bilgiyi taşır).
+  ///
+  /// Onarılan bağ sayısını döndürür.
+  Future<int> repairMissingCloudIds({
+    required Future<String> Function(ParentLinkModel link) teacherUidResolver,
+  }) async {
+    final links = await _loadLinks();
+    var repaired = 0;
+
+    for (var i = 0; i < links.length; i++) {
+      final link = links[i];
+      if (link.hasCloudBinding) continue;
+      if (link.status != 'active') continue;
+
+      final uid = await teacherUidResolver(link);
+      if (!CloudIds.isValidUid(uid)) continue;
+
+      links[i] = link.copyWith(
+        teacherUid: uid,
+        classCloudId: CloudIds.classId(
+          teacherUid: uid,
+          localClassId: link.classId,
+        ),
+        studentCloudId: CloudIds.studentId(
+          teacherUid: uid,
+          localStudentId: link.studentId,
+        ),
+      );
+      repaired++;
+    }
+
+    if (repaired > 0) await _saveLinks(links);
+    return repaired;
+  }
+
   Future<void> cacheParentLinkLocally(ParentLinkModel link) async {
     try {
       final links = await _loadLinks();

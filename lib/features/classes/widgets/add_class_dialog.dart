@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../providers/class_provider.dart';
+import '../../auth_profile/providers/teacher_profile_provider.dart';
 
 /// Yeni Sınıf Ekleme Diyaloğu (AddClassDialog)
 class AddClassDialog extends ConsumerStatefulWidget {
@@ -18,7 +19,22 @@ class _AddClassDialogState extends ConsumerState<AddClassDialog> {
   final _subjectController = TextEditingController();
   final _yearController = TextEditingController(text: '2024-2025');
   final _descController = TextEditingController();
+  bool _isHomeroom = false;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Ders alanı öğretmenin BRANŞIYLA açılır.
+    //
+    // Boş bırakılıyordu; öğretmen her sınıfta aynı branşı elle yazmak
+    // zorunda kalıyor, çoğu zaman boş geçiyordu. Boş kalınca sistem
+    // "Genel Ders" yazıyordu ve bu her ekranda görünüyordu.
+    //
+    // Öğretmen isterse değiştirebilir (ör. ikinci branş).
+    final brans = ref.read(teacherProfileProvider).branch.trim();
+    if (brans.isNotEmpty) _subjectController.text = brans;
+  }
 
   @override
   void dispose() {
@@ -39,6 +55,7 @@ class _AddClassDialogState extends ConsumerState<AddClassDialog> {
           subject: _subjectController.text.trim(),
           academicYear: _yearController.text.trim(),
           description: _descController.text.trim().isEmpty ? null : _descController.text.trim(),
+          isHomeroom: _isHomeroom,
         );
 
     if (mounted) {
@@ -94,6 +111,7 @@ class _AddClassDialogState extends ConsumerState<AddClassDialog> {
                 // Sınıf Adı Input
                 TextFormField(
                   controller: _nameController,
+                  maxLength: 50,
                   style: const TextStyle(color: Colors.white),
                   decoration: _buildInputDecoration('Sınıf Adı', 'Örn: 5-A', Icons.meeting_room_rounded),
                   validator: (val) => val == null || val.trim().isEmpty ? 'Lütfen sınıf adını girin' : null,
@@ -103,14 +121,20 @@ class _AddClassDialogState extends ConsumerState<AddClassDialog> {
                 // Ders Adı Input
                 TextFormField(
                   controller: _subjectController,
+                  maxLength: 60,
                   style: const TextStyle(color: Colors.white),
-                  decoration: _buildInputDecoration('Açıklama / Ders (Opsiyonel)', 'Örn: Matematik, Sabah Grubu vb.', Icons.info_outline_rounded),
+                  decoration: _buildInputDecoration(
+                    'Ders / Branş',
+                    'Örn: Matematik',
+                    Icons.menu_book_rounded,
+                  ),
                 ),
                 const SizedBox(height: 14),
 
                 // Akademik Yıl Input
                 TextFormField(
                   controller: _yearController,
+                  maxLength: 12,
                   style: const TextStyle(color: Colors.white),
                   decoration: _buildInputDecoration('Akademik Yıl', '2024-2025', Icons.calendar_today_rounded),
                   validator: (val) => val == null || val.trim().isEmpty ? 'Akademik yıl girin' : null,
@@ -120,8 +144,44 @@ class _AddClassDialogState extends ConsumerState<AddClassDialog> {
                 // Açıklama Input (Opsiyonel)
                 TextFormField(
                   controller: _descController,
+                  maxLength: 300,
                   style: const TextStyle(color: Colors.white),
                   decoration: _buildInputDecoration('Not / Açıklama (İsteğe Bağlı)', 'Örn: Salı-Perşembe dersleri', Icons.notes_rounded),
+                ),
+                const SizedBox(height: 16),
+
+                // Rehberlik Sınıfı Anahtarı
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _isHomeroom
+                        ? AppColors.primary.withValues(alpha: 0.15)
+                        : Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _isHomeroom ? AppColors.primary : AppColors.glassBorder,
+                    ),
+                  ),
+                  child: SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      'Rehberlik / Şube Sınıfım',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    subtitle: const Text(
+                      'Bu sınıfı resmî şube rehberlik sınıfınız olarak belirler.',
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                    value: _isHomeroom,
+                    activeTrackColor: AppColors.primary,
+                    onChanged: (val) {
+                      setState(() => _isHomeroom = val);
+                    },
+                  ),
                 ),
                 const SizedBox(height: 24),
 

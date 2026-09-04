@@ -246,6 +246,62 @@ void main() {
     });
   });
 
+  group('Sınıf listesi boş durum düğmeleri (4.4px taşan düzendi)', () {
+    Widget emptyClassActions() {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                onPressed: null,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_rounded, size: 18),
+                    SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        'Manuel Sınıf Ekle',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton(
+                onPressed: null,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.picture_as_pdf_rounded, size: 18),
+                    SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        'PDF İle Sınıf Aktar',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    testWidgets('İki eylem düğmesi 320px ekranda taşmaz', (tester) async {
+      await pumpNarrow(tester, emptyClassActions());
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('Taşma tespiti gerçekten çalışıyor mu', () {
     testWidgets('Korumasız düzen taşma ÜRETİR (test aracı doğrulaması)',
         (tester) async {
@@ -279,6 +335,100 @@ void main() {
         isNotNull,
         reason: 'korumasız düzen taşmalı; taşmıyorsa test aracı bozuk demektir',
       );
+    });
+  });
+
+  group('Veli Referans Kodu Modalı & Liste Satırı', () {
+    testWidgets('Modal başlığı 320px dar ekranda taşmaz ve exception fırlatmaz', (tester) async {
+      await pumpNarrow(
+        tester,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 12, 12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                child: const Icon(Icons.vpn_key_rounded, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Veli Referans Kodu',
+                      style: AppFonts.outfit(fontSize: 16.5, fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      'Abdürrahman Hüsameddin K. (8-A • No: 108)',
+                      style: AppFonts.outfit(fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close_rounded),
+                onPressed: () {},
+              ),
+            ],
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Liste satırı (No - Ad S. - Kod - Kopyala) 320px ekranda taşmaz', (tester) async {
+      await pumpNarrow(
+        tester,
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                child: Text('108', style: AppFonts.firaCode(fontSize: 12, fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 3,
+                child: Text(
+                  'Abdürrahman K.',
+                  style: AppFonts.outfit(fontSize: 13.5, fontWeight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                flex: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Text(
+                    'SC-8A-9402',
+                    style: AppFonts.firaCode(fontSize: 12, fontWeight: FontWeight.bold),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                icon: const Icon(Icons.copy_rounded, size: 17),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                onPressed: () {},
+              ),
+            ],
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
     });
   });
 }

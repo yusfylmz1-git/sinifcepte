@@ -4,7 +4,7 @@ import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../../shared/widgets/custom_bottom_nav_bar.dart';
-import '../../../analytics/presentation/views/analytics_dashboard_view.dart';
+import '../../../analytics/presentation/views/exam_analysis_list_view.dart';
 import '../../../navigation/providers/navigation_provider.dart';
 import 'exam_tracking_view.dart';
 import 'project_tracking_view.dart';
@@ -241,10 +241,14 @@ class ExamOperationsMenuView extends ConsumerWidget {
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
+                  // Once genel "Analiz & Rapor" ekranina gidiyordu;
+                  // o kart kaldirildi (bir is degil, cikti turuydu).
+                  // Artik dogrudan sinav analizine gider.
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const AnalyticsDashboardView()),
+                      MaterialPageRoute(
+                          builder: (_) => const ExamAnalysisListView()),
                     );
                   },
                   borderRadius: BorderRadius.circular(14),

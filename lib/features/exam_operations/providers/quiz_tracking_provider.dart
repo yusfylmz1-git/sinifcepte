@@ -180,11 +180,25 @@ class QuizTableNotifier extends StateNotifier<QuizTableState> {
     }
   }
 
+  /// Bir ogrencinin not hucresini gunceller. [score] null ise not silinir.
+  ///
+  /// Aralik disi deger sessizce kirpilmaz, YOK SAYILIR. Once `clamp(0, 100)`
+  /// vardi: 955 gonderilince 100 kaydediliyor ve yanlis not dogruymus gibi
+  /// gorunuyordu. Girdi dogrulamasi arayuzde yapiliyor (`parseScoreInput`);
+  /// buraya bozuk deger gelmesi cagiran tarafta hata oldugu anlamina gelir.
   Future<void> updateScore({
     required int columnId,
     required int studentId,
     required int? score,
   }) async {
+    if (score != null && (score < 0 || score > 100)) {
+      debugPrint(
+        'QuizTableNotifier.updateScore: aralik disi not yok sayildi ($score). '
+        'Girdi dogrulamasi cagiran tarafta yapilmali.',
+      );
+      return;
+    }
+
     try {
       // Optimistic update
       final updatedScores = Map<int, Map<int, int>>.from(state.studentScores);
@@ -193,14 +207,14 @@ class QuizTableNotifier extends StateNotifier<QuizTableState> {
       if (score == null) {
         studentMap.remove(columnId);
       } else {
-        studentMap[columnId] = score.clamp(0, 100);
+        studentMap[columnId] = score;
       }
 
       updatedScores[studentId] = studentMap;
       state = state.copyWith(studentScores: updatedScores);
 
       // Veritabanına kaydet
-      await _repository.saveQuizNot(columnId, studentId, score?.clamp(0, 100));
+      await _repository.saveQuizNot(columnId, studentId, score);
     } catch (e, stackTrace) {
       debugPrint('QuizTableNotifier.updateScore error: $e\n$stackTrace');
     }

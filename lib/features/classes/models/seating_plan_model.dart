@@ -10,10 +10,19 @@ class SeatingPlanModel {
   /// Örneğin: { 1: "0,0", 2: "0,1" }
   final Map<int, String> assignments;
 
+  /// Varsayilan blok (sutun) sayisi.
+  ///
+  /// Kurucu 3x5, `fromMap` ise 4x6 diyordu; NULL sutunlu bir satirdan
+  /// okunan plan sessizce buyuyordu. Tek kaynak olsun diye sabitlendi.
+  static const int defaultColumns = 3;
+
+  /// Varsayilan sira sayisi.
+  static const int defaultRows = 5;
+
   const SeatingPlanModel({
     required this.classId,
-    this.columns = 3,
-    this.rows = 5,
+    this.columns = defaultColumns,
+    this.rows = defaultRows,
     this.assignments = const {},
   });
 
@@ -41,8 +50,8 @@ class SeatingPlanModel {
 
     return SeatingPlanModel(
       classId: map['class_id'] as int,
-      columns: map['columns'] as int? ?? 4,
-      rows: map['rows'] as int? ?? 6,
+      columns: map['columns'] as int? ?? defaultColumns,
+      rows: map['rows'] as int? ?? defaultRows,
       assignments: parsedAssignments,
     );
   }

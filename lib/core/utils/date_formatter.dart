@@ -63,28 +63,38 @@ class AppDateFormatter {
   /// Sabit varsayılan referans başlangıç
   static DateTime get academicYearStartDate => getAcademicYearStartDate();
 
+  /// Öğretim yılı etiketi. Ağustos'tan itibaren yeni yıl.
+  static String academicYearLabel([DateTime? now]) {
+    final d = now ?? DateTime.now();
+    final start = d.month >= 8 ? d.year : d.year - 1;
+    return '$start-${start + 1}';
+  }
+
   /// Bugün hangi akademik haftada? (1 - 39: Ders/Ara Tatil Haftaları, 40: Yaz Tatili)
   static int getCurrentAcademicWeek({DateTime? targetDate}) {
     final now = targetDate ?? DateTime.now();
     final startDate = getAcademicYearStartDate(now);
     final endDate = startDate.add(const Duration(days: 39 * 7 - 3)); // 39. Hafta Cuma günü
 
-    // 39 haftalık dönem bitmişse veya yeni dönem başlamadan önceki yaz dönemindeyse (Örn: Temmuz/Ağustos)
-    if (now.isAfter(endDate) || now.isBefore(startDate.subtract(const Duration(days: 7)))) {
+    // 1. Yeni eğitim öğretim yılına hazırlık dönemi (Ağustos ve Eylül ayı açılış öncesi):
+    // Öğretmenlerin planlama yapabilmesi için doğrudan 1. Haftaya (14 - 18 Eylül) odaklan
+    if (now.month >= 8 && now.isBefore(startDate)) {
+      return 1;
+    }
+
+    // 2. Eğitim-öğretim dönemi içindeyse aktif haftayı hesapla (1 - 39)
+    if (!now.isBefore(startDate) && !now.isAfter(endDate)) {
+      final differenceInDays = now.difference(startDate).inDays;
+      final weekNumber = (differenceInDays / 7).floor() + 1;
+      return weekNumber.clamp(1, 39);
+    }
+
+    // 3. Yaz tatili dönemi (Haziran sonu ve Temmuz)
+    if (now.isAfter(endDate) || now.month == 7 || now.month == 6) {
       return 40; // Yaz Tatili Kartı
     }
 
-    if (now.isBefore(startDate)) {
-      return 1; // Açılışa 1 hafta kala 1. haftaya odaklan
-    }
-
-    final differenceInDays = now.difference(startDate).inDays;
-    final weekNumber = (differenceInDays / 7).floor() + 1;
-
-    if (weekNumber > 39) return 40;
-    if (weekNumber < 1) return 1;
-
-    return weekNumber;
+    return 1;
   }
 
   /// Verilen akademik hafta nosuna göre (1-39 ve 40: Yaz Tatili) başlangıç ve bitiş tarih aralığı metni

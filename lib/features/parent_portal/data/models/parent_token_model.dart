@@ -15,11 +15,35 @@ class ParentTokenModel {
   final String codeHash; // SHA-256(code + salt)
   final String secondFactorHash; // SHA-256(studentNumber)
   final DateTime createdAt;
+  /// Kodun son geçerlilik tarihi.
+  ///
+  /// Artık gün bazlı bir süre uygulanmaz: kod, öğrenci okulda olduğu
+  /// sürece geçerlidir ve olayla kapanır (mezuniyet, başka okula nakil,
+  /// öğrenci silme, öğretmenin elle iptali). Yeni üretilen kodlarda bu
+  /// alan [noExpiry] olur; eski sürümden gelen tarihli kodlar geriye
+  /// dönük uyumluluk için hâlâ saygı görür.
   final DateTime expiresAt;
-  final String status; // 'active', 'used', 'expired', 'revoked'
+
+  /// 'active', 'used', 'expired', 'revoked', 'graduated', 'transferred'
+  final String status;
   final int linkedParentCount;
   final int maxLinkedParents;
   final String qrPayload;
+
+  /// Kodu üreten öğretmenin bulut kimliği (Firebase UID).
+  ///
+  /// Bulut kimliklerini (`cls_{uid}_{id}`, `stu_{uid}_{id}`) üretmek için
+  /// gerekir. Bu alan yokken veli bağı yerel yoldan kurulduğunda bulut
+  /// kimlikleri boş kalıyor, `hasCloudBinding` false dönüyor ve velinin
+  /// duyuru/kadro/mesaj sorguları sessizce boş liste veriyordu.
+  final String teacherUid;
+
+  /// İkinci veli kodu etiketi: 'Anne', 'Baba', 'Vasi' vb.
+  ///
+  /// Boş ise bu, öğrencinin ortak kodudur (anne de baba da kullanabilir).
+  /// Ayrı yaşayan ailelerde öğretmen ikinci bir kod üretir ve etiketler;
+  /// böylece bir tarafın erişimi diğerini etkilemeden kapatılabilir.
+  final String parentLabel;
 
   const ParentTokenModel({
     required this.id,
@@ -39,11 +63,36 @@ class ParentTokenModel {
     this.linkedParentCount = 0,
     this.maxLinkedParents = 2,
     required this.qrPayload,
+    this.parentLabel = '',
+    this.teacherUid = '',
   });
 
-  /// Token geçerli mi?
+  /// Süresiz kodlar için kullanılan uzak tarih.
+  ///
+  /// Ayrı bir "süresiz" bayrağı yerine uzak bir tarih kullanmak, eski
+  /// kayıtları okuyan kodun (ve buluttaki dokümanların) değişmeden
+  /// çalışmasını sağlar.
+  static final DateTime noExpiry = DateTime.utc(2099, 12, 31);
+
+  /// Kodun süresi doldu mu?
   bool get isExpired => DateTime.now().isAfter(expiresAt);
-  bool get isValid => status == 'active' && !isExpired && linkedParentCount < maxLinkedParents;
+
+  /// Süre sınırı olmayan (olayla kapanan) bir kod mu?
+  bool get isOpenEnded => !expiresAt.isBefore(noExpiry);
+
+  /// Kod hâlâ kullanılabilir mi?
+  ///
+  /// Yalnızca 'active' kodlar geçerlidir; 'graduated' ve 'transferred'
+  /// durumları öğrencinin okuldan ayrıldığını gösterir.
+  bool get isValid =>
+      status == 'active' && !isExpired && linkedParentCount < maxLinkedParents;
+
+  /// Belirli bir veliye ayrılmış ikinci kod mu?
+  bool get isSecondParentCode => parentLabel.trim().isNotEmpty;
+
+  /// Listede gösterilecek başlık: "Ali Veli — Anne" ya da "Ali Veli".
+  String get displayLabel =>
+      isSecondParentCode ? '$studentName — $parentLabel' : studentName;
 
   /// Kalan gün sayısı (gün yuvarlama ile)
   int get remainingDays {
@@ -128,6 +177,8 @@ class ParentTokenModel {
       'linked_parent_count': linkedParentCount,
       'max_linked_parents': maxLinkedParents,
       'qr_payload': qrPayload,
+      'parent_label': parentLabel,
+      'teacher_uid': teacherUid,
     };
   }
 
@@ -150,6 +201,8 @@ class ParentTokenModel {
       linkedParentCount: map['linked_parent_count'] as int? ?? 0,
       maxLinkedParents: map['max_linked_parents'] as int? ?? 2,
       qrPayload: map['qr_payload'] as String? ?? '',
+      parentLabel: map['parent_label'] as String? ?? '',
+      teacherUid: map['teacher_uid'] as String? ?? '',
     );
   }
 
@@ -171,6 +224,8 @@ class ParentTokenModel {
     int? linkedParentCount,
     int? maxLinkedParents,
     String? qrPayload,
+    String? parentLabel,
+    String? teacherUid,
   }) {
     return ParentTokenModel(
       id: id ?? this.id,
@@ -190,6 +245,8 @@ class ParentTokenModel {
       linkedParentCount: linkedParentCount ?? this.linkedParentCount,
       maxLinkedParents: maxLinkedParents ?? this.maxLinkedParents,
       qrPayload: qrPayload ?? this.qrPayload,
+      parentLabel: parentLabel ?? this.parentLabel,
+      teacherUid: teacherUid ?? this.teacherUid,
     );
   }
 }

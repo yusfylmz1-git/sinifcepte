@@ -773,6 +773,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                     const SizedBox(height: 6),
                     TextField(
                       controller: titleController,
+                      maxLength: 80,
                       style: AppFonts.outfit(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -858,6 +859,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                         }
                         return TextField(
                           onChanged: (val) => selectedClassName = val,
+                          maxLength: 20,
                           style: AppFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
                           decoration: InputDecoration(
                             hintText: 'Sınıf (Örn: 10-A, 8-B)',
@@ -876,6 +878,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                       },
                       orElse: () => TextField(
                         onChanged: (val) => selectedClassName = val,
+                        maxLength: 20,
                         style: AppFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
                         decoration: InputDecoration(
                           hintText: 'Sınıf (Örn: 10-A, 8-B)',

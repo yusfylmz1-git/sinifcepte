@@ -3,6 +3,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../data/models/classroom_participation_model.dart';
+import '../../../core/pdf/pdf_tr_fonts.dart';
 
 /// SınıfCepte - Resmî MEB Ders İçi Katılım & Gelişim PDF Rapor Motoru
 class ParticipationPdfGenerator {
@@ -30,7 +31,7 @@ class ParticipationPdfGenerator {
     String? schoolName,
     String? principalName,
   }) async {
-    final pdf = pw.Document();
+    final pdf = await PdfTrFonts.document();
 
     final fontRegular = await PdfGoogleFonts.robotoRegular();
     final fontBold = await PdfGoogleFonts.robotoBold();
@@ -106,7 +107,33 @@ class ParticipationPdfGenerator {
                     children: [
                       pw.Text('Öğrenci Sayısı: ${session.totalStudents}', style: pw.TextStyle(font: fontBold, fontSize: 9)),
                       pw.SizedBox(height: 2),
-                      pw.Text('Ödev Teslim Oranı: %${session.homeworkCompletionRate.toStringAsFixed(0)}', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.green800)),
+                      // Söz hakkı özeti: raporun en değerli bilgisi.
+                      // "Kaç öğrenci hiç konuşmadı" sorusunun cevabı.
+                      pw.Text(
+                        'Söz Hakkı: ${session.totalSpeakingTurns} kez '
+                        '(${session.silentStudentCount} öğrenci hiç konuşmadı)',
+                        style: pw.TextStyle(
+                          font: fontBold,
+                          fontSize: 9,
+                          color: PdfColors.orange800,
+                        ),
+                      ),
+                      pw.SizedBox(height: 2),
+                      // Oranlar KAÇ ÖĞRENCİYE dayandığını da gösterir:
+                      // "%100 (3 öğrenci)" ile "%100 (30 öğrenci)" aynı
+                      // şey değildir.
+                      pw.Text(
+                        session.homeworkEvaluatedCount > 0
+                            ? 'Ödev Teslim Oranı: '
+                                '%${session.homeworkCompletionRate.toStringAsFixed(0)} '
+                                '(${session.homeworkEvaluatedCount} öğrenci)'
+                            : 'Ödev Teslim Oranı: işaretlenmedi',
+                        style: pw.TextStyle(
+                          font: fontBold,
+                          fontSize: 9,
+                          color: PdfColors.green800,
+                        ),
+                      ),
                       pw.SizedBox(height: 2),
                       pw.Text('Araç-Gereç Uyumu: %${session.materialsReadinessRate.toStringAsFixed(0)}', style: pw.TextStyle(font: fontRegular, fontSize: 8.5)),
                       pw.SizedBox(height: 2),
@@ -124,12 +151,15 @@ class ParticipationPdfGenerator {
               columnWidths: const {
                 0: pw.FixedColumnWidth(22), // S.No
                 1: pw.FixedColumnWidth(36), // Okul No
-                2: pw.FlexColumnWidth(3.2), // Ad Soyad
-                3: pw.FixedColumnWidth(48), // Ödev
-                4: pw.FixedColumnWidth(48), // Materyal
-                5: pw.FixedColumnWidth(54), // Geliş
-                6: pw.FixedColumnWidth(66), // Katılım
-                7: pw.FlexColumnWidth(2.4), // Gözlem / Not
+                2: pw.FlexColumnWidth(3.0), // Ad Soyad
+                // Söz hakkı: modülün asıl verisi. Öğretmen raporda
+                // "kime söz verdim, kim hiç konuşmadı" görmek istiyor.
+                3: pw.FixedColumnWidth(42), // Söz Hakkı
+                4: pw.FixedColumnWidth(46), // Ödev
+                5: pw.FixedColumnWidth(46), // Materyal
+                6: pw.FixedColumnWidth(50), // Geliş
+                7: pw.FixedColumnWidth(60), // Katılım
+                8: pw.FlexColumnWidth(2.2), // Gözlem / Not
               },
               children: [
                 // Başlık Satırı
@@ -139,6 +169,7 @@ class ParticipationPdfGenerator {
                     _buildHeaderCell('No', fontBold, align: pw.TextAlign.center),
                     _buildHeaderCell('Okul No', fontBold, align: pw.TextAlign.center),
                     _buildHeaderCell('Öğrenci Adı Soyadı', fontBold),
+                    _buildHeaderCell('Söz Hakkı', fontBold, align: pw.TextAlign.center),
                     _buildHeaderCell('Ödev', fontBold, align: pw.TextAlign.center),
                     _buildHeaderCell('Materyal', fontBold, align: pw.TextAlign.center),
                     _buildHeaderCell('Geliş', fontBold, align: pw.TextAlign.center),
@@ -155,6 +186,11 @@ class ParticipationPdfGenerator {
                     // Ödev metni (Temiz Türkçe - Kırık kutu karakteri yok)
                     String hwLabel;
                     switch (e.homeworkStatus) {
+                      // Isaretlenmemis alan raporda BOS gorunur.
+                      // "Yapti" yazmak veri uydurmak olurdu.
+                      case HomeworkStatus.unknown:
+                        hwLabel = '-';
+                        break;
                       case HomeworkStatus.done:
                         hwLabel = 'Yaptı';
                         break;
@@ -170,10 +206,23 @@ class ParticipationPdfGenerator {
                     }
 
                     // Materyal metni
-                    String matLabel = e.materialsStatus == MaterialsStatus.ready ? 'Getirdi' : 'Eksik';
+                    // `!= ready` yazilsaydi ISARETLENMEMIS ogrenci raporda
+                    // "Eksik" gorunurdu — haksiz suclama.
+                    final String matLabel = switch (e.materialsStatus) {
+                      MaterialsStatus.ready => 'Getirdi',
+                      MaterialsStatus.missing => 'Eksik',
+                      MaterialsStatus.unknown => '-',
+                    };
 
                     // Zamanlama metni
-                    String arrLabel = e.arrivalStatus == ArrivalStatus.onTime ? 'Zamanında' : 'Geç';
+                    // `== onTime ? ... : 'Geç'` yaziliyordu: ISARETLENMEMIS
+                    // ogrenci raporda "Geç" gorunuyordu — haksiz suclama.
+                    final String arrLabel = switch (e.arrivalStatus) {
+                      ArrivalStatus.onTime => 'Zamanında',
+                      ArrivalStatus.late => 'Geç',
+                      ArrivalStatus.excused => 'İzinli',
+                      ArrivalStatus.unknown => '-',
+                    };
 
                     // Katılım metni
                     String starText;
@@ -214,6 +263,13 @@ class ParticipationPdfGenerator {
                         _buildCell('${i + 1}', fontRegular, align: pw.TextAlign.center),
                         _buildCell('${e.studentNumber}', fontBold, align: pw.TextAlign.center),
                         _buildCell(_cleanPdfText(e.studentName), fontBold),
+                        // Hiç konuşmayan öğrenci "-" ile görünür; ekrandaki
+                        // gri noktanın kâğıt karşılığı.
+                        _buildCell(
+                          e.speakingTurns > 0 ? '${e.speakingTurns}' : '-',
+                          e.speakingTurns > 0 ? fontBold : fontRegular,
+                          align: pw.TextAlign.center,
+                        ),
                         _buildCell(hwLabel, fontRegular, align: pw.TextAlign.center),
                         _buildCell(matLabel, fontRegular, align: pw.TextAlign.center),
                         _buildCell(arrLabel, fontRegular, align: pw.TextAlign.center),
@@ -254,7 +310,7 @@ class ParticipationPdfGenerator {
       ),
     );
 
-    return pdf.save();
+    return PdfTrFonts.kaydet(pdf);
   }
 
   /// Doğrudan yazdırma veya PDF paylaşım iletişim kutusunu açar

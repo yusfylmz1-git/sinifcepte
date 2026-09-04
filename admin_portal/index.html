@@ -188,6 +188,9 @@
                 <button class="btn btn-secondary" style="background: var(--info-light); color: var(--info); border-color: var(--info); font-weight: 700;" onclick="window.adminApp.openSmartParserModal()">
                   📋 Akıllı Genelge Yapıştır
                 </button>
+                <button class="btn btn-secondary" style="background: var(--success-light, rgba(16,185,129,0.12)); color: #059669; border-color: rgba(16,185,129,0.35); font-weight: 700;" onclick="window.adminApp.checkCalendarAgainstOutcomes()">
+                  🔍 Kazanım Kartlarıyla Karşılaştır
+                </button>
                 <button class="btn btn-secondary" onclick="CloudExporter.exportCalendar(window.adminApp.calendarManager)">
                   JSON İndir
                 </button>
@@ -220,20 +223,47 @@
         <!-- TAB 3: KAZANIM KÜTÜPHANESİ -->
         <section id="tab-outcomes" class="tab-content">
           <div class="panel-card">
-            <div class="panel-header">
-              <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-                <!-- Sınıf Kademe Seçici -->
+            <div class="panel-header" style="flex-direction: column; align-items: stretch; gap: 14px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                 <div>
-                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block;">Kademe / Sınıf:</label>
-                  <select id="outcomes-grade-select" class="form-control" style="width: 140px; padding: 6px 10px;">
-                    <option value="1">1. Sınıf</option>
-                    <option value="2">2. Sınıf</option>
-                    <option value="3">3. Sınıf</option>
-                    <option value="4">4. Sınıf</option>
-                    <option value="5" selected>5. Sınıf</option>
-                    <option value="6">6. Sınıf</option>
-                    <option value="7">7. Sınıf</option>
-                    <option value="8">8. Sınıf</option>
+                  <h2 class="panel-title" style="margin: 0;">📚 MEB Maarif & Yıllık Plan Kütüphanesi</h2>
+                  <p style="font-size: 12.5px; color: var(--text-muted); margin: 4px 0 0 0;">
+                    1-12. Sınıflar, Tüm Yayınevleri, OTP ve MEB Sosyal Etkinlik Planları (2026-2027)
+                  </p>
+                </div>
+
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                  <button class="btn btn-primary" style="background: linear-gradient(135deg, #10b981, #059669); border: none; font-weight: 700; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);" onclick="window.adminApp.syncFromOfficialMaarif()">
+                    🌐 MEB Maarif'i Çevrimiçi Güncelle (3.198 Kayıt)
+                  </button>
+                  <button class="btn btn-primary" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); border: none; font-weight: 700; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);" onclick="window.adminApp.openExcelImportModal()">
+                    📂 Excel Yükle (.xlsx)
+                  </button>
+                  <button class="btn btn-secondary" onclick="CloudExporter.exportOutcomes(window.adminApp.outcomesManager)">
+                    JSON İndir
+                  </button>
+                </div>
+              </div>
+
+              <!-- Filtre Çubuğu (MEB TYMM Resmî Hiyerarşisi) -->
+              <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: rgba(0,0,0,0.02); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color);">
+                <!-- 1. Okul Türü / Kademe Seçici -->
+                <div>
+                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 3px;">Okul Türü / Kademe:</label>
+                  <select id="outcomes-school-type-select" class="form-control" style="min-width: 170px; padding: 6px 10px;">
+                    <option value="ALL" selected>🌟 Tüm Kademeler</option>
+                    <option value="PRIMARY">🎒 İlkokul (1-4. Sınıf)</option>
+                    <option value="MIDDLE">🏫 Ortaokul (5-8. Sınıf)</option>
+                    <option value="HIGH">🎓 Ortaöğretim / Lise (9-12. Sınıf)</option>
+                    <option value="IHO">🕌 İmam Hatip (5-12. Sınıf)</option>
+                  </select>
+                </div>
+
+                <!-- 2. Sınıf Kademe Seçici -->
+                <div>
+                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 3px;">Sınıf Seviyesi:</label>
+                  <select id="outcomes-grade-select" class="form-control" style="width: 125px; padding: 6px 10px;">
+                    <option value="ALL" selected>Tüm Sınıflar</option>
                     <option value="9">9. Sınıf</option>
                     <option value="10">10. Sınıf</option>
                     <option value="11">11. Sınıf</option>
@@ -241,76 +271,40 @@
                   </select>
                 </div>
 
-                <!-- Ders Branş Seçici -->
+                <!-- 3. Dinamik Ders Branş Seçici -->
                 <div>
-                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block;">Ders / Branş:</label>
+                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 3px;">Ders / Branş:</label>
                   <select id="outcomes-subject-select" class="form-control" style="min-width: 190px; padding: 6px 10px;">
-                    <option value="ALL">🌟 Tüm Branşlar</option>
-                    <option value="BILISIM">💻 Bilişim Teknolojileri ve Yazılım</option>
-                    <option value="TURKCE">📚 Türkçe</option>
-                    <option value="MAT" selected>📐 Matematik</option>
-                    <option value="FEN">🔬 Fen Bilimleri</option>
-                    <option value="SOSYAL">🌍 Sosyal Bilgiler</option>
-                    <option value="INKILAP">🏛️ T.C. İnkılap Tarihi ve Atatürkçülük</option>
-                    <option value="HAYAT">🌱 Hayat Bilgisi</option>
-                    <option value="INGILIZCE">🇬🇧 İngilizce</option>
-                    <option value="ALMANCA">🇩🇪 Almanca</option>
-                    <option value="BEDEN">🏃 Beden Eğitimi ve Spor</option>
-                    <option value="GORSEL">🎨 Görsel Sanatlar</option>
-                    <option value="MUZIK">🎵 Müzik</option>
-                    <option value="DIN">🕌 Din Kültürü ve Ahlak Bilgisi</option>
-                    <option value="TEKNOLOJI_TASARIM">⚙️ Teknoloji ve Tasarım</option>
-                    <option value="TRAFIK">🚦 Trafik Güvenliği</option>
-                    <option value="INSAN_HAKLARI">⚖️ İnsan Hakları ve Demokrasi</option>
-                    <option value="REHBERLIK">🧭 Rehberlik ve Yönlendirme</option>
+                    <option value="ALL" selected>🌟 Tüm Branşlar</option>
                   </select>
                 </div>
 
-                <!-- Yayınevi / Plan Seçici -->
+                <!-- 4. Yayınevi / Plan Seçici -->
                 <div>
-                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block;">Yayın / Program:</label>
-                  <select id="outcomes-publisher-select" class="form-control" style="min-width: 170px; padding: 6px 10px;">
+                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 3px;">Yayın / Program:</label>
+                  <select id="outcomes-publisher-select" class="form-control" style="min-width: 155px; padding: 6px 10px;">
                     <option value="ALL" selected>Tüm Yayınlar</option>
-                    <option value="TYMM (Maarif Modeli)">TYMM (Maarif Modeli)</option>
-                    <option value="MEB Yayınları">MEB Yayınları</option>
-                    <option value="İYDEM (Maarif Modeli)">İYDEM (Maarif Modeli)</option>
-                    <option value="Özgün Yayınları">Özgün Yayınları</option>
-                    <option value="Hecce Yayıncılık">Hecce Yayıncılık</option>
-                    <option value="Ada Yayıncılık">Ada Yayıncılık</option>
-                    <option value="İlke Yayınları">İlke Yayınları</option>
                   </select>
                 </div>
-              </div>
 
-              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button class="btn btn-primary" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); border: none; font-weight: 700; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);" onclick="window.adminApp.openExcelImportModal()">
-                  📂 Excel Dosyası Yükle (.xlsx)
-                </button>
-                <button class="btn btn-secondary" style="background: var(--accent-light); color: var(--accent); border-color: var(--accent);" onclick="window.adminApp.openCurriculumPresetsModal()">
-                  📦 Hazır TTKB Paketleri
-                </button>
-                <button class="btn btn-secondary" onclick="window.adminApp.openBulkImportModal()">
-                  📋 Metin Yapıştır
-                </button>
-                <button class="btn btn-secondary" onclick="CloudExporter.exportOutcomes(window.adminApp.outcomesManager)">
-                  JSON İndir
-                </button>
-                <button class="btn btn-secondary" onclick="window.adminApp.fillSampleOutcomes()">
-                  ⚡ 36 Haftalık Taslak
-                </button>
-              </div>
-            </div>
-
-            <!-- Hızlı Excel Yükleme Dropzone Alanı -->
-            <div id="outcomes-quick-dropzone" class="quick-dropzone" style="border: 2px dashed var(--primary); border-radius: 12px; padding: 14px 18px; text-align: center; background: rgba(79, 70, 229, 0.04); margin-bottom: 16px; cursor: pointer; transition: all 0.2s;" onclick="window.adminApp.openExcelImportModal()">
-              <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-                <span style="font-size: 24px;">📊</span>
-                <div style="text-align: left;">
-                  <strong style="color: var(--primary); font-size: 13.5px; display: block;">MEB Yıllık Plan Excel Dosyasını (.xlsx) Buraya Yükleyin veya Tıklayın</strong>
-                  <span style="font-size: 11.5px; color: var(--text-muted);">
-                    Ham MEB Excel Planları veya MERKEZ_BOT tabloları otomatik analiz edilir, temiz ünite ve kazanım kodları canlı önizleme ile sisteme aktarılır.
-                  </span>
+                <!-- Canlı Arama Çubuğu -->
+                <div style="flex: 1; min-width: 180px;">
+                  <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 3px;">Hızlı Arama:</label>
+                  <input type="text" id="outcomes-search-input" class="form-control" placeholder="Kazanım, ünite veya kod ara..." style="padding: 6px 12px;" oninput="window.adminApp.handleOutcomesSearch(this.value)">
                 </div>
+              </div>
+
+              <!-- Kaç kayıt gösteriliyor bilgisi -->
+              <div id="outcomes-row-info" style="font-size: 12px; color: var(--text-muted); font-weight: 600; margin-top: 6px;"></div>
+
+              <!-- Kategori Filtre Hapları (Pill Tabs) -->
+              <div id="outcomes-category-pills" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px;">
+                <button class="btn-pill active" data-cat="ALL" onclick="window.adminApp.setCategoryFilter('ALL', this)">🌟 Tüm Kategoriler</button>
+                <button class="btn-pill" data-cat="core" onclick="window.adminApp.setCategoryFilter('core', this)">📗 Zorunlu Ders</button>
+                <button class="btn-pill" data-cat="elective" onclick="window.adminApp.setCategoryFilter('elective', this)">🎨 Seçmeli Dersler</button>
+                <button class="btn-pill" data-cat="course" onclick="window.adminApp.setCategoryFilter('course', this)">🎯 Kurs (DYK)</button>
+                <button class="btn-pill" data-cat="iho" onclick="window.adminApp.setCategoryFilter('iho', this)">🕌 İmam Hatip (İHO)</button>
+                <button class="btn-pill" data-cat="harezmi" onclick="window.adminApp.setCategoryFilter('harezmi', this)">🤖 Harezmi & Proje</button>
               </div>
             </div>
 
@@ -318,10 +312,12 @@
               <table class="data-table">
                 <thead>
                   <tr>
-                    <th>Hafta</th>
-                    <th>Ünite / Tema Adı</th>
-                    <th>Konu / Öğrenme Alanı</th>
-                    <th>MEB Kazanım Kodu & Açıklaması</th>
+                    <th>Hafta & Tarih</th>
+                    <th>Ünite / Tema & Yayın</th>
+                    <th>Konu / Alan</th>
+                    <th>MEB Kodu</th>
+                    <th>Kazanım Açıklaması</th>
+                    <th>Durum</th>
                     <th style="text-align: right;">İşlem</th>
                   </tr>
                 </thead>
@@ -558,6 +554,61 @@
 
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="window.adminApp.closeModal('modal-calendar')">İptal</button>
+          <button type="submit" class="btn btn-primary">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Tek Kazanım Düzenleme (Maarif alanları dâhil) -->
+  <div id="modal-edit-outcome" class="modal-backdrop">
+    <div class="modal-box" style="max-width: 720px;">
+      <div class="modal-header">
+        <h3>✏️ Kazanım Düzenle</h3>
+        <button class="btn" style="background:none; border:none; font-size: 18px;" onclick="window.adminApp.closeModal('modal-edit-outcome')">✕</button>
+      </div>
+      <form id="edit-outcome-form">
+        <div class="modal-body">
+          <input type="hidden" id="edit-outcome-id">
+          <p id="edit-outcome-context" style="font-size: 12.5px; color: var(--text-muted); margin: 0 0 14px;"></p>
+
+          <div style="display: grid; grid-template-columns: 160px 1fr; gap: 10px; align-items: start;">
+            <label style="padding-top: 8px;">Kazanım Kodu</label>
+            <input type="text" id="edit-outcome-code" class="form-control" placeholder="örn. FEL.10.1.1">
+
+            <label style="padding-top: 8px;">Ünite / Tema</label>
+            <input type="text" id="edit-outcome-unit" class="form-control">
+
+            <label style="padding-top: 8px;">Konu</label>
+            <input type="text" id="edit-outcome-topic" class="form-control">
+
+            <label style="padding-top: 8px;">Kazanım Açıklaması</label>
+            <textarea id="edit-outcome-desc" class="form-control" style="min-height: 78px;"></textarea>
+          </div>
+
+          <div style="margin: 18px 0 10px; padding-top: 14px; border-top: 1px solid var(--border-color);">
+            <strong style="font-size: 13px; color: #059669;">🌟 Maarif Modeli Alanları</strong>
+            <p style="font-size: 11.5px; color: var(--text-muted); margin: 4px 0 0;">
+              Uygulamadaki kazanım kartında öğretmene gösterilir.
+            </p>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 160px 1fr; gap: 10px; align-items: start;">
+            <label style="padding-top: 8px;">Maarif Özeti</label>
+            <textarea id="edit-outcome-summary" class="form-control" style="min-height: 66px;"></textarea>
+
+            <label style="padding-top: 8px;">Değerler</label>
+            <input type="text" id="edit-outcome-values" class="form-control" placeholder="D3. Çalışkanlık, D14. Saygı">
+
+            <label style="padding-top: 8px;">Beceriler</label>
+            <input type="text" id="edit-outcome-skills" class="form-control" placeholder="SDB1.2. Kendini Düzenleme, OB1. Bilgi Okuryazarlığı">
+
+            <label style="padding-top: 8px;">Farklılaştırma</label>
+            <textarea id="edit-outcome-diff" class="form-control" style="min-height: 56px;"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="window.adminApp.closeModal('modal-edit-outcome')">Vazgeç</button>
           <button type="submit" class="btn btn-primary">Kaydet</button>
         </div>
       </form>
@@ -1018,6 +1069,7 @@
   <script src="js/smart_circular_parser.js"></script>
   <script src="js/smart_excel_importer.js"></script>
   <script src="js/calendar_wizard.js"></script>
+  <script src="js/calendar_to_weeks.js"></script>
   <script src="js/curriculum_presets.js"></script>
   <script src="js/calendar_manager.js"></script>
   <script src="js/outcomes_manager.js"></script>

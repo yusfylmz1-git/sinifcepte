@@ -8,6 +8,7 @@ import 'package:printing/printing.dart';
 import '../../../../data/models/student_model.dart';
 import '../../../../data/models/class_model.dart';
 import '../models/seating_plan_model.dart';
+import '../../../core/pdf/pdf_tr_fonts.dart';
 
 /// Gerçekçi Sınıf Oturma Planı A4 PDF Motoru
 class SeatingPlanPdfGenerator {
@@ -19,7 +20,7 @@ class SeatingPlanPdfGenerator {
     required List<StudentModel> students,
     required SeatingPlanModel plan,
   }) async {
-    final pdf = pw.Document();
+    final pdf = await PdfTrFonts.document();
 
     final fontRegular = await PdfGoogleFonts.robotoRegular();
     final fontBold = await PdfGoogleFonts.robotoBold();
@@ -51,7 +52,7 @@ class SeatingPlanPdfGenerator {
     try {
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/Sinif_Oturma_Plani_${classModel.name}.pdf');
-      await file.writeAsBytes(await pdf.save());
+      await file.writeAsBytes(await PdfTrFonts.kaydet(pdf));
 
       await SharePlus.instance.share(
         ShareParams(

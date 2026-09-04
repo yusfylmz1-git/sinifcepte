@@ -8,6 +8,7 @@ import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../auth_profile/data/models/teacher_profile_model.dart';
 import '../data/models/exam_analysis_model.dart';
+import '../../../core/pdf/pdf_tr_fonts.dart';
 
 /// SınıfCepte - MEB Uyumlu Resmî Sınav Analiz Raporu PDF Motoru
 class ExamAnalysisPdfGenerator {
@@ -23,7 +24,7 @@ class ExamAnalysisPdfGenerator {
       final fontRegular = await PdfGoogleFonts.robotoRegular();
       final fontBold = await PdfGoogleFonts.robotoBold();
 
-      final pdf = pw.Document();
+      final pdf = await PdfTrFonts.document();
 
       final isLandscape = exam.isQuestionBased && exam.questionCount > 6;
       final pageFormat = isLandscape ? PdfPageFormat.a4.landscape : PdfPageFormat.a4;
@@ -69,7 +70,7 @@ class ExamAnalysisPdfGenerator {
       final fileName = 'Sinav_Analizi_${exam.className}_${exam.examTitle.replaceAll(' ', '_')}.pdf';
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/$fileName');
-      await file.writeAsBytes(await pdf.save());
+      await file.writeAsBytes(await PdfTrFonts.kaydet(pdf));
 
       await SharePlus.instance.share(
         ShareParams(
@@ -191,7 +192,11 @@ class ExamAnalysisPdfGenerator {
 
       if (hasQuestions) {
         for (int q = 0; q < exam.questionCount; q++) {
-          if (q < s.questionScores.length) {
+          // Girmeyen ogrencinin soru hucreleri bos birakilir; 0 yazmak
+          // "soruyu yapamadi" anlamina gelir ve yanlistir.
+          if (s.isAbsent) {
+            row.add('-');
+          } else if (q < s.questionScores.length) {
             row.add(s.questionScores[q].toStringAsFixed(0));
           } else {
             row.add('0');
@@ -199,8 +204,12 @@ class ExamAnalysisPdfGenerator {
         }
       }
 
-      row.add(s.totalScore.toStringAsFixed(0));
-      row.add(s.totalScore >= 50.0 ? 'GEÇTİ' : 'KALDI');
+      // Bu PDF idareye verilen resmi belge. Sinava girmeyen ogrenciyi
+      // "0 / KALDI" olarak yazmak ogrenciyi haksiz yere basarisiz gosterir.
+      row.add(s.isAbsent ? '-' : s.totalScore.toStringAsFixed(0));
+      row.add(s.isAbsent
+          ? 'GİRMEDİ'
+          : (s.totalScore >= 50.0 ? 'GEÇTİ' : 'KALDI'));
       data.add(row);
     }
 

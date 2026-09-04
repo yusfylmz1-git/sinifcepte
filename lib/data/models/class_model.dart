@@ -5,6 +5,7 @@ class ClassModel {
   final String subject; // Örn: Matematik
   final String academicYear; // Örn: 2024-2025
   final String? description;
+  final bool isHomeroom; // Öğretmenin Rehberlik / Şube Sınıfı mı?
 
   const ClassModel({
     this.id,
@@ -12,6 +13,7 @@ class ClassModel {
     required this.subject,
     required this.academicYear,
     this.description,
+    this.isHomeroom = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -21,6 +23,7 @@ class ClassModel {
       'subject': subject,
       'academic_year': academicYear,
       'description': description,
+      'is_homeroom': isHomeroom ? 1 : 0,
     };
   }
 
@@ -31,6 +34,7 @@ class ClassModel {
       subject: map['subject'] as String,
       academicYear: map['academic_year'] as String,
       description: map['description'] as String?,
+      isHomeroom: (map['is_homeroom'] as int? ?? 0) == 1,
     );
   }
 
@@ -40,6 +44,7 @@ class ClassModel {
     String? subject,
     String? academicYear,
     String? description,
+    bool? isHomeroom,
   }) {
     return ClassModel(
       id: id ?? this.id,
@@ -47,6 +52,7 @@ class ClassModel {
       subject: subject ?? this.subject,
       academicYear: academicYear ?? this.academicYear,
       description: description ?? this.description,
+      isHomeroom: isHomeroom ?? this.isHomeroom,
     );
   }
 }

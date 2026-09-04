@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../data/models/school_model.dart';
 import '../../data/models/school_types.dart';
 import '../../providers/school_selector_provider.dart';
+import '../../../../core/utils/turkish_text.dart';
 
 /// SınıfCepte - MEB 81 İl ve Okul Seçim Modalı (UI-UX-MAX & Zero-Overflow)
 class SchoolSelectionModal extends ConsumerStatefulWidget {
@@ -86,7 +87,7 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
     final schoolsAsync = ref.watch(filteredSchoolsListProvider);
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.88,
+      height: MediaQuery.sizeOf(context).height * 0.88,
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
@@ -626,14 +627,18 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
           builder: (dialogCtx, setDialogState) {
             final filteredProvinces = provinces.where((p) {
               if (provSearch.isEmpty) return true;
-              final name = (p['name']?.toString() ?? '').toLowerCase();
+              // trContains katlamayi kendi yapar; burada toLowerCase
+              // cagirmak gereksiz ve yaniltici olurdu.
+              final name = p['name']?.toString() ?? '';
               final code = (p['code']?.toString() ?? '');
-              final q = provSearch.toLowerCase().trim();
-              return name.contains(q) || code.contains(q);
+              // Okul adlari uzun ve Turkce karakterli; ogretmen
+              // "Mimar Sinan" yerine "mimar sinan" yazabiliyor.
+              final q = provSearch.trim();
+              return trContains(name, q) || code.contains(q);
             }).toList();
 
             return Container(
-              height: MediaQuery.of(context).size.height * 0.75,
+              height: MediaQuery.sizeOf(context).height * 0.75,
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF0F172A) : Colors.white,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -716,7 +721,7 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
       builder: (ctx) {
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
         return Container(
-          height: MediaQuery.of(context).size.height * 0.6,
+          height: MediaQuery.sizeOf(context).height * 0.6,
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF0F172A) : Colors.white,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),

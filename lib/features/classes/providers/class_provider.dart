@@ -9,9 +9,16 @@ final classRepositoryProvider = Provider<ClassRepository>((ref) {
 });
 
 /// Sınıf Listesi State Notifier Provider
-final classListProvider = StateNotifierProvider<ClassListNotifier, AsyncValue<List<ClassModel>>>((ref) {
+final classListProvider =
+    StateNotifierProvider<ClassListNotifier, AsyncValue<List<ClassModel>>>((ref) {
   final repository = ref.watch(classRepositoryProvider);
   return ClassListNotifier(repository);
+});
+
+/// Öğretmenin Aktif Rehberlik Sınıfı Provider'ı (Yoksa null döner)
+final homeroomClassProvider = Provider<ClassModel?>((ref) {
+  final classListAsync = ref.watch(classListProvider);
+  return classListAsync.valueOrNull?.where((c) => c.isHomeroom).firstOrNull;
 });
 
 class ClassListNotifier extends StateNotifier<AsyncValue<List<ClassModel>>> {
@@ -42,6 +49,7 @@ class ClassListNotifier extends StateNotifier<AsyncValue<List<ClassModel>>> {
     required String subject,
     required String academicYear,
     String? description,
+    bool isHomeroom = false,
   }) async {
     try {
       final newClass = ClassModel(
@@ -49,6 +57,7 @@ class ClassListNotifier extends StateNotifier<AsyncValue<List<ClassModel>>> {
         subject: subject,
         academicYear: academicYear,
         description: description,
+        isHomeroom: isHomeroom,
       );
 
       await _repository.insertClass(newClass);
@@ -70,6 +79,7 @@ class ClassListNotifier extends StateNotifier<AsyncValue<List<ClassModel>>> {
     required String subject,
     required String academicYear,
     String? description,
+    bool isHomeroom = false,
   }) async {
     try {
       final updatedClass = ClassModel(
@@ -78,6 +88,7 @@ class ClassListNotifier extends StateNotifier<AsyncValue<List<ClassModel>>> {
         subject: subject,
         academicYear: academicYear,
         description: description,
+        isHomeroom: isHomeroom,
       );
 
       await _repository.updateClass(updatedClass);
@@ -88,6 +99,36 @@ class ClassListNotifier extends StateNotifier<AsyncValue<List<ClassModel>>> {
       debugPrint('Hata Mesajı : $e');
       debugPrint('Kod Satırı   : $st');
       debugPrint('---------------------------------------------------------------------');
+      return false;
+    }
+  }
+
+  /// Bir sınıfı Rehberlik Sınıfı olarak ata
+  Future<bool> setHomeroomClass(int classId) async {
+    try {
+      await _repository.setHomeroomClass(classId);
+      await loadClasses();
+      return true;
+    } catch (e, st) {
+      debugPrint('---------------- HATA DETAYI (ClassList.setHomeroomClass) ----------------');
+      debugPrint('Hata Mesajı : $e');
+      debugPrint('Kod Satırı   : $st');
+      debugPrint('-------------------------------------------------------------------------');
+      return false;
+    }
+  }
+
+  /// Rehberlik sınıfı unvanını kaldır
+  Future<bool> clearHomeroomClass(int classId) async {
+    try {
+      await _repository.clearHomeroomClass(classId);
+      await loadClasses();
+      return true;
+    } catch (e, st) {
+      debugPrint('---------------- HATA DETAYI (ClassList.clearHomeroomClass) ----------------');
+      debugPrint('Hata Mesajı : $e');
+      debugPrint('Kod Satırı   : $st');
+      debugPrint('---------------------------------------------------------------------------');
       return false;
     }
   }
@@ -128,6 +169,7 @@ class ClassListNotifier extends StateNotifier<AsyncValue<List<ClassModel>>> {
             subject: c.subject,
             academicYear: c.academicYear,
             description: c.description,
+            isHomeroom: c.isHomeroom,
           );
           await _repository.updateClass(updatedClass);
         }

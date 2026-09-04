@@ -10,19 +10,50 @@ import '../../data/models/class_announcement_model.dart';
 import '../../providers/cloud_communication_provider.dart';
 import '../../providers/parent_portal_provider.dart';
 import 'class_staff_manager_modal.dart';
+import '../../data/services/communication_ids.dart';
+import '../../../../core/utils/date_formatter.dart';
+import '../../../auth_profile/data/services/teacher_identity.dart';
+import '../../data/models/parent_link_model.dart';
+import '../../providers/parent_token_provider.dart';
+import '../../../auth_profile/data/models/teacher_profile_model.dart';
+import 'parent_teacher_chat_modal.dart';
 
 /// SınıfCepte - Öğretmen Veli İletişim, Duyuru & Randevu Merkezi Modalı
 class ClassParentCommunicationModal extends ConsumerStatefulWidget {
   final ClassModel classModel;
 
-  const ClassParentCommunicationModal({super.key, required this.classModel});
+  /// Açılışta gösterilecek sekme (0=Duyurular, 1=Mesajlar, 2=Bildirimler,
+  /// 3=Randevular, 4=Kadro).
+  final int initialTab;
 
-  static Future<void> show(BuildContext context, {required ClassModel classModel}) {
+  /// Panelin içine gömülü mü gösteriliyor?
+  ///
+  /// true ise alt sayfa kabuğu (tutamaç, sabit yükseklik, yuvarlak
+  /// köşeler, başlık) çizilmez — bileşen bulunduğu alanı doldurur.
+  /// Böylece bu ekranın kodu TEK YERDE kalır: panel onu kopyalamak
+  /// yerine gömer.
+  final bool embedded;
+
+  const ClassParentCommunicationModal({
+    super.key,
+    required this.classModel,
+    this.initialTab = 0,
+    this.embedded = false,
+  });
+
+  static Future<void> show(
+    BuildContext context, {
+    required ClassModel classModel,
+    int initialTab = 0,
+  }) {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => ClassParentCommunicationModal(classModel: classModel),
+      builder: (_) => ClassParentCommunicationModal(
+        classModel: classModel,
+        initialTab: initialTab,
+      ),
     );
   }
 
@@ -37,7 +68,11 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(
+      length: 5,
+      vsync: this,
+      initialIndex: widget.initialTab.clamp(0, 4),
+    );
   }
 
   @override
@@ -51,7 +86,9 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
   String get _classCloudId {
     final teacher = ref.read(teacherProfileProvider);
     return CloudIds.classId(
-      teacherUid: teacher.id,
+      // Kod üretimi ve kadro ekranıyla AYNI kimlik: `teacher.id` yer
+      // tutucu olabiliyor ve farklı bir sınıf odası üretiyordu.
+      teacherUid: TeacherIdentity.resolve(teacher),
       localClassId: widget.classModel.id ?? 0,
     );
   }
@@ -60,29 +97,40 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // Gömülü kipte alt sayfa kabuğu (sabit yükseklik, yuvarlak köşeler,
+    // tutamaç, başlık) çizilmez: panel bu bileşeni kendi Scaffold'una
+    // koyar. Böylece ekranın kodu TEK YERDE kalır — panel onu
+    // kopyalamak yerine gömer.
+    final embedded = widget.embedded;
+
     return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      height: embedded ? null : MediaQuery.sizeOf(context).height * 0.85,
+      decoration: embedded
+          ? null
+          : BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
       child: Column(
         children: [
           // Tutamaç
-          Center(
-            child: Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 8),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: isDark ? Colors.white24 : Colors.black12,
-                borderRadius: BorderRadius.circular(2),
+          if (!embedded)
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white24 : Colors.black12,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
 
-          // Başlık
-          Padding(
+          // Başlık (gömülü kipte panelin kendi başlığı var)
+          if (!embedded)
+            Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 4.0),
             child: Row(
               children: [
@@ -138,6 +186,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
             tabAlignment: TabAlignment.start,
             tabs: const [
               Tab(text: '📢 Duyurular'),
+              Tab(text: '💬 Mesajlar'),
               Tab(text: '📬 Bildirimler'),
               Tab(text: '📅 Randevular'),
               Tab(text: '👥 Kadro'),
@@ -150,6 +199,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
               controller: _tabController,
               children: [
                 _buildAnnouncementsTab(context, isDark),
+                _buildMessagesTab(context, isDark),
                 _buildStatusReportsTab(context, isDark),
                 _buildAppointmentsTab(context, isDark),
                 _buildStaffTab(context, isDark),
@@ -162,6 +212,180 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
   }
 
   // --- 1. DUYURULAR SEKMESİ ---
+  /// Öğretmenin mesaj kutusu.
+  ///
+  /// Bu sekme YOKTU: sohbet ekranı yalnızca veli tarafından açılabiliyordu,
+  /// öğretmenin gelen mesajları görebileceği hiçbir yer bulunmuyordu.
+  /// (Eskiden veli token kartında bir giriş vardı; o ekran kaldırılınca
+  /// öğretmen tarafı tümüyle kapandı.)
+  Widget _buildMessagesTab(BuildContext context, bool isDark) {
+    final teacher = ref.watch(teacherProfileProvider);
+    final uid = TeacherIdentity.resolve(teacher);
+    final parentsAsync =
+        ref.watch(classLinkedParentsProvider(widget.classModel));
+
+    if (!CloudIds.isValidUid(uid)) {
+      return _buildInfoState(
+        icon: Icons.login_rounded,
+        text: 'Mesajlaşma için Google ile giriş yapmanız gerekiyor.',
+        isDark: isDark,
+      );
+    }
+
+    return parentsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => _buildInfoState(
+        icon: Icons.error_outline_rounded,
+        text: 'Veli listesi yüklenemedi.',
+        isDark: isDark,
+      ),
+      data: (parents) {
+        if (parents.isEmpty) {
+          return _buildInfoState(
+            icon: Icons.forum_outlined,
+            text: 'Henüz bağlı veli yok.\nReferans kodlarını dağıttıktan '
+                'sonra veliler burada görünecek.',
+            isDark: isDark,
+          );
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(classLinkedParentsProvider(widget.classModel));
+          },
+          child: ListView.separated(
+            padding: const EdgeInsets.all(14),
+            itemCount: parents.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (context, i) {
+              final link = parents[i];
+              return Material(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(13),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(13),
+                  onTap: () => _openChatWithParent(link, uid, teacher),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 13, vertical: 12),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundColor: AppColors.primary,
+                          child: Text(
+                            link.studentName.isNotEmpty
+                                ? link.studentName.characters.first
+                                    .toUpperCase()
+                                : '?',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                link.studentName,
+                                style: AppFonts.outfit(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${link.relation}: ${link.parentName}',
+                                style: AppFonts.outfit(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chat_bubble_outline_rounded,
+                            size: 19, color: AppColors.primary),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  void _openChatWithParent(
+    ParentLinkModel link,
+    String uid,
+    TeacherProfileModel teacher,
+  ) {
+    ParentTeacherChatModal.show(
+      context,
+      classCloudId: link.classCloudId.isNotEmpty
+          ? link.classCloudId
+          : CloudIds.classId(
+              teacherUid: uid,
+              localClassId: widget.classModel.id ?? 0,
+            ),
+      studentCloudId: link.studentCloudId.isNotEmpty
+          ? link.studentCloudId
+          : CloudIds.studentId(
+              teacherUid: uid,
+              localStudentId: link.studentId,
+            ),
+      studentName: link.studentName,
+      parentUserId: link.parentUserId,
+      selfName: teacher.fullName,
+      selfUid: uid,
+      asTeacher: true,
+      counterpartName: '${link.relation}: ${link.parentName}',
+      // Öğretmen kendi sohbetini açar.
+      teacherUid: uid,
+    );
+  }
+
+  Widget _buildInfoState({
+    required IconData icon,
+    required String text,
+    required bool isDark,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon,
+                size: 40, color: isDark ? Colors.white24 : Colors.black26),
+            const SizedBox(height: 13),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: AppFonts.outfit(
+                fontSize: 13,
+                height: 1.5,
+                color: isDark ? Colors.white54 : Colors.black54,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildAnnouncementsTab(BuildContext context, bool isDark) {
     final announcementsAsync = ref.watch(classAnnouncementsProvider(widget.classModel.id!));
 
@@ -303,6 +527,10 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
     final titleCtrl = TextEditingController();
     final contentCtrl = TextEditingController();
     String priority = 'normal';
+    // Sınav ve etkinlik duyurularında tarih sorulur; takvimde bu tarihe
+    // göre sıralanır. Ayrı bir "sınav" koleksiyonu açılmadı — duyuru
+    // altyapısı kullanıldığı için ek maliyet doğmaz.
+    DateTime? eventAt;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showDialog(
@@ -317,12 +545,16 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
             children: [
               TextField(
                 controller: titleCtrl,
+                // Uzunluk sınırı: sınırsız metin Firestore doküman
+                // sınırını (1 MiB) zorluyor ve arayüzü taşırıyordu.
+                maxLength: 100,
                 decoration: const InputDecoration(labelText: 'Duyuru Başlığı', hintText: 'Örn: Veli Toplantısı'),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: contentCtrl,
                 maxLines: 3,
+                maxLength: 2000,
                 decoration: const InputDecoration(labelText: 'Duyuru Metni', hintText: 'Detayları buraya yazın...'),
               ),
               const SizedBox(height: 12),
@@ -332,16 +564,55 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                 items: const [
                   DropdownMenuItem(value: 'normal', child: Text('Normal Duyuru 📢')),
                   DropdownMenuItem(value: 'urgent', child: Text('Acil Bildirim 🚨')),
+                  DropdownMenuItem(value: 'exam', child: Text('Sınav 📝')),
                   DropdownMenuItem(value: 'event', child: Text('Etkinlik / Toplantı 📅')),
                 ],
                 onChanged: (val) {
                   if (val != null) {
                     setDialogState(() {
                       priority = val;
+                      // Tarih yalnızca sınav ve etkinlikte anlamlı.
+                      if (val != 'exam' && val != 'event') eventAt = null;
                     });
                   }
                 },
               ),
+              if (priority == 'exam' || priority == 'event') ...[
+                const SizedBox(height: 10),
+                InkWell(
+                  onTap: () async {
+                    final now = DateTime.now();
+                    final picked = await showDatePicker(
+                      context: ctx,
+                      initialDate: eventAt ?? now.add(const Duration(days: 7)),
+                      firstDate: now.subtract(const Duration(days: 1)),
+                      lastDate: now.add(const Duration(days: 365)),
+                      locale: const Locale('tr', 'TR'),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => eventAt = picked);
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: priority == 'exam'
+                          ? 'Sınav Tarihi'
+                          : 'Etkinlik Tarihi',
+                      prefixIcon: const Icon(Icons.event_rounded, size: 19),
+                    ),
+                    child: Text(
+                      eventAt == null
+                          ? 'Tarih seçin (isteğe bağlı)'
+                          : AppDateFormatter.formatTurkishDate(eventAt!),
+                      style: AppFonts.outfit(
+                        fontSize: 13.5,
+                        color: eventAt == null ? Colors.grey : null,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
           actions: [
@@ -354,7 +625,8 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                   Navigator.of(ctx).pop();
                   final teacher = ref.read(teacherProfileProvider);
                   final newAnn = ClassAnnouncementModel(
-                    id: 'ann_${DateTime.now().millisecondsSinceEpoch}',
+                    id: CommunicationIds.announcement(
+                        authorUid: teacher.id),
                     classId: widget.classModel.id!,
                     className: widget.classModel.name,
                     authorTeacherId: teacher.id,
@@ -374,7 +646,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                   final cloudRepo =
                       ref.read(cloudCommunicationRepositoryProvider);
                   final classCloudId = CloudIds.classId(
-                    teacherUid: teacher.id,
+                    teacherUid: TeacherIdentity.resolve(teacher),
                     localClassId: widget.classModel.id!,
                   );
 
@@ -397,6 +669,7 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                     authorName: teacher.fullName,
                     authorUid: teacher.id,
                     priority: priority,
+                    eventAt: eventAt,
                   );
 
                   if (context.mounted && !published) {
@@ -506,14 +779,10 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                       ),
                       child: Row(
                         children: [
-                          Icon(
-                            m.isPending
-                                ? Icons.hourglass_top_rounded
-                                : Icons.check_circle_rounded,
+                          const Icon(
+                            Icons.check_circle_rounded,
                             size: 18,
-                            color: m.isPending
-                                ? Colors.orange
-                                : const Color(0xFF10B981),
+                            color: Color(0xFF10B981),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
@@ -530,9 +799,9 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 Text(
-                                  m.isPending
-                                      ? 'Katılım kodu: ${m.joinCode}'
-                                      : 'Yazışmaya açık',
+                                  m.meetingDay.isEmpty && m.meetingTime.isEmpty
+                                      ? 'Yazışmaya açık'
+                                      : '${m.meetingDay} ${m.meetingTime}'.trim(),
                                   style: AppFonts.outfit(
                                     fontSize: 11.5,
                                     color: Colors.grey,
@@ -749,6 +1018,8 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                           child: Text(
                             '${app.studentName} • ${app.parentName} (${app.relation})',
                             style: AppFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         Container(
@@ -765,7 +1036,9 @@ class _ClassParentCommunicationModalState extends ConsumerState<ClassParentCommu
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text('Öğretmen: ${app.teacherName} • $dateStr ${app.timeSlot}', style: AppFonts.outfit(fontSize: 11.5, color: Colors.grey)),
+                    Text('Öğretmen: ${app.teacherName} • $dateStr ${app.timeSlot}', style: AppFonts.outfit(fontSize: 11.5, color: Colors.grey),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,),
                     const SizedBox(height: 4),
                     Text('Konu: ${app.topic}', style: AppFonts.outfit(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87)),
                     if (app.isPending) ...[

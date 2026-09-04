@@ -2,12 +2,15 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
+
 import 'package:path/path.dart';
 import '../storage/prefs_service.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../config/app_config.dart';
+import '../../features/outcomes/data/models/curriculum_outcome_model.dart';
+import '../utils/gzip_asset.dart';
+import '../utils/name_formatter.dart';
 
 /// SınıfCepte - SQLite Veritabanı Yardımcısı (DatabaseHelper)
 class DatabaseHelper {
@@ -150,7 +153,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 11,
+      version: 22,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
       onConfigure: _onConfigure,
@@ -182,7 +185,8 @@ class DatabaseHelper {
         name $textType,
         subject $textType,
         academic_year $textType,
-        description $textNullable
+        description $textNullable,
+        is_homeroom $intType DEFAULT 0
       )
     ''');
 
@@ -231,6 +235,9 @@ class DatabaseHelper {
         badge_name $textNullable,
         score $intType DEFAULT 0,
         note $textNullable,
+        -- Ders sirasinda kac kez soz aldi. Modulun asil derdi buydu ama
+        -- alani yoktu; ogretmen her ogrenci icin diyalog acmak zorundaydi.
+        speaking_turns $intType DEFAULT 0,
         FOREIGN KEY (session_id) REFERENCES participation_sessions (id) ON DELETE CASCADE,
         FOREIGN KEY (student_id) REFERENCES students (id) ON DELETE CASCADE
       )
@@ -398,7 +405,8 @@ class DatabaseHelper {
         kurum $textType,
         sinav_tarihi $textType,
         son_basvuru_tarihi $textNullable,
-        basvuru_linki $textNullable
+        basvuru_linki $textNullable,
+        sinif $textNullable
       )
     ''');
 
@@ -572,9 +580,27 @@ class DatabaseHelper {
         topic_title $textType,
         outcome_code $textNullable,
         outcome_description $textType,
+        category $textNullable,
         academic_year $textType,
         is_holiday_week $intType DEFAULT 0,
-        holiday_note $textNullable
+        holiday_note $textNullable,
+        -- Maarif Modeli icerigi. Bu sutunlar olmadigi icin
+        -- `outcome_carousel_card.dart` icindeki "MAARIF DERS OZETI"
+        -- panelleri hep bos goruntuleniyordu: veri APK ile tasiniyor,
+        -- acilista ayristiriliyor ve atiliyordu.
+        outcome_parts $textNullable,
+        suggested_activities $textNullable,
+        official_activity $textNullable,
+        maarif_summary $textNullable,
+        maarif_values $textNullable,
+        maarif_skills $textNullable,
+        differentiation $textNullable,
+        span_index $intNullable,
+        span_total $intNullable,
+        date_range_str $textNullable,
+        is_estimated_schedule $intType DEFAULT 0,
+        is_otp_week $intType DEFAULT 0,
+        is_social_event_week $intType DEFAULT 0
       )
     ''');
 
@@ -600,6 +626,9 @@ class DatabaseHelper {
         UNIQUE(grade, subject_code, publisher, week_number)
       )
     ''');
+
+    await _createBepTables(db);
+    await _createGuidanceTables(db);
 
     // D. 2025-2026 Resmî MEB Çalışma Takvimi Tohumlama (Seed Data)
     final calendarCountQuery = await db.rawQuery('SELECT COUNT(*) as c FROM academic_calendar_events');
@@ -744,7 +773,354 @@ class DatabaseHelper {
     }
   }
 
+
+  /// Sinif rehberlik plani uygulama kaydi.
+  ///
+  /// Plan verisi VARLIKTAN gelir (degismez); bu tablo yalnizca
+  /// ogretmenin "uyguladim" isaretini ve notunu tutar. Ikisi ayri
+  /// durmasaydi varlik her guncellendiginde ogretmenin kaydi silinirdi.
+  Future<void> _createGuidanceTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS guidance_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        class_id INTEGER NOT NULL,
+        academic_year TEXT NOT NULL,
+        grade_level INTEGER NOT NULL,
+        hafta INTEGER NOT NULL,
+        sira_no INTEGER NOT NULL,
+        uygulandi INTEGER NOT NULL DEFAULT 0,
+        -- `not` SQLite'ta AYRILMIS SOZCUK; sutun adi olarak
+        -- kullanilinca CREATE TABLE sozdizimi hatasi veriyor ve
+        -- tablo hic olusmuyor. Bu yuzden `ogretmen_notu`.
+        ogretmen_notu TEXT,
+        uygulanma_tarihi TEXT,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (class_id) REFERENCES classes (id) ON DELETE CASCADE,
+        UNIQUE(class_id, academic_year, hafta, sira_no)
+      )
+    ''');
+  }
+
+  Future<void> _createBepTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS bep_plans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id INTEGER NOT NULL,
+        class_id INTEGER NOT NULL,
+        academic_year TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        subject_code TEXT NOT NULL DEFAULT '',
+        grade_level INTEGER NOT NULL DEFAULT 0,
+        placement TEXT NOT NULL DEFAULT 'inclusion',
+        program_kind TEXT NOT NULL DEFAULT 'general',
+        school_name TEXT NOT NULL DEFAULT '',
+        diagnosis TEXT NOT NULL DEFAULT '',
+        track TEXT NOT NULL DEFAULT 'primary',
+        start_month TEXT NOT NULL DEFAULT 'Eylül',
+        ram_decision TEXT,
+        performance_level TEXT,
+        physical_arrangements TEXT,
+        social_arrangements TEXT,
+        digital_supports TEXT,
+        committee_json TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (student_id) REFERENCES students (id) ON DELETE CASCADE,
+        FOREIGN KEY (class_id) REFERENCES classes (id) ON DELETE CASCADE,
+        UNIQUE(student_id, academic_year, subject_code)
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS bep_long_goals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        plan_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        order_index INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (plan_id) REFERENCES bep_plans (id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS bep_short_goals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        long_goal_id INTEGER NOT NULL,
+        condition_text TEXT NOT NULL,
+        behavior_text TEXT NOT NULL,
+        criterion_text TEXT NOT NULL,
+        method TEXT,
+        materials TEXT,
+        assessment TEXT,
+        outcome_code TEXT,
+        outcome_description TEXT,
+        order_index INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (long_goal_id) REFERENCES bep_long_goals (id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS bep_evaluations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        short_goal_id INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        note TEXT,
+        evaluated_at TEXT NOT NULL,
+        FOREIGN KEY (short_goal_id) REFERENCES bep_short_goals (id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS bep_coarse (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        plan_id INTEGER NOT NULL,
+        outcome_code TEXT NOT NULL,
+        outcome_description TEXT NOT NULL,
+        unit_title TEXT,
+        can_do INTEGER NOT NULL,
+        FOREIGN KEY (plan_id) REFERENCES bep_plans (id) ON DELETE CASCADE,
+        UNIQUE(plan_id, outcome_code)
+      )
+    ''');
+  }
+
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 20) {
+      try {
+        await db.execute(
+          "ALTER TABLE bep_plans ADD COLUMN track TEXT NOT NULL DEFAULT 'primary'",
+        );
+      } catch (e) {
+        debugPrint('DB Upgrade (bep_plans.track): $e');
+      }
+      try {
+        await db.execute(
+          "ALTER TABLE bep_plans ADD COLUMN start_month TEXT NOT NULL DEFAULT 'Eylül'",
+        );
+      } catch (e) {
+        debugPrint('DB Upgrade (bep_plans.start_month): $e');
+      }
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS bep_coarse (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            plan_id INTEGER NOT NULL,
+            outcome_code TEXT NOT NULL,
+            outcome_description TEXT NOT NULL,
+            unit_title TEXT,
+            can_do INTEGER NOT NULL,
+            FOREIGN KEY (plan_id) REFERENCES bep_plans (id) ON DELETE CASCADE,
+            UNIQUE(plan_id, outcome_code)
+          )
+        ''');
+      } catch (e) {
+        debugPrint('DB Upgrade (bep_coarse): $e');
+      }
+    }
+
+    if (oldVersion < 19) {
+      Future<void> add(String sql, String label) async {
+        try {
+          await db.execute(sql);
+        } catch (e) {
+          debugPrint('DB Upgrade (bep_plans.$label): $e');
+        }
+      }
+
+      await add(
+        "ALTER TABLE bep_plans ADD COLUMN placement TEXT NOT NULL DEFAULT 'inclusion'",
+        'placement',
+      );
+      await add(
+        "ALTER TABLE bep_plans ADD COLUMN program_kind TEXT NOT NULL DEFAULT 'general'",
+        'program_kind',
+      );
+      await add(
+        "ALTER TABLE bep_plans ADD COLUMN school_name TEXT NOT NULL DEFAULT ''",
+        'school_name',
+      );
+      await add(
+        "ALTER TABLE bep_plans ADD COLUMN diagnosis TEXT NOT NULL DEFAULT ''",
+        'diagnosis',
+      );
+    }
+
+    if (oldVersion < 18) {
+      try {
+        await db.execute(
+          "ALTER TABLE bep_plans ADD COLUMN subject_code TEXT NOT NULL DEFAULT ''",
+        );
+      } catch (e) {
+        debugPrint('DB Upgrade (bep_plans.subject_code): $e');
+      }
+      try {
+        await db.execute(
+          'ALTER TABLE bep_plans ADD COLUMN grade_level INTEGER NOT NULL DEFAULT 0',
+        );
+      } catch (e) {
+        debugPrint('DB Upgrade (bep_plans.grade_level): $e');
+      }
+      try {
+        await db.execute(
+          'CREATE UNIQUE INDEX IF NOT EXISTS bep_plans_student_year_code '
+          'ON bep_plans(student_id, academic_year, subject_code)',
+        );
+      } catch (e) {
+        debugPrint('DB Upgrade (bep_plans unique code): $e');
+      }
+    }
+
+    if (oldVersion < 22) {
+      // Sinif rehberlik plani uygulama kaydi.
+      await _createGuidanceTables(db);
+    }
+
+    if (oldVersion < 21) {
+      // BEP tablosunun "Kullanilacak Materyaller" ve
+      // "Olcme-Degerlendirme" sutunlari.
+      //
+      // PDF bu iki sutunu BASIYORDU ama veri modelinde alan yoktu:
+      // her satira ayni sabit metin yaziliyordu ("Akilli Tahta,
+      // Projeksiyon..."). Bilisim dersi icin yazilmis liste oz bakim
+      // BEP'inde de aynen cikiyor, ogretmen degistiremiyordu.
+      for (final sutun in ['materials', 'assessment']) {
+        try {
+          await db.execute(
+            'ALTER TABLE bep_short_goals ADD COLUMN $sutun TEXT',
+          );
+        } catch (e) {
+          debugPrint('DB Upgrade (bep_short_goals.$sutun): $e');
+        }
+      }
+
+      // Egitim ortami duzenlemeleri. PDF'in alt blogundaki uc kutu
+      // SADECE BASLIK basiyordu; "one oturtma", "akran destegi" gibi
+      // asil BEP tedbirleri belgeye hic yazilamiyordu.
+      for (final sutun in [
+        'physical_arrangements',
+        'social_arrangements',
+        'digital_supports',
+      ]) {
+        try {
+          await db.execute(
+            'ALTER TABLE bep_plans ADD COLUMN $sutun TEXT',
+          );
+        } catch (e) {
+          debugPrint('DB Upgrade (bep_plans.$sutun): $e');
+        }
+      }
+    }
+
+    if (oldVersion < 17) {
+      await _createBepTables(db);
+    }
+
+    if (oldVersion < 16) {
+      // Ad-soyad yazim standardi: "Yusuf YILMAZ".
+      //
+      // Yeni kayitlar bicimlendirilerek yazilmaya baslandi ama ESKI
+      // kayitlar oldugu gibi duruyordu: ayni listede "Yusuf YILMAZ" ile
+      // "Semih Uzum" yan yana gorunuyordu. Tutarsizlik kalici olmasin
+      // diye mevcut veri de bir kez donusturulur.
+      await _migrateNameFormat(db);
+    }
+
+    if (oldVersion < 15) {
+      // Soz hakki sayaci. Katilim modulu yeniden kurgulandi: ogrenci
+      // adina tek dokunus bu sayaci ilerletiyor, diyalog acilmiyor.
+      try {
+        await db.execute(
+          'ALTER TABLE participation_records '
+          'ADD COLUMN speaking_turns INTEGER NOT NULL DEFAULT 0',
+        );
+      } catch (e) {
+        debugPrint('DB Upgrade (speaking_turns): $e');
+      }
+    }
+
+    if (oldVersion < 14) {
+      // Maarif icerigi sutunlari hic olmamisti: model bunlari okumaya
+      // calisiyor ama tabloda bulunmadigi icin sessizce bos donuyordu.
+      // Sonuc: kazanim kartlarindaki "MAARIF DERS OZETI" paneli, resmi
+      // etkinlik, degerler, beceriler ve farklilastirma bolumleri
+      // uygulamanin ilk gunuden beri BOS goruntuleniyordu.
+      const yeniSutunlar = <String, String>{
+        'category': 'TEXT',
+        'outcome_parts': 'TEXT',
+        'suggested_activities': 'TEXT',
+        'official_activity': 'TEXT',
+        'maarif_summary': 'TEXT',
+        'maarif_values': 'TEXT',
+        'maarif_skills': 'TEXT',
+        'differentiation': 'TEXT',
+        'span_index': 'INTEGER',
+        'span_total': 'INTEGER',
+        'date_range_str': 'TEXT',
+        'is_estimated_schedule': 'INTEGER DEFAULT 0',
+        'is_otp_week': 'INTEGER DEFAULT 0',
+        'is_social_event_week': 'INTEGER DEFAULT 0',
+      };
+
+      for (final entry in yeniSutunlar.entries) {
+        try {
+          await db.execute(
+            'ALTER TABLE curriculum_outcomes ADD COLUMN '
+            '${entry.key} ${entry.value}',
+          );
+        } catch (e) {
+          // Sutun zaten varsa yoksay.
+          debugPrint('DB Upgrade (curriculum_outcomes.${entry.key}): $e');
+        }
+      }
+
+      // Mevcut satirlarda bu alanlar bos; yeniden tohumlanmalari gerekiyor.
+      // Tohumlama `count >= 1000` gorunce atliyordu, bu yuzden tabloyu
+      // bosaltiyoruz ki acilista yeni alanlarla dolsun.
+      try {
+        await db.delete('curriculum_outcomes');
+      } catch (e) {
+        debugPrint('DB Upgrade (curriculum_outcomes temizleme): $e');
+      }
+    }
+
+    if (oldVersion < 13) {
+      // Okul sinavina secilen sinif adi `basvuru_linki` sutununa yaziliyordu:
+      // tabloda `sinif` sutunu hic yoktu ama model onu okumaya calisiyordu.
+      //
+      // Sonuc: ogretmenin sectigi sinif geri okunamiyor, ustelik ekran
+      // dolu bir "basvuru linki" gorup tiklanabilir bir baglanti cizip
+      // "5-A"yi adres olarak acmaya calisiyordu.
+      try {
+        await db.execute(
+          'ALTER TABLE kisisel_sinavlar ADD COLUMN sinif TEXT',
+        );
+        // Eski kayitlarda sinif adi yanlis sutunda duruyor; tasi ve temizle.
+        // Gercek basvuru linkleri http ile basladigi icin ayirt edilebilir.
+        await db.execute('''
+          UPDATE kisisel_sinavlar
+          SET sinif = basvuru_linki, basvuru_linki = NULL
+          WHERE basvuru_linki IS NOT NULL
+            AND basvuru_linki != ''
+            AND basvuru_linki NOT LIKE 'http%'
+        ''');
+      } catch (e) {
+        // Sutun zaten varsa yoksay.
+        debugPrint('DB Upgrade (kisisel_sinavlar.sinif): $e');
+      }
+    }
+
+    if (oldVersion < 12) {
+      // `is_homeroom` sütunu şemada yoktu ama model ve depo katmanı onu
+      // yazıyordu: sınıf eklemek "table classes has no column named
+      // is_homeroom" hatasıyla düşüyordu.
+      //
+      // Testler bunu yakalamadı çünkü her test şemayı sıfırdan kuruyor;
+      // hata yalnızca ESKİ veritabanına sahip cihazlarda görülüyordu.
+      try {
+        await db.execute(
+          'ALTER TABLE classes ADD COLUMN is_homeroom INTEGER DEFAULT 0',
+        );
+      } catch (e) {
+        // Sütun zaten varsa yoksay.
+        debugPrint('DB Upgrade (is_homeroom): $e');
+      }
+    }
+
     if (oldVersion < 2) {
       try {
         await db.execute("ALTER TABLE students ADD COLUMN gender TEXT DEFAULT 'Erkek'");
@@ -1004,8 +1380,22 @@ class DatabaseHelper {
         return;
       }
 
-      final jsonString = await rootBundle.loadString('assets/data/official_maarif_kazanimlar.json');
-      final List<dynamic> list = json.decode(jsonString) as List<dynamic>;
+      // Sikistirilmis surum okunur (23.9 MB -> 1.6 MB). Yoksa duz
+      // dosyaya geri dusulur.
+      final jsonString = await GzipAsset.loadString(
+        'assets/data/official_maarif_kazanimlar.json',
+      );
+
+      // JSON ayrıştırma ve model dönüşümü AYRI İZOLATTA.
+      //
+      // 9087 kayıt için bu iş telefonda ~2 saniye sürüyor ve ana iş
+      // parçacığında yapılırsa arayüz o süre boyunca donuyordu:
+      // logda arka arkaya "DONMA: ana iş parçacığı 1359 ms bloke"
+      // satırları çıkıyordu. En görünür sonucu, ilk açılışta PDF
+      // ekranının "Belge Hazırlanıyor"da takılı kalmasıydı — belge
+      // üretimi 1.5 saniyede bitiyor ama ekranı çizecek iş parçacığı
+      // tohumlamayla meşgul olduğu için sonuç görünmüyordu.
+      final satirlar = await compute(_kazanimSatirlariniHazirla, jsonString);
 
       // Tek tek insert yerine toplu batch: 2300 kayıt için 2300 ayrı
       // sorgu çalıştırmak hem yavaş hem bellek baskısı yaratıyordu.
@@ -1013,31 +1403,14 @@ class DatabaseHelper {
       await db.transaction((txn) async {
         await txn.delete('curriculum_outcomes');
         final batch = txn.batch();
-        for (final item in list) {
-          final m = item as Map<String, dynamic>;
-          batch.insert('curriculum_outcomes', {
-            'doc_id': m['id'] ?? '',
-            'grade_level': m['gradeLevel'] ?? 5,
-            'subject_code': m['subjectCode'] ?? 'GENEL',
-            'subject_name': m['subjectName'] ?? 'Genel Ders',
-            'publisher': m['publisher'] ?? 'MEB Yayınları',
-            'full_title': m['fullTitle'] ?? '',
-            'week_number': m['weekNumber'] ?? 1,
-            'teaching_week_number': m['teachingWeekNumber'],
-            'unit_title': m['unitTitle'] ?? '',
-            'topic_title': m['topicTitle'] ?? '',
-            'outcome_code': m['outcomeCode'],
-            'outcome_description': m['outcomeDescription'] ?? '',
-            'academic_year': m['academicYear'] ?? '2026-2027',
-            'is_holiday_week': (m['isHolidayWeek'] == true) ? 1 : 0,
-            'holiday_note': m['holidayNote'],
-          });
+        for (final row in satirlar) {
+          batch.insert('curriculum_outcomes', row);
         }
-        // noResult: sonuçları biriktirme — 2300 sonuç nesnesi belleği
+        // noResult: sonuçları biriktirme — 9087 sonuç nesnesi belleği
         // gereksiz şişiriyordu.
         await batch.commit(noResult: true);
       });
-      debugPrint('DatabaseHelper: ${list.length} resmî kazanım assets üzerinden SQLite veritabanına başarıyla yüklendi 🚀');
+      debugPrint('DatabaseHelper: ${satirlar.length} resmî kazanım assets üzerinden SQLite veritabanına başarıyla yüklendi 🚀');
     } catch (e, stackTrace) {
       debugPrint('---------------- HATA DETAYI (DatabaseHelper.seedCurriculumOutcomesFromAssets) ----------------');
       debugPrint('Hata Mesajı : $e');
@@ -1739,10 +2112,104 @@ class DatabaseHelper {
     }
   }
 
+  /// Testler icin veritabanini sifirlar.
+  ///
+  /// Her testin temiz bir semayla baslamasini saglar; aksi halde bir
+  /// testin yazdigi kayitlar digerine sizar.
+  /// Mevcut ad-soyad kayitlarini "Yusuf YILMAZ" standardina cevirir.
+  ///
+  /// Yalnizca bir kez calisir (surum 16 gocu). Bicimlendirme kararlidir:
+  /// zaten dogru yazilmis kayit degismez.
+  Future<void> _migrateNameFormat(Database db) async {
+    try {
+      final ogrenciler = await db.query(
+        'students',
+        columns: ['id', 'first_name', 'last_name'],
+      );
+
+      final batch = db.batch();
+      for (final r in ogrenciler) {
+        final ad = NameFormatter.formatFirstName(
+          (r['first_name'] as String?) ?? '',
+        );
+        final soyad = NameFormatter.formatLastName(
+          (r['last_name'] as String?) ?? '',
+        );
+
+        batch.update(
+          'students',
+          {'first_name': ad, 'last_name': soyad},
+          where: 'id = ?',
+          whereArgs: [r['id']],
+        );
+      }
+      await batch.commit(noResult: true);
+
+      debugPrint(
+        'Ad-soyad standardi: ${ogrenciler.length} ogrenci kaydi donusturuldu.',
+      );
+    } catch (e, stackTrace) {
+      // Donusum basarisiz olsa da uygulama calismaya devam etmeli;
+      // isimler eski bicimde kalir, veri kaybi olmaz.
+      debugPrint('Ad-soyad goc hatasi: $e\n$stackTrace');
+    }
+  }
+
+  /// Bağlantıyı kapatır ve alanı temizler.
+  ///
+  /// `close()` tek başına yetmez: `_database` alanı dolu kalırsa sonraki
+  /// çağrı kapalı örneği döndürür ve "database_closed" hatası düşer.
+  /// Alan temizlenince `database` getter'ı kendiliğinden yeniden açar.
+  ///
+  /// Yedekten geri yükleme sırasında kullanılır: dosyanın üzerine
+  /// yazmadan önce bağlantı kapatılmalıdır.
+  Future<void> closeConnection() async {
+    try {
+      await _database?.close();
+    } catch (e) {
+      debugPrint('closeConnection hatası: $e');
+    }
+    _database = null;
+  }
+
+  @visibleForTesting
+  Future<void> resetForTests() async {
+    // close() yalnizca baglantiyi kapatir; _database alani dolu kalirsa
+    // sonraki cagri kapali ornegi dondurur (database_closed hatasi).
+    try {
+      await _database?.close();
+    } catch (_) {}
+    _database = null;
+
+    try {
+      final dbPath = await getDatabasesPath();
+      await deleteDatabase(join(dbPath, AppConfig.dbName));
+    } catch (e) {
+      debugPrint('resetForTests silme hatasi: $e');
+    }
+  }
+
   Future<void> close() async {
     final db = await instance.database;
     db.close();
   }
 }
 
-
+/// Kazanım JSON'unu veritabanı satırlarına çevirir.
+///
+/// `compute()` ile AYRI İZOLATTA çalışır; üst düzey fonksiyon olması
+/// zorunlu. Ana iş parçacığında çalıştırıldığında 9087 kayıt telefonda
+/// ~2 saniye arayüzü donduruyordu.
+///
+/// Alanlar elle eşlenmiyor: model `fromJson` ile JSON'u, `toMap` ile
+/// veritabanı satırını üretiyor. Elle eşlemede yalnızca 15 alan
+/// yazılıyordu ve Maarif içeriği (ders özeti, resmî etkinlik, değerler,
+/// beceriler, farklılaştırma) ayrıştırılıp ATILIYORDU.
+List<Map<String, dynamic>> _kazanimSatirlariniHazirla(String jsonString) {
+  final list = json.decode(jsonString) as List<dynamic>;
+  return [
+    for (final item in list)
+      CurriculumOutcomeModel.fromJson(item as Map<String, dynamic>).toMap()
+        ..remove('id'),
+  ];
+}

@@ -8,6 +8,9 @@ import '../../../schools/presentation/widgets/school_selection_modal.dart';
 import '../../providers/teacher_profile_provider.dart';
 import '../../../auth/screens/welcome_screen.dart';
 import '../../providers/user_role_provider.dart';
+import '../../../../core/backup/backup_service.dart';
+import '../../../../core/utils/name_formatter.dart';
+import '../../../navigation/providers/navigation_provider.dart';
 
 /// SınıfCepte - Öğretmen Profil Düzenleme & Ayarlar Ekranı
 class TeacherProfileSetupView extends ConsumerStatefulWidget {
@@ -78,8 +81,9 @@ class _TeacherProfileSetupViewState extends ConsumerState<TeacherProfileSetupVie
       try {
         final currentProfile = ref.read(teacherProfileProvider);
         final updated = currentProfile.copyWith(
-          firstName: _firstNameController.text.trim(),
-          lastName: _lastNameController.text.trim(),
+          // Standart yazim: "yusuf yilmaz" -> "Yusuf YILMAZ".
+          firstName: NameFormatter.formatFirstName(_firstNameController.text),
+          lastName: NameFormatter.formatLastName(_lastNameController.text),
           gender: _selectedGender,
           branch: _branchController.text.trim(),
           schoolName: _schoolNameController.text.trim(),
@@ -111,6 +115,50 @@ class _TeacherProfileSetupViewState extends ConsumerState<TeacherProfileSetupVie
         if (mounted) setState(() => _isLoading = false);
       }
     }
+  }
+
+  /// Veritabanini yedekleyip paylasim penceresini acar.
+  ///
+  /// Bulut yedeklemesi bilincli olarak yok: ogrenci notlari ve katilim
+  /// cihazda kaliyor (KVKK karari). Yedegi nereye koyacagina ogretmen
+  /// karar verir.
+  Future<void> _yedekAl() async {
+    final messenger = ScaffoldMessenger.of(context);
+
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('Yedek hazırlanıyor...'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    final yol = await BackupService.instance.exportDatabase();
+
+    if (!mounted) return;
+
+    if (yol == null) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Yedek alınamadı. Lütfen tekrar deneyin.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    final paylasildi = await BackupService.instance.shareBackup(yol);
+    if (!mounted) return;
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          paylasildi
+              ? 'Yedek dosyası paylaşıldı. Güvenli bir yerde saklayın.'
+              : 'Yedek hazırlandı ancak paylaşılmadı.',
+        ),
+        backgroundColor: paylasildi ? const Color(0xFF10B981) : Colors.orange,
+      ),
+    );
   }
 
   @override
@@ -179,6 +227,7 @@ class _TeacherProfileSetupViewState extends ConsumerState<TeacherProfileSetupVie
                       ),
                       const SizedBox(height: 14),
                       TextFormField(
+                        maxLength: 40,
                         controller: _firstNameController,
                         validator: (v) => _validateName(v, 'Ad'),
                         decoration: const InputDecoration(
@@ -188,6 +237,7 @@ class _TeacherProfileSetupViewState extends ConsumerState<TeacherProfileSetupVie
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
+                        maxLength: 40,
                         controller: _lastNameController,
                         validator: (v) => _validateName(v, 'Soyad'),
                         decoration: const InputDecoration(
@@ -249,6 +299,7 @@ class _TeacherProfileSetupViewState extends ConsumerState<TeacherProfileSetupVie
                       ),
                       const SizedBox(height: 14),
                       TextFormField(
+                        maxLength: 60,
                         controller: _branchController,
                         validator: (v) => _validateName(v, 'Branş'),
                         decoration: const InputDecoration(
@@ -433,6 +484,7 @@ class _TeacherProfileSetupViewState extends ConsumerState<TeacherProfileSetupVie
                       const SizedBox(height: 14),
 
                       TextFormField(
+                        maxLength: 80,
                         controller: _schoolPrincipalController,
                         validator: (v) => _validateName(v, 'Okul Müdürü Adı'),
                         decoration: const InputDecoration(
@@ -461,6 +513,7 @@ class _TeacherProfileSetupViewState extends ConsumerState<TeacherProfileSetupVie
                       ),
                       const SizedBox(height: 14),
                       TextFormField(
+                        maxLength: 120,
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
                         decoration: const InputDecoration(
@@ -478,13 +531,12 @@ class _TeacherProfileSetupViewState extends ConsumerState<TeacherProfileSetupVie
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Veri Yedekleme Dosyası Hazırlandı! 💾'),
-                            ),
-                          );
-                        },
+                        // Bu dugme eskiden YALNIZCA bir mesaj gosteriyordu:
+                        // "Veri Yedekleme Dosyasi Hazirlandi!" — hicbir dosya
+                        // yazilmiyordu. Ogretmene "verin guvende" dedirtip
+                        // telefonu bozuldugunda bir yili kaybettirecek bir
+                        // yalandi. Artik gercekten yedek aliyor.
+                        onPressed: _yedekAl,
                         icon: const Icon(Icons.backup_rounded),
                         label: const Text('Verileri Yedekle'),
                         style: OutlinedButton.styleFrom(
@@ -499,6 +551,14 @@ class _TeacherProfileSetupViewState extends ConsumerState<TeacherProfileSetupVie
                           final navigator = Navigator.of(context);
                           await ref.read(teacherProfileProvider.notifier).logout();
                           await ref.read(userRoleProvider.notifier).resetRole();
+
+                          // Alt bar sekmesini sıfırla.
+                          //
+                          // Çıkış düğmesi PROFİL sekmesinde; sekme
+                          // sıfırlanmazsa değer 4'te kalıyor ve tekrar
+                          // girişte uygulama doğrudan profil ekranıyla
+                          // açılıyordu.
+                          ref.invalidate(navigationIndexProvider);
 
                           // Karşılama ekranına dön: profil ekranında kalmak
                           // kullanıcıyı boş bir formla baş başa bırakırdı.

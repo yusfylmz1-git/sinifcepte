@@ -1,7 +1,15 @@
 import 'dart:convert';
 
+import '../../../../core/utils/name_formatter.dart';
+
 /// SınıfCepte - Ödev Değerlendirme Durumu
 enum HomeworkStatus {
+  /// Öğretmen işaretlemedi.
+  ///
+  /// Varsayılan `done` idi: öğretmen hiçbir şey yapmadan kaydettiğinde
+  /// sistem "30 öğrencinin hepsi ödevini yaptı" diyordu. Bu YANLIŞ VERİ
+  /// üretiyordu; işaretlenmemiş alan "olumlu" değil "bilinmiyor"dur.
+  unknown('bilinmiyor', 'İşaretlenmedi', '·'),
   done('yapti', 'Yaptı', '✓'),
   partial('eksik', 'Eksik', '±'),
   none('yapmadi', 'Yapmadı', '✗'),
@@ -16,13 +24,15 @@ enum HomeworkStatus {
   static HomeworkStatus fromCode(String? code) {
     return HomeworkStatus.values.firstWhere(
       (e) => e.code == code,
-      orElse: () => HomeworkStatus.done,
+      orElse: () => HomeworkStatus.unknown,
     );
   }
 }
 
 /// SınıfCepte - Araç-Gereç (Kitap/Defter) Durumu
 enum MaterialsStatus {
+  /// Öğretmen işaretlemedi. Bkz. [HomeworkStatus.unknown].
+  unknown('bilinmiyor', 'İşaretlenmedi', '·'),
   ready('tam', 'Tam', '📚'),
   missing('eksik', 'Eksik', '❌');
 
@@ -35,13 +45,15 @@ enum MaterialsStatus {
   static MaterialsStatus fromCode(String? code) {
     return MaterialsStatus.values.firstWhere(
       (e) => e.code == code,
-      orElse: () => MaterialsStatus.ready,
+      orElse: () => MaterialsStatus.unknown,
     );
   }
 }
 
 /// SınıfCepte - Derse Giriş / Zamanlama Durumu (Yoklama Değildir)
 enum ArrivalStatus {
+  /// Öğretmen işaretlemedi. Bkz. [HomeworkStatus.unknown].
+  unknown('bilinmiyor', 'İşaretlenmedi', '·'),
   onTime('zamaninda', 'Zamanında', '⏰'),
   late('gec', 'Geç Geldi', '⌛'),
   excused('izinli', 'İzinli/Raporlu', '📝');
@@ -55,7 +67,7 @@ enum ArrivalStatus {
   static ArrivalStatus fromCode(String? code) {
     return ArrivalStatus.values.firstWhere(
       (e) => e.code == code,
-      orElse: () => ArrivalStatus.onTime,
+      orElse: () => ArrivalStatus.unknown,
     );
   }
 }
@@ -73,18 +85,44 @@ class StudentParticipationEvaluation {
   final List<String> customTags; // Örn: ["Soru Çözdü", "Örnek Davranış", "Odaklanamadı"]
   final String? note;
 
+  /// Ders sırasında kaç kez söz aldı.
+  ///
+  /// Modülün asıl derdi buydu ama alanı yoktu. Öğretmen derste
+  /// "kime söz verdim" diye takip eder; eski akış bunun için her
+  /// öğrenciye 962 satırlık bir diyalog açtırıyordu (30 öğrenci için
+  /// ~120 dokunuş). Cihazdaki veri sıfırdı: modül hiç kullanılmamıştı.
+  ///
+  /// Artık öğrenci adına tek dokunuş bu sayacı ilerletir.
+  final int speakingTurns;
+
   const StudentParticipationEvaluation({
     required this.studentId,
     required this.studentName,
     required this.studentNumber,
     this.gender = 'Erkek',
-    this.homeworkStatus = HomeworkStatus.done,
-    this.materialsStatus = MaterialsStatus.ready,
-    this.arrivalStatus = ArrivalStatus.onTime,
+    // Varsayılanlar "olumlu" değil "bilinmiyor": öğretmen
+    // işaretlemediyse veri YOKTUR, "yaptı" değildir.
+    this.homeworkStatus = HomeworkStatus.unknown,
+    this.materialsStatus = MaterialsStatus.unknown,
+    this.arrivalStatus = ArrivalStatus.unknown,
     this.starsCount = 0,
     this.customTags = const [],
     this.note,
+    this.speakingTurns = 0,
   });
+
+  /// Hiç söz almadı mı? (Ekranda gri nokta ile gösterilir.)
+  bool get isSilent => speakingTurns == 0;
+
+  /// Öğretmen bu öğrenci için herhangi bir şey işaretledi mi?
+  bool get hasAnyMark =>
+      speakingTurns > 0 ||
+      starsCount > 0 ||
+      homeworkStatus != HomeworkStatus.unknown ||
+      materialsStatus != MaterialsStatus.unknown ||
+      arrivalStatus != ArrivalStatus.unknown ||
+      customTags.isNotEmpty ||
+      (note != null && note!.trim().isNotEmpty);
 
   bool get isFemale =>
       gender.toLowerCase().contains('kız') ||
@@ -92,16 +130,22 @@ class StudentParticipationEvaluation {
       gender.toLowerCase().contains('female');
 
   /// Örn: "Ahmet Yılmaz" -> "Ahmet Y."
+  /// Dar alanlar için: **Yusuf Y.**
+  ///
+  /// Kendi kopyası vardı ve `toUpperCase()` kullanıyordu; Türkçe'de
+  /// bozuk çalışır ("işık" → "IŞIK", doğrusu "İŞIK"). Ortak
+  /// biçimlendiriciye taşındı.
   String get shortName {
     final trimmed = studentName.trim();
     if (trimmed.isEmpty) return 'Öğrenci';
+
     final parts = trimmed.split(RegExp(r'\s+'));
-    if (parts.length >= 2) {
-      final firstPart = parts.sublist(0, parts.length - 1).join(' ');
-      final lastInitial = parts.last.isNotEmpty ? '${parts.last[0].toUpperCase()}.' : '';
-      return '$firstPart $lastInitial'.trim();
-    }
-    return trimmed;
+    if (parts.length < 2) return NameFormatter.formatFirstName(trimmed);
+
+    return NameFormatter.formatShort(
+      firstName: parts.sublist(0, parts.length - 1).join(' '),
+      lastName: parts.last,
+    );
   }
 
   /// Net 3 Yıldız Seviye Metni
@@ -143,6 +187,7 @@ class StudentParticipationEvaluation {
     int? starsCount,
     List<String>? customTags,
     String? note,
+    int? speakingTurns,
   }) {
     return StudentParticipationEvaluation(
       studentId: studentId ?? this.studentId,
@@ -155,6 +200,7 @@ class StudentParticipationEvaluation {
       starsCount: starsCount ?? this.starsCount,
       customTags: customTags ?? this.customTags,
       note: note ?? this.note,
+      speakingTurns: speakingTurns ?? this.speakingTurns,
     );
   }
 
@@ -170,6 +216,7 @@ class StudentParticipationEvaluation {
       'badge_name': customTags.isNotEmpty ? customTags.first : null,
       'score': starsCount * 10,
       'note': note,
+      'speaking_turns': speakingTurns,
     };
   }
 
@@ -209,6 +256,7 @@ class StudentParticipationEvaluation {
       starsCount: (map['stars_count'] as int?) ?? ((map['score'] as int?) != null ? (map['score'] as int) ~/ 10 : 0),
       customTags: parsedTags,
       note: map['note'] as String?,
+      speakingTurns: (map['speaking_turns'] as int?) ?? 0,
     );
   }
 }
@@ -250,16 +298,54 @@ class ClassroomParticipationSession {
 
   double get homeworkCompletionRate {
     if (evaluations.isEmpty) return 0.0;
-    final totalEligible = evaluations.where((e) => e.homeworkStatus != HomeworkStatus.notGiven).length;
-    if (totalEligible == 0) return 100.0;
+
+    // İŞARETLENMEMİŞ öğrenci paydaya katılmaz.
+    //
+    // Eskiden katılıyordu: öğretmen 30 öğrencinin 3'ünü işaretlediyse
+    // oran %10 çıkıyordu — oysa işaretlenen 3 öğrencinin hepsi ödevini
+    // yapmış olabilir. Veri yokluğu başarısızlık gibi görünüyordu.
+    final degerlendirilen = evaluations
+        .where((e) =>
+            e.homeworkStatus != HomeworkStatus.notGiven &&
+            e.homeworkStatus != HomeworkStatus.unknown)
+        .length;
+    if (degerlendirilen == 0) return 0.0;
+
     final donePoints = homeworkDoneCount * 1.0 + homeworkPartialCount * 0.5;
-    return (donePoints / totalEligible) * 100.0;
+    return (donePoints / degerlendirilen) * 100.0;
   }
+
+  /// Ödev durumu işaretlenmiş öğrenci sayısı.
+  ///
+  /// Oranın kaç öğrenciye dayandığını göstermek için gerekli:
+  /// "%100 (3 öğrenci)" ile "%100 (30 öğrenci)" aynı şey değil.
+  int get homeworkEvaluatedCount => evaluations
+      .where((e) =>
+          e.homeworkStatus != HomeworkStatus.notGiven &&
+          e.homeworkStatus != HomeworkStatus.unknown)
+      .length;
+
+  /// Ders boyunca verilen toplam söz hakkı.
+  int get totalSpeakingTurns =>
+      evaluations.fold<int>(0, (sum, e) => sum + e.speakingTurns);
+
+  /// Hiç söz almayan öğrenci sayısı.
+  ///
+  /// Öğretmenin en çok işine yarayan bilgi: "kimi atladım".
+  int get silentStudentCount => evaluations.where((e) => e.isSilent).length;
 
   int get materialsReadyCount => evaluations.where((e) => e.materialsStatus == MaterialsStatus.ready).length;
   double get materialsReadinessRate {
     if (evaluations.isEmpty) return 0.0;
-    return (materialsReadyCount / evaluations.length) * 100.0;
+
+    // İşaretlenmemiş öğrenci paydaya katılmaz (bkz.
+    // [homeworkCompletionRate]).
+    final degerlendirilen = evaluations
+        .where((e) => e.materialsStatus != MaterialsStatus.unknown)
+        .length;
+    if (degerlendirilen == 0) return 0.0;
+
+    return (materialsReadyCount / degerlendirilen) * 100.0;
   }
 
   int get totalStarsAwarded => evaluations.fold<int>(0, (sum, e) => sum + e.starsCount);
@@ -341,6 +427,10 @@ class StudentParticipationSummaryStats {
   final int homeworkNoneCount;
   final int materialsReadyCount;
   final int totalStars;
+
+  /// Donem boyunca aldigi toplam soz hakki.
+  final int totalSpeakingTurns;
+
   final List<String> topTags;
   final List<String> recentNotes;
 
@@ -354,6 +444,7 @@ class StudentParticipationSummaryStats {
     required this.homeworkNoneCount,
     required this.materialsReadyCount,
     required this.totalStars,
+    this.totalSpeakingTurns = 0,
     this.topTags = const [],
     this.recentNotes = const [],
   });

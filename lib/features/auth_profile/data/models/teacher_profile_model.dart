@@ -1,3 +1,5 @@
+import '../../../../core/utils/name_formatter.dart';
+
 /// SınıfCepte - Öğretmen Profil Modeli
 class TeacherProfileModel {
   final String id;
@@ -36,7 +38,12 @@ class TeacherProfileModel {
     this.verifiedByAdminId,
   });
 
-  String get fullName => '$firstName $lastName'.trim();
+  /// Standart yazım: **Yusuf YILMAZ**.
+  ///
+  /// Profilde "yusuf yılmaz" yazan öğretmen veli ekranında da öyle
+  /// görünüyordu; tek standart yoktu.
+  String get fullName =>
+      NameFormatter.format(firstName: firstName, lastName: lastName);
 
   /// Kanonik bağ: meb_ / man_ / pending_. Eski sch_ / tpl_ / custom_ bağ sayılmaz.
   bool get isSchoolBound {
@@ -44,6 +51,20 @@ class TeacherProfileModel {
     if (id == null || id.isEmpty) return false;
     return id.startsWith('meb_') || id.startsWith('man_') || id.startsWith('pending_');
   }
+
+  /// İlk kurulum tamamlandı mı? (ad-soyad + okul + branş)
+  ///
+  /// Eskiden yalnızca okul zorunluydu; branş hiç sorulmuyordu ve okul
+  /// dizinine `branch: ""` yazılıyordu. Sınıf öğretmeni kadroya birini
+  /// eklerken kimin hangi derse girdiğini göremiyordu.
+  ///
+  /// Ad-soyad da zorunludur: Google hesabından gelen ad bazen e-posta
+  /// kullanıcı adıdır ve velinin gördüğü isim o olur.
+  bool get isSetupComplete =>
+      isSchoolBound &&
+      firstName.trim().isNotEmpty &&
+      lastName.trim().isNotEmpty &&
+      branch.trim().isNotEmpty;
 
   String get fullSchoolTitle => [
         schoolName,

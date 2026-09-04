@@ -1,8 +1,25 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Android 13+ bildirim izni. Bu izin olmadan bildirimler
+         SESSIZCE calismaz: kullanici hicbir sey gormez, hata da almaz. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- android:largeHeap — PDF onizlemesi icin pay birakir.
+
+         PDF onizleme her sayfayi bitmap'e ceviriyor: 150 dpi'da sayfa
+         basina ~8 MB. Olculdu, dort sayfalik en agir belge 33 MB —
+         cihazin varsayilan 256 MB sinirinin (dalvik.vm.heapgrowthlimit)
+         altinda, yani bellek bir DARBOGAZ DEGIL.
+
+         Yine de aciik biraktik: printing paketinin Android tarafi
+         (PrintingJob.java) yalnizca IOException yakaliyor;
+         OutOfMemoryError olusursa sessizce kaybolur ve ekran
+         "Belge Hazirlaniyor"da donar. Cok sinifli, cok sayfali bir
+         belgede bu sinira yaklasilirsa diye siniri 512 MB'a cikarir.
+         Maliyeti yok. -->
     <application
-        android:label="sinifcepte"
+        android:label="SınıfCepte"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:largeHeap="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -7,7 +7,12 @@ import '../../../../core/theme/app_colors.dart';
 import '../../data/models/classroom_participation_model.dart';
 import '../../providers/classroom_participation_provider.dart';
 
-/// SınıfCepte - Rastgele Öğrenci Seçici / Adaletli Kura Çekme Modalı
+/// SınıfCepte - "Sırada Kim Var?" Seçici
+///
+/// Bu modal eskiden kendini "Adaletli Kura" diye tanıtıyordu ama kod saf
+/// rastgeleydi: aynı öğrenci üst üste üç kez çıkabiliyor, bir öğrenci hiç
+/// çıkmayabiliyordu. Artık **en az söz almış** öğrenciler arasından seçer;
+/// sessiz öğrenci mutlaka sıraya girer.
 class RandomStudentPickerModal extends ConsumerStatefulWidget {
   final ClassroomParticipationSession session;
 
@@ -54,15 +59,33 @@ class _RandomStudentPickerModalState extends ConsumerState<RandomStudentPickerMo
     super.dispose();
   }
 
+  /// Sırada kim var?
+  ///
+  /// **En az söz almış** öğrenciler arasından seçer.
+  ///
+  /// Bu modal kendini "Adaletli Kura" diye tanıtıyordu ama kod saf
+  /// `_rnd.nextInt(list.length)` idi: aynı öğrenci üst üste üç kez
+  /// çıkabiliyor, bir öğrenci hiç çıkmayabiliyordu. Bu adalet değil,
+  /// sadece rastgelelikti.
+  ///
+  /// Öğretmenin gerçek derdi "kime söz vermedim" — bu yüzden havuz
+  /// en az konuşanlarla sınırlanır, aralarından rastgele seçilir.
   void _pickRandomStudent() {
-    final list = widget.session.evaluations;
+    final current =
+        ref.read(currentParticipationSessionProvider).valueOrNull ??
+            widget.session;
+    final list = current.evaluations;
     if (list.isEmpty) return;
 
     HapticFeedback.mediumImpact();
     _animController.reset();
 
+    final enAz =
+        list.map((e) => e.speakingTurns).reduce((a, b) => a < b ? a : b);
+    final havuz = list.where((e) => e.speakingTurns == enAz).toList();
+
     setState(() {
-      _selectedStudent = list[_rnd.nextInt(list.length)];
+      _selectedStudent = havuz[_rnd.nextInt(havuz.length)];
     });
 
     _animController.forward();
@@ -112,7 +135,7 @@ class _RandomStudentPickerModalState extends ConsumerState<RandomStudentPickerMo
                       const Icon(Icons.casino_rounded, size: 16, color: Color(0xFF8B5CF6)),
                       const SizedBox(width: 6),
                       Text(
-                        'Rastgele Öğrenci Seçimi',
+                        'Sırada Kim Var?',
                         style: AppFonts.outfit(
                           fontSize: 12.5,
                           fontWeight: FontWeight.bold,

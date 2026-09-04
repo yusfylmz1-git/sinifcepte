@@ -7,11 +7,13 @@ import '../../data/models/curriculum_outcome_model.dart';
 class HolidayCard extends StatelessWidget {
   final CurriculumOutcomeModel outcome;
   final bool isCurrentWeek;
+  final bool isCarousel;
 
   const HolidayCard({
     super.key,
     required this.outcome,
     this.isCurrentWeek = false,
+    this.isCarousel = true,
   });
 
   @override
@@ -58,6 +60,7 @@ class HolidayCard extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: isCarousel ? MainAxisSize.max : MainAxisSize.min,
           children: [
             // Üst Başlık Şeridi (2 Katmanlı Güvenli Düzen)
             Container(
@@ -141,90 +144,168 @@ class HolidayCard extends StatelessWidget {
               ),
             ),
 
-            // İçerik Gövdesi (Kaydırma Korumalı)
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                child: Center(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: gradientColors[0].withValues(alpha: 0.12),
-                            shape: BoxShape.circle,
+            // İçerik Gövdesi (Kaydırma Korumalı / Esnek)
+            if (isCarousel)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Center(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: gradientColors[0].withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              holidayIcon,
+                              size: 40,
+                              color: gradientColors[0],
+                            ),
                           ),
-                          child: Icon(
-                            holidayIcon,
-                            size: 40,
-                            color: gradientColors[0],
+                          const SizedBox(height: 12),
+                          Text(
+                            outcome.unitTitle.isNotEmpty
+                                ? outcome.unitTitle
+                                : 'Tatil Haftası 🎉',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : const Color(0xFF1E293B),
+                              letterSpacing: -0.3,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          outcome.unitTitle.isNotEmpty
-                              ? outcome.unitTitle
-                              : 'Tatil Haftası 🎉',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : const Color(0xFF1E293B),
-                            letterSpacing: -0.3,
+                          const SizedBox(height: 6),
+                          Text(
+                            outcome.outcomeDescription.isNotEmpty
+                                ? outcome.outcomeDescription
+                                : 'Bu hafta eğitim ve öğretime ara verilmiştir. İyi tatiller ve dinlenmeler!',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              height: 1.35,
+                              color: isDark ? Colors.white60 : Colors.black54,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          outcome.outcomeDescription.isNotEmpty
-                              ? outcome.outcomeDescription
-                              : 'Bu hafta eğitim ve öğretime ara verilmiştir. İyi tatiller ve dinlenmeler!',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            height: 1.35,
-                            color: isDark ? Colors.white60 : Colors.black54,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.05)
-                                : Colors.black.withValues(alpha: 0.04),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.spa_rounded, size: 14, color: gradientColors[0]),
-                              const SizedBox(width: 5),
-                              Flexible(
-                                child: Text(
-                                  'İyi Dinlenmeler! 🎈',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: isDark ? Colors.white70 : Colors.black87,
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : Colors.black.withValues(alpha: 0.04),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.spa_rounded, size: 14, color: gradientColors[0]),
+                                const SizedBox(width: 5),
+                                Flexible(
+                                  child: Text(
+                                    'İyi Dinlenmeler! 🎈',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? Colors.white70 : Colors.black87,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: gradientColors[0].withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        holidayIcon,
+                        size: 32,
+                        color: gradientColors[0],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      outcome.unitTitle.isNotEmpty
+                          ? outcome.unitTitle
+                          : 'Tatil Haftası 🎉',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : const Color(0xFF1E293B),
+                        letterSpacing: -0.3,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      outcome.outcomeDescription.isNotEmpty
+                          ? outcome.outcomeDescription
+                          : 'Bu hafta eğitim ve öğretime ara verilmiştir. İyi tatiller ve dinlenmeler!',
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.35,
+                        color: isDark ? Colors.white60 : Colors.black54,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : Colors.black.withValues(alpha: 0.04),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.spa_rounded, size: 13, color: gradientColors[0]),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              'İyi Dinlenmeler! 🎈',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white70 : Colors.black87,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
           ],
         ),
       ),

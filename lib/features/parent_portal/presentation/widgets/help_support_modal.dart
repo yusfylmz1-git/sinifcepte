@@ -1,6 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../../../core/support/support_repository.dart';
+import '../../../../core/support/support_request.dart';
 import '../../data/services/kvkk_consent_service.dart';
 
 /// SınıfCepte - Yardım, Destek & Hata Bildirim Modalı
@@ -45,9 +50,9 @@ class _HelpSupportModalState extends State<HelpSupportModal> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.78,
+      height: MediaQuery.sizeOf(context).height * 0.78,
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + 16,
         left: 20,
         right: 20,
         top: 16,
@@ -137,6 +142,7 @@ class _HelpSupportModalState extends State<HelpSupportModal> {
 
             TextField(
               controller: _subjectCtrl,
+              maxLength: SupportRequest.maxSubjectLength,
               decoration: const InputDecoration(
                 labelText: 'Başlık / Özet',
                 hintText: 'Örn: Kod girerken öğrenci numarası uyuşmuyor',
@@ -149,6 +155,7 @@ class _HelpSupportModalState extends State<HelpSupportModal> {
             TextField(
               controller: _messageCtrl,
               maxLines: 4,
+              maxLength: SupportRequest.maxMessageLength,
               decoration: const InputDecoration(
                 labelText: 'Açıklamanız',
                 hintText: 'Detaylı bilgi yazmanız sorununuzu daha hızlı çözmemizi sağlar...',
@@ -181,10 +188,27 @@ class _HelpSupportModalState extends State<HelpSupportModal> {
 
             const SizedBox(height: 12),
 
+            // Onceden "en gec 24 saat icinde yanitlanir" yaziyordu; talep
+            // hicbir yere gitmedigi icin bu vaat karsiliksizdi. Artik
+            // gercek adres gosteriliyor: kullanici buluta yazma basarisiz
+            // olsa bile ulasabilecegi bir yol goruyor.
             Center(
-              child: Text(
-                'Talepleriniz en geç 24 saat içinde incelenir ve yanıtlanır.',
-                style: AppFonts.outfit(fontSize: 11, color: Colors.grey),
+              child: Column(
+                children: [
+                  Text(
+                    'Talebiniz ekibimize iletilir.',
+                    style: AppFonts.outfit(fontSize: 11, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 2),
+                  SelectableText(
+                    SupportRepository.supportEmail,
+                    style: AppFonts.outfit(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -199,37 +223,114 @@ class _HelpSupportModalState extends State<HelpSupportModal> {
 
     if (subject.isEmpty || message.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lütfen başlık ve açıklama alanlarını doldurun.')),
+        const SnackBar(
+          content: Text('Lütfen başlık ve açıklama alanlarını doldurun.'),
+        ),
       );
       return;
     }
 
     setState(() => _isSubmitting = true);
 
+    final request = SupportRequest.create(
+      userId: widget.userId,
+      userRole: widget.userRole,
+      category: SupportCategory.fromId(_category),
+      subject: subject,
+      message: message,
+      platform: defaultTargetPlatform.name,
+    );
+
+    // Yerel denetim gunlugu korunuyor: buluta yazma basarisiz olsa bile
+    // cihazda bir iz kalir.
     await KvkkConsentService.logAudit(
       actorId: widget.userId,
       actorRole: widget.userRole,
       action: 'support_ticket_created',
-      targetId: _category,
+      targetId: request.category.id,
       details: '$subject: $message',
     );
 
-    if (mounted) {
-      setState(() => _isSubmitting = false);
+    final gonderildi = await SupportRepository.instance.submit(request);
+
+    if (!mounted) return;
+    setState(() => _isSubmitting = false);
+
+    if (gonderildi) {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Row(
-            children: const [
+            children: [
               Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
               SizedBox(width: 8),
-              Expanded(child: Text('✅ Destek talebiniz başarıyla iletildi.')),
+              Expanded(child: Text('Destek talebiniz iletildi.')),
             ],
           ),
-          backgroundColor: const Color(0xFF10B981),
+          backgroundColor: Color(0xFF10B981),
           behavior: SnackBarBehavior.floating,
         ),
       );
+      return;
     }
+
+    // Buluta yazilamadi. Onceden yine de "basariyla iletildi" deniyordu;
+    // kullanici yardim istedigini saniyor ama talep hicbir yere gitmiyordu.
+    // Artik durum dogru soylenir ve e-posta yolu sunulur.
+    await _offerEmailFallback(request);
+  }
+
+  /// Bulut yazimi basarisiz oldugunda e-posta ile gonderme secenegi sunar.
+  Future<void> _offerEmailFallback(SupportRequest request) async {
+    final gonder = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          'Talep Gönderilemedi',
+          style: AppFonts.outfit(fontSize: 15, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'İnternet bağlantısı kurulamadı. Talebinizi e-posta ile '
+          'gönderebilirsiniz:\n\n${SupportRepository.supportEmail}',
+          style: AppFonts.outfit(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Kapat'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('E-posta ile Gönder'),
+          ),
+        ],
+      ),
+    );
+
+    if (gonder != true || !mounted) return;
+
+    final uri = SupportRepository.mailtoUri(request);
+    try {
+      final acildi = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!acildi && mounted) {
+        _showEmailManually();
+      }
+    } catch (e) {
+      debugPrint('mailto acilamadi: $e');
+      if (mounted) _showEmailManually();
+    }
+  }
+
+  /// E-posta uygulamasi yoksa adresi kopyalanabilir sekilde gosterir.
+  void _showEmailManually() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'E-posta uygulaması açılamadı. '
+          'Adres: ${SupportRepository.supportEmail}',
+        ),
+        duration: const Duration(seconds: 8),
+      ),
+    );
   }
 }

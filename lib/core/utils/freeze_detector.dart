@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 
+import '../support/tani_log.dart';
+
 /// Ana iş parçacığının donduğu anı yakalar.
 ///
 /// ## Neden var
@@ -37,6 +39,11 @@ class FreezeDetector {
   static DateTime _lastBeat = DateTime.now();
 
   /// İzlemeyi başlatır. `main()` içinde çağrılır.
+  /// İzlemeyi başlatır. `main()` içinde çağrılır.
+  ///
+  /// Yalnızca hata ayıklama derlemesinde çalışır; üretimde maliyeti
+  /// yoktur. Kayıtlar [TaniLog] üzerinden cihazdaki dosyaya da yazılır,
+  /// böylece kablo çıkarıldıktan sonra okunabilir.
   static void start() {
     if (!kDebugMode) return;
     if (_timer != null) return;
@@ -51,9 +58,8 @@ class FreezeDetector {
       // Zamanlayıcı ana iş parçacığında çalışır: gecikme, ana iş
       // parçacığının o süre boyunca meşgul olduğu anlamına gelir.
       if (gap > _threshold) {
-        debugPrint(
-          'DONMA: ana iş parçacığı ${gap.inMilliseconds} ms bloke oldu. '
-          'Son kullanıcı eyleminden sonra ne çalıştıysa sebep odur.',
+        TaniLog.yaz(
+          'DONMA ⚠ ana iş parçacığı ${gap.inMilliseconds} ms bloke',
         );
       }
     });
@@ -63,10 +69,10 @@ class FreezeDetector {
       for (final t in timings) {
         final total = t.totalSpan;
         if (total > _threshold) {
-          debugPrint(
-            'YAVAŞ KARE: ${total.inMilliseconds} ms '
-            '(build ${t.buildDuration.inMilliseconds} ms, '
-            'çizim ${t.rasterDuration.inMilliseconds} ms)',
+          TaniLog.yaz(
+            'YAVAŞ KARE ⚠ ${total.inMilliseconds} ms '
+            '(build ${t.buildDuration.inMilliseconds}, '
+            'çizim ${t.rasterDuration.inMilliseconds})',
           );
         }
       }

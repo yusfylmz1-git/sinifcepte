@@ -21,6 +21,12 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
 
+  // Yeni MEB Maarif Kategori ve Akordeon Durumları
+  int _selectedCategoryIndex = 0; // 0: Ders, 1: Seçmeli, 2: Kurs, 3: İHO, 4: Harezmi
+  final Set<String> _expandedSubjectCodes = {};
+  final TextEditingController _subjectSearchController = TextEditingController();
+  bool _isSubjectSearching = false;
+
   @override
   void initState() {
     super.initState();
@@ -35,6 +41,7 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
   void dispose() {
     _pageController?.dispose();
     _searchController.dispose();
+    _subjectSearchController.dispose();
     super.dispose();
   }
 
@@ -170,10 +177,10 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
             ? '⭐ Favori Derslerim'
             : (selectedSubject != null
                 ? '${selectedSubject['subject_name']}'
-                : (selectedGrade != null ? '$selectedGrade. Sınıf Dersleri' : 'Müfredat & Kazanımlar')),
+                : (selectedGrade != null ? '$selectedGrade. Sınıf' : 'Müfredat & Kazanımlar')),
         subtitle: selectedSubject != null
             ? '$selectedGrade. Sınıf • ${selectedSubject['publisher']}'
-            : (selectedGrade != null ? 'MEB Maarif Yıllık Planları' : null),
+            : (selectedGrade != null ? null : null),
         showBackButton: true,
         showDrawerButton: false,
         onBackPressed: () {
@@ -184,6 +191,10 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
               setState(() => _isSearching = false);
             } else if (selectedGrade != null) {
               ref.read(selectedGradeProvider.notifier).state = null;
+              setState(() {
+                _isSubjectSearching = false;
+                _subjectSearchController.clear();
+              });
             } else if (isFavMode) {
               ref.read(isFavoritesModeProvider.notifier).state = false;
             } else {
@@ -228,6 +239,28 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
                     : Icons.view_carousel_rounded,
               ),
               tooltip: 'Görünümü Değiştir',
+              visualDensity: VisualDensity.compact,
+            ),
+          ] else if (selectedGrade != null && !isFavMode) ...[
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  _isSubjectSearching = !_isSubjectSearching;
+                  if (!_isSubjectSearching) {
+                    _subjectSearchController.clear();
+                  }
+                });
+              },
+              icon: Icon(_isSubjectSearching ? Icons.close_rounded : Icons.search_rounded),
+              tooltip: 'Derslerde Ara',
+              visualDensity: VisualDensity.compact,
+            ),
+            IconButton(
+              onPressed: () {
+                ref.read(isFavoritesModeProvider.notifier).state = true;
+              },
+              icon: const Icon(Icons.star_rounded, color: Colors.amber),
+              tooltip: 'Favori Derslerim',
               visualDensity: VisualDensity.compact,
             ),
           ] else if (!isFavMode) ...[
@@ -542,7 +575,7 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
   }
 
   // ==========================================================
-  // ADIM 2: BRANŞ / DERS SEÇİM EKRANI (Ultra Taşma Korumalı)
+  // ADIM 2: BRANŞ / DERS SEÇİM EKRANI (MEB Maarif Akordeon & Kategori Mimarisi)
   // ==========================================================
   Widget _buildSubjectSelection(BuildContext context, int grade) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -550,174 +583,679 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
     final favoriteKeys = ref.watch(favoriteSubjectsProvider);
 
     return subjectsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
       error: (err, stack) => Center(
         child: Text(
           'Dersler yüklenemedi: $err',
           style: const TextStyle(color: Colors.red),
         ),
       ),
-      data: (subjects) {
-        if (subjects.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.menu_book_rounded, size: 36, color: isDark ? Colors.white38 : Colors.black38),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    '$grade. Sınıf İçin Henüz Plan Yüklenmedi',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white70 : Colors.black87,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Web Yönetim Portalından Excel dosyası yükleyerek bu sınıfa ait planları ekleyebilirsiniz.',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      color: isDark ? Colors.white38 : Colors.black54,
-                      height: 1.3,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          );
+      data: (allSubjects) {
+        if (allSubjects.isEmpty) {
+          return _buildNoSubjectsState(context, grade, isDark);
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(10, 8, 10, 85),
-          itemCount: subjects.length,
-          itemBuilder: (context, index) {
-            final item = subjects[index];
-            final subjectCode = item['subject_code'] as String? ?? '';
-            final subjectName = item['subject_name'] as String? ?? 'Ders';
-            final publisher = item['publisher'] as String? ?? 'MEB Yayınları';
-            final count = item['outcome_count'] as int? ?? 39;
-            final favKey = '${grade}_${subjectCode}_$publisher';
-            final isFav = favoriteKeys.contains(favKey);
+        // 1. Kategori & Arama Filtreleme
+        final filteredList = _filterSubjects(allSubjects, _selectedCategoryIndex, _subjectSearchController.text);
 
-            final iconColor = _getSubjectColor(subjectName);
-            final iconData = _getSubjectIcon(subjectName, subjectCode);
+        // 2. Ders İsmine Göre Gruplama (Akordeon Yapısı)
+        final groupedMap = _groupSubjects(filteredList);
 
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: GlassCard(
-                padding: EdgeInsets.zero,
-                child: InkWell(
-                  onTap: () => _openSubject(item),
-                  borderRadius: BorderRadius.circular(14),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: iconColor.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            iconData,
-                            color: iconColor,
-                            size: 19,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
+        return Column(
+          children: [
+            const SizedBox(height: 8),
 
-                        // Ders Adı ve Bilgiler (Ultra Taşma Korumalı)
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                subjectName,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 2),
-                              Wrap(
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                spacing: 4,
-                                runSpacing: 2,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                                    decoration: BoxDecoration(
-                                      color: isDark
-                                          ? Colors.white.withValues(alpha: 0.08)
-                                          : Colors.black.withValues(alpha: 0.05),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      publisher,
-                                      style: TextStyle(
-                                        fontSize: 9.5,
-                                        fontWeight: FontWeight.w600,
-                                        color: isDark ? Colors.white70 : Colors.black87,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  Text(
-                                    '$count Hafta',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: isDark ? Colors.white38 : Colors.black38,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                          onPressed: () {
-                            ref
-                                .read(favoriteSubjectsProvider.notifier)
-                                .toggleFavorite(grade, subjectCode, publisher);
-                          },
-                          icon: Icon(
-                            isFav ? Icons.star_rounded : Icons.star_outline_rounded,
-                            color: isFav ? Colors.amber : (isDark ? Colors.white38 : Colors.grey),
-                            size: 22,
-                          ),
-                          tooltip: isFav ? 'Favorilerden Çıkar' : 'Favorilere Ekle',
-                        ),
-                      ],
+            // Arama Çubuğu (Açıksa)
+            if (_isSubjectSearching)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                child: TextField(
+                  controller: _subjectSearchController,
+                  autofocus: true,
+                  onChanged: (_) => setState(() {}),
+                  style: TextStyle(fontSize: 13.5, color: isDark ? Colors.white : Colors.black87),
+                  decoration: InputDecoration(
+                    hintText: 'Ders veya yayınevi ara...',
+                    hintStyle: TextStyle(fontSize: 13, color: isDark ? Colors.white38 : Colors.black38),
+                    prefixIcon: const Icon(Icons.search_rounded, size: 20, color: Color(0xFF10B981)),
+                    suffixIcon: _subjectSearchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded, size: 18),
+                            onPressed: () {
+                              _subjectSearchController.clear();
+                              setState(() {});
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFF10B981), width: 1.5),
                     ),
                   ),
                 ),
               ),
-            );
-          },
+
+            // Üst Kategori Sekmeleri (Pill Filters: [ Ders | Seçmeli | Kurs | İHO | Harezmi ])
+            _buildCategoryTabs(isDark),
+            const SizedBox(height: 10),
+
+            // Ders Listesi
+            Expanded(
+              child: filteredList.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.filter_list_off_rounded, size: 40, color: isDark ? Colors.white30 : Colors.black26),
+                            const SizedBox(height: 10),
+                            Text(
+                              _emptyCategoryTitle(_selectedCategoryIndex),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white60 : Colors.black54,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            // Boş sekmenin nedenini söyle: öğretmen "uygulama
+                            // bozuk mu?" diye düşünmesin.
+                            Text(
+                              _emptyCategoryHint(_selectedCategoryIndex),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                height: 1.4,
+                                color: isDark ? Colors.white38 : Colors.black45,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 85),
+                      itemCount: groupedMap.keys.length,
+                      itemBuilder: (context, index) {
+                        final subjectName = groupedMap.keys.elementAt(index);
+                        final items = groupedMap[subjectName]!;
+
+                        if (items.length == 1) {
+                          // Tek Yayınevi Olan Ders Kartı
+                          return _buildSingleSubjectCard(context, grade, items.first, favoriteKeys, isDark);
+                        } else {
+                          // Çoklu Yayınevi Olan Açılır-Kapanır Akordeon Kartı
+                          return _buildAccordionSubjectCard(context, grade, subjectName, items, favoriteKeys, isDark);
+                        }
+                      },
+                    ),
+            ),
+          ],
         );
       },
+    );
+  }
+
+  /// Kategori Filtreleme Sekmeleri (Pills)
+  Widget _buildCategoryTabs(bool isDark) {
+    const categories = ['Ders', 'Seçmeli', 'Kurs', 'İHO', 'Harezmi'];
+    return SizedBox(
+      height: 38,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        itemCount: categories.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final isSelected = _selectedCategoryIndex == index;
+          final cat = categories[index];
+          return InkWell(
+            onTap: () {
+              setState(() {
+                _selectedCategoryIndex = index;
+              });
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? const Color(0xFF10B981) // Resmî MEB Maarif Yeşili
+                    : (isDark ? const Color(0xFF1E293B) : Colors.white),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isSelected
+                      ? const Color(0xFF10B981)
+                      : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                  width: 1.2,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        )
+                      ]
+                    : null,
+              ),
+              child: Center(
+                child: Text(
+                  cat,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected
+                        ? Colors.white
+                        : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Kategoriye ve Arama Sorgusuna Göre Ders Filtreleme
+  List<Map<String, dynamic>> _filterSubjects(
+    List<Map<String, dynamic>> subjects,
+    int categoryIndex,
+    String searchQuery,
+  ) {
+    final searchLower = searchQuery.trim().toLowerCase();
+
+    return _applyCategoryFilter(subjects, categoryIndex, searchLower);
+  }
+
+  /// Boş kategori sekmesinin başlığı.
+  String _emptyCategoryTitle(int categoryIndex) {
+    switch (categoryIndex) {
+      case 1:
+        return 'Seçmeli ders planı henüz yok';
+      case 2:
+        return 'Kurs planı henüz yok';
+      case 3:
+        return 'İmam Hatip ders planı henüz yok';
+      case 4:
+        return 'Harezmî proje planı henüz yok';
+      default:
+        return 'Bu kategoride ders bulunamadı';
+    }
+  }
+
+  /// Sekme neden boş? Öğretmen uygulamayı arızalı sanmasın diye açıklanır.
+  String _emptyCategoryHint(int categoryIndex) {
+    if (categoryIndex == 0) {
+      return 'Arama filtresini temizleyip yeniden deneyin.';
+    }
+    return 'MEB bu kategori için haftalık yıllık plan yayımladığında '
+        'uygulamaya otomatik eklenecek.';
+  }
+
+  List<Map<String, dynamic>> _applyCategoryFilter(
+    List<Map<String, dynamic>> subjects,
+    int categoryIndex,
+    String searchLower,
+  ) {
+    return subjects.where((s) {
+      final name = (s['subject_name'] as String? ?? '').toLowerCase();
+      final code = (s['subject_code'] as String? ?? '').toLowerCase();
+      final publisher = (s['publisher'] as String? ?? '').toLowerCase();
+      final cat = (s['category'] as String? ?? '').toLowerCase();
+
+      // Arama Kontrolü
+      if (searchLower.isNotEmpty) {
+        final matches = name.contains(searchLower) || code.contains(searchLower) || publisher.contains(searchLower);
+        if (!matches) return false;
+      }
+
+      // 1. Veritabanındaki Doğrudan Kategori Alanı Eşleşmesi
+      if (cat.isNotEmpty && cat != 'core') {
+        if (categoryIndex == 1 && cat == 'elective') return true;
+        if (categoryIndex == 2 && cat == 'course') return true;
+        if (categoryIndex == 3 && cat == 'iho') return true;
+        if (categoryIndex == 4 && cat == 'harezmi') return true;
+        if (categoryIndex == 0 && cat != 'core') return false;
+      }
+
+      // 2. Anahtar Kelime Kural Tabanlı Eşleşme
+      if (categoryIndex == 1) {
+        // Seçmeli Dersler
+        return name.contains('seçmeli') ||
+            name.contains('secmeli') ||
+            name.contains('masal') ||
+            name.contains('zeka') ||
+            name.contains('hukuk') ||
+            name.contains('yazarlık') ||
+            name.contains('düşünme') ||
+            name.contains('çevre');
+      } else if (categoryIndex == 2) {
+        // Kurs (DYK)
+        return name.contains('kurs') || name.contains('dyk') || name.contains('destekleme');
+      } else if (categoryIndex == 3) {
+        // İmam Hatip Ortaokulu (İHO)
+        return name.contains('arapça') ||
+            name.contains('arapca') ||
+            name.contains('kur\'an') ||
+            name.contains('kuran') ||
+            name.contains('siyer') ||
+            name.contains('peygamber') ||
+            name.contains('temel dini') ||
+            name.contains('dini');
+      } else if (categoryIndex == 4) {
+        // Harezmi Eğitim Modeli & Proje
+        return name.contains('harezmi') || name.contains('proje') || name.contains('stem') || name.contains('bütünleşik');
+      } else {
+        // Ders (Zorunlu / Ana Dersler)
+        final isElective = name.contains('seçmeli') ||
+            name.contains('secmeli') ||
+            name.contains('masal') ||
+            name.contains('zeka') ||
+            name.contains('hukuk') ||
+            name.contains('yazarlık');
+        final isKurs = name.contains('kurs') || name.contains('dyk');
+        final isHarezmi = name.contains('harezmi');
+        final isIhoSpecial = name.contains('arapça') ||
+            name.contains('arapca') ||
+            name.contains('kur\'an') ||
+            name.contains('kuran') ||
+            name.contains('siyer') ||
+            name.contains('peygamber');
+        return !isElective && !isKurs && !isHarezmi && !isIhoSpecial;
+      }
+    }).toList();
+  }
+
+  /// Ders İsmine Göre Gruplama (Akordeon İçin)
+  Map<String, List<Map<String, dynamic>>> _groupSubjects(List<Map<String, dynamic>> subjects) {
+    final Map<String, List<Map<String, dynamic>>> map = {};
+    for (final item in subjects) {
+      final name = item['subject_name'] as String? ?? 'Ders';
+      map.putIfAbsent(name, () => []).add(item);
+    }
+    return map;
+  }
+
+  /// Tek Yayınevi Olan Ders Kartı (Örn: İngilizce Maarif)
+  Widget _buildSingleSubjectCard(
+    BuildContext context,
+    int grade,
+    Map<String, dynamic> item,
+    Set<String> favoriteKeys,
+    bool isDark,
+  ) {
+    final subjectCode = item['subject_code'] as String? ?? '';
+    final subjectName = item['subject_name'] as String? ?? 'Ders';
+    final publisher = item['publisher'] as String? ?? 'MEB Yayınları';
+    final isMaarif = publisher.toLowerCase().contains('maarif') ||
+        publisher.toLowerCase().contains('tymm') ||
+        (item['full_title'] as String? ?? '').toLowerCase().contains('maarif');
+
+    final favKey = '${grade}_${subjectCode}_$publisher';
+    final isFav = favoriteKeys.contains(favKey);
+
+    final iconData = _getSubjectIcon(subjectName, subjectCode);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: GlassCard(
+        padding: EdgeInsets.zero,
+        child: InkWell(
+          onTap: () => _openSubject(item),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                // Sol İkon
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    iconData,
+                    color: const Color(0xFF10B981),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+
+                // Ders Adı
+                Expanded(
+                  child: Text(
+                    subjectName,
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : const Color(0xFF1E293B),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+
+                // Maarif Rozeti
+                if (isMaarif) ...[
+                  _buildMaarifBadge(),
+                  const SizedBox(width: 6),
+                ],
+
+                // Favori Butonu
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                  onPressed: () {
+                    ref.read(favoriteSubjectsProvider.notifier).toggleFavorite(grade, subjectCode, publisher);
+                  },
+                  icon: Icon(
+                    isFav ? Icons.star_rounded : Icons.star_outline_rounded,
+                    color: isFav ? Colors.amber : (isDark ? Colors.white30 : Colors.grey.shade400),
+                    size: 20,
+                  ),
+                ),
+
+                // Sağ Ok
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Çoklu Yayınevi Olan Açılır-Kapanır Akordeon Kartı (Örn: Türkçe 3 ⌄)
+  Widget _buildAccordionSubjectCard(
+    BuildContext context,
+    int grade,
+    String subjectName,
+    List<Map<String, dynamic>> items,
+    Set<String> favoriteKeys,
+    bool isDark,
+  ) {
+    final groupKey = '${grade}_$subjectName';
+    final isExpanded = _expandedSubjectCodes.contains(groupKey);
+    final iconData = _getSubjectIcon(subjectName, items.first['subject_code'] as String? ?? '');
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: GlassCard(
+        padding: EdgeInsets.zero,
+        child: Column(
+          children: [
+            // Ana Başlık Satırı
+            InkWell(
+              onTap: () {
+                setState(() {
+                  if (isExpanded) {
+                    _expandedSubjectCodes.remove(groupKey);
+                  } else {
+                    _expandedSubjectCodes.add(groupKey);
+                  }
+                });
+              },
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Row(
+                  children: [
+                    // Sol İkon
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        iconData,
+                        color: const Color(0xFF10B981),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Ders Adı
+                    Expanded(
+                      child: Text(
+                        subjectName,
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white : const Color(0xFF1E293B),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+
+                    // Yayın Sayısı Rozeti (Örn: 3)
+                    Container(
+                      width: 22,
+                      height: 22,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${items.length}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+
+                    // Aç/Kapa Oku
+                    Icon(
+                      isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                      color: const Color(0xFF10B981),
+                      size: 22,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Açıldığında Görünen Alt Yayınevi Listesi
+            if (isExpanded) ...[
+              Divider(
+                height: 1,
+                thickness: 0.8,
+                color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+              ),
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                itemCount: items.length,
+                separatorBuilder: (_, _) => Divider(
+                  height: 1,
+                  indent: 48,
+                  thickness: 0.5,
+                  color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
+                ),
+                itemBuilder: (context, idx) {
+                  final subItem = items[idx];
+                  final publisher = subItem['publisher'] as String? ?? 'MEB Yayınları';
+                  final subjectCode = subItem['subject_code'] as String? ?? '';
+                  final isMaarif = publisher.toLowerCase().contains('maarif') ||
+                      publisher.toLowerCase().contains('tymm') ||
+                      (subItem['full_title'] as String? ?? '').toLowerCase().contains('maarif');
+                  final favKey = '${grade}_${subjectCode}_$publisher';
+                  final isFav = favoriteKeys.contains(favKey);
+
+                  // Görüntülenecek Başlık (Örn: "Türkçe (Anıttepe Yay.)" veya "Türkçe")
+                  String displayTitle = subjectName;
+                  if (publisher.toLowerCase().contains('anıt') || publisher.toLowerCase().contains('anittepe')) {
+                    displayTitle = '$subjectName (Anıttepe Yay.)';
+                  } else if (publisher.toLowerCase().contains('koza')) {
+                    displayTitle = '$subjectName (Koza Yayınları)';
+                  } else if (publisher.toLowerCase().contains('özgün') || publisher.toLowerCase().contains('ozgun')) {
+                    displayTitle = '$subjectName (Özgün Yayınları)';
+                  } else if (publisher.toLowerCase().contains('hecce')) {
+                    displayTitle = '$subjectName (Hecce Yayınları)';
+                  } else if (isMaarif) {
+                    displayTitle = subjectName;
+                  } else if (publisher != 'MEB Yayınları' && publisher.isNotEmpty) {
+                    displayTitle = '$subjectName ($publisher)';
+                  }
+
+                  return InkWell(
+                    onTap: () => _openSubject(subItem),
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 36, right: 12, top: 8, bottom: 8),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 30,
+                            height: 30,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.menu_book_rounded,
+                              color: Color(0xFF10B981),
+                              size: 15,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              displayTitle,
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w500,
+                                color: isDark ? Colors.white70 : Colors.black87,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isMaarif) ...[
+                            _buildMaarifBadge(),
+                            const SizedBox(width: 6),
+                          ],
+                          IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+                            onPressed: () {
+                              ref.read(favoriteSubjectsProvider.notifier).toggleFavorite(grade, subjectCode, publisher);
+                            },
+                            icon: Icon(
+                              isFav ? Icons.star_rounded : Icons.star_outline_rounded,
+                              color: isFav ? Colors.amber : (isDark ? Colors.white30 : Colors.grey.shade400),
+                              size: 18,
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: isDark ? Colors.white30 : const Color(0xFF94A3B8),
+                            size: 18,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Yeşil "Maarif" Rozeti
+  Widget _buildMaarifBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFF10B981).withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: const Color(0xFF10B981).withValues(alpha: 0.35),
+          width: 0.9,
+        ),
+      ),
+      child: const Text(
+        'Maarif',
+        style: TextStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF10B981),
+          letterSpacing: 0.2,
+        ),
+      ),
+    );
+  }
+
+  /// Sınıfta Henüz Ders Bulunmadığında Gösterilecek Durum
+  Widget _buildNoSubjectsState(BuildContext context, int grade, bool isDark) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.menu_book_rounded, size: 36, color: isDark ? Colors.white38 : Colors.black38),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '$grade. Sınıf İçin Henüz Plan Yüklenmedi',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Müfredat veritabanından bu sınıfa ait planları yükleyebilirsiniz.',
+              style: TextStyle(
+                fontSize: 12.5,
+                color: isDark ? Colors.white38 : Colors.black54,
+                height: 1.3,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -797,10 +1335,12 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
                           ? HolidayCard(
                               outcome: item,
                               isCurrentWeek: isCurrent,
+                              isCarousel: true,
                             )
                           : OutcomeCarouselCard(
                               outcome: item,
                               isCurrentWeek: isCurrent,
+                              isCarousel: true,
                             ),
                     );
                   },
@@ -815,17 +1355,18 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
                   final item = outcomes[index];
                   final isCurrent = item.weekNumber == activeWeek;
 
-                  return Container(
-                    height: item.isHolidayWeek ? 320 : 390,
-                    margin: const EdgeInsets.only(bottom: 12),
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
                     child: item.isHolidayWeek
                         ? HolidayCard(
                             outcome: item,
                             isCurrentWeek: isCurrent,
+                            isCarousel: false,
                           )
                         : OutcomeCarouselCard(
                             outcome: item,
                             isCurrentWeek: isCurrent,
+                            isCarousel: false,
                           ),
                   );
                 },

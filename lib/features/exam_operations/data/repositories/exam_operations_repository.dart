@@ -240,7 +240,10 @@ class ExamOperationsRepository {
         'kurum': 'OKUL',
         'sinav_tarihi': exam.examDate.toIso8601String(),
         'son_basvuru_tarihi': exam.applicationDeadline?.toIso8601String(),
-        'basvuru_linki': exam.className, // Sınıf bilgisini burada veya özel alanda tutabiliriz
+        // Sinif adi eskiden `basvuru_linki` sutununa yaziliyordu. Model onu
+        // `sinif` sutunundan okudugu icin secilen sinif geri gelmiyor, ustelik
+        // ekran dolu bir link gorup "5-A"yi adres olarak acmaya calisiyordu.
+        'sinif': exam.className,
       });
     } catch (e, stackTrace) {
       debugPrint('ExamOperationsRepository.addSchoolExam error: $e\n$stackTrace');

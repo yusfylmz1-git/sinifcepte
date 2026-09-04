@@ -88,6 +88,9 @@ class AdminApp {
 
   renderAll() {
     this.calendarManager.renderTable();
+    const initSchoolType = document.getElementById('outcomes-school-type-select')?.value || 'HIGH';
+    this.populateGradeOptions(initSchoolType);
+    this.populateSubjectOptions();
     this.refreshOutcomesTable();
     this.renderExamsTable();
     this.manifestManager.renderAnnouncementsTable();
@@ -278,6 +281,91 @@ class AdminApp {
     this.showToast(`📅 ${year} yılı resmî standart MEB takvimi oluşturuldu ve kaydedildi! 🚀`, 'success');
   }
 
+  /**
+   * MEB takvim sayfasındaki tatil tarihleriyle kazanım kartlarındaki tatil
+   * haftalarını karşılaştırır ve farkı gösterir.
+   *
+   * Panelde bu iki sistem birbirinden bağımsızdı: takvimde ara tatili
+   * değiştirmek kartlardaki hafta yapısını etkilemiyordu ve tutarsızlık
+   * hiçbir yerde görünmüyordu.
+   */
+  checkCalendarAgainstOutcomes() {
+    const year = this.calendarManager.selectedYear;
+    const events = this.calendarManager.getEvents(year);
+    const { weeks, warnings } = CalendarToWeeks.buildWeeks(events);
+
+    if (!weeks.length) {
+      this.showToast(`❌ ${warnings[0] || 'Takvimden hafta yapısı üretilemedi.'}`, 'error');
+      return;
+    }
+
+    const calendarHolidays = weeks.filter((w) => w.isHolidayWeek).map((w) => w.weekNumber);
+
+    // Kazanım kartlarındaki tatil haftaları
+    const outcomeHolidays = [
+      ...new Set(
+        this.outcomesManager.outcomes
+          .filter((o) => o.isHolidayWeek)
+          .map((o) => o.weekNumber)
+      ),
+    ].sort((a, b) => a - b);
+
+    const onlyInCalendar = calendarHolidays.filter((w) => !outcomeHolidays.includes(w));
+    const onlyInOutcomes = outcomeHolidays.filter((w) => !calendarHolidays.includes(w));
+    const matches = onlyInCalendar.length === 0 && onlyInOutcomes.length === 0;
+
+    const lines = [
+      `Takvim tatil haftaları : ${calendarHolidays.join(', ') || '(yok)'}`,
+      `Kartlardaki tatiller   : ${outcomeHolidays.join(', ') || '(yok)'}`,
+      `Ders haftası sayısı    : ${Math.max(...weeks.map((w) => w.teachingWeekNumber || 0))}`,
+    ];
+    if (onlyInCalendar.length) lines.push(`Yalnızca takvimde: ${onlyInCalendar.join(', ')}. hafta`);
+    if (onlyInOutcomes.length) lines.push(`Yalnızca kartlarda: ${onlyInOutcomes.join(', ')}. hafta`);
+    warnings.forEach((w) => lines.push(`Uyarı: ${w}`));
+
+    console.info(`[${year}] Takvim / kazanım karşılaştırması\n` + lines.join('\n'));
+
+    if (matches && !warnings.length) {
+      this.showToast(
+        `✅ Takvim ve kazanım kartları uyumlu (tatil haftaları: ${calendarHolidays.join(', ')}).`,
+        'success'
+      );
+      return;
+    }
+
+    this.showToast(
+      `⚠️ Takvim ile kartlar uyuşmuyor. Takvim: ${calendarHolidays.join(', ')} | ` +
+        `Kartlar: ${outcomeHolidays.join(', ')}. Ayrıntı için tarayıcı konsoluna bakın.`,
+      'error'
+    );
+    this.downloadOutcomesOverride(year, events);
+  }
+
+  /**
+   * Takvimden üretilen hafta yapısını Python boru hattının okuduğu
+   * overrides JSON'u olarak indirir.
+   */
+  downloadOutcomesOverride(year, events) {
+    const source = events || this.calendarManager.getEvents(year);
+    const otpWeeks = [
+      ...new Set(this.outcomesManager.outcomes.filter((o) => o.isOtpWeek).map((o) => o.weekNumber)),
+    ].sort((a, b) => a - b);
+    const socialEventWeeks = [
+      ...new Set(
+        this.outcomesManager.outcomes.filter((o) => o.isSocialEventWeek).map((o) => o.weekNumber)
+      ),
+    ].sort((a, b) => a - b);
+
+    const { override } = CalendarToWeeks.toOverrideJson(source, year, { otpWeeks, socialEventWeeks });
+    if (!override) return;
+
+    CloudExporter.downloadFile(`${year}.json`, JSON.stringify(override, null, 2));
+    console.info(
+      `İndirilen ${year}.json dosyasını scripts/maarif/overrides/ altına koyup calıştırın:\n` +
+        `  python scripts/maarif/build_curriculum.py --year ${year}`
+    );
+  }
+
   // --- 2. DÜĞME: AKILLI GENELGE AYRIŞTIRICI & EKSİK KONTROLÜ ---
 
   openSmartParserModal() {
@@ -418,40 +506,244 @@ class AdminApp {
 
   // --- KAZANIM İŞLEMLERİ ---
 
+  handleSchoolTypeChange(schoolType) {
+    this.populateGradeOptions(schoolType);
+    this.populateSubjectOptions();
+    this.refreshOutcomesTable();
+  }
+
+  handleGradeChange() {
+    this.populateSubjectOptions();
+    this.refreshOutcomesTable();
+  }
+
+  populateGradeOptions(schoolType) {
+    const gradeSelect = document.getElementById('outcomes-grade-select');
+    if (!gradeSelect) return;
+
+    let grades = [];
+    if (schoolType === 'PRIMARY') grades = [1, 2, 3, 4];
+    else if (schoolType === 'MIDDLE') grades = [5, 6, 7, 8];
+    else if (schoolType === 'HIGH') grades = [9, 10, 11, 12];
+    else if (schoolType === 'IHO') grades = [5, 6, 7, 8, 9, 10, 11, 12];
+    else grades = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+    const currentVal = gradeSelect.value;
+    let html = '<option value="ALL">Tüm Sınıflar</option>';
+    grades.forEach((g) => {
+      html += `<option value="${g}">${g}. Sınıf</option>`;
+    });
+    gradeSelect.innerHTML = html;
+
+    // Kullanıcının seçimi korunur; kademeye uymuyorsa 'Tüm Sınıflar'a
+    // dönülür. Eskiden zorla 10. sınıfa atlıyordu ve 1-8 çalışan bir
+    // yönetici her kademe değişiminde yeniden seçim yapmak zorunda kalıyordu.
+    gradeSelect.value = grades.includes(parseInt(currentVal)) ? currentVal : 'ALL';
+  }
+
+  populateSubjectOptions() {
+    const schoolTypeSelect = document.getElementById('outcomes-school-type-select');
+    const gradeSelect = document.getElementById('outcomes-grade-select');
+    const subjectSelect = document.getElementById('outcomes-subject-select');
+    if (!subjectSelect) return;
+
+    const schoolType = schoolTypeSelect ? schoolTypeSelect.value : 'ALL';
+    const grade = gradeSelect ? gradeSelect.value : 'ALL';
+
+    const subjects = this.outcomesManager.getAvailableSubjectsForGrade(grade, schoolType);
+    const currentVal = subjectSelect.value;
+
+    let html = '<option value="ALL">🌟 Tüm Branşlar</option>';
+    
+    const iconMap = {
+      TURKCE: '📚', EDEBIYAT: '📖', MAT: '📐', FEN: '🔬', FIZIK: '⚡', KIMYA: '🧪', BIYOLOJI: '🧬',
+      SOSYAL: '🌍', INKILAP: '🏛️', TARIH: '🏛️', COGRAFYA: '🌍', FELSEFE: '🤔', HAYAT: '🌱',
+      INGILIZCE: '🇬🇧', ALMANCA: '🇩🇪', BILISIM: '💻', DIN: '🕌', BEDEN: '🏃', GORSEL: '🎨',
+      MUZIK: '🎵', TEKNO_TASARIM: '⚙️', REHBERLIK: '🧭', KURAN: '📖', PEYGAMBER: '🕊️',
+      SAGLIK: '🩺', HAREZMI: '🤖', ARAPCA: '🇸🇦', YAZARLIK: '✍️',
+      // İHÖ ve seçmeli dersler ayrı kodlar aldı; ikonsuz kalmasınlar.
+      SIYER: '🕊️', FIKIH: '⚖️', HADIS: '📜', TEFSIR: '📜', KELAM: '💭',
+      AKAID: '🤲', HITABET: '🗣️', ISLAM_KULTUR: '🕌', TEMEL_DINI: '🕌',
+      KURAN_ANLAM: '📖', AIHL_MESLEK: '🕌', PSIKOLOJI: '🧠', SOSYOLOJI: '👥',
+      MANTIK: '🧩', SOSYAL_BILIM: '🔍', MAT_BILIM_UYG: '🔭', BILIM_UYG: '🔭',
+      BEDEN_TEMEL: '🏃', ATLETIK_PERF: '🏅'
+    };
+
+    // Kategoriye göre grupla: zorunlu dersler önce, sonra seçmeli/İHÖ.
+    const groups = { core: [], elective: [], iho: [], course: [], harezmi: [] };
+    subjects.forEach((item) => {
+      (groups[item.category] || groups.core).push(item);
+    });
+
+    const groupLabels = {
+      core: '📗 Zorunlu Dersler',
+      elective: '📙 Seçmeli Dersler',
+      iho: '🕌 İmam Hatip Dersleri',
+      course: '📕 Kurslar',
+      harezmi: '🤖 Harezmî',
+    };
+
+    for (const [key, items] of Object.entries(groups)) {
+      if (items.length === 0) continue;
+      items.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'tr'));
+      html += `<optgroup label="${groupLabels[key]}">`;
+      items.forEach((item) => {
+        const icon = iconMap[item.code] || '📘';
+        html += `<option value="${item.code}">${icon} ${item.name} (${item.count})</option>`;
+      });
+      html += '</optgroup>';
+    }
+
+    subjectSelect.innerHTML = html;
+    
+    if (subjects.some((s) => s.code === currentVal)) {
+      subjectSelect.value = currentVal;
+    } else {
+      subjectSelect.value = 'ALL';
+    }
+  }
+
+  setCategoryFilter(category, btnEl) {
+    this.outcomesManager.currentCategory = category || 'ALL';
+    const container = document.getElementById('outcomes-category-pills');
+    if (container) {
+      container.querySelectorAll('.btn-pill').forEach((b) => b.classList.remove('active'));
+    }
+    if (btnEl) btnEl.classList.add('active');
+    this.refreshOutcomesTable();
+  }
+
+  handleOutcomesSearch(query) {
+    this.outcomesManager.searchQuery = query || '';
+    this.refreshOutcomesTable();
+  }
+
+  syncFromOfficialMaarif() {
+    let count;
+    try {
+      count = this.outcomesManager.syncWithOfficialPresets();
+    } catch (error) {
+      // Eskiden 0 kayıt yüklense bile başarı mesajı gösteriliyordu.
+      console.error('Maarif senkronizasyonu başarısız:', error);
+      this.showToast(`❌ Senkronizasyon başarısız: ${error.message}`, 'error');
+      return;
+    }
+
+    this.manifestManager.incrementOutcomesVersion();
+    this.renderManifestUI();
+    const initSchoolType = document.getElementById('outcomes-school-type-select')?.value || 'HIGH';
+    this.populateGradeOptions(initSchoolType);
+    this.populateSubjectOptions();
+    this.refreshOutcomesTable();
+    this.updateDashboardStats();
+
+    const year = this.outcomesManager.officialPresetYear() || '';
+    this.showToast(
+      `🌐 ${count} adet resmî MEB Maarif kazanımı${year ? ` (${year})` : ''} başarıyla yüklendi! 🚀`,
+      'success'
+    );
+  }
+
   refreshOutcomesTable() {
+    const schoolTypeSelect = document.getElementById('outcomes-school-type-select');
     const gradeSelect = document.getElementById('outcomes-grade-select');
     const subjectSelect = document.getElementById('outcomes-subject-select');
     const publisherSelect = document.getElementById('outcomes-publisher-select');
+    const searchInput = document.getElementById('outcomes-search-input');
 
-    const grade = gradeSelect ? gradeSelect.value : 5;
+    const schoolType = schoolTypeSelect ? schoolTypeSelect.value : 'ALL';
+    const grade = gradeSelect ? gradeSelect.value : 'ALL';
     const subject = subjectSelect ? subjectSelect.value : 'ALL';
     const publisher = publisherSelect ? publisherSelect.value : 'ALL';
+    const category = this.outcomesManager.currentCategory || 'ALL';
+    const searchQuery = searchInput ? searchInput.value : (this.outcomesManager.searchQuery || '');
 
-    this.outcomesManager.renderTable(grade, subject, publisher);
+    // Dinamik Yayınevi Seçiciyi Güncelle
+    if (publisherSelect) {
+      const currentVal = publisherSelect.value;
+      const availablePubs = this.outcomesManager.getAvailablePublishersFor(grade, subject, schoolType);
+      let optionsHtml = '<option value="ALL">Tüm Yayınlar</option>';
+      availablePubs.forEach((p) => {
+        optionsHtml += `<option value="${p}" ${p === currentVal ? 'selected' : ''}>${p}</option>`;
+      });
+      publisherSelect.innerHTML = optionsHtml;
+    }
+
+    this.outcomesManager.renderTable(schoolType, grade, subject, publisher, category, searchQuery);
   }
 
+  /**
+   * Kazanımı düzenleme modalında açar.
+   *
+   * Eskiden üç ardışık prompt() kutusu vardı ve Maarif alanlarına
+   * (özet, değerler, beceriler, farklılaştırma) hiç dokunulamıyordu.
+   */
   editOutcome(id) {
     const item = this.outcomesManager.outcomes.find((o) => o.id === id);
-    if (!item) return;
+    if (!item) {
+      this.showToast('Kazanım bulunamadı.', 'error');
+      return;
+    }
 
-    const newCode = prompt('Kazanım Kodu:', item.outcomeCode || '');
-    if (newCode === null) return;
+    const set = (elementId, value) => {
+      const el = document.getElementById(elementId);
+      if (el) el.value = value || '';
+    };
 
-    const newDesc = prompt('Kazanım Açıklaması:', item.outcomeDescription || '');
-    if (newDesc === null) return;
+    set('edit-outcome-id', item.id);
+    set('edit-outcome-code', item.outcomeCode);
+    set('edit-outcome-unit', item.unitTitle);
+    set('edit-outcome-topic', item.topicTitle);
+    set('edit-outcome-desc', item.outcomeDescription);
+    set('edit-outcome-summary', item.maarifSummary);
+    set('edit-outcome-values', item.maarifValues);
+    set('edit-outcome-skills', item.maarifSkills);
+    set('edit-outcome-diff', item.differentiation);
 
-    const newUnit = prompt('Ünite Adı:', item.unitTitle || '');
-    if (newUnit === null) return;
+    const context = document.getElementById('edit-outcome-context');
+    if (context) {
+      context.textContent =
+        `${item.gradeLevel}. Sınıf · ${item.subjectName} · ${item.publisher} · ` +
+        `${item.weekNumber}. Hafta${item.dateRangeStr ? ` (${item.dateRangeStr})` : ''}`;
+    }
 
-    item.outcomeCode = newCode;
-    item.outcomeDescription = newDesc;
-    if (newUnit) item.unitTitle = newUnit;
+    this.openModal('modal-edit-outcome');
+  }
+
+  handleEditOutcomeSubmit(e) {
+    e.preventDefault();
+    const id = document.getElementById('edit-outcome-id')?.value;
+    const item = this.outcomesManager.outcomes.find((o) => o.id === id);
+    if (!item) {
+      this.showToast('Kazanım bulunamadı.', 'error');
+      return;
+    }
+
+    const get = (elementId) => (document.getElementById(elementId)?.value || '').trim();
+
+    const description = get('edit-outcome-desc');
+    if (!description) {
+      this.showToast('Kazanım açıklaması boş bırakılamaz.', 'error');
+      return;
+    }
+
+    item.outcomeCode = get('edit-outcome-code') || null;
+    item.unitTitle = get('edit-outcome-unit') || item.unitTitle;
+    item.topicTitle = get('edit-outcome-topic') || item.topicTitle;
+    item.outcomeDescription = description;
+    item.maarifSummary = get('edit-outcome-summary') || null;
+    item.maarifValues = get('edit-outcome-values') || null;
+    item.maarifSkills = get('edit-outcome-skills') || null;
+    item.differentiation = get('edit-outcome-diff') || null;
+    // Elle düzenlenen hafta artık "planlanmamış" sayılmaz.
+    if (item.isPlaceholder) item.isPlaceholder = false;
 
     this.outcomesManager.save();
     this.manifestManager.incrementOutcomesVersion();
     this.renderManifestUI();
+    this.closeModal('modal-edit-outcome');
     this.refreshOutcomesTable();
-    this.showToast('Kazanım başarıyla güncellendi ✏️', 'success');
+    this.showToast('Kazanım güncellendi ✏️', 'success');
   }
 
   openBulkImportModal() {
@@ -1140,12 +1432,20 @@ class AdminApp {
     const bulkForm = document.getElementById('bulk-import-form');
     if (bulkForm) bulkForm.addEventListener('submit', (e) => this.handleBulkImport(e));
 
+    const editOutcomeForm = document.getElementById('edit-outcome-form');
+    if (editOutcomeForm) {
+      editOutcomeForm.addEventListener('submit', (e) => this.handleEditOutcomeSubmit(e));
+    }
+
     const annForm = document.getElementById('announcement-form');
     if (annForm) annForm.addEventListener('submit', (e) => this.saveAnnouncement(e));
 
-    // Kazanım Filtreleri
+    // Kazanım Filtreleri (MEB TYMM Resmî Hiyerarşisi)
+    const schoolTypeSel = document.getElementById('outcomes-school-type-select');
+    if (schoolTypeSel) schoolTypeSel.addEventListener('change', (e) => this.handleSchoolTypeChange(e.target.value));
+
     const gradeSel = document.getElementById('outcomes-grade-select');
-    if (gradeSel) gradeSel.addEventListener('change', () => this.refreshOutcomesTable());
+    if (gradeSel) gradeSel.addEventListener('change', () => this.handleGradeChange());
 
     const subSel = document.getElementById('outcomes-subject-select');
     if (subSel) subSel.addEventListener('change', () => this.refreshOutcomesTable());
@@ -1188,8 +1488,22 @@ window.AdminApp = AdminApp;
 
 // Uygulamayı Başlat ve Global Scope'a Bağla
 function initAdminApp() {
-  if (!window.adminApp) {
+  if (window.adminApp) return;
+  try {
     window.adminApp = new AdminApp();
+  } catch (error) {
+    // Yapıcıdaki tek bir hata window.adminApp'i undefined bırakıyordu;
+    // paneldeki her düğme onclick="window.adminApp..." çağırdığı için
+    // arayüz tamamen tepkisiz kalıyor ve sebebi görünmüyordu.
+    console.error('Admin paneli başlatılamadı:', error);
+    const banner = document.createElement('div');
+    banner.style.cssText =
+      'position:fixed;inset:0 0 auto 0;z-index:9999;padding:14px 18px;' +
+      'background:#b91c1c;color:#fff;font:14px/1.5 system-ui,sans-serif;';
+    banner.textContent =
+      'Panel başlatılamadı: ' + (error && error.message ? error.message : error) +
+      ' — Ayrıntı için tarayıcı konsolunu açın (F12).';
+    document.body.appendChild(banner);
   }
 }
 

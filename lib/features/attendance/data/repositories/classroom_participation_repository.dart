@@ -212,11 +212,15 @@ class ClassroomParticipationRepository {
       int hwNone = 0;
       int matReady = 0;
       int totalStars = 0;
+      int speakingTurns = 0;
       final List<String> tags = [];
       final List<String> notes = [];
 
       for (var r in records) {
-        final hw = r['homework_status'] as String? ?? 'yapti';
+        // Varsayilan 'yapti' idi: ISARETLENMEMIS kayit "odevini yapti"
+        // sayiliyordu. Bu, sinif raporundaki hatanin tek ogrenci
+        // ozetindeki kopyasiydi.
+        final hw = r['homework_status'] as String? ?? 'bilinmiyor';
         if (hw == 'yapti') {
           hwDone++;
         } else if (hw == 'eksik') {
@@ -225,12 +229,13 @@ class ClassroomParticipationRepository {
           hwNone++;
         }
 
-        final mat = r['materials_status'] as String? ?? 'tam';
+        final mat = r['materials_status'] as String? ?? 'bilinmiyor';
         if (mat == 'tam') {
           matReady++;
         }
 
         totalStars += (r['stars_count'] as int?) ?? 0;
+        speakingTurns += (r['speaking_turns'] as int?) ?? 0;
 
         if (r['badge_name'] != null && r['badge_name'].toString().isNotEmpty) {
           tags.add(r['badge_name'].toString());
@@ -250,6 +255,7 @@ class ClassroomParticipationRepository {
         homeworkNoneCount: hwNone,
         materialsReadyCount: matReady,
         totalStars: totalStars,
+        totalSpeakingTurns: speakingTurns,
         topTags: tags,
         recentNotes: notes,
       );
@@ -353,25 +359,45 @@ class ClassroomParticipationRepository {
         int hwNone = 0;
         int matReady = 0;
         int stars = 0;
+        int speakingTurns = 0;
+
+        // Kac derste ODEV isaretlendi, kac derste MATERYAL isaretlendi.
+        //
+        // Oranin paydasi bu olmali. Eskiden ders sayisi kullaniliyordu:
+        // ogretmen 20 dersin 3'unde isaretlediyse oran %15 cikiyordu,
+        // oysa isaretlenen 3 dersin hepsinde odev yapilmis olabilir.
+        int hwMarked = 0;
+        int matMarked = 0;
+
         final List<String> tags = [];
         final List<String> notes = [];
 
         for (var r in records) {
-          final hw = r['homework_status'] as String? ?? 'yapti';
+          // Varsayilan 'yapti' idi: ISARETLENMEMIS kayit "odevini yapti"
+          // sayiliyordu. Model tarafinda `unknown` yapildi ama rapor
+          // sorgusu eski varsayilani kullanmaya devam ediyordu.
+          final hw = r['homework_status'] as String? ?? 'bilinmiyor';
           if (hw == 'yapti') {
             hwDone++;
+            hwMarked++;
           } else if (hw == 'eksik') {
             hwPartial++;
+            hwMarked++;
           } else if (hw == 'yapmadi') {
             hwNone++;
+            hwMarked++;
           }
 
-          final mat = r['materials_status'] as String? ?? 'tam';
+          final mat = r['materials_status'] as String? ?? 'bilinmiyor';
           if (mat == 'tam') {
             matReady++;
+            matMarked++;
+          } else if (mat == 'eksik') {
+            matMarked++;
           }
 
           stars += (r['stars_count'] as int?) ?? 0;
+          speakingTurns += (r['speaking_turns'] as int?) ?? 0;
 
           if (r['badge_name'] != null && r['badge_name'].toString().isNotEmpty) {
             tags.add(r['badge_name'].toString());
@@ -381,9 +407,20 @@ class ClassroomParticipationRepository {
           }
         }
 
-        final hwRate = sSessions > 0 ? ((hwDone + (hwPartial * 0.5)) / sSessions * 100).clamp(0.0, 100.0) : 100.0;
-        final matRate = sSessions > 0 ? (matReady / sSessions * 100).clamp(0.0, 100.0) : 100.0;
-        final avgStars = sSessions > 0 ? (stars / sSessions).clamp(0.0, 3.0) : 3.0;
+        // Payda: ISARETLENEN ders sayisi (ders sayisi degil).
+        //
+        // Veri yoksa oran 0 doner, 100 DEGIL. Eskiden hic
+        // degerlendirilmemis ogrenci raporda "Odev: %100, Yildiz: 3.0"
+        // gorunuyordu: veri yoklugu mukemmellik olarak sunuluyordu.
+        // Ogretmen bu raporu veli toplantisinda acsa, hic takip
+        // etmedigi ogrenci icin "her sey harika" diyecekti.
+        final hwRate = hwMarked > 0
+            ? ((hwDone + (hwPartial * 0.5)) / hwMarked * 100).clamp(0.0, 100.0)
+            : 0.0;
+        final matRate =
+            matMarked > 0 ? (matReady / matMarked * 100).clamp(0.0, 100.0) : 0.0;
+        final avgStars =
+            sSessions > 0 ? (stars / sSessions).clamp(0.0, 3.0) : 0.0;
 
         totalClassHwRateSum += hwRate;
         totalClassMatRateSum += matRate;
@@ -403,14 +440,32 @@ class ClassroomParticipationRepository {
           'materialsRate': matRate,
           'totalStars': stars,
           'averageStars': avgStars,
+          // Soz hakki: modulun asil verisi. Raporda hic yoktu.
+          'speakingTurns': speakingTurns,
+          'isSilent': speakingTurns == 0,
+          // Oranin KAC derse dayandigi: "%100 (3 ders)" ile
+          // "%100 (20 ders)" ayni sey degil.
+          'homeworkMarkedLessons': hwMarked,
+          'materialsMarkedLessons': matMarked,
           'tags': tags,
           'notes': notes,
         });
       }
 
       final studentCount = studentRows.length;
-      final classAverageHwRate = studentCount > 0 ? totalClassHwRateSum / studentCount : 100.0;
-      final classAverageMatRate = studentCount > 0 ? totalClassMatRateSum / studentCount : 100.0;
+      // Veri yoksa 0, 100 degil (bkz. ogrenci bazindaki aciklama).
+      final classAverageHwRate =
+          studentCount > 0 ? totalClassHwRateSum / studentCount : 0.0;
+      final classAverageMatRate =
+          studentCount > 0 ? totalClassMatRateSum / studentCount : 0.0;
+
+      // Sinif geneli soz hakki ozeti.
+      final classTotalSpeaking = studentReports.fold<int>(
+        0,
+        (sum, r) => sum + ((r['speakingTurns'] as int?) ?? 0),
+      );
+      final silentCount =
+          studentReports.where((r) => r['isSilent'] == true).length;
 
       return {
         'classId': classId,
@@ -421,6 +476,8 @@ class ClassroomParticipationRepository {
         'classAverageHwRate': classAverageHwRate,
         'classAverageMatRate': classAverageMatRate,
         'classTotalStars': totalClassStars,
+        'classTotalSpeakingTurns': classTotalSpeaking,
+        'silentStudentCount': silentCount,
         'students': studentReports,
       };
     } catch (e, stackTrace) {

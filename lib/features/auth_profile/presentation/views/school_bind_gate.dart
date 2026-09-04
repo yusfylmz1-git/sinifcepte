@@ -1,18 +1,20 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/theme/app_fonts.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../shared/widgets/glass_card.dart';
 import '../../../auth/screens/welcome_screen.dart';
 import '../../../navigation/screens/main_navigation_screen.dart';
-import '../../../schools/data/models/school_model.dart';
-import '../../../schools/presentation/widgets/school_selection_modal.dart';
 import '../../data/repositories/school_directory_repository.dart';
 import '../../data/services/teacher_auth_service.dart';
 import '../../providers/teacher_profile_provider.dart';
 import '../../providers/user_role_provider.dart';
+import '../../../../core/cloud/cloud_ids.dart';
+import '../../../../core/database/database_helper.dart';
+import '../../data/models/teacher_profile_model.dart';
+import 'teacher_onboarding_view.dart';
+import '../../../../core/database/account_switch.dart';
 
 /// Öğretmen kromuna tek giriş: kanonik okul bağı yoksa MainNavigation açılmaz.
 class SchoolBindGate extends ConsumerStatefulWidget {
@@ -34,67 +36,93 @@ class _SchoolBindGateState extends ConsumerState<SchoolBindGate> {
   Future<void> _hydrate() async {
     try {
       await ref.read(teacherProfileProvider.notifier).ensureLoaded();
+
+      // Hesabın kendi veritabanını aç.
+      //
+      // Giriş akışı bunu zaten yapar; burası uygulama YENİDEN açıldığında
+      // devreye girer. Yapılmazsa oturum açık olsa bile varsayılan
+      // (paylaşılan) veritabanı açılır ve öğretmen başka bir hesabın
+      // sınıflarını görebilir.
+      final uid = ref.read(teacherProfileProvider).id;
+      if (CloudIds.isValidUid(uid)) {
+        await DatabaseHelper.instance.openForUid(uid);
+        // Hesabın kendi anahtarlarından taze oku: `ensureLoaded`
+        // önbelleğe alınmış (ve yer tutucu kimlikle okunmuş) sonucu
+        // döndürebilir.
+        await ref
+            .read(teacherProfileProvider.notifier)
+            .loadProfileFromStorage();
+
+        // Sağlayıcılar da tazelenmeli; aksi halde önceki hesabın
+        // sınıfları ekranda kalır.
+        AccountSwitch.invalidateLocalData(ref);
+      }
+
+      _refreshDirectoryEntry();
     } catch (e, stackTrace) {
       debugPrint('SchoolBindGate hydrate hatası: $e\n$stackTrace');
     }
     if (mounted) setState(() => _ready = true);
   }
 
-  Future<void> _bindSchool(SchoolModel school) async {
-    final current = ref.read(teacherProfileProvider);
-    final updated = current.copyWith(
-      schoolName: school.name,
-      schoolId: school.id,
-      city: school.city,
-      district: school.district,
-      schoolType: school.type,
+  /// Öğretmenin okul dizini kaydını her açılışta tazeler.
+  ///
+  /// Kayıt önceden YALNIZCA okul ilk kez seçilirken yazılıyordu. Bu
+  /// yüzden okulu zaten bağlı olan bir hesap dizinde hiç görünmüyor ve
+  /// meslektaşları onu sınıf kadrosuna ekleyemiyordu — "aynı okuldaki
+  /// öğretmeni nereden davet edeceğim?" sorusunun sebebi buydu.
+  ///
+  /// Ad veya branş değiştiğinde de kaydı güncel tutar. Tek doküman
+  /// yazması olduğu için maliyeti ihmal edilebilir; başarısız olursa
+  /// akış bozulmaz (öğretmen yerel çalışmaya devam eder).
+  void _refreshDirectoryEntry() {
+    final profile = ref.read(teacherProfileProvider);
+    if (!profile.isSchoolBound) return;
+    if (!CloudIds.isValidUid(profile.id)) return;
+
+    unawaited(
+      SchoolDirectoryRepository()
+          .registerTeacher(
+            teacherUid: profile.id,
+            schoolId: profile.schoolId ?? '',
+            fullName: profile.fullName,
+            branch: profile.branch,
+            email: profile.email,
+          )
+          .timeout(const Duration(seconds: 5), onTimeout: () => false)
+          .catchError((_) => false),
     );
+  }
+
+  /// Kurulum tamamlandiginda profili kaydeder ve dizine yazar.
+  Future<void> _completeSetup(TeacherProfileModel updated) async {
     await ref.read(teacherProfileProvider.notifier).saveProfile(updated);
 
-    // Okul bağını buluta da yaz: böylece aynı okuldaki öğretmenler
-    // birbirini kadro listesinde görebilir ve sınıf kadrosu kod
-    // alışverişi olmadan kurulabilir.
+    // Okul bagini ve BRANSI buluta yaz: aynı okuldaki öğretmenler
+    // birbirini kadro listesinde adı ve branşıyla görebilsin.
     unawaited(
-      SchoolDirectoryRepository().registerTeacher(
-        teacherUid: updated.id,
-        schoolId: school.id,
-        fullName: updated.fullName,
-        branch: updated.branch,
-        email: updated.email,
-      ),
+      SchoolDirectoryRepository()
+          .registerTeacher(
+            teacherUid: updated.id,
+            schoolId: updated.schoolId ?? '',
+            fullName: updated.fullName,
+            branch: updated.branch,
+            email: updated.email,
+          )
+          .timeout(const Duration(seconds: 5), onTimeout: () => false)
+          .catchError((_) => false),
     );
 
     if (mounted) setState(() {});
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (!_ready) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    final profile = ref.watch(teacherProfileProvider);
-    if (profile.isSchoolBound) {
-      return const MainNavigationScreen();
-    }
-
-    return _ForcedSchoolBindScreen(onSchoolSelected: _bindSchool);
-  }
-}
-
-class _ForcedSchoolBindScreen extends ConsumerWidget {
-  final Future<void> Function(SchoolModel school) onSchoolSelected;
-
-  const _ForcedSchoolBindScreen({required this.onSchoolSelected});
-
-  Future<void> _handleSignOutAndReturn(BuildContext context, WidgetRef ref) async {
+  /// Kurulumdan vazgecen ogretmeni cikis yaptirip giris ekranina dondurur.
+  Future<void> _handleSignOutAndReturn(BuildContext context) async {
     try {
       await TeacherAuthService().signOut();
       await ref.read(userRoleProvider.notifier).resetRole();
     } catch (e, stackTrace) {
-      debugPrint('Öğretmen okul seçiminden çıkış yapma hatası: $e\n$stackTrace');
+      debugPrint('Kurulumdan çıkış hatası: $e\n$stackTrace');
     } finally {
       if (context.mounted) {
         Navigator.of(context).pushAndRemoveUntil(
@@ -106,249 +134,32 @@ class _ForcedSchoolBindScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget build(BuildContext context) {
+    if (!_ready) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final profile = ref.watch(teacherProfileProvider);
+    // Okul TEK BASINA yeterli degil: brans ve ad-soyad da gerekir.
+    // Eskiden okul secilir secilmez giriliyordu; brans hic sorulmadigi
+    // icin okul dizinine bos brans yaziliyor ve sinif kadrosunda kimin
+    // hangi derse girdigi gorunmuyordu.
+    if (profile.isSetupComplete) {
+      return const MainNavigationScreen();
+    }
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        _handleSignOutAndReturn(context, ref);
-      },
-      child: Scaffold(
-        backgroundColor: isDark ? AppColors.darkBackground : const Color(0xFFF8FAFC),
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: Icon(
-              Icons.arrow_back_ios_new_rounded,
-              color: isDark ? Colors.white : AppColors.textPrimaryLight,
-              size: 20,
-            ),
-            tooltip: 'Giriş Ekranına Dön',
-            onPressed: () => _handleSignOutAndReturn(context, ref),
-          ),
-          title: Text(
-            'Okul Seçimi',
-            style: AppFonts.outfit(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : AppColors.textPrimaryLight,
-            ),
-          ),
-          centerTitle: true,
-          actions: [
-            IconButton(
-              icon: Icon(
-                Icons.close_rounded,
-                color: isDark ? Colors.white70 : Colors.black54,
-                size: 24,
-              ),
-              tooltip: 'Vazgeç ve Çıkış Yap',
-              onPressed: () => _handleSignOutAndReturn(context, ref),
-            ),
-          ],
-        ),
-        body: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constraints.maxHeight - 24),
-                  child: IntrinsicHeight(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // 1. Giriş Yapılan Hesap Bilgi Kartı
-                        GlassCard(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 18,
-                                backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                                child: const Icon(
-                                  Icons.person_rounded,
-                                  color: AppColors.primary,
-                                  size: 20,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      profile.fullName.trim().isNotEmpty
-                                          ? profile.fullName
-                                          : (profile.email.isNotEmpty ? profile.email : 'Öğretmen Hesabı'),
-                                      style: AppFonts.outfit(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    Text(
-                                      profile.email.isNotEmpty
-                                          ? profile.email
-                                          : 'Google ile giriş yapıldı',
-                                      style: AppFonts.outfit(
-                                        fontSize: 11,
-                                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  'Öğretmen',
-                                  style: AppFonts.outfit(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF10B981),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+    // Masaüstünde bulut oturumu açılamıyor (google_sign_in Windows/Linux'u
+    // desteklemiyor). Okul dizini bulut verisi olduğu için burada zorunlu
+    // tutulursa kullanıcı bu ekranda kilitlenir; yerel mod doğrudan geçer.
+    if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
+      return const MainNavigationScreen();
+    }
 
-                        const SizedBox(height: 28),
-
-                        // 2. İkon ve Başlık
-                        Center(
-                          child: Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              gradient: AppColors.primaryGradient,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primary.withValues(alpha: 0.3),
-                                  blurRadius: 16,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.apartment_rounded,
-                              color: Colors.white,
-                              size: 40,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          'Okulunuzu Belirleyin',
-                          textAlign: TextAlign.center,
-                          style: AppFonts.outfit(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                          child: Text(
-                            'SınıfCepte\'de sınıf, BEP, evrak ve veli ekosistemini kullanabilmek için görev yaptığınız okulu eşlemeniz gerekmektedir.',
-                            textAlign: TextAlign.center,
-                            style: AppFonts.outfit(
-                              fontSize: 13.5,
-                              height: 1.45,
-                              color: isDark ? Colors.white70 : Colors.black54,
-                            ),
-                          ),
-                        ),
-
-                        const Spacer(),
-
-                        const SizedBox(height: 24),
-
-                        // 3. Okul Seç Butonu
-                        ElevatedButton.icon(
-                          onPressed: () async {
-                            final picked = await SchoolSelectionModal.show(
-                              context,
-                              dismissible: true,
-                            );
-                            if (picked != null) {
-                              await onSchoolSelected(picked);
-                            }
-                          },
-                          icon: const Icon(Icons.search_rounded, size: 20),
-                          label: Text(
-                            'MEB Okul Dizininden Seç',
-                            style: AppFonts.outfit(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            minimumSize: const Size.fromHeight(52),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            elevation: 2,
-                          ),
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        // 4. Çıkış / Farklı Hesapla Giriş Butonu
-                        OutlinedButton.icon(
-                          onPressed: () => _handleSignOutAndReturn(context, ref),
-                          icon: Icon(
-                            Icons.logout_rounded,
-                            size: 18,
-                            color: isDark ? Colors.white70 : Colors.black87,
-                          ),
-                          label: Text(
-                            'Farklı Hesapla Giriş Yap / Çıkış',
-                            style: AppFonts.outfit(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.white70 : Colors.black87,
-                            ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(48),
-                            side: BorderSide(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.2)
-                                  : Colors.black.withValues(alpha: 0.15),
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
+    return TeacherOnboardingView(
+      onCompleted: _completeSetup,
+      onCancel: () => _handleSignOutAndReturn(context),
     );
   }
 }

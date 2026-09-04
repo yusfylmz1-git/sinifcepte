@@ -144,13 +144,13 @@ class _SchoolAdminRequestViewState
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final teacher = ref.watch(teacherProfileProvider);
     final roleState = ref.watch(userRoleProvider);
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
       child: Container(
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
+          maxHeight: MediaQuery.sizeOf(context).height * 0.85,
         ),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(

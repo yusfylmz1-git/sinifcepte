@@ -1,0 +1,21 @@
+{
+  "_comment": "MEB 2026-2027 resmî çalışma takvimi. Yeni yıla geçerken bu dosyanın bir kopyasını <yeni-yil>.json adıyla oluşturup tebliğdeki tarihlere göre güncelleyin.",
+  "startDate": "2026-09-14",
+  "secondTermStartWeek": 21,
+  "holidayWeeks": {
+    "10": "1. Dönem Ara Tatili",
+    "19": "Yarıyıl Tatili (1. Hafta)",
+    "20": "Yarıyıl Tatili (2. Hafta)",
+    "28": "2. Dönem Ara Tatili"
+  },
+  "otpWeeks": [8, 17, 29],
+  "socialEventWeeks": [18, 37],
+  "weekNotes": {
+    "18": "Sosyal Etkinlikler Haftası",
+    "21": "2. Dönem Başlangıcı",
+    "32": "23 Nisan Ulusal Egemenlik",
+    "36": "19 Mayıs Atatürk'ü Anma",
+    "37": "Yıl Sonu Sosyal Etkinlik",
+    "39": "Kapanış & Karne Haftası"
+  }
+}

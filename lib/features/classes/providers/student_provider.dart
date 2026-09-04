@@ -71,8 +71,8 @@ class StudentListNotifier extends StateNotifier<AsyncValue<List<StudentModel>>> 
     }
   }
 
-  /// Öğrenci bilgilerini güncelle
-  Future<bool> updateStudent({
+  /// Öğrenci bilgilerini güncelle (Opsiyonel olarak sınıfı da değiştirebilir)
+  Future<({bool success, String? error})> updateStudent({
     required int id,
     required int schoolNumber,
     required String firstName,
@@ -81,11 +81,26 @@ class StudentListNotifier extends StateNotifier<AsyncValue<List<StudentModel>>> 
     String? parentName,
     String? parentPhone,
     String? notes,
+    int? newClassId,
   }) async {
     try {
+      final targetClassId = newClassId ?? classId;
+
+      // Eğer sınıf değiştiriliyorsa, hedef sınıfta mükerrer okul numarası kontrolü yap
+      if (targetClassId != classId) {
+        final targetStudents = await _repository.getStudentsByClassId(targetClassId);
+        final duplicate = targetStudents.where((s) => s.schoolNumber == schoolNumber).firstOrNull;
+        if (duplicate != null) {
+          return (
+            success: false,
+            error: 'Hedef sınıfta #$schoolNumber numaralı başka bir öğrenci (${duplicate.fullName}) zaten kayıtlı!',
+          );
+        }
+      }
+
       final updatedStudent = StudentModel(
         id: id,
-        classId: classId,
+        classId: targetClassId,
         schoolNumber: schoolNumber,
         firstName: firstName,
         lastName: lastName,
@@ -97,13 +112,13 @@ class StudentListNotifier extends StateNotifier<AsyncValue<List<StudentModel>>> 
 
       await _repository.updateStudent(updatedStudent);
       await loadStudents();
-      return true;
+      return (success: true, error: null);
     } catch (e, st) {
       debugPrint('---------------- HATA DETAYI (StudentList.updateStudent) ----------------');
       debugPrint('Hata Mesajı : $e');
       debugPrint('Kod Satırı   : $st');
       debugPrint('-----------------------------------------------------------------------');
-      return false;
+      return (success: false, error: 'Öğrenci güncellenirken hata oluştu: $e');
     }
   }
 
@@ -179,6 +194,43 @@ class StudentListNotifier extends StateNotifier<AsyncValue<List<StudentModel>>> 
       debugPrint('Kod Satırı   : $st');
       debugPrint('------------------------------------------------------------------------');
       return false;
+    }
+  }
+
+  /// Tek bir öğrenciyi başka bir sınıfa aktar (Mükerrer numara kontrollü)
+  Future<({bool success, String? error})> moveStudent({
+    required int studentId,
+    required int targetClassId,
+  }) async {
+    try {
+      final currentStudents = state.value ?? [];
+      final student = currentStudents.where((s) => s.id == studentId).firstOrNull;
+      if (student == null) {
+        return (success: false, error: 'Öğrenci bulunamadı.');
+      }
+      if (targetClassId == classId) {
+        return (success: false, error: 'Öğrenci zaten bu sınıfta kayıtlı.');
+      }
+
+      // 4 Katmanlı Doğrulama: Hedef sınıfta aynı okul numarasına sahip öğrenci var mı?
+      final targetStudents = await _repository.getStudentsByClassId(targetClassId);
+      final duplicate = targetStudents.where((s) => s.schoolNumber == student.schoolNumber).firstOrNull;
+      if (duplicate != null) {
+        return (
+          success: false,
+          error: 'Hedef sınıfta #${student.schoolNumber} numaralı başka bir öğrenci (${duplicate.fullName}) zaten kayıtlı!',
+        );
+      }
+
+      await _repository.updateStudent(student.copyWith(classId: targetClassId));
+      await loadStudents();
+      return (success: true, error: null);
+    } catch (e, st) {
+      debugPrint('---------------- HATA DETAYI (StudentList.moveStudent) ----------------');
+      debugPrint('Hata Mesajı : $e');
+      debugPrint('Kod Satırı   : $st');
+      debugPrint('------------------------------------------------------------------------');
+      return (success: false, error: 'Öğrenci aktarılırken bir hata oluştu: $e');
     }
   }
 }

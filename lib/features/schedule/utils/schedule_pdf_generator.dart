@@ -5,6 +5,7 @@ import 'package:printing/printing.dart';
 import '../../auth_profile/data/models/teacher_profile_model.dart';
 import '../models/lesson_model.dart';
 import '../models/schedule_settings.dart';
+import '../../../core/pdf/pdf_tr_fonts.dart';
 
 /// SınıfCepte - MEB Standartlarında A4 Haftalık Ders Programı PDF Üreticisi
 class SchedulePdfGenerator {
@@ -25,7 +26,7 @@ class SchedulePdfGenerator {
     required TeacherProfileModel profile,
   }) async {
     try {
-      final doc = pw.Document();
+      final doc = await PdfTrFonts.document();
 
       // Türkçe Fontları Yükle
       final fontRegular = await PdfGoogleFonts.robotoRegular();
@@ -60,7 +61,7 @@ class SchedulePdfGenerator {
       final fileName = 'Haftalik_Ders_Programi_${DateTime.now().year}.pdf';
 
       await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async => doc.save(),
+        onLayout: (PdfPageFormat format) async => PdfTrFonts.kaydet(doc),
         name: fileName,
       );
     } catch (e, stackTrace) {

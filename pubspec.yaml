@@ -65,6 +65,7 @@ dependencies:
   # Firebase (proje: sinifcepte)
   firebase_core: ^3.15.2
   firebase_auth: ^5.7.0
+  firebase_crashlytics: ^4.3.10
   cloud_firestore: ^5.6.12
   firebase_remote_config: ^5.4.3
   google_sign_in: ^6.3.0
@@ -73,6 +74,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -94,8 +96,104 @@ flutter:
 
   # Assets
   assets:
-    - assets/data/
-    - assets/data/schools/
+    # Kucuk dosyalar duz halde kalir: gzip basligi yuzunden birkac
+    # yuz baytlik dosyalar sikistirilinca buyuyebiliyor.
+    - assets/data/official_exams.json
+    - assets/data/provinces_districts.json
+    - assets/data/schools_data.json
+    - assets/fonts/NotoSans-Regular.ttf
+    - assets/fonts/NotoSans-Bold.ttf
+
+    # Buyuk veri YALNIZCA sikistirilmis olarak paketlenir.
+    # `dart run tool/compress_assets.dart` ile uretilir.
+    # 34.5 MB -> 2.6 MB (APK 83.8 MB idi).
+    - assets/data/official_maarif_kazanimlar.json.gz
+    - assets/data/sinif_rehberlik_plani.json.gz
+    - assets/data/belirli_gun_hafta.json.gz
+    - assets/data/pano_icerikleri.json.gz
+    - assets/data/schools/schools_manifest.json.gz
+    - assets/data/schools/tr_01.json.gz
+    - assets/data/schools/tr_02.json.gz
+    - assets/data/schools/tr_03.json.gz
+    - assets/data/schools/tr_04.json.gz
+    - assets/data/schools/tr_05.json.gz
+    - assets/data/schools/tr_06.json.gz
+    - assets/data/schools/tr_07.json.gz
+    - assets/data/schools/tr_08.json.gz
+    - assets/data/schools/tr_09.json.gz
+    - assets/data/schools/tr_10.json.gz
+    - assets/data/schools/tr_11.json.gz
+    - assets/data/schools/tr_12.json.gz
+    - assets/data/schools/tr_13.json.gz
+    - assets/data/schools/tr_14.json.gz
+    - assets/data/schools/tr_15.json.gz
+    - assets/data/schools/tr_16.json.gz
+    - assets/data/schools/tr_17.json.gz
+    - assets/data/schools/tr_18.json.gz
+    - assets/data/schools/tr_19.json.gz
+    - assets/data/schools/tr_20.json.gz
+    - assets/data/schools/tr_21.json.gz
+    - assets/data/schools/tr_22.json.gz
+    - assets/data/schools/tr_23.json.gz
+    - assets/data/schools/tr_24.json.gz
+    - assets/data/schools/tr_25.json.gz
+    - assets/data/schools/tr_26.json.gz
+    - assets/data/schools/tr_27.json.gz
+    - assets/data/schools/tr_28.json.gz
+    - assets/data/schools/tr_29.json.gz
+    - assets/data/schools/tr_30.json.gz
+    - assets/data/schools/tr_31.json.gz
+    - assets/data/schools/tr_32.json.gz
+    - assets/data/schools/tr_33.json.gz
+    - assets/data/schools/tr_34.json.gz
+    - assets/data/schools/tr_35.json.gz
+    - assets/data/schools/tr_36.json.gz
+    - assets/data/schools/tr_37.json.gz
+    - assets/data/schools/tr_38.json.gz
+    - assets/data/schools/tr_39.json.gz
+    - assets/data/schools/tr_40.json.gz
+    - assets/data/schools/tr_41.json.gz
+    - assets/data/schools/tr_42.json.gz
+    - assets/data/schools/tr_43.json.gz
+    - assets/data/schools/tr_44.json.gz
+    - assets/data/schools/tr_45.json.gz
+    - assets/data/schools/tr_46.json.gz
+    - assets/data/schools/tr_47.json.gz
+    - assets/data/schools/tr_48.json.gz
+    - assets/data/schools/tr_49.json.gz
+    - assets/data/schools/tr_50.json.gz
+    - assets/data/schools/tr_51.json.gz
+    - assets/data/schools/tr_52.json.gz
+    - assets/data/schools/tr_53.json.gz
+    - assets/data/schools/tr_54.json.gz
+    - assets/data/schools/tr_55.json.gz
+    - assets/data/schools/tr_56.json.gz
+    - assets/data/schools/tr_57.json.gz
+    - assets/data/schools/tr_58.json.gz
+    - assets/data/schools/tr_59.json.gz
+    - assets/data/schools/tr_60.json.gz
+    - assets/data/schools/tr_61.json.gz
+    - assets/data/schools/tr_62.json.gz
+    - assets/data/schools/tr_63.json.gz
+    - assets/data/schools/tr_64.json.gz
+    - assets/data/schools/tr_65.json.gz
+    - assets/data/schools/tr_66.json.gz
+    - assets/data/schools/tr_67.json.gz
+    - assets/data/schools/tr_68.json.gz
+    - assets/data/schools/tr_69.json.gz
+    - assets/data/schools/tr_70.json.gz
+    - assets/data/schools/tr_71.json.gz
+    - assets/data/schools/tr_72.json.gz
+    - assets/data/schools/tr_73.json.gz
+    - assets/data/schools/tr_74.json.gz
+    - assets/data/schools/tr_75.json.gz
+    - assets/data/schools/tr_76.json.gz
+    - assets/data/schools/tr_77.json.gz
+    - assets/data/schools/tr_78.json.gz
+    - assets/data/schools/tr_79.json.gz
+    - assets/data/schools/tr_80.json.gz
+    - assets/data/schools/tr_81.json.gz
+
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

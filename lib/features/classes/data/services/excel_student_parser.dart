@@ -1,28 +1,20 @@
-import 'dart:io';
 import 'package:excel/excel.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import '../../../../data/models/student_model.dart';
+import 'pdf_student_parser.dart';
 
 /// SınıfCepte - Excel Dosyalarından Akıllı Öğrenci Ayıklayıcı (Parser)
 class ExcelStudentParser {
-  /// Excel dosyası seçme ve öğrencileri ayıklama
-  static Future<ExcelParseResult> pickAndParseExcel(int targetClassId) async {
+  /// Doğrudan baytlardan ayrıştırma (dosya seçimi olmadan).
+  ///
+  /// Dosya seçme ile ayrıştırma iç içeydi; bu yüzden ne test edilebiliyor
+  /// ne de ortak içe aktarma akışından çağrılabiliyordu.
+  static ExcelParseResult parseBytes(Uint8List bytes, int targetClassId) {
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['xlsx', 'xls'],
-      );
-
-      if (result == null || result.files.single.path == null) {
-        return const ExcelParseResult(success: false, errorMessage: 'Dosya seçilmedi');
-      }
-
-      final file = File(result.files.single.path!);
-      final bytes = await file.readAsBytes();
       final excel = Excel.decodeBytes(bytes);
 
       final List<StudentModel> studentList = [];
+      final List<ParsedStudentItem> parsedStudentList = [];
 
       for (final tableKey in excel.tables.keys) {
         final rows = excel.tables[tableKey]!.rows;
@@ -43,7 +35,7 @@ class ExcelStudentParser {
         }
 
         if (headerRow == null) continue; // Başlık bulunamadıysa bu sayfayı atla
-        int? colNo, colFirstName, colLastName, colFullName, colGender;
+        int? colNo, colFirstName, colLastName, colFullName, colGender, colClassName;
 
         for (int i = 0; i < headerRow.length; i++) {
           var cellValue = headerRow[i]?.value?.toString().toLowerCase().trim() ?? '';
@@ -60,6 +52,8 @@ class ExcelStudentParser {
             colFullName = i;
           } else if (cellValue.contains('cinsiyet') || cellValue.contains('gender')) {
             colGender = i;
+          } else if (cellValue.contains('sinif') || cellValue.contains('sube')) {
+            colClassName = i;
           }
         }
 
@@ -111,6 +105,13 @@ class ExcelStudentParser {
             }
           }
 
+          // Sınıf ayıkla (varsa)
+          String? rowClass;
+          if (colClassName != null && colClassName < row.length) {
+            final rawClass = row[colClassName]?.value?.toString().trim() ?? '';
+            rowClass = _extractClassFromText(rawClass);
+          }
+
           studentList.add(
             StudentModel(
               classId: targetClassId,
@@ -120,12 +121,54 @@ class ExcelStudentParser {
               gender: gender,
             ),
           );
+
+          parsedStudentList.add(
+            ParsedStudentItem(
+              schoolNumber: schoolNo,
+              firstName: firstName,
+              lastName: lastName,
+              gender: gender,
+              className: rowClass,
+            ),
+          );
         }
+      }
+
+      String detectedClassName = _detectClassName(excel);
+
+      // Hiç öğrenci çıkmadıysa bu bir başarı değildir. Eskiden boş liste
+      // ile 'success: true' dönüyordu; ekran "içe aktarıldı" deyip boş
+      // önizleme gösteriyor, öğretmen neyin yanlış gittiğini anlamıyordu.
+      // (PDF ayrıştırıcıda bu kontrol vardı, Excel'de yoktu.)
+      if (parsedStudentList.isEmpty) {
+        return const ExcelParseResult(
+          success: false,
+          errorMessage:
+              'Excel okundu ancak öğrenci listesi algılanamadı. '
+              'Dosyada "Okul No", "Adı", "Soyadı" gibi başlık satırı '
+              'bulunduğundan emin olun.',
+        );
+      }
+
+      final distinctClasses = parsedStudentList
+          .map((s) => s.className)
+          .where((c) => c != null && c.isNotEmpty)
+          .cast<String>()
+          .toSet()
+          .toList();
+
+      final bool isMultiClass = distinctClasses.length > 1;
+      if (detectedClassName.isEmpty && distinctClasses.length == 1) {
+        detectedClassName = distinctClasses.first;
       }
 
       return ExcelParseResult(
         success: true,
+        detectedClassName: detectedClassName,
+        parsedStudents: parsedStudentList,
         students: studentList,
+        isMultiClass: isMultiClass,
+        distinctClasses: distinctClasses,
       );
     } catch (e, st) {
       debugPrint('Excel Parse Error: $e\n$st');
@@ -134,6 +177,53 @@ class ExcelStudentParser {
         errorMessage: 'Excel okunurken bir hata oluştu: ${e.toString()}',
       );
     }
+  }
+
+  static String? _extractClassFromText(String text) {
+    final mebPattern = RegExp(
+      r'([1-9]|1[0-2])\s*\.?\s*(?:Sınıfı?|Sinifi?)?\s*[\/\-\s]\s*([A-Za-zğüşöçıİĞÜŞÖÇ])\s*(?:Şubesi|Subesi|Şube|Sube)?\b',
+      caseSensitive: false,
+    );
+    final match = mebPattern.firstMatch(text);
+    if (match != null) {
+      final grade = match.group(1);
+      final branch = match.group(2)?.toUpperCase();
+      if (grade != null && branch != null) {
+        return '$grade-$branch';
+      }
+    }
+    return null;
+  }
+
+  static String _detectClassName(Excel excel) {
+    // 1. Sayfa isimlerini kontrol et (Örn: "5-A", "5/A", "7B")
+    for (final sheetName in excel.tables.keys) {
+      final match = RegExp(r'([1-9]|1[0-2])\s*[\/\-\s]?\s*([A-Za-zğüşöçıİĞÜŞÖÇ])\b').firstMatch(sheetName);
+      if (match != null) {
+        final grade = match.group(1);
+        final branch = match.group(2)?.toUpperCase();
+        if (grade != null && branch != null) {
+          return '$grade-$branch';
+        }
+      }
+    }
+
+    // 2. İlk 5 satırdaki metinleri kontrol et
+    for (final tableKey in excel.tables.keys) {
+      final rows = excel.tables[tableKey]!.rows;
+      for (int i = 0; i < rows.length && i < 5; i++) {
+        final rowStr = rows[i].map((c) => c?.value?.toString() ?? '').join(' ');
+        final match = RegExp(r'(?:Sınıfı?|Şubesi?)?\s*[:|-]?\s*([1-9]|1[0-2])\s*[\/\-\s]\s*([A-Za-zğüşöçıİĞÜŞÖÇ])\b', caseSensitive: false).firstMatch(rowStr);
+        if (match != null) {
+          final grade = match.group(1);
+          final branch = match.group(2)?.toUpperCase();
+          if (grade != null && branch != null) {
+            return '$grade-$branch';
+          }
+        }
+      }
+    }
+    return '';
   }
 
   static String _normalizeText(String input) {
@@ -149,12 +239,21 @@ class ExcelStudentParser {
 
 class ExcelParseResult {
   final bool success;
+  final String detectedClassName;
+  final List<ParsedStudentItem> parsedStudents;
   final List<StudentModel> students;
   final String? errorMessage;
+  final bool isMultiClass;
+  final List<String> distinctClasses;
 
   const ExcelParseResult({
     required this.success,
+    this.detectedClassName = '',
+    this.parsedStudents = const [],
     this.students = const [],
     this.errorMessage,
+    this.isMultiClass = false,
+    this.distinctClasses = const [],
   });
 }
+

@@ -91,40 +91,57 @@ class SyncService {
       final localOutcomes = await db.syncMetadataVersionGetir(_kOutcomesSyncKey);
       final localSchools = await db.syncMetadataVersionGetir(_kSchoolsSyncKey);
 
-      final updatedModules = <String>[];
+      // Sunucuda daha yeni sürüm var mı?
+      //
+      // BURASI VERİ İNDİRMEZ. Takvim, kazanım ve okul dizini APK ile
+      // gelir; yeni içerik yalnızca **uygulama güncellemesiyle** ulaşır.
+      //
+      // Kod eskiden yalnızca sürüm sayacını yazıp "MEB Akademik Takvimi
+      // başarıyla güncellendi 🚀" diyordu. Hiçbir bayt değişmiyordu:
+      // öğretmen yeni tatili göremiyor ama sistem "güncel" diyordu.
+      // Üstelik sayaç ilerlediği için bir dahaki sefere "zaten güncel"
+      // deyip sorunu kalıcı hale getiriyordu.
+      final outdatedModules = <String>[];
 
-      if (force || manifest.calendarVersion > localCalendar) {
+      if (manifest.calendarVersion > localCalendar) {
+        outdatedModules.add('MEB Akademik Takvimi');
+      }
+      if (manifest.outcomesVersion > localOutcomes) {
+        outdatedModules.add('Müfredat Kazanımları');
+      }
+      if (manifest.schoolDirectoryVersion > localSchools) {
+        outdatedModules.add('Okul Dizini');
+      }
+
+      // Sayaç YALNIZCA veri gerçekten yenilendiğinde ilerlemelidir.
+      // Uygulama güncellendiğinde tohumlama yeniden çalışır ve sayacı
+      // o zaman ilerletir (`force`).
+      if (force) {
         await db.syncMetadataVersionGuncelle(
           _kCalendarSyncKey,
           manifest.calendarVersion,
         );
-        updatedModules.add('MEB Akademik Takvimi');
-      }
-
-      if (force || manifest.outcomesVersion > localOutcomes) {
         await db.syncMetadataVersionGuncelle(
           _kOutcomesSyncKey,
           manifest.outcomesVersion,
         );
-        updatedModules.add('Müfredat Kazanımları');
-      }
-
-      if (force || manifest.schoolDirectoryVersion > localSchools) {
         await db.syncMetadataVersionGuncelle(
           _kSchoolsSyncKey,
           manifest.schoolDirectoryVersion,
         );
-        updatedModules.add('Okul Dizini');
       }
 
       return SyncResult(
         success: true,
-        hasUpdates: updatedModules.isNotEmpty,
-        updatedModules: updatedModules,
+        // "Güncelleme var" demek, indirildiği anlamına gelmez: yeni
+        // içerik uygulama güncellemesiyle gelir.
+        hasUpdates: outdatedModules.isNotEmpty,
+        updatedModules: outdatedModules,
         updateRequired: updateRequired,
-        message: updatedModules.isNotEmpty
-            ? '${updatedModules.join(', ')} başarıyla güncellendi 🚀'
-            : 'Verileriniz zaten güncel ✨',
+        message: outdatedModules.isNotEmpty
+            ? '${outdatedModules.join(', ')} için yeni sürüm yayımlandı. '
+                'Uygulamayı güncelleyerek alabilirsiniz.'
+            : 'Verileriniz güncel ✨',
       );
     } catch (e, stackTrace) {
       debugPrint('---------------- HATA DETAYI (SyncService.checkAndSyncData) ----------------');

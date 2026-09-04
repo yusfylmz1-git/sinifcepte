@@ -596,6 +596,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
           content: TextField(
             controller: controller,
             autofocus: true,
+            maxLength: 100,
             style: AppFonts.outfit(fontSize: 13),
             decoration: InputDecoration(
               hintText: 'Ödev veya proje başlığı girin...',

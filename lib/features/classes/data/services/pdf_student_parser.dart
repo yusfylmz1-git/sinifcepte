@@ -1,5 +1,3 @@
-import 'dart:io';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../../../../core/utils/input_sanitizer.dart';
@@ -8,25 +6,13 @@ import '../../../../data/models/student_model.dart';
 /// SınıfCepte - Layout-Aware (Koordinat Bazlı) Gelişmiş PDF Ayıklayıcı
 /// `pdf-inspector` mantığıyla tablo hücrelerini görsel Y koordinatına göre gruplar.
 class PdfStudentParser {
-  /// PDF dosyasından sınıf adı ve öğrenci listesini çekme
-  static Future<PdfParseResult> pickAndParsePdf(int targetClassId) async {
+  /// Doğrudan byte dizisinden ayrıştırma (Testler ve arka plan isolate için)
+  static PdfParseResult parseBytes(Uint8List bytes, int targetClassId) {
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf'],
-      );
-
-      if (result == null || result.files.single.path == null) {
-        return const PdfParseResult(success: false, errorMessage: 'PDF dosyası seçilmedi');
-      }
-
-      final file = File(result.files.single.path!);
-      final bytes = await file.readAsBytes();
-
       // Syncfusion PDF Document Aç
       final PdfDocument document = PdfDocument(inputBytes: bytes);
       final PdfTextExtractor extractor = PdfTextExtractor(document);
-      
+
       // Düz metin (Sınıf adını bulmak için)
       final String rawText = extractor.extractText();
       String detectedClassName = _detectClassName(rawText);
@@ -42,26 +28,25 @@ class PdfStudentParser {
         );
       }
 
-      // 1. TextLine nesnelerini Y (top) koordinatlarına göre grupla
-      List<List<TextLine>> groupedRows = [];
+      // 1. TextLine nesnelerini Y (top) koordinatlarına göre sırala (O(N log N))
+      textLines.sort((a, b) => a.bounds.top.compareTo(b.bounds.top));
+
+      // 2. Y eksenine göre satırları doğrusal grupla (O(N))
+      final List<List<TextLine>> groupedRows = [];
       const double yTolerance = 5.0; // Aynı satırda sayılabilmeleri için esneklik payı
 
-      for (var line in textLines) {
-        bool added = false;
-        for (var row in groupedRows) {
-          if ((row.first.bounds.top - line.bounds.top).abs() <= yTolerance) {
-            row.add(line);
-            added = true;
-            break;
+      for (final line in textLines) {
+        if (groupedRows.isEmpty) {
+          groupedRows.add([line]);
+        } else {
+          final lastRow = groupedRows.last;
+          if ((lastRow.first.bounds.top - line.bounds.top).abs() <= yTolerance) {
+            lastRow.add(line);
+          } else {
+            groupedRows.add([line]);
           }
         }
-        if (!added) {
-          groupedRows.add([line]);
-        }
       }
-
-      // 2. Satırları Y eksenine göre yukarıdan aşağıya sırala
-      groupedRows.sort((a, b) => a.first.bounds.top.compareTo(b.first.bounds.top));
 
       // 3. Her satırın kendi içindeki kelimelerini X eksenine göre soldan sağa sırala
       for (var row in groupedRows) {
@@ -74,9 +59,9 @@ class PdfStudentParser {
       }).toList();
 
       // 5. Öğrencileri Çıkar
-      final List<StudentModel> studentList = _extractStudentsFromStructuredLines(structuredLines, targetClassId);
+      final List<ParsedStudentItem> parsedList = _extractStudentsFromStructuredLines(structuredLines, targetClassId);
 
-      if (studentList.isEmpty) {
+      if (parsedList.isEmpty) {
         final debugLines = structuredLines.where((l) => l.trim().isNotEmpty).take(15).join('\n');
         debugPrint('PDF Debug Lines:\n$debugLines');
         return PdfParseResult(
@@ -85,24 +70,48 @@ class PdfStudentParser {
         );
       }
 
+      final distinctClasses = parsedList
+          .map((s) => s.className)
+          .where((c) => c != null && c.isNotEmpty)
+          .cast<String>()
+          .toSet()
+          .toList();
+
+      final bool isMultiClass = distinctClasses.length > 1;
+      if (detectedClassName.isEmpty && distinctClasses.length == 1) {
+        detectedClassName = distinctClasses.first;
+      }
+
+      final legacyStudentList = parsedList.map((p) => p.toStudentModel(targetClassId)).toList();
+
       return PdfParseResult(
         success: true,
         detectedClassName: detectedClassName,
-        students: studentList,
+        parsedStudents: parsedList,
+        students: legacyStudentList,
+        isMultiClass: isMultiClass,
+        distinctClasses: distinctClasses,
       );
     } catch (e, st) {
       debugPrint('PDF Parse Error: $e\n$st');
       return PdfParseResult(
         success: false,
-        errorMessage: 'PDF okunurken bir hata oluştu: ${e.toString()}',
+        errorMessage: 'PDF ayrıştırılırken bir hata oluştu: ${e.toString()}',
       );
     }
   }
 
   /// PDF İçerisindeki Metinden Sınıf Adını Bulur
   static String _detectClassName(String text) {
+    // Şube harfi TÜM alfabeyi kapsamalı. Önceki desen [A-Za-d] yazıyordu
+    // ve yalnızca A-D şubelerini tanıyordu; E, F, G... şubeleri olan
+    // okullarda sınıf adı sessizce boş kalıyordu.
+    //
+    // Ayrıca '5. Sınıf / D Şubesi' biçiminde sayı ile şube harfi arasına
+    // nokta ve 'Sınıf' kelimesi girebiliyor.
     final classRegex = RegExp(
-      r'(?:Sınıfı?|Şubesi?|Sınıf/Şube)?\s*[:|-]?\s*([1-9]|1[0-2])\s*[\/\-\s]\s*([A-Za-dğüşöçıİĞÜŞÖÇ])\b',
+      r'([1-9]|1[0-2])\s*\.?\s*(?:Sınıfı?|Sinifi?)?\s*[\/\-\s]\s*'
+      r'([A-Za-zğüşöçıİĞÜŞÖÇ])\s*(?:Şubesi|Subesi|Şube|Sube)?\b',
       caseSensitive: false,
     );
 
@@ -117,12 +126,63 @@ class PdfStudentParser {
     return '';
   }
 
-  /// Formatlı satırlardan öğrenci listesini çıkarır
-  static List<StudentModel> _extractStudentsFromStructuredLines(List<String> lines, int targetClassId) {
-    final List<StudentModel> students = [];
+  /// Satır veya chunk içindeki sınıf adını ayıklar (Örn: "5. Sınıf / D Şubesi" -> "5-D", "6/A" -> "6-A")
+  static String? _extractClassFromLineOrChunk(String text) {
+    // 1. "5. Sınıf / D Şubesi", "6 . Sınıf / A Şubesi", "6.Sınıf/C Subesi", "5. Sınıf D Şubesi", "7. Sınıf / B Şubesi"
+    final mebPattern = RegExp(
+      r'([1-9]|1[0-2])\s*\.?\s*(?:Sınıfı?|Sinifi?)?\s*[\/\-\s]\s*([A-Za-zğüşöçıİĞÜŞÖÇ])\s*(?:Şubesi|Subesi|Şube|Sube)?\b',
+      caseSensitive: false,
+    );
+    final match = mebPattern.firstMatch(text);
+    if (match != null) {
+      final grade = match.group(1);
+      final branch = match.group(2)?.toUpperCase();
+      if (grade != null && branch != null) {
+        return InputSanitizer.cleanClassName('$grade-$branch');
+      }
+    }
+
+    // 2. Standart "5/A", "5-A", "7-B", "8/C"
+    final compactPattern = RegExp(
+      r'\b([1-9]|1[0-2])\s*[\/\-]\s*([A-Za-zğüşöçıİĞÜŞÖÇ])\b',
+      caseSensitive: false,
+    );
+    final compactMatch = compactPattern.firstMatch(text);
+    if (compactMatch != null) {
+      final grade = compactMatch.group(1);
+      final branch = compactMatch.group(2)?.toUpperCase();
+      if (grade != null && branch != null) {
+        return InputSanitizer.cleanClassName('$grade-$branch');
+      }
+    }
+
+    return null;
+  }
+
+  /// Formatlı satırlardan öğrenci listesini çıkarır.
+  ///
+  /// Test edilebilir olması için açıktır: PDF üretmeden, doğrudan satır
+  /// listesi verilerek ayrıştırma mantığı sınanabilir. (Test ortamında
+  /// standart PDF fontları Türkçe 'ı/ğ/İ' harflerini yazamadığı için
+  /// uçtan uca PDF üreterek test etmek yanıltıcı sonuç veriyor.)
+  @visibleForTesting
+  static List<ParsedStudentItem> extractStudentsFromLines(
+    List<String> lines,
+    int targetClassId,
+  ) =>
+      _extractStudentsFromStructuredLines(lines, targetClassId);
+
+  /// Metinden sınıf adı tespiti (test edilebilir).
+  @visibleForTesting
+  static String detectClassNameFrom(String text) => _detectClassName(text);
+
+  static List<ParsedStudentItem> _extractStudentsFromStructuredLines(List<String> lines, int targetClassId) {
+    final List<ParsedStudentItem> studentList = [];
     final Set<int> seenSchoolNumbers = {};
 
     for (var line in lines) {
+      final lineClass = _extractClassFromLineOrChunk(line);
+
       // 1. Gereksiz karakterleri temizle ve token'lara ayır
       String cleaned = line.replaceAll(RegExp(r'[\r\n\t]+'), ' ');
 
@@ -146,7 +206,7 @@ class PdfStudentParser {
 
       final List<String> allTokens = cleaned
           .split(RegExp(r'\s+'))
-          .where((k) => k.isNotEmpty) // length > 1 kısıtlamasını kaldırdık, "D Şubesi"ndeki "D" veya "1" S.No'su için.
+          .where((k) => k.isNotEmpty)
           .toList();
 
       List<String> currentChunk = [];
@@ -157,21 +217,26 @@ class PdfStudentParser {
 
         // Eğer Cinsiyet kelimesi bulduysak, bu chunk bir öğrenci kaydıdır!
         if (_isGenderToken(token)) {
-          final student = _processChunk(currentChunk, targetClassId);
+          final chunkClass = lineClass ?? _extractClassFromLineOrChunk(currentChunk.join(' '));
+          final student = _processChunk(currentChunk, targetClassId, assignedClass: chunkClass);
           if (student != null && !seenSchoolNumbers.contains(student.schoolNumber)) {
             seenSchoolNumbers.add(student.schoolNumber);
-            students.add(student);
+            studentList.add(student);
           }
           currentChunk.clear();
         }
       }
     }
 
-    return students;
+    return studentList;
   }
 
-  /// Bir cinsiyet kelimesiyle biten token listesinden öğrenci çıkarır (Yenilmez Algoritma)
-  static StudentModel? _processChunk(List<String> chunk, int targetClassId) {
+  /// Bir cinsiyet kelimesiyle biten token listesinden öğrenci çıkarır
+  static ParsedStudentItem? _processChunk(
+    List<String> chunk,
+    int targetClassId, {
+    String? assignedClass,
+  }) {
     if (chunk.length < 3) return null; // En az Ad, OkulNo, Cinsiyet olmalı
 
     final genderStr = chunk.last;
@@ -191,8 +256,6 @@ class PdfStudentParser {
     if (schoolNo == null) return null; // Okul numarası yoksa öğrenci olamaz
 
     // 2. İsmi Bul
-    // Sütunların sırası e-Okul PDF'sine göre değişebilir.
-    // Durum 1: İsim okul numarasından SONRA geliyorsa (Örn: 1 1039 AHMET YILMAZ Erkek)
     List<String> nameTokensAfter = [];
     for (int i = schoolNoIndex + 1; i < chunk.length - 1; i++) {
       if (_isValidNamePart(chunk[i]) && !_isForbiddenToken(chunk[i])) {
@@ -205,8 +268,6 @@ class PdfStudentParser {
     if (nameTokensAfter.isNotEmpty) {
       nameTokens = nameTokensAfter;
     } else {
-      // Durum 2: İsim okul numarasından ve S.No'dan ÖNCE geliyorsa (Taşımalı Listesi: ABDURRAHMAN BAKSAL 1 5.Sınıf 1039 Erkek)
-      // Chunk'ın başından başlayıp İLK sayıya kadar olan kelimeleri al.
       int firstNumIndex = -1;
       for (int i = 0; i < chunk.length; i++) {
         if (RegExp(r'^\d+$').hasMatch(chunk[i])) {
@@ -224,16 +285,16 @@ class PdfStudentParser {
       }
     }
 
-    if (nameTokens.length >= 2) { // En az 2 parça isim olmalı
+    if (nameTokens.length >= 2) {
       final lastName = _titleCase(nameTokens.last);
       final firstName = _titleCase(nameTokens.sublist(0, nameTokens.length - 1).join(' '));
 
-      return StudentModel(
-        classId: targetClassId,
+      return ParsedStudentItem(
         schoolNumber: schoolNo,
         firstName: firstName,
         lastName: lastName,
         gender: gender,
+        className: assignedClass,
       );
     }
 
@@ -243,7 +304,7 @@ class PdfStudentParser {
   static bool _isSchoolNumber(String s) {
     if (!RegExp(r'^\d+$').hasMatch(s)) return false;
     final val = int.tryParse(s);
-    return val != null && val > 10 && val < 99999;
+    return val != null && val > 0 && val < 99999;
   }
 
   static bool _isGenderToken(String s) {
@@ -255,9 +316,15 @@ class PdfStudentParser {
     const forbidden = [
       'sınıf',
       'sinif',
+      'sınıfı',
+      'sinifi',
       'şube',
       'sube',
+      'şubesi',
+      'subesi',
       'no',
+      's.no',
+      'sno',
       'listesi',
       'merkez',
       'müdürlüğü',
@@ -271,7 +338,7 @@ class PdfStudentParser {
       'bakanlığı',
       'sayfa',
     ];
-    return forbidden.any((f) => lower == f); // Tam eşleşme daha güvenli
+    return forbidden.any((f) => lower == f);
   }
 
   static bool _isValidNamePart(String s) {
@@ -293,16 +360,50 @@ class PdfStudentParser {
   }
 }
 
+class ParsedStudentItem {
+  final int schoolNumber;
+  final String firstName;
+  final String lastName;
+  final String gender;
+  final String? className; // Örn: "5-D", "6-A", vb.
+
+  const ParsedStudentItem({
+    required this.schoolNumber,
+    required this.firstName,
+    required this.lastName,
+    required this.gender,
+    this.className,
+  });
+
+  StudentModel toStudentModel(int classId) {
+    return StudentModel(
+      classId: classId,
+      schoolNumber: schoolNumber,
+      firstName: firstName,
+      lastName: lastName,
+      gender: gender,
+    );
+  }
+}
+
 class PdfParseResult {
   final bool success;
   final String detectedClassName;
+  final List<ParsedStudentItem> parsedStudents;
   final List<StudentModel> students;
   final String? errorMessage;
+  final bool isMultiClass;
+  final List<String> distinctClasses;
 
   const PdfParseResult({
     required this.success,
     this.detectedClassName = '',
+    this.parsedStudents = const [],
     this.students = const [],
     this.errorMessage,
+    this.isMultiClass = false,
+    this.distinctClasses = const [],
   });
 }
+
+

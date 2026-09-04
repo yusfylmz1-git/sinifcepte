@@ -8,6 +8,7 @@ import '../../features/settings/screens/settings_screen.dart';
 import '../../features/classes/screens/my_class_hub_screen.dart';
 import '../../features/navigation/providers/navigation_provider.dart';
 import 'glass_card.dart';
+import '../../core/backup/backup_service.dart';
 
 /// SınıfCepte - Gezinme Çekmecesi (AppDrawer)
 class AppDrawer extends ConsumerWidget {
@@ -377,12 +378,42 @@ class AppDrawer extends ConsumerWidget {
           ),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            onPressed: () {
+            // Bu dugme de yalnizca "hazirlandi" mesaji gosteriyordu;
+            // hicbir dosya yazilmiyordu. Ayni yalanin ikinci kopyasiydi
+            // (digeri profil ekranindaydi). Artik gercek yedek aliyor.
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
               Navigator.of(ctx).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
+
+              messenger.showSnackBar(
                 const SnackBar(
-                  content: Text('Yedekleme dosyası hazırlandı! (SQLite Backup)'),
-                  backgroundColor: AppColors.success,
+                  content: Text('Yedek hazırlanıyor...'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+
+              final yol = await BackupService.instance.exportDatabase();
+              if (yol == null) {
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Yedek alınamadı. Lütfen tekrar deneyin.'),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+                return;
+              }
+
+              final paylasildi =
+                  await BackupService.instance.shareBackup(yol);
+              messenger.showSnackBar(
+                SnackBar(
+                  content: Text(
+                    paylasildi
+                        ? 'Yedek dosyası paylaşıldı. Güvenli bir yerde saklayın.'
+                        : 'Yedek hazırlandı ancak paylaşılmadı.',
+                  ),
+                  backgroundColor:
+                      paylasildi ? AppColors.success : Colors.orange,
                 ),
               );
             },

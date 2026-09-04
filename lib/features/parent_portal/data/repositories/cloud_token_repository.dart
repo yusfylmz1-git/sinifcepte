@@ -110,7 +110,17 @@ class CloudTokenRepository {
       final classRoomPath = '$_classRoomsCollection/$classCloudId';
       final tokenPath = _tokenPath(token.codeHash);
 
-      // Tek batch: sınıf odası + token birlikte yazılır (maliyet kararı #7).
+      // Sınıf öğretmeninin kadro satırı.
+      //
+      // Bu satır yazılmadığı için veli, sınıf öğretmenini kadroda
+      // göremiyordu: kadro yalnızca `ensureClassRoom` çağrıldığında
+      // (duyuru yayımlama veya branş öğretmeni ekleme) oluşuyordu.
+      // Referans kodu üretmek tek başına yeterli olmalı — veli
+      // bağlandığı anda en azından sınıf öğretmeniyle yazışabilmeli.
+      final homeroomPath = '$classRoomPath/staff/$teacherUid';
+
+      // Tek batch: sınıf odası + kadro + token birlikte yazılır
+      // (maliyet kararı #7).
       return await _client.commitBatch({
         classRoomPath: {
           'classCloudId': classCloudId,
@@ -119,6 +129,13 @@ class CloudTokenRepository {
           'schoolName': token.schoolName,
           'teacherUid': teacherUid,
           'teacherName': teacherName,
+          'updatedAt': DateTime.now().toIso8601String(),
+        },
+        homeroomPath: {
+          'teacherUid': teacherUid,
+          'teacherName': teacherName,
+          'branch': 'Sınıf Öğretmeni',
+          'isHomeroom': true,
           'updatedAt': DateTime.now().toIso8601String(),
         },
         tokenPath: {
@@ -262,6 +279,238 @@ class CloudTokenRepository {
     await _client.ensureConfigured();
     if (!_client.isReady) return false;
     return _client.deleteDoc(_tokenPath(codeHash));
+  }
+
+  /// Bir sınıfa bağlı velileri BULUTTAN getirir.
+  ///
+  /// Öğretmenin mesaj kutusu bunu kullanır. Yerel `parent_links` deposu
+  /// yalnızca velinin kendi cihazında dolu olduğu için öğretmen kimin
+  /// bağlandığını oradan göremez — veli mesaj gönderiyor ama öğretmende
+  /// hiçbir yerde görünmüyordu.
+  Future<List<ParentLinkModel>> fetchClassParentLinks({
+    required String classCloudId,
+    required String teacherUid,
+  }) async {
+    await _client.ensureConfigured();
+    final db = _client.db;
+    if (db == null || classCloudId.isEmpty) return const [];
+
+    try {
+      final snap = await db
+          .collection(_linksCollection)
+          .where('classCloudId', isEqualTo: classCloudId)
+          .where('teacherUid', isEqualTo: teacherUid)
+          .limit(200)
+          .get()
+          .timeout(const Duration(seconds: 8));
+
+      await _client.recordQueryReads(snap.docs.length);
+
+      final result = snap.docs.map((d) {
+        final data = d.data();
+        final studentCloudId = data['studentCloudId'] as String? ?? '';
+        return ParentLinkModel(
+          id: d.id,
+          parentUserId: data['parentUid'] as String? ?? '',
+          parentName: data['parentName'] as String? ?? '',
+          studentId: CloudIds.localIdOf(studentCloudId) ?? 0,
+          studentName: data['studentName'] as String? ?? '',
+          studentNumber: (data['studentNumber'] as num?)?.toInt() ?? 0,
+          schoolId: data['schoolId'] as String? ?? '',
+          schoolName: data['schoolName'] as String? ?? '',
+          classId: CloudIds.localIdOf(classCloudId) ?? 0,
+          className: data['className'] as String? ?? '',
+          relation: data['relation'] as String? ?? 'Veli',
+          linkedAt:
+              DateTime.tryParse(data['linkedAt'] as String? ?? '') ??
+                  DateTime.now(),
+          linkedViaTokenCode: '',
+          status: data['status'] as String? ?? 'active',
+          classCloudId: classCloudId,
+          studentCloudId: studentCloudId,
+          teacherUid: data['teacherUid'] as String? ?? '',
+        );
+      }).where((l) => l.status == 'active').toList();
+
+      result.sort((a, b) => a.studentName.compareTo(b.studentName));
+      return result;
+    } catch (e, stackTrace) {
+      debugPrint('fetchClassParentLinks hatası: $e\n$stackTrace');
+      return const [];
+    }
+  }
+
+  /// Velinin bulut erişim kayıtlarını garanti eder.
+  ///
+  /// Kural motoru duyuru ve mesaj okumasını `parent_links` ve
+  /// `parent_class_access` dokümanlarının VARLIĞINA bağlar. Bağ yerel
+  /// yoldan kurulduğunda (bulut doğrulaması atlandığında) bu kayıtlar
+  /// hiç yazılmıyordu; sonuç PERMISSION_DENIED oluyor ve veli ekranı
+  /// sessizce boş kalıyordu — hata yalnızca logda görünüyordu.
+  ///
+  /// Zaten varsa yeniden yazmak zararsızdır (merge).
+  Future<bool> ensureParentAccess({
+    required String parentUid,
+    required String parentName,
+    required String relation,
+    required String studentCloudId,
+    required String classCloudId,
+    required String studentName,
+    required int studentNumber,
+    required String className,
+    required String schoolId,
+    required String schoolName,
+    required String teacherUid,
+    required String codeHash,
+  }) async {
+    await _client.ensureConfigured();
+    if (!_client.isReady) return false;
+    if (parentUid.isEmpty || studentCloudId.isEmpty || classCloudId.isEmpty) {
+      return false;
+    }
+
+    // Kural motoru bağın gerçek bir referans koduna dayandığını
+    // doğruluyor. Kod hash'i olmadan yazma reddedilir; bu, kod bilmeyen
+    // birinin sahte bağ kurup sınıf duyurularını okumasını engeller.
+    if (codeHash.isEmpty) {
+      debugPrint(
+        'ensureParentAccess: codeHash boş — bağ yazılamaz. '
+        'Eski kayıtlarda kod saklanmamış olabilir.',
+      );
+      return false;
+    }
+
+    try {
+      final linkId = CloudIds.parentLinkId(
+        parentUid: parentUid,
+        studentCloudId: studentCloudId,
+      );
+      final accessId = CloudIds.parentClassAccessId(
+        parentUid: parentUid,
+        classCloudId: classCloudId,
+      );
+      final now = DateTime.now().toIso8601String();
+
+      return await _client.commitBatch(<String, Map<String, dynamic>?>{
+        '$_linksCollection/$linkId': {
+          'parentUid': parentUid,
+          'parentName': parentName,
+          'relation': relation,
+          'studentCloudId': studentCloudId,
+          'studentName': studentName,
+          'studentNumber': studentNumber,
+          'classCloudId': classCloudId,
+          'className': className,
+          'schoolId': schoolId,
+          'schoolName': schoolName,
+          'teacherUid': teacherUid,
+          'status': 'active',
+          'linkedAt': now,
+          // Kural motoru bunu `parent_tokens/{codeHash}` ile eşleştirir.
+          'codeHash': codeHash,
+        },
+        '$_classAccessCollection/$accessId': {
+          'parentUid': parentUid,
+          'classCloudId': classCloudId,
+          'studentCloudId': studentCloudId,
+          'grantedAt': now,
+        },
+      });
+    } catch (e, stackTrace) {
+      debugPrint('ensureParentAccess hatası: $e\n$stackTrace');
+      return false;
+    }
+  }
+
+  /// Öğretmen yönü: veli bağını ve sınıf erişimini buluttan kaldırır.
+  ///
+  /// Öğrenci okuldan ayrıldığında (mezuniyet, başka okula nakil, kayıt
+  /// silme) çağrılır. Yerel temizlik tek başına yetmez: bağ ve erişim
+  /// kayıtları bulutta durduğu sürece veli duyuruları görmeye ve
+  /// öğretmene yazmaya devam edebilirdi.
+  ///
+  /// İkisi tek batch'te silinir; yarım kalırsa veli sınıf duyurularını
+  /// görmeye devam ederdi.
+  Future<bool> unlinkParent({
+    required String parentUid,
+    required String studentCloudId,
+    required String classCloudId,
+  }) async {
+    await _client.ensureConfigured();
+    if (!_client.isReady) return false;
+
+    try {
+      final linkId = CloudIds.parentLinkId(
+        parentUid: parentUid,
+        studentCloudId: studentCloudId,
+      );
+      final accessId = CloudIds.parentClassAccessId(
+        parentUid: parentUid,
+        classCloudId: classCloudId,
+      );
+
+      return await _client.commitBatch(<String, Map<String, dynamic>?>{
+        '$_linksCollection/$linkId': null,
+        '$_classAccessCollection/$accessId': null,
+      });
+    } catch (e, stackTrace) {
+      debugPrint('unlinkParent hatası: $e\n$stackTrace');
+      return false;
+    }
+  }
+
+  /// Velinin yalnızca sınıf erişimini değiştirir (şube değişikliği).
+  ///
+  /// Bağ korunur — çocuk aynı çocuktur — ama eski şubenin duyuruları
+  /// kapanıp yenisi açılır. Aksi hâlde her şube değişikliğinde veliye
+  /// yeniden kod dağıtmak gerekirdi.
+  Future<bool> moveClassAccess({
+    required String parentUid,
+    required String studentCloudId,
+    required String oldClassCloudId,
+    required String newClassCloudId,
+    required String newClassName,
+  }) async {
+    await _client.ensureConfigured();
+    if (!_client.isReady) return false;
+    if (oldClassCloudId == newClassCloudId) return true;
+
+    try {
+      final linkId = CloudIds.parentLinkId(
+        parentUid: parentUid,
+        studentCloudId: studentCloudId,
+      );
+      final oldAccessId = CloudIds.parentClassAccessId(
+        parentUid: parentUid,
+        classCloudId: oldClassCloudId,
+      );
+      final newAccessId = CloudIds.parentClassAccessId(
+        parentUid: parentUid,
+        classCloudId: newClassCloudId,
+      );
+
+      // commitBatch her yazmayı merge:true ile yapar; bu yüzden bağ
+      // dokümanının yalnızca sınıf alanı güncellenir, diğerleri korunur.
+      final writes = <String, Map<String, dynamic>?>{
+        '$_classAccessCollection/$newAccessId': {
+          'parentUid': parentUid,
+          'classCloudId': newClassCloudId,
+          'studentCloudId': studentCloudId,
+          'grantedAt': DateTime.now().toIso8601String(),
+        },
+        '$_linksCollection/$linkId': <String, dynamic>{
+          'classCloudId': newClassCloudId,
+          'className': newClassName,
+        },
+      };
+      if (oldAccessId != newAccessId) {
+        writes['$_classAccessCollection/$oldAccessId'] = null;
+      }
+      return await _client.commitBatch(writes);
+    } catch (e, stackTrace) {
+      debugPrint('moveClassAccess hatası: $e\n$stackTrace');
+      return false;
+    }
   }
 
   /// Velinin bağlı olduğu çocuğun bulut kaydını okur (tek doküman).

@@ -61,8 +61,14 @@ class ExamTrackingNotifier extends StateNotifier<ExamTrackingState> {
   Future<void> loadExams() async {
     try {
       state = state.copyWith(isLoading: true, errorMessage: null);
-      await _syncService.syncFromLocalAsset();
-      final exams = await _repository.getAllExams();
+      var exams = await _repository.getAllExams();
+
+      // Veritabanı boşsa ilk defa asset'ten doldur
+      if (exams.isEmpty) {
+        await _syncService.syncFromLocalAsset();
+        exams = await _repository.getAllExams();
+      }
+
       state = state.copyWith(exams: exams, isLoading: false);
 
       // Favori sınavların bildirimlerini arka planda senkronize et

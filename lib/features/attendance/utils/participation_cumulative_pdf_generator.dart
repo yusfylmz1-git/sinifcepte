@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import '../../../core/pdf/pdf_tr_fonts.dart';
 
 /// SınıfCepte - Resmî MEB Dönem Sonu / Yıl Sonu ve Veli Toplantısı Kümülatif PDF Motoru
 class ParticipationCumulativePdfGenerator {
@@ -62,7 +63,7 @@ class ParticipationCumulativePdfGenerator {
     String? schoolName,
     String? principalName,
   }) async {
-    final pdf = pw.Document();
+    final pdf = await PdfTrFonts.document();
 
     final fontRegular = await PdfGoogleFonts.robotoRegular();
     final fontBold = await PdfGoogleFonts.robotoBold();
@@ -255,7 +256,7 @@ class ParticipationCumulativePdfGenerator {
       ),
     );
 
-    return pdf.save();
+    return PdfTrFonts.kaydet(pdf);
   }
 
   /// 2. Veli Toplantısı Sınıf Değerlendirme Kılavuzu (A4 PDF)
@@ -265,7 +266,7 @@ class ParticipationCumulativePdfGenerator {
     String? schoolName,
     String? meetingDateText,
   }) async {
-    final pdf = pw.Document();
+    final pdf = await PdfTrFonts.document();
 
     final fontRegular = await PdfGoogleFonts.robotoRegular();
     final fontBold = await PdfGoogleFonts.robotoBold();
@@ -387,7 +388,7 @@ class ParticipationCumulativePdfGenerator {
       ),
     );
 
-    return pdf.save();
+    return PdfTrFonts.kaydet(pdf);
   }
 
   /// 3. Bireysel Veli Gelişim Karnesi (Tek Sayfa A4 PDF)
@@ -398,7 +399,7 @@ class ParticipationCumulativePdfGenerator {
     required String teacherName,
     String? schoolName,
   }) async {
-    final pdf = pw.Document();
+    final pdf = await PdfTrFonts.document();
 
     final fontRegular = await PdfGoogleFonts.robotoRegular();
     final fontBold = await PdfGoogleFonts.robotoBold();
@@ -585,7 +586,7 @@ class ParticipationCumulativePdfGenerator {
       ),
     );
 
-    return pdf.save();
+    return PdfTrFonts.kaydet(pdf);
   }
 
   static pw.Widget _buildProgressBar({

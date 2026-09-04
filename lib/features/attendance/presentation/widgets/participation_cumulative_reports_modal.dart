@@ -10,6 +10,7 @@ import '../../../classes/providers/class_provider.dart';
 import '../../providers/classroom_participation_provider.dart';
 import '../../utils/participation_cumulative_pdf_generator.dart';
 import '../../utils/participation_whatsapp_helper.dart';
+import '../../../../core/utils/turkish_text.dart';
 
 enum StudentMeetingFilter { all, needsAttention, successful }
 
@@ -75,6 +76,69 @@ class _ParticipationCumulativeReportsModalState
   }
 
   /// Veli Toplantısı verilerini arka planda çeker ve state'e kaydeder
+  /// Sınıf geneli söz hakkı özeti.
+  ///
+  /// Öğretmenin ilk baktığı bilgi: bu dönem kimlerle konuştum,
+  /// kaç öğrenciyi atladım.
+  Widget _buildClassSummary(bool isDark) {
+    final toplam = (_meetingReportData?['classTotalSpeakingTurns'] as int?) ?? 0;
+    final sessiz = (_meetingReportData?['silentStudentCount'] as int?) ?? 0;
+    final ders = (_meetingReportData?['totalLessons'] as int?) ?? 0;
+
+    if (ders == 0) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          'Bu dönem için henüz değerlendirme kaydı yok.',
+          style: AppFonts.outfit(
+            fontSize: 11.5,
+            color: isDark ? Colors.white54 : Colors.black54,
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFD97706).withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: const Color(0xFFD97706).withValues(alpha: 0.25),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.record_voice_over_rounded,
+              size: 18, color: Color(0xFFD97706)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              sessiz > 0
+                  ? '$ders derste $toplam söz hakkı verildi · '
+                      '$sessiz öğrenci hiç konuşmadı'
+                  : '$ders derste $toplam söz hakkı verildi · '
+                      'tüm sınıf söz aldı',
+              style: AppFonts.outfit(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white70 : const Color(0xFF475569),
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _loadMeetingData() async {
     if (_selectedClassId == null) return;
     setState(() => _isMeetingDataLoading = true);
@@ -287,12 +351,12 @@ class _ParticipationCumulativeReportsModalState
     final teacherName = profile.fullName.isNotEmpty ? profile.fullName : 'Ders Öğretmeni';
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.92,
+      height: MediaQuery.sizeOf(context).height * 0.92,
       padding: EdgeInsets.only(
         left: 18,
         right: 18,
         top: 14,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 18,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + 18,
       ),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
@@ -479,6 +543,14 @@ class _ParticipationCumulativeReportsModalState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // SINIF ÖZETİ
+          //
+          // Raporda sınıf geneli hiç görünmüyordu; öğretmen tek tek
+          // öğrenciye bakmak zorundaydı. En çok işine yarayan bilgi
+          // "kaç öğrenci hiç konuşmadı".
+          _buildClassSummary(isDark),
+          const SizedBox(height: 10),
+
           // Tarih Seçici Satırı
           Row(
             children: [
@@ -637,7 +709,7 @@ class _ParticipationCumulativeReportsModalState
     int needsAttentionCount = 0;
     int successCount = 0;
     for (var s in students) {
-      final hw = (s['homeworkRate'] as num?)?.toDouble() ?? 100.0;
+      final hw = (s['homeworkRate'] as num?)?.toDouble() ?? 0.0;
       if (hw < 70) {
         needsAttentionCount++;
       } else if (hw >= 85) {
@@ -647,7 +719,7 @@ class _ParticipationCumulativeReportsModalState
 
     // Filtreleme Mantığı (In-Memory, sıfır ağ gecikmesi, sıfır focus kaybı!)
     final List<Map<String, dynamic>> filteredStudents = students.where((s) {
-      final hw = (s['homeworkRate'] as num?)?.toDouble() ?? 100.0;
+      final hw = (s['homeworkRate'] as num?)?.toDouble() ?? 0.0;
       if (_filterStatus == StudentMeetingFilter.needsAttention && hw >= 70) {
         return false;
       }
@@ -657,8 +729,9 @@ class _ParticipationCumulativeReportsModalState
       if (_studentSearchQuery.isEmpty) return true;
       final name = (s['studentName']?.toString() ?? '').toLowerCase();
       final numStr = s['studentNumber']?.toString() ?? '';
-      final query = _studentSearchQuery.toLowerCase();
-      return name.contains(query) || numStr.contains(query);
+      // `toLowerCase` Turkce'de yaniltiyordu.
+      return trContains(name, _studentSearchQuery) ||
+          numStr.contains(_studentSearchQuery.trim());
     }).toList();
 
     // Vitrinde gösterilecek tek öğrenci (Seçili öğrenci filtrelenen listede varsa o, yoksa ilk eşleşen)
@@ -935,8 +1008,26 @@ class _ParticipationCumulativeReportsModalState
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      // Soz hakki en one alindi: ogretmenin ilk baktigi
+                      // sey "kim konustu, kim hic konusmadi".
+                      Builder(builder: (_) {
+                        final soz =
+                            (studentMap['speakingTurns'] as int?) ?? 0;
+                        return Text(
+                          soz > 0 ? '$soz söz' : 'hiç konuşmadı',
+                          style: AppFonts.outfit(
+                            fontSize: 10.5,
+                            fontWeight:
+                                soz > 0 ? FontWeight.w700 : FontWeight.normal,
+                            color: soz > 0
+                                ? const Color(0xFFD97706)
+                                : (isDark ? Colors.white38 : Colors.black38),
+                          ),
+                        );
+                      }),
+                      const SizedBox(width: 8),
                       Text(
-                        'Ödev: %${((studentMap['homeworkRate'] as num?)?.toDouble() ?? 100.0).toStringAsFixed(0)}',
+                        'Ödev: %${((studentMap['homeworkRate'] as num?)?.toDouble() ?? 0.0).toStringAsFixed(0)}',
                         style: AppFonts.outfit(
                           fontSize: 10.5,
                           color: isDark ? Colors.white60 : Colors.black54,
@@ -967,9 +1058,9 @@ class _ParticipationCumulativeReportsModalState
   }) {
     final sName = student['studentName']?.toString() ?? 'Öğrenci';
     final sNum = student['studentNumber']?.toString() ?? '-';
-    final hwRateNum = (student['homeworkRate'] as num?)?.toDouble() ?? 100.0;
-    final matRateNum = (student['materialsRate'] as num?)?.toDouble() ?? 100.0;
-    final avgStarsNum = (student['averageStars'] as num?)?.toDouble() ?? 3.0;
+    final hwRateNum = (student['homeworkRate'] as num?)?.toDouble() ?? 0.0;
+    final matRateNum = (student['materialsRate'] as num?)?.toDouble() ?? 0.0;
+    final avgStarsNum = (student['averageStars'] as num?)?.toDouble() ?? 0.0;
 
     final hwRate = hwRateNum.toStringAsFixed(0);
     final matRate = matRateNum.toStringAsFixed(0);
@@ -1252,9 +1343,9 @@ class _ParticipationCumulativeReportsModalState
     final hwDone = student['homeworkDone']?.toString() ?? '0';
     final hwPart = student['homeworkPartial']?.toString() ?? '0';
     final hwNone = student['homeworkNone']?.toString() ?? '0';
-    final hwRateNum = (student['homeworkRate'] as num?)?.toDouble() ?? 100.0;
-    final matRateNum = (student['materialsRate'] as num?)?.toDouble() ?? 100.0;
-    final avgStarsNum = (student['averageStars'] as num?)?.toDouble() ?? 3.0;
+    final hwRateNum = (student['homeworkRate'] as num?)?.toDouble() ?? 0.0;
+    final matRateNum = (student['materialsRate'] as num?)?.toDouble() ?? 0.0;
+    final avgStarsNum = (student['averageStars'] as num?)?.toDouble() ?? 0.0;
 
     final hwRate = hwRateNum.toStringAsFixed(0);
     final matRate = matRateNum.toStringAsFixed(0);
