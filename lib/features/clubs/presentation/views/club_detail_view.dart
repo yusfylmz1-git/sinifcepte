@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_fonts.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
+import '../../../auth_profile/data/models/teacher_profile_model.dart';
 import '../../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../data/models/club_model.dart';
 import '../../providers/club_provider.dart';
+import '../../utils/club_bundle_exporter.dart';
 import '../../utils/club_pdf_generator.dart';
 import '../widgets/club_activity_editor.dart';
 import '../widgets/club_member_picker_sheet.dart';
@@ -510,7 +512,71 @@ class _ClubDetailViewState extends ConsumerState<ClubDetailView>
                 ],
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        Navigator.of(sheetContext).pop();
+                        _hepsiTekPdf();
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      icon: const Icon(Icons.picture_as_pdf_rounded,
+                          size: 17, color: Colors.white),
+                      label: Text(
+                        'Hepsi Tek PDF',
+                        style: AppFonts.outfit(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.of(sheetContext).pop();
+                        _ucDosyaPaylas();
+                      },
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: BorderSide(
+                            color:
+                                AppColors.primary.withValues(alpha: 0.5)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      icon: const Icon(Icons.ios_share_rounded,
+                          size: 16, color: AppColors.primary),
+                      label: Text(
+                        '3 Dosya Paylaş',
+                        style: AppFonts.outfit(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 14, 20, 4),
+              child: Divider(height: 1),
+            ),
             _belgeSatiri(
               sheetContext,
               isDark,
@@ -585,6 +651,68 @@ class _ClubDetailViewState extends ConsumerState<ClubDetailView>
         Navigator.of(sheetContext).pop();
         onTap();
       },
+    );
+  }
+
+  /// Üç belgeyi tek PDF olarak açar.
+  ///
+  /// Yazdırıp dosyaya koymak ve tek seferde imzalatmak için; her belge
+  /// kendi künyesi ve imza bloğuyla ayrı sayfada başlar.
+  Future<void> _hepsiTekPdf() async {
+    final veri = await _belgeVerisi();
+    if (!mounted || veri == null) return;
+    await ClubBundleExporter.birlesikAc(
+      context,
+      kulup: _kulup,
+      plan: veri.plan,
+      uyeler: veri.uyeler,
+      faaliyetler: veri.faaliyetler,
+      teacherProfile: veri.profil,
+    );
+  }
+
+  /// Üç belgeyi ayrı dosya olarak paylaşır.
+  Future<void> _ucDosyaPaylas() async {
+    final veri = await _belgeVerisi();
+    if (!mounted || veri == null) return;
+
+    // Üç PDF üretimi birkaç saniye sürebiliyor; kullanıcı beklediğini
+    // görmeli, yoksa düğmeye tekrar basıyor.
+    final mesajci = ScaffoldMessenger.of(context);
+    mesajci.showSnackBar(
+      const SnackBar(content: Text('Belgeler hazırlanıyor…')),
+    );
+
+    try {
+      await ClubBundleExporter.ucDosyaPaylas(
+        kulup: _kulup,
+        plan: veri.plan,
+        uyeler: veri.uyeler,
+        faaliyetler: veri.faaliyetler,
+        teacherProfile: veri.profil,
+      );
+    } catch (e) {
+      mesajci.showSnackBar(
+        SnackBar(content: Text('Belgeler paylaşılamadı: $e')),
+      );
+    }
+  }
+
+  /// Üç belge için gereken veriyi tek seferde okur.
+  Future<({
+    List<ClubPlanRow> plan,
+    List<ClubMember> uyeler,
+    List<ClubActivityLog> faaliyetler,
+    TeacherProfileModel profil,
+  })?> _belgeVerisi() async {
+    final id = _kulup.id;
+    if (id == null) return null;
+    final repo = ref.read(clubRepositoryProvider);
+    return (
+      plan: await repo.plan(_kulup),
+      uyeler: await repo.uyeler(id),
+      faaliyetler: await repo.faaliyetler(id),
+      profil: ref.read(teacherProfileProvider),
     );
   }
 

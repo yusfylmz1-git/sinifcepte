@@ -35,6 +35,34 @@ class ClubPdfGenerator {
 
   static const _kenar = pw.EdgeInsets.symmetric(horizontal: 28, vertical: 22);
 
+  /// Tablo içeriğinin toplam uzunluğuna göre yazı puntosu.
+  ///
+  /// ## Neden gerekli
+  /// On aylık tablo A4 yatay sayfaya sığmadığında imza bloğu ve müdür
+  /// OLUR'u ikinci sayfaya kayıyordu — imza tek başına boş sayfada
+  /// kalıyor, resmî evrak kullanılamaz hâle geliyordu. 52 kulübün
+  /// faaliyet raporu tarandığında 10'unda bu yaşandı.
+  ///
+  /// Çözüm sayfa eklemek değil KÜÇÜLTMEK: öğretmen tek sayfalık,
+  /// imzalanabilir bir belge istiyor. 6.4 punto alt sınır — altına
+  /// inilirse okunmuyor.
+  ///
+  /// Eşikler ölçümle bulundu: paketteki en uzun faaliyet raporu
+  /// ~5200 karakter, en kısası ~2100.
+  static double _icerigeGorePunto(int karakter) {
+    if (karakter <= 2300) return 7.6;
+    if (karakter <= 2600) return 7.2;
+    if (karakter <= 2900) return 6.9;
+    if (karakter <= 3200) return 6.6;
+    return 6.4;
+  }
+
+  /// Puntoya göre hücre dolgusu — küçük yazıda dolgu da küçülmeli.
+  static pw.EdgeInsets _dolgu(double punto) => pw.EdgeInsets.symmetric(
+        horizontal: 5,
+        vertical: punto >= 7.4 ? 4 : 2.5,
+      );
+
   // ------------------------------------------------------------------
   // 1. YILLIK ÇALIŞMA PLANI
   // ------------------------------------------------------------------
@@ -45,7 +73,32 @@ class ClubPdfGenerator {
     required TeacherProfileModel teacherProfile,
   }) async {
     final pdf = await PdfTrFonts.document();
+    yillikPlanSayfasi(
+      pdf: pdf,
+      kulup: kulup,
+      plan: plan,
+      teacherProfile: teacherProfile,
+    );
+    return PdfTrFonts.kaydet(pdf);
+  }
+
+  /// Yıllık planı VAR OLAN belgeye sayfa olarak ekler.
+  ///
+  /// Üç belgeyi tek PDF'te birleştirebilmek için üretim ile belge
+  /// oluşturma ayrıldı; `ClubBundleExporter` bu üçünü arka arkaya
+  /// çağırıyor.
+  static void yillikPlanSayfasi({
+    required pw.Document pdf,
+    required ClubModel kulup,
+    required List<ClubPlanRow> plan,
+    required TeacherProfileModel teacherProfile,
+  }) {
     final yil = AppDateFormatter.academicYearLabel();
+
+    // Uzun planlarda yazı küçülür ki imza bloğu aynı sayfada kalsın.
+    final punto = _icerigeGorePunto(
+      plan.fold(0, (t, s) => t + s.amac.length + s.etkinlik.length),
+    );
 
     pdf.addPage(
       pw.MultiPage(
@@ -70,9 +123,9 @@ class ClubPdfGenerator {
             ),
             headerDecoration:
                 const pw.BoxDecoration(color: PdfColors.grey300),
-            cellStyle: const pw.TextStyle(fontSize: 8, color: PdfColors.black),
-            cellPadding:
-                const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+            cellStyle:
+                pw.TextStyle(fontSize: punto, color: PdfColors.black),
+            cellPadding: _dolgu(punto),
             cellAlignments: {
               0: pw.Alignment.center,
               1: pw.Alignment.topLeft,
@@ -88,15 +141,10 @@ class ClubPdfGenerator {
                 .map((s) => [s.ay, s.amac, s.etkinlik])
                 .toList(growable: false),
           ),
-          pw.SizedBox(height: 18),
-          _ucluImza(teacherProfile),
-          pw.SizedBox(height: 10),
-          _olur(teacherProfile),
+          _imzaBlogu(teacherProfile),
         ],
       ),
     );
-
-    return PdfTrFonts.kaydet(pdf);
   }
 
   static Future<void> yillikPlanAc(
@@ -127,6 +175,22 @@ class ClubPdfGenerator {
     required TeacherProfileModel teacherProfile,
   }) async {
     final pdf = await PdfTrFonts.document();
+    uyeListesiSayfasi(
+      pdf: pdf,
+      kulup: kulup,
+      uyeler: uyeler,
+      teacherProfile: teacherProfile,
+    );
+    return PdfTrFonts.kaydet(pdf);
+  }
+
+  /// Üye listesini var olan belgeye sayfa olarak ekler.
+  static void uyeListesiSayfasi({
+    required pw.Document pdf,
+    required ClubModel kulup,
+    required List<ClubMember> uyeler,
+    required TeacherProfileModel teacherProfile,
+  }) {
     final yil = AppDateFormatter.academicYearLabel();
 
     pdf.addPage(
@@ -216,15 +280,10 @@ class ClubPdfGenerator {
                 color: PdfColors.black,
               ),
             ),
-          pw.SizedBox(height: 18),
-          _ucluImza(teacherProfile),
-          pw.SizedBox(height: 10),
-          _olur(teacherProfile),
+          _imzaBlogu(teacherProfile),
         ],
       ),
     );
-
-    return PdfTrFonts.kaydet(pdf);
   }
 
   static Future<void> uyeListesiAc(
@@ -257,10 +316,40 @@ class ClubPdfGenerator {
     required TeacherProfileModel teacherProfile,
   }) async {
     final pdf = await PdfTrFonts.document();
+    faaliyetRaporuSayfasi(
+      pdf: pdf,
+      kulup: kulup,
+      plan: plan,
+      faaliyetler: faaliyetler,
+      uyeSayisi: uyeSayisi,
+      teacherProfile: teacherProfile,
+    );
+    return PdfTrFonts.kaydet(pdf);
+  }
+
+  /// Faaliyet raporunu var olan belgeye sayfa olarak ekler.
+  static void faaliyetRaporuSayfasi({
+    required pw.Document pdf,
+    required ClubModel kulup,
+    required List<ClubPlanRow> plan,
+    required List<ClubActivityLog> faaliyetler,
+    required int uyeSayisi,
+    required TeacherProfileModel teacherProfile,
+  }) {
     final yil = AppDateFormatter.academicYearLabel();
 
     // Ay adına göre eşle: plan ile rapor satırları yan yana bassın.
     final planAyMap = {for (final p in plan) p.ay: p};
+
+    // Raporda İKİ metin sütunu var (planlanan + gerçekleşen); plandan
+    // daha uzun, küçültme burada daha çok gerekiyor.
+    final punto = _icerigeGorePunto(
+      faaliyetler.fold<int>(
+        0,
+        (t, f) =>
+            t + f.yapilanCalisma.length + (planAyMap[f.ay]?.amac.length ?? 0),
+      ),
+    );
 
     pdf.addPage(
       pw.MultiPage(
@@ -293,9 +382,9 @@ class ClubPdfGenerator {
             ),
             headerDecoration:
                 const pw.BoxDecoration(color: PdfColors.grey300),
-            cellStyle: const pw.TextStyle(fontSize: 8, color: PdfColors.black),
-            cellPadding:
-                const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+            cellStyle:
+                pw.TextStyle(fontSize: punto, color: PdfColors.black),
+            cellPadding: _dolgu(punto),
             cellAlignments: {
               0: pw.Alignment.center,
               1: pw.Alignment.topLeft,
@@ -326,15 +415,10 @@ class ClubPdfGenerator {
                 ],
             ],
           ),
-          pw.SizedBox(height: 18),
-          _ucluImza(teacherProfile),
-          pw.SizedBox(height: 10),
-          _olur(teacherProfile),
+          _imzaBlogu(teacherProfile),
         ],
       ),
     );
-
-    return PdfTrFonts.kaydet(pdf);
   }
 
   static Future<void> faaliyetRaporuAc(
@@ -427,6 +511,30 @@ class ClubPdfGenerator {
           style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.black),
         ),
       );
+
+  /// İmza ve OLUR bloğu — TEK parça.
+  ///
+  /// ## Neden tek widget
+  /// İmza ile OLUR ayrı widget'ken `MultiPage` ikisini sayfalama
+  /// sırasında ayırabiliyordu; tablo birinci sayfayı doldurduğunda
+  /// imza bloğu TEK BAŞINA ikinci sayfaya düşüyordu. 52 kulübün
+  /// faaliyet raporu tarandığında 10'unda bu yaşandı.
+  ///
+  /// Tek `Column` içinde birleştirilince MultiPage bloğu bölmüyor:
+  /// ya tamamı sığıyor ya tamamı birlikte taşıyor. Taşıdığında bile
+  /// tablonun son satırlarıyla aynı sayfada kalıyor, çünkü blok
+  /// tablodan hemen sonra geliyor.
+  static pw.Widget _imzaBlogu(TeacherProfileModel teacherProfile) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+      children: [
+        pw.SizedBox(height: 16),
+        _ucluImza(teacherProfile),
+        pw.SizedBox(height: 8),
+        _olur(teacherProfile),
+      ],
+    );
+  }
 
   /// Kurul başkanı — danışman öğretmen — kulüp temsilcisi.
   ///
