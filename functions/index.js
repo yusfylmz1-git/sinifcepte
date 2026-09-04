@@ -120,6 +120,64 @@ export const publishRemoteConfig = onCall(
 );
 
 /**
+ * ÖSYM sayfasını indirir — kararsız sunucu için yeniden denemeli.
+ *
+ * ## Neden yeniden deneme gerekiyor
+ * Sunucu tutarsız davranıyor. Aynı istek 20 saniye arayla üç kez
+ * gönderildiğinde ölçülen (Eylül 2026):
+ *
+ *     deneme 1: 25000 ms  TIMEOUT
+ *     deneme 2:   276 ms  HTTP 200, 1 MB
+ *     deneme 3: 25000 ms  TIMEOUT
+ *
+ * HTTP 200 başlığı hemen geliyor ama gövde bazen hiç akmıyor.
+ * Başlıklarla ilgisi yok — önce User-Agent sanılmıştı, ölçüm çürüttü.
+ *
+ * Tek denemede başarı şansı ~1/3. Üç denemeyle ~%97'ye çıkıyor.
+ */
+async function osymSayfasiniAl() {
+  const DENEME = 3;
+  let sonHata = null;
+
+  for (let i = 1; i <= DENEME; i++) {
+    try {
+      const yanit = await fetch(OSYM_TAKVIM_URL, {
+        headers: { 'User-Agent': 'Mozilla/5.0 Chrome/131.0' },
+        // Kısa tutuluyor: başarılı yanıt 300 ms'de geliyor, bekleyen
+        // istek zaten hiç dönmeyecek. Erken vazgeçip yeniden denemek
+        // uzun beklemekten iyi.
+        signal: AbortSignal.timeout(12000),
+      });
+
+      if (!yanit.ok) {
+        sonHata = new Error(`sunucu ${yanit.status} döndü`);
+        continue;
+      }
+
+      const govde = await yanit.text();
+      if (govde.length < 1000) {
+        sonHata = new Error('sayfa eksik geldi');
+        continue;
+      }
+      return govde;
+    } catch (e) {
+      sonHata = e;
+      // Son denemeden sonra beklemeye gerek yok.
+      if (i < DENEME) {
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+    }
+  }
+
+  throw new HttpsError(
+    'unavailable',
+    `ÖSYM sayfasına ${DENEME} denemede ulaşılamadı (${sonHata?.message}). ` +
+      'Site şu an yanıt vermiyor olabilir; birkaç dakika sonra tekrar ' +
+      'deneyin.'
+  );
+}
+
+/**
  * ÖSYM sınav takvimini çeker ve mevcut veriyle karşılaştırır.
  *
  * Girdi : { mevcut: [ {doc_id, examDate, ...}, ... ] }
@@ -152,35 +210,7 @@ export const fetchOsymTakvim = onCall(
       throw new HttpsError(yetki.kod, yetki.mesaj);
     }
 
-    let html;
-    try {
-      const yanit = await fetch(OSYM_TAKVIM_URL, {
-        headers: {
-          // Varsayılan istemci başlığıyla bazı kamu siteleri yanıt
-          // vermiyor.
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-            '(KHTML, like Gecko) Chrome/131.0 Safari/537.36',
-          'Accept-Language': 'tr-TR,tr;q=0.9',
-        },
-        signal: AbortSignal.timeout(40000),
-      });
-
-      if (!yanit.ok) {
-        throw new HttpsError(
-          'unavailable',
-          `ÖSYM sayfası ${yanit.status} döndü. Site geçici olarak ` +
-            'erişilemez olabilir; sonra tekrar deneyin.'
-        );
-      }
-      html = await yanit.text();
-    } catch (e) {
-      if (e instanceof HttpsError) throw e;
-      throw new HttpsError(
-        'unavailable',
-        `ÖSYM sayfasına ulaşılamadı: ${e.message}`
-      );
-    }
+    const html = await osymSayfasiniAl();
 
     const sonuc = ayristir(html);
     if (!sonuc.ok) {
