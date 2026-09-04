@@ -14,14 +14,42 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <link rel="stylesheet" href="css/admin_styles.css">
-  <script src="js/auth_gate.js"></script>
 </head>
 <body>
 
   <!-- Toast Bildirim Konteyneri -->
   <div id="toast-container" class="toast-container"></div>
 
-  <div class="admin-layout">
+  <!--
+    GIRIS KAPISI
+    Panel icerigi giris yapilmadan gorunmez. Asil koruma sunucuda
+    (publishRemoteConfig claim'i kendi dogrular); burasi arayuz katmani.
+  -->
+  <div id="admin-login-gate" class="login-gate">
+    <div class="login-card">
+      <div class="app-logo login-logo">SC</div>
+      <h1>SınıfCepte Yönetim Portalı</h1>
+      <p class="login-sub">
+        Devam etmek için yönetici hesabınızla giriş yapın.
+      </p>
+
+      <button class="btn btn-primary login-btn" onclick="window.SinifCepteAdminAuth.signIn()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 11v2.8h6.6c-.3 1.7-2 5-6.6 5-4 0-7.2-3.3-7.2-7.4S8 4 12 4c2.3 0 3.8.9 4.6 1.7l3.1-3C17.7 1 15.1 0 12 0 5.4 0 0 5.4 0 12s5.4 12 12 12c6.9 0 11.5-4.9 11.5-11.7 0-.8-.1-1.4-.2-2H12z"/>
+        </svg>
+        Google ile Giriş Yap
+      </button>
+
+      <div id="admin-login-error" class="login-error" style="display: none;"></div>
+
+      <p class="login-note">
+        Yetkiniz yoksa giriş yapamazsınız. Yetki yalnızca süper yönetici
+        tarafından verilir.
+      </p>
+    </div>
+  </div>
+
+  <div class="admin-layout" id="admin-shell" style="display: none;">
     
     <!-- SOL MENÜ (SIDEBAR) -->
     <aside class="sidebar">
@@ -85,6 +113,15 @@
           <button id="theme-toggle" class="theme-toggle-btn" title="Temayı Değiştir">
             🌓
           </button>
+
+          <!-- Oturum: hangi hesapla, hangi yetkiyle girildiği görünsün -->
+          <div class="admin-account">
+            <span id="admin-account-email"></span>
+            <span id="admin-role-badge" class="badge">Giriş yok</span>
+            <button class="btn btn-secondary" title="Çıkış yap" onclick="window.SinifCepteAdminAuth.signOut()">
+              Çıkış
+            </button>
+          </div>
         </div>
       </header>
 
@@ -362,7 +399,7 @@
                   ➕ Yeni Sınav Ekle
                 </button>
 
-                <button class="btn btn-success" title="Sınav takvimini mobil uygulamalara gönderir. Öğretmenler uygulamayı güncellemeden yeni tarihleri görür." onclick="window.adminApp.publishExamsToMobile()">
+                <button class="btn btn-success" data-publish-exams title="Sınav takvimini mobil uygulamalara gönderir. Öğretmenler uygulamayı güncellemeden yeni tarihleri görür." onclick="window.adminApp.publishExamsToMobile()">
                   🚀 Mobil Uygulamaya Yayınla
                 </button>
               </div>
@@ -1081,5 +1118,12 @@
   <script src="js/manifest_manager.js"></script>
   <script src="js/cloud_exporter.js"></script>
   <script src="js/admin_app.js"></script>
+  <!--
+    ES modulu: Firebase Web SDK'yi CDN'den ice aktariyor. Panelde derleme
+    adimi yok, bu yuzden paket yoneticisi yerine dogrudan modul yolu.
+    Diger scriptlerden SONRA yuklenir; giris gelince window.adminApp
+    hazir olsun diye.
+  -->
+  <script type="module" src="js/auth_gate.js"></script>
 </body>
 </html>

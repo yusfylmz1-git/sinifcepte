@@ -88,6 +88,7 @@ Bunlar şema kararlarıdır, sonradan eklenemezler:
 | 6 | Token bağlantı sonrası silinir | ✅ Faz 2 |
 | 7 | Toplu yazma (`WriteBatch`) | ✅ Faz 2 |
 | 8 | Sınav takvimi Remote Config yükünde (Storage/Firestore değil) | ✅ |
+| 9 | Yayın tek Cloud Function'da; panel anahtar taşımaz | ✅ |
 
 **#8 neden Remote Config:** Sınav paketi 7 KB, parametre sınırı 1 MB.
 Storage'dan dağıtmak ayda ~1 dolar tutardı (30.000 öğretmen), Firestore
@@ -99,6 +100,15 @@ dizini APK ile geliyor; sürüm numarası yalnızca "güncelleme var" uyarısı
 üretiyor. Sınav tarihleri yıl içinde değiştiği için (ertelenen LGS,
 açıklanan başvuru tarihi) bu modülde uygulama güncellemesi beklemek
 kabul edilemezdi.
+
+**#9 fonksiyon maliyeti:** `publishRemoteConfig` yılda birkaç kez
+çağrılıyor — sınav tarihi değiştiğinde. Blaze ücretsiz katmanı ayda 2M
+çağrı; fiilen sıfır. Blaze zorunlu çünkü Cloud Functions Spark planında
+yok.
+
+Alternatif "panel doğrudan yazsın" olurdu ama Remote Config'e yazmak
+Admin SDK istiyor; anahtar tarayıcıya konsaydı paneli açan herkes
+projenin tam yetkisini alırdı.
 
 **#5 neden ertelendi:** Delta senkron zaten okumaların %90'ını sıfırlıyor.
 Bu ek optimizasyon gerçek kullanım verisi görülmeden yapılırsa şemayı

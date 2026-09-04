@@ -1297,7 +1297,7 @@ class AdminApp {
    * Uretilen dosya Remote Config'e su komutla yayinlanir:
    *   node scripts/admin/publish_remote_config.mjs remote_config_params.json
    */
-  publishExamsToMobile() {
+  async publishExamsToMobile() {
     const sinavSayisi = this.examsManager.getAllExams().length;
     if (sinavSayisi === 0) {
       this.showToast('Yayınlanacak sınav yok.', 'error');
@@ -1307,21 +1307,67 @@ class AdminApp {
     const onay = confirm(
       `${sinavSayisi} sınav mobil uygulamalara yayınlanacak.\n\n` +
         'Öğretmenler uygulamayı güncellemeden yeni tarihleri görecek.\n' +
-        'Sürüm numarası artırılacak ve indirilen dosyayı yayın komutuyla ' +
-        'Remote Config’e göndermeniz gerekecek.\n\nDevam edilsin mi?'
+        'Cihazlar en geç 6 saat içinde alır; öğretmen "yenile" derse ' +
+        'anında.\n\nDevam edilsin mi?'
     );
     if (!onay) return;
 
-    const yeniSurum = this.manifestManager.incrementExamsVersion();
-    // examsManager verilince `exams_payload` da dosyaya girer.
-    this.manifestManager.downloadRemoteConfigJson(this.examsManager);
+    const dugme = document.querySelector('[data-publish-exams]');
+    if (dugme) {
+      dugme.disabled = true;
+      dugme.textContent = '⏳ Yayınlanıyor…';
+    }
 
-    this.updateDashboardStats();
-    this.showToast(
-      `Sınav takvimi v${yeniSurum} hazırlandı (${sinavSayisi} sınav). ` +
-        'İndirilen dosyayı publish_remote_config.mjs ile yayınlayın 🚀',
-      'success'
-    );
+    // Sürüm ÖNCE artırılıyor ama yayın başarısız olursa geri alınıyor:
+    // aksi hâlde sayaç ilerler, bir dahaki denemede "zaten güncel"
+    // sanılır ve veri hiç gitmez.
+    const oncekiSurum = this.manifestManager.manifest.examsVersion || 1;
+    const yeniSurum = this.manifestManager.incrementExamsVersion();
+
+    try {
+      const sonuc = await window.SinifCepteAdminAuth.publishRemoteConfig(
+        this.manifestManager.toRemoteConfigParams(this.examsManager)
+      );
+
+      this.updateDashboardStats();
+      this.showToast(
+        `${sinavSayisi} sınav yayınlandı (v${yeniSurum}). ` +
+          'Öğretmenler en geç 6 saat içinde alacak 🚀',
+        'success'
+      );
+      console.info('Remote Config sürümü:', sonuc?.version);
+    } catch (e) {
+      // Sayaç geri alınır ki yeniden denenebilsin.
+      this.manifestManager.manifest.examsVersion = oncekiSurum;
+      this.manifestManager.save();
+
+      this.showToast(this.yayinHatasi(e), 'error');
+      console.error('Yayın hatası:', e);
+    } finally {
+      if (dugme) {
+        dugme.disabled = false;
+        dugme.textContent = '🚀 Mobil Uygulamaya Yayınla';
+      }
+    }
+  }
+
+  /** Fonksiyon hatasını öğretmenin anlayacağı dile çevirir. */
+  yayinHatasi(e) {
+    switch (e?.code) {
+      case 'functions/unauthenticated':
+        return 'Oturumunuz düşmüş. Çıkıp yeniden giriş yapın.';
+      case 'functions/permission-denied':
+        return 'Bu işlem için süper yönetici yetkisi gerekiyor.';
+      case 'functions/invalid-argument':
+        return `Veri reddedildi: ${e.message}`;
+      case 'functions/unavailable':
+      case 'functions/deadline-exceeded':
+        return 'Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin.';
+      case 'functions/not-found':
+        return 'Yayın işlevi bulunamadı. Önce `firebase deploy --only functions` çalıştırın.';
+      default:
+        return `Yayın başarısız: ${e?.message || e}`;
+    }
   }
 
   resetExamsToDefault() {
