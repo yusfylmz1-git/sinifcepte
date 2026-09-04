@@ -1,0 +1,493 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_fonts.dart';
+import '../../../../shared/widgets/custom_app_bar.dart';
+import '../../../auth_profile/providers/teacher_profile_provider.dart';
+import '../../data/models/club_model.dart';
+import '../../providers/club_provider.dart';
+import '../../utils/club_pdf_generator.dart';
+import '../widgets/club_activity_editor.dart';
+import '../widgets/club_member_picker_sheet.dart';
+import '../widgets/club_plan_editor.dart';
+
+/// Bir kulübün üç işi: plan, üyeler, faaliyet raporu.
+///
+/// Yönetmeliğin danışman öğretmenden istediği üç evrak burada üretilir.
+/// Sekmeler evrakların hazırlanma sırasına göre dizilmiştir: yıl başında
+/// plan, ardından üye kaydı, yıl sonunda rapor.
+class ClubDetailView extends ConsumerStatefulWidget {
+  const ClubDetailView({super.key, required this.kulup});
+
+  final ClubModel kulup;
+
+  @override
+  ConsumerState<ClubDetailView> createState() => _ClubDetailViewState();
+}
+
+class _ClubDetailViewState extends ConsumerState<ClubDetailView>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tab;
+
+  /// Kulüp adı düzenlenince listeden gelen kopya eskir; güncel hâli
+  /// burada tutulur.
+  late ClubModel _kulup;
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = TabController(length: 3, vsync: this);
+    _kulup = widget.kulup;
+  }
+
+  @override
+  void dispose() {
+    _tab.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final yil = ref.watch(currentAcademicYearProvider);
+
+    return Scaffold(
+      backgroundColor:
+          isDark ? AppColors.darkBackground : const Color(0xFFF8FAFC),
+      appBar: CustomAppBar(
+        title: _kulup.ad,
+        subtitle: '$yil Öğretim Yılı',
+        showProfileAvatar: false,
+        actions: [
+          IconButton(
+            tooltip: 'Kulübü sil',
+            icon: Icon(
+              Icons.delete_outline_rounded,
+              color: isDark ? Colors.white70 : const Color(0xFF334155),
+            ),
+            onPressed: _silmeyiSor,
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Container(
+            color: isDark ? AppColors.darkCardBackground : Colors.white,
+            child: TabBar(
+              controller: _tab,
+              labelColor: AppColors.primary,
+              unselectedLabelColor: isDark
+                  ? AppColors.textSecondaryDark
+                  : AppColors.textSecondaryLight,
+              indicatorColor: AppColors.primary,
+              labelStyle: AppFonts.outfit(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+              ),
+              unselectedLabelStyle: AppFonts.outfit(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
+              tabs: const [
+                Tab(text: 'Yıllık Plan'),
+                Tab(text: 'Üyeler'),
+                Tab(text: 'Faaliyet'),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tab,
+              children: [
+                ClubPlanEditor(
+                  kulup: _kulup,
+                  onKulupDegisti: (yeni) => setState(() => _kulup = yeni),
+                ),
+                _uyelerSekmesi(isDark),
+                ClubActivityEditor(kulup: _kulup),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // Üyeler sekmesi
+  // ------------------------------------------------------------------
+
+  Widget _uyelerSekmesi(bool isDark) {
+    final uyeler = ref.watch(clubMembersProvider(_kulup.id ?? 0));
+
+    return Stack(
+      children: [
+        uyeler.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                'Üyeler yüklenemedi.\n$e',
+                textAlign: TextAlign.center,
+                style: AppFonts.outfit(
+                  fontSize: 13,
+                  color: isDark ? Colors.white70 : const Color(0xFF334155),
+                ),
+              ),
+            ),
+          ),
+          data: (liste) => liste.isEmpty
+              ? _bosUye(isDark)
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 92),
+                  itemCount: liste.length + 1,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (context, i) {
+                    if (i == liste.length) {
+                      return _pdfDugmesi(
+                        isDark,
+                        'Üye Listesi PDF',
+                        Icons.picture_as_pdf_outlined,
+                        () => _uyeListesiPdf(liste),
+                      );
+                    }
+                    return _uyeSatiri(isDark, liste[i], i + 1);
+                  },
+                ),
+        ),
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: FloatingActionButton.extended(
+            heroTag: 'uye_ekle',
+            onPressed: _uyeEkle,
+            backgroundColor: AppColors.primary,
+            icon: const Icon(Icons.person_add_alt_1_rounded,
+                color: Colors.white),
+            label: Text(
+              'Üye Ekle',
+              style: AppFonts.outfit(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _uyeSatiri(bool isDark, ClubMember uye, int sira) {
+    final temsilciMi = _kulup.temsilciUyeId != null &&
+        _kulup.temsilciUyeId == uye.id;
+
+    return Material(
+      color: isDark ? AppColors.darkCardBackground : Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _uyeSecenekleri(uye, temsilciMi),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 24,
+                child: Text(
+                  '$sira',
+                  style: AppFonts.outfit(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isDark
+                        ? AppColors.textSecondaryDark
+                        : AppColors.textSecondaryLight,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      uye.adSoyad,
+                      style: AppFonts.outfit(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    Text(
+                      [
+                        if (uye.sinifAdi.isNotEmpty) uye.sinifAdi,
+                        if (uye.okulNo > 0) 'No: ${uye.okulNo}',
+                        uye.gorev,
+                      ].join(' · '),
+                      style: AppFonts.outfit(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                        color: isDark
+                            ? AppColors.textSecondaryDark
+                            : AppColors.textSecondaryLight,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (temsilciMi)
+                const Icon(Icons.star_rounded,
+                    size: 19, color: AppColors.warning),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _bosUye(bool isDark) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.person_add_alt_outlined,
+                size: 52,
+                color: isDark ? Colors.white24 : const Color(0xFFCBD5E1)),
+            const SizedBox(height: 12),
+            Text(
+              'Henüz üye eklenmemiş',
+              style: AppFonts.outfit(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              'Kulüp farklı şubelerden öğrenci alabilir. Üye eklerken '
+              'sınıf seçilir.',
+              textAlign: TextAlign.center,
+              style: AppFonts.outfit(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+                height: 1.45,
+                color: isDark
+                    ? AppColors.textSecondaryDark
+                    : AppColors.textSecondaryLight,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _pdfDugmesi(
+    bool isDark,
+    String etiket,
+    IconData ikon,
+    VoidCallback onTap,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: OutlinedButton.icon(
+        onPressed: onTap,
+        icon: Icon(ikon, size: 18, color: AppColors.primary),
+        label: Text(
+          etiket,
+          style: AppFonts.outfit(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w700,
+            color: AppColors.primary,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size.fromHeight(46),
+          side: BorderSide(color: AppColors.primary.withValues(alpha: 0.5)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // İşlemler
+  // ------------------------------------------------------------------
+
+  Future<void> _uyeEkle() async {
+    final id = _kulup.id;
+    if (id == null) return;
+    await ClubMemberPickerSheet.show(context, clubId: id);
+    if (!mounted) return;
+    ref.invalidate(clubMembersProvider(id));
+  }
+
+  Future<void> _uyeSecenekleri(ClubMember uye, bool temsilciMi) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final secim = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor:
+          isDark ? AppColors.darkCardBackground : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.star_outline_rounded,
+                  color: AppColors.warning),
+              title: Text(
+                temsilciMi
+                    ? 'Kulüp temsilciliğini kaldır'
+                    : 'Kulüp temsilcisi yap',
+                style: AppFonts.outfit(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                ),
+              ),
+              onTap: () => Navigator.of(sheetContext).pop('temsilci'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.person_remove_outlined,
+                  color: AppColors.danger),
+              title: Text(
+                'Üyelikten çıkar',
+                style: AppFonts.outfit(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                ),
+              ),
+              onTap: () => Navigator.of(sheetContext).pop('sil'),
+            ),
+            const SizedBox(height: 6),
+          ],
+        ),
+      ),
+    );
+
+    if (secim == null || !mounted) return;
+    final repo = ref.read(clubRepositoryProvider);
+    final clubId = _kulup.id;
+    if (clubId == null) return;
+
+    if (secim == 'temsilci') {
+      // Temsilci tek kişidir: yeni seçim öncekini düşürür. Görev alanı
+      // da güncellenir ki üye listesi PDF'i doğru bassın.
+      final yeni = _kulup.copyWith(
+        temsilciUyeId: temsilciMi ? null : uye.id,
+        temsilciTemizle: temsilciMi,
+      );
+      await repo.kulupGuncelle(yeni);
+
+      final hepsi = await repo.uyeler(clubId);
+      for (final u in hepsi) {
+        final olmali = !temsilciMi && u.id == uye.id
+            ? 'Kulüp Temsilcisi'
+            : 'Üye';
+        if (u.gorev != olmali) {
+          await repo.uyeGuncelle(u.copyWith(gorev: olmali));
+        }
+      }
+
+      if (!mounted) return;
+      setState(() => _kulup = yeni);
+      await ref.read(clubListProvider.notifier).yukle();
+    } else if (secim == 'sil') {
+      final uyeId = uye.id;
+      if (uyeId != null) await repo.uyeSil(uyeId);
+      if (_kulup.temsilciUyeId == uye.id) {
+        final yeni = _kulup.copyWith(temsilciTemizle: true);
+        await repo.kulupGuncelle(yeni);
+        if (mounted) setState(() => _kulup = yeni);
+      }
+    }
+
+    if (!mounted) return;
+    ref.invalidate(clubMembersProvider(clubId));
+  }
+
+  Future<void> _uyeListesiPdf(List<ClubMember> uyeler) async {
+    final profil = ref.read(teacherProfileProvider);
+    await ClubPdfGenerator.uyeListesiAc(
+      context,
+      kulup: _kulup,
+      uyeler: uyeler,
+      teacherProfile: profil,
+    );
+  }
+
+  Future<void> _silmeyiSor() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor:
+            isDark ? AppColors.darkCardBackground : Colors.white,
+        title: Text(
+          'Kulüp silinsin mi?',
+          style: AppFonts.outfit(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+          ),
+        ),
+        content: Text(
+          '${_kulup.ad} ve bu kulübe ait üye kayıtları ile faaliyet '
+          'kayıtları silinecek. Bu işlem geri alınamaz.',
+          style: AppFonts.outfit(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w500,
+            height: 1.45,
+            color: isDark ? Colors.white70 : const Color(0xFF334155),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(
+              'Vazgeç',
+              style: AppFonts.outfit(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                color: isDark
+                    ? AppColors.textSecondaryDark
+                    : AppColors.textSecondaryLight,
+              ),
+            ),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(
+              'Sil',
+              style: AppFonts.outfit(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (onay != true || !mounted) return;
+    final id = _kulup.id;
+    if (id == null) return;
+    await ref.read(clubListProvider.notifier).sil(id);
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
+}

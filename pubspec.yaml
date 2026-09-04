@@ -111,6 +111,7 @@ flutter:
     - assets/data/sinif_rehberlik_plani.json.gz
     - assets/data/belirli_gun_hafta.json.gz
     - assets/data/pano_icerikleri.json.gz
+    - assets/data/kulup_planlari.json.gz
     - assets/data/schools/schools_manifest.json.gz
     - assets/data/schools/tr_01.json.gz
     - assets/data/schools/tr_02.json.gz

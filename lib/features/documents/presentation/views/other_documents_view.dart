@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_fonts.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
+import '../../../clubs/presentation/screens/clubs_hub_screen.dart';
 import 'special_days_view.dart';
 
 /// Sınıf dışı resmî evraklar.
@@ -34,11 +35,6 @@ class OtherDocumentsView extends StatelessWidget {
         aciklama: 'Özlük bilgileri, ders programı ve yıllık plan özeti',
         ikon: Icons.badge_outlined,
       ),
-      (
-        ad: 'Sosyal Kulüp Planı',
-        aciklama: 'Kulüp yıllık çalışma planı ve üye listesi',
-        ikon: Icons.groups_2_outlined,
-      ),
     ];
 
     return Scaffold(
@@ -62,6 +58,15 @@ class OtherDocumentsView extends StatelessWidget {
               aciklama: 'Çizelge · etkinlik planı, çalışma raporu, pano PDF',
               ikon: Icons.event_available_rounded,
               hedef: const SpecialDaysView(),
+            ),
+            const SizedBox(height: 18),
+            _hazirKart(
+              context,
+              isDark,
+              ad: 'Sosyal Kulüpler',
+              aciklama: 'EK-4 çizelgesi · yıllık plan, üye listesi, faaliyet raporu',
+              ikon: Icons.groups_2_outlined,
+              hedef: const ClubsHubScreen(),
             ),
             const SizedBox(height: 18),
             Text(

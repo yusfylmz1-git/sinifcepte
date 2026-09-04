@@ -153,7 +153,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 22,
+      version: 23,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
       onConfigure: _onConfigure,
@@ -877,9 +877,123 @@ class DatabaseHelper {
         UNIQUE(plan_id, outcome_code)
       )
     ''');
+
+    // Sosyal kulup (MEB Sosyal Etkinlikler Yonetmeligi MADDE 8).
+    //
+    // Kulup SINIFA degil OKULA baglidir: brans ogretmeni farkli
+    // subelerden ogrenci alir. Bu yuzden uyelik students tablosunda bir
+    // sutun degil, ayri club_members tablosudur.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS clubs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        catalog_code TEXT NOT NULL DEFAULT '',
+        ad TEXT NOT NULL,
+        tema TEXT NOT NULL DEFAULT 'toplum',
+        ogretim_yili TEXT NOT NULL,
+        temsilci_uye_id INTEGER,
+        plan_duzenlemeleri TEXT NOT NULL DEFAULT '',
+        olusturma_tarihi TEXT NOT NULL
+      )
+    ''');
+    // Ogrenci silinirse uyelik satiri KALIR, student_id null olur:
+    // imzalanmis uye listesi ve yil sonu raporu tutarli kalsin diye.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS club_members (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        club_id INTEGER NOT NULL,
+        student_id INTEGER,
+        ad_soyad TEXT NOT NULL,
+        okul_no INTEGER NOT NULL DEFAULT 0,
+        sinif_adi TEXT NOT NULL DEFAULT '',
+        gorev TEXT NOT NULL DEFAULT 'Üye',
+        FOREIGN KEY (club_id) REFERENCES clubs (id) ON DELETE CASCADE,
+        FOREIGN KEY (student_id) REFERENCES students (id) ON DELETE SET NULL,
+        UNIQUE(club_id, student_id)
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS club_activity_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        club_id INTEGER NOT NULL,
+        ay TEXT NOT NULL,
+        yapilan_calisma TEXT NOT NULL DEFAULT '',
+        katilan_sayisi INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (club_id) REFERENCES clubs (id) ON DELETE CASCADE,
+        UNIQUE(club_id, ay)
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_club_members_club '
+      'ON club_members (club_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_club_members_student '
+      'ON club_members (student_id)',
+    );
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 23) {
+      // Sosyal kulup modulu. Uc tablo birlikte gelir; biri olusup digeri
+      // olusmazsa modul yarim calisir, o yuzden her biri ayri sarilir ve
+      // hata yutulmaz, loglanir.
+      Future<void> kur(String sql, String etiket) async {
+        try {
+          await db.execute(sql);
+        } catch (e) {
+          debugPrint('DB Upgrade (clubs.$etiket): $e');
+        }
+      }
+
+      await kur('''
+        CREATE TABLE IF NOT EXISTS clubs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          catalog_code TEXT NOT NULL DEFAULT '',
+          ad TEXT NOT NULL,
+          tema TEXT NOT NULL DEFAULT 'toplum',
+          ogretim_yili TEXT NOT NULL,
+          temsilci_uye_id INTEGER,
+          plan_duzenlemeleri TEXT NOT NULL DEFAULT '',
+          olusturma_tarihi TEXT NOT NULL
+        )
+      ''', 'clubs');
+      await kur('''
+        CREATE TABLE IF NOT EXISTS club_members (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          club_id INTEGER NOT NULL,
+          student_id INTEGER,
+          ad_soyad TEXT NOT NULL,
+          okul_no INTEGER NOT NULL DEFAULT 0,
+          sinif_adi TEXT NOT NULL DEFAULT '',
+          gorev TEXT NOT NULL DEFAULT 'Üye',
+          FOREIGN KEY (club_id) REFERENCES clubs (id) ON DELETE CASCADE,
+          FOREIGN KEY (student_id) REFERENCES students (id) ON DELETE SET NULL,
+          UNIQUE(club_id, student_id)
+        )
+      ''', 'club_members');
+      await kur('''
+        CREATE TABLE IF NOT EXISTS club_activity_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          club_id INTEGER NOT NULL,
+          ay TEXT NOT NULL,
+          yapilan_calisma TEXT NOT NULL DEFAULT '',
+          katilan_sayisi INTEGER NOT NULL DEFAULT 0,
+          FOREIGN KEY (club_id) REFERENCES clubs (id) ON DELETE CASCADE,
+          UNIQUE(club_id, ay)
+        )
+      ''', 'club_activity_logs');
+      await kur(
+        'CREATE INDEX IF NOT EXISTS idx_club_members_club '
+        'ON club_members (club_id)',
+        'idx_club',
+      );
+      await kur(
+        'CREATE INDEX IF NOT EXISTS idx_club_members_student '
+        'ON club_members (student_id)',
+        'idx_student',
+      );
+    }
+
     if (oldVersion < 20) {
       try {
         await db.execute(
