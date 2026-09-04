@@ -143,7 +143,7 @@ class ClubPdfGenerator {
         footer: (ctx) => _sayfaNo(ctx),
         build: (ctx) => [
           if (uyeler.isEmpty)
-            _bosUyari('Bu kulübe henüz üye eklenmemiş.')
+            _bosUyeSablonu()
           else
             pw.TableHelper.fromTextArray(
               border: pw.TableBorder.all(color: PdfColors.black, width: 0.6),
@@ -196,14 +196,26 @@ class ClubPdfGenerator {
               ],
             ),
           pw.SizedBox(height: 8),
-          pw.Text(
-            'Toplam üye sayısı: ${uyeler.length}',
-            style: pw.TextStyle(
-              fontSize: 8.5,
-              fontWeight: pw.FontWeight.bold,
-              color: PdfColors.black,
+          // Boş şablonda "Toplam üye sayısı: 0" yazmak yanıltıcı;
+          // öğretmen listeyi elle dolduracak.
+          if (uyeler.isNotEmpty)
+            pw.Text(
+              'Toplam üye sayısı: ${uyeler.length}',
+              style: pw.TextStyle(
+                fontSize: 8.5,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.black,
+              ),
+            )
+          else
+            pw.Text(
+              'Toplam üye sayısı: ..............',
+              style: pw.TextStyle(
+                fontSize: 8.5,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.black,
+              ),
             ),
-          ),
           pw.SizedBox(height: 18),
           _ucluImza(teacherProfile),
           pw.SizedBox(height: 10),
@@ -492,12 +504,68 @@ class ClubPdfGenerator {
     );
   }
 
-  static pw.Widget _bosUyari(String metin) => pw.Container(
-        padding: const pw.EdgeInsets.all(16),
-        alignment: pw.Alignment.center,
-        child: pw.Text(metin,
-            style: const pw.TextStyle(fontSize: 9, color: PdfColors.black)),
-      );
+  /// Üye girilmemişse elle doldurulacak boş çizelge basar.
+  ///
+  /// ## Neden boş satır
+  /// Öğretmen kulübü yeni kurmuş olabilir ve listeyi henüz uygulamaya
+  /// girmemiştir; ama evrak bugün lazımdır. "Üye eklenmemiş" yazan bir
+  /// PDF hiçbir işe yaramaz — elle doldurulabilen resmî çizelge ise
+  /// doğrudan kullanılır.
+  ///
+  /// Satır sayısı bir sınıf mevcudunu karşılayacak kadar: 25 satır tek
+  /// sayfaya sığıyor, fazlası ikinci sayfaya taşıyor ve boş sayfa
+  /// hissi veriyordu.
+  static pw.Widget _bosUyeSablonu() {
+    const satirSayisi = 25;
+
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.TableHelper.fromTextArray(
+          border: pw.TableBorder.all(color: PdfColors.black, width: 0.6),
+          headerStyle: pw.TextStyle(
+            fontSize: 8.5,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.black,
+          ),
+          headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+          cellStyle: const pw.TextStyle(fontSize: 8.2, color: PdfColors.black),
+          cellHeight: 17,
+          cellPadding:
+              const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+          cellAlignments: {
+            0: pw.Alignment.center,
+            1: pw.Alignment.center,
+            2: pw.Alignment.centerLeft,
+            3: pw.Alignment.center,
+            4: pw.Alignment.centerLeft,
+            5: pw.Alignment.center,
+          },
+          columnWidths: {
+            0: const pw.FixedColumnWidth(28),
+            1: const pw.FixedColumnWidth(48),
+            2: const pw.FlexColumnWidth(3),
+            3: const pw.FixedColumnWidth(52),
+            4: const pw.FlexColumnWidth(2),
+            5: const pw.FlexColumnWidth(1.6),
+          },
+          headers: const [
+            'S.NO',
+            'OKUL NO',
+            'ADI VE SOYADI',
+            'SINIFI',
+            'GÖREVİ',
+            'İMZA',
+          ],
+          data: [
+            for (var i = 1; i <= satirSayisi; i++)
+              // Sıra numarası basılı gelir; kalanı elle doldurulur.
+              ['$i', '', '', '', '', ''],
+          ],
+        ),
+      ],
+    );
+  }
 
   /// Dosya adı için güvenli hâle getirir.
   ///

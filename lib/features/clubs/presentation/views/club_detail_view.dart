@@ -61,6 +61,12 @@ class _ClubDetailViewState extends ConsumerState<ClubDetailView>
         showProfileAvatar: false,
         actions: [
           IconButton(
+            tooltip: 'Belgeler',
+            icon: const Icon(Icons.folder_open_rounded,
+                color: AppColors.primary),
+            onPressed: _belgeleriAc,
+          ),
+          IconButton(
             tooltip: 'Kulübü sil',
             icon: Icon(
               Icons.delete_outline_rounded,
@@ -279,6 +285,31 @@ class _ClubDetailViewState extends ConsumerState<ClubDetailView>
                     : AppColors.textSecondaryLight,
               ),
             ),
+            const SizedBox(height: 18),
+            // Üye girilmemiş olsa da evrak bugün lazım olabilir: boş
+            // çizelge basılır, öğretmen elle doldurur.
+            OutlinedButton.icon(
+              onPressed: () => _uyeListesiPdf(const []),
+              icon: const Icon(Icons.picture_as_pdf_outlined,
+                  size: 18, color: AppColors.primary),
+              label: Text(
+                'Boş Liste Şablonu İndir',
+                style: AppFonts.outfit(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+                side:
+                    BorderSide(color: AppColors.primary.withValues(alpha: 0.5)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(11),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -419,6 +450,180 @@ class _ClubDetailViewState extends ConsumerState<ClubDetailView>
 
   Future<void> _uyeListesiPdf(List<ClubMember> uyeler) async {
     final profil = ref.read(teacherProfileProvider);
+    await ClubPdfGenerator.uyeListesiAc(
+      context,
+      kulup: _kulup,
+      uyeler: uyeler,
+      teacherProfile: profil,
+    );
+  }
+
+  /// Kulübün üç resmî evrakını tek yerden sunar.
+  ///
+  /// ## Neden ayrı bir sayfa
+  /// PDF düğmeleri sekmelerin altına dağılmıştı; öğretmen üç evrakı
+  /// almak için üç sekme gezmek zorundaydı. Oysa evraklar birlikte
+  /// isteniyor — dosyaya hepsi konuyor.
+  ///
+  /// Üçü de kulüp kurulur kurulmaz hazırdır: plan katalogdan gelir,
+  /// faaliyet raporu kurulumda plandan tohumlanır, üye listesi boşsa
+  /// elle doldurulacak çizelge olarak basılır.
+  Future<void> _belgeleriAc() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: isDark ? AppColors.darkCardBackground : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 14),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Kulüp Belgeleri',
+                    style: AppFonts.outfit(
+                      fontSize: 16.5,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'Üçü de hazır. İçeriği değiştirmek isterseniz '
+                    'sekmelerden düzenleyin.',
+                    style: AppFonts.outfit(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: isDark
+                          ? AppColors.textSecondaryDark
+                          : AppColors.textSecondaryLight,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            _belgeSatiri(
+              sheetContext,
+              isDark,
+              ikon: Icons.event_note_rounded,
+              ad: 'Yıllık Çalışma Planı',
+              aciklama: 'Eylül-Haziran, on aylık plan',
+              onTap: _planPdf,
+            ),
+            _belgeSatiri(
+              sheetContext,
+              isDark,
+              ikon: Icons.fact_check_rounded,
+              ad: 'Yıl Sonu Faaliyet Raporu',
+              aciklama: 'Planlanan ve gerçekleşen çalışmalar',
+              onTap: _raporPdf,
+            ),
+            _belgeSatiri(
+              sheetContext,
+              isDark,
+              ikon: Icons.groups_rounded,
+              ad: 'Üye Listesi',
+              aciklama: 'Üye yoksa elle doldurulacak çizelge basılır',
+              onTap: _uyePdf,
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _belgeSatiri(
+    BuildContext sheetContext,
+    bool isDark, {
+    required IconData ikon,
+    required String ad,
+    required String aciklama,
+    required Future<void> Function() onTap,
+  }) {
+    return ListTile(
+      leading: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.13),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(ikon, size: 19, color: AppColors.primary),
+      ),
+      title: Text(
+        ad,
+        style: AppFonts.outfit(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: isDark ? Colors.white : const Color(0xFF0F172A),
+        ),
+      ),
+      subtitle: Text(
+        aciklama,
+        style: AppFonts.outfit(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w500,
+          color: isDark
+              ? AppColors.textSecondaryDark
+              : AppColors.textSecondaryLight,
+        ),
+      ),
+      trailing: const Icon(Icons.picture_as_pdf_outlined,
+          size: 19, color: AppColors.primary),
+      onTap: () {
+        // Önce sayfayı kapat: PDF önizlemesi üstüne açılmasın.
+        Navigator.of(sheetContext).pop();
+        onTap();
+      },
+    );
+  }
+
+  Future<void> _planPdf() async {
+    final repo = ref.read(clubRepositoryProvider);
+    final profil = ref.read(teacherProfileProvider);
+    final plan = await repo.plan(_kulup);
+    if (!mounted) return;
+    await ClubPdfGenerator.yillikPlanAc(
+      context,
+      kulup: _kulup,
+      plan: plan,
+      teacherProfile: profil,
+    );
+  }
+
+  Future<void> _raporPdf() async {
+    final repo = ref.read(clubRepositoryProvider);
+    final profil = ref.read(teacherProfileProvider);
+    final clubId = _kulup.id ?? 0;
+    final plan = await repo.plan(_kulup);
+    final faaliyetler = await repo.faaliyetler(clubId);
+    final uyeler = await repo.uyeler(clubId);
+    if (!mounted) return;
+    await ClubPdfGenerator.faaliyetRaporuAc(
+      context,
+      kulup: _kulup,
+      plan: plan,
+      faaliyetler: faaliyetler,
+      uyeSayisi: uyeler.length,
+      teacherProfile: profil,
+    );
+  }
+
+  Future<void> _uyePdf() async {
+    final repo = ref.read(clubRepositoryProvider);
+    final profil = ref.read(teacherProfileProvider);
+    final uyeler = await repo.uyeler(_kulup.id ?? 0);
+    if (!mounted) return;
     await ClubPdfGenerator.uyeListesiAc(
       context,
       kulup: _kulup,

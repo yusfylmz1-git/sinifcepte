@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../data/models/club_model.dart';
 import '../data/repositories/club_repository.dart';
+import '../utils/club_activity_suggester.dart';
 
 /// Sosyal kulüp modülünün durum yönetimi.
 ///
@@ -66,6 +67,16 @@ class ClubListNotifier extends StateNotifier<AsyncValue<List<ClubModel>>> {
       ogretimYili: _ogretimYili,
       olusturmaTarihi: DateTime.now(),
     ));
+
+    // Faaliyet raporu baştan hazır gelsin: öğretmen kulübü kurar kurmaz
+    // üç PDF'i de indirebilmeli. Metinler taslak; istediği ayı açıp
+    // kendi yaptığına göre düzeltir.
+    await _repo.faaliyetleriTohumla(
+      id,
+      item.plan,
+      ClubActivitySuggester.oner,
+    );
+
     await yukle();
     return id;
   }
@@ -78,6 +89,11 @@ class ClubListNotifier extends StateNotifier<AsyncValue<List<ClubModel>>> {
       ogretimYili: _ogretimYili,
       olusturmaTarihi: DateTime.now(),
     ));
+
+    // Çizelge dışı kulüpte hazır plan yok; on ay boş satır olarak
+    // açılır ki rapor ekranı ve PDF yine de on ayı göstersin.
+    await _repo.faaliyetleriTohumla(id, const [], (_) => '');
+
     await yukle();
     return id;
   }

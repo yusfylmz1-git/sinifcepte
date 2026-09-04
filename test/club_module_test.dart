@@ -192,6 +192,55 @@ void main() {
     });
   });
 
+  group('Belgeler bastan hazir', () {
+    test('KRITIK: kulup kurulunca faaliyet raporu tohumlaniyor', () {
+      // Ogretmen kulubu kurar kurmaz UC PDF'i de indirebilmeli.
+      // Rapor bos gelirse yil sonunda on ayi hatirlamak gerekiyordu.
+      const provider = 'lib/features/clubs/providers/club_provider.dart';
+      final kod = File(provider).readAsStringSync();
+      expect(kod.contains('faaliyetleriTohumla'), isTrue,
+          reason: 'kulup kurulumunda faaliyet kayitlari olusturulmuyor');
+      // Hem katalogdan hem cizelge disi kurulumda cagrilmali.
+      expect('faaliyetleriTohumla'.allMatches(kod).length,
+          greaterThanOrEqualTo(2),
+          reason: 'tohumlama yalnizca bir kurulum yolunda cagriliyor');
+    });
+
+    test('KRITIK: tohumlama mevcut kaydin uzerine yazmiyor', () {
+      // Ogretmenin yazdigi metin kaybolmamali.
+      const repo =
+          'lib/features/clubs/data/repositories/club_repository.dart';
+      final kod = File(repo).readAsStringSync();
+      final govde = kod.substring(kod.indexOf('faaliyetleriTohumla'));
+      final son = govde.substring(0, govde.indexOf('faaliyetKaydet'));
+      expect(son.contains('ConflictAlgorithm.ignore'), isTrue,
+          reason: 'tohumlama replace kullaniyor — ogretmenin yazdigi '
+              'metnin uzerine yazar');
+    });
+
+    test('KRITIK: uye listesi bosken elle doldurulacak sablon basiliyor', () {
+      // "Uye eklenmemis" yazan PDF hicbir ise yaramaz; ogretmen
+      // listeyi henuz girmemis olsa da evrak bugun lazim olabilir.
+      const pdf = 'lib/features/clubs/utils/club_pdf_generator.dart';
+      final kod = File(pdf).readAsStringSync();
+      expect(kod.contains('_bosUyeSablonu'), isTrue,
+          reason: 'bos uye listesinde sablon uretilmiyor');
+      expect(kod.contains("_bosUyari('Bu kulübe henüz üye eklenmemiş.')"),
+          isFalse,
+          reason: 'bos listede hala kullanilamaz uyari basiliyor');
+    });
+
+    test('KRITIK: uc belge tek yerden aciliyor', () {
+      const detay =
+          'lib/features/clubs/presentation/views/club_detail_view.dart';
+      final kod = File(detay).readAsStringSync();
+      for (final c in ['yillikPlanAc', 'faaliyetRaporuAc', 'uyeListesiAc']) {
+        expect(kod.contains(c), isTrue,
+            reason: 'Belgeler sayfasinda $c cagrilmiyor');
+      }
+    });
+  });
+
   group('Menu baglantisi', () {
     const digerEvraklar =
         'lib/features/documents/presentation/views/other_documents_view.dart';

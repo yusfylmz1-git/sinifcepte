@@ -261,6 +261,40 @@ class ClubRepository {
         .toList();
   }
 
+  /// Kulüp kurulurken on ayın faaliyet kaydını plandan doldurur.
+  ///
+  /// ## Neden kurulumda
+  /// Öğretmenin kulübü kurup hemen raporu indirebilmesi gerekiyor.
+  /// Boş bir raporu elle doldurmak, yıl sonunda on ayı hatırlamaya
+  /// çalışmak demekti. Plan zaten "ne yapılacak" diyor; rapor taslağı
+  /// bunun geçmiş zamanlı hâli olarak baştan hazır gelir.
+  ///
+  /// Öğretmen sonra istediği ayı açıp kendi yaptığına göre düzeltir.
+  ///
+  /// Var olan kayda DOKUNMAZ: `ignore` ile yazılır, böylece yeniden
+  /// çağrılsa bile öğretmenin yazdığı metin korunur.
+  Future<void> faaliyetleriTohumla(
+    int clubId,
+    List<ClubPlanRow> plan,
+    String Function(ClubPlanRow) metinUret,
+  ) async {
+    final db = await _db.database;
+    final toplu = db.batch();
+    for (final ay in _aylar) {
+      final satir = plan.where((p) => p.ay == ay);
+      toplu.insert(
+        'club_activity_logs',
+        ClubActivityLog(
+          clubId: clubId,
+          ay: ay,
+          yapilanCalisma: satir.isEmpty ? '' : metinUret(satir.first),
+        ).toMap(),
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+    }
+    await toplu.commit(noResult: true);
+  }
+
   /// Bir ayın faaliyet kaydını yazar; yoksa oluşturur.
   Future<void> faaliyetKaydet(ClubActivityLog kayit) async {
     final db = await _db.database;
