@@ -38,19 +38,6 @@ class ClubsHubScreen extends ConsumerWidget {
         subtitle: '$yil Öğretim Yılı',
         showProfileAvatar: false,
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => ClubCatalogSheet.show(context),
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: Text(
-          'Kulüp Kur',
-          style: AppFonts.outfit(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-        ),
-      ),
       body: SafeArea(
         child: kulupler.when(
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -70,15 +57,77 @@ class ClubsHubScreen extends ConsumerWidget {
     List<ClubModel> liste,
   ) {
     return ListView.separated(
-      // Alt boşluk FAB'ın listeyi kapatmaması için.
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 90),
-      itemCount: liste.length + 2,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+      itemCount: liste.length + 3,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, i) {
-        if (i == 0) return _mevzuatNotu(isDark);
+        if (i == 0) return _kurKarti(context, isDark, liste.length);
         if (i == 1) return _kulupsuzUyarisi(context, ref, isDark);
+        if (i == liste.length + 2) return _mevzuatNotu(isDark);
         return _kart(context, ref, isDark, liste[i - 2]);
       },
+    );
+  }
+
+  /// Kulüp kurma kartı — listenin başında.
+  ///
+  /// Önce alttan kayan bir FAB'dı: son kartı kapatıyordu ve listeden
+  /// kopuk duruyordu. Burada listenin parçası, ne yapacağını da yazıyor.
+  Widget _kurKarti(BuildContext context, bool isDark, int mevcut) {
+    return Material(
+      color: AppColors.primary,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => ClubCatalogSheet.show(context),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.add_rounded,
+                    size: 23, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Kulüp Kur',
+                      style: AppFonts.outfit(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      mevcut == 0
+                          ? 'MEB çizelgesindeki 52 kulüpten seçin'
+                          : '$mevcut kulüp kurulu · çizelgeden yenisini ekleyin',
+                      style: AppFonts.outfit(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white.withValues(alpha: 0.85),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded,
+                  size: 22, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -372,6 +421,28 @@ class ClubsHubScreen extends ConsumerWidget {
                 color: isDark
                     ? AppColors.textSecondaryDark
                     : AppColors.textSecondaryLight,
+              ),
+            ),
+            const SizedBox(height: 22),
+            FilledButton.icon(
+              onPressed: () => ClubCatalogSheet.show(context),
+              icon: const Icon(Icons.add_rounded, size: 19,
+                  color: Colors.white),
+              label: Text(
+                'Kulüp Kur',
+                style: AppFonts.outfit(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 26, vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ],

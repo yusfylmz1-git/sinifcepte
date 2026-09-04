@@ -63,12 +63,6 @@ class _ClubDetailViewState extends ConsumerState<ClubDetailView>
         showProfileAvatar: false,
         actions: [
           IconButton(
-            tooltip: 'Belgeler',
-            icon: const Icon(Icons.folder_open_rounded,
-                color: AppColors.primary),
-            onPressed: _belgeleriAc,
-          ),
-          IconButton(
             tooltip: 'Kulübü sil',
             icon: Icon(
               Icons.delete_outline_rounded,
@@ -104,6 +98,7 @@ class _ClubDetailViewState extends ConsumerState<ClubDetailView>
               ],
             ),
           ),
+          _belgeSeridi(isDark),
           Expanded(
             child: TabBarView(
               controller: _tab,
@@ -122,6 +117,71 @@ class _ClubDetailViewState extends ConsumerState<ClubDetailView>
     );
   }
 
+  /// Belgeler şeridi — üç evraka giden ana yol.
+  ///
+  /// ## Neden üst çubukta değil
+  /// Önce üst çubukta klasör simgesiydi; öğretmen fark etmiyordu.
+  /// Belge üretmek bu ekranın ASIL işi — sekmelerin hemen altında,
+  /// adı yazılı ve dokunulabilir bir şerit olarak duruyor.
+  Widget _belgeSeridi(bool isDark) {
+    return Container(
+      color: isDark ? AppColors.darkCardBackground : Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      child: Material(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(13),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(13),
+          onTap: _belgeleriAc,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.22),
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: const Icon(Icons.description_rounded,
+                      size: 18, color: Colors.white),
+                ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Belgeleri İndir',
+                        style: AppFonts.outfit(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.2,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        'Yıllık plan · Üye listesi · Faaliyet raporu',
+                        style: AppFonts.outfit(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withValues(alpha: 0.85),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded,
+                    size: 22, color: Colors.white),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // ------------------------------------------------------------------
   // Üyeler sekmesi
   // ------------------------------------------------------------------
@@ -129,9 +189,7 @@ class _ClubDetailViewState extends ConsumerState<ClubDetailView>
   Widget _uyelerSekmesi(bool isDark) {
     final uyeler = ref.watch(clubMembersProvider(_kulup.id ?? 0));
 
-    return Stack(
-      children: [
-        uyeler.when(
+    return uyeler.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(
             child: Padding(
@@ -146,45 +204,83 @@ class _ClubDetailViewState extends ConsumerState<ClubDetailView>
               ),
             ),
           ),
-          data: (liste) => liste.isEmpty
-              ? _bosUye(isDark)
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 92),
-                  itemCount: liste.length + 1,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemBuilder: (context, i) {
-                    if (i == liste.length) {
-                      return _pdfDugmesi(
-                        isDark,
-                        'Üye Listesi PDF',
-                        Icons.picture_as_pdf_outlined,
-                        () => _uyeListesiPdf(liste),
-                      );
-                    }
-                    return _uyeSatiri(isDark, liste[i], i + 1);
-                  },
-                ),
-        ),
-        Positioned(
-          right: 16,
-          bottom: 16,
-          child: FloatingActionButton.extended(
-            heroTag: 'uye_ekle',
-            onPressed: _uyeEkle,
-            backgroundColor: AppColors.primary,
-            icon: const Icon(Icons.person_add_alt_1_rounded,
-                color: Colors.white),
-            label: Text(
-              'Üye Ekle',
-              style: AppFonts.outfit(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
+      data: (liste) => liste.isEmpty
+          ? _bosUye(isDark)
+          : ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+              itemCount: liste.length + 2,
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              itemBuilder: (context, i) {
+                if (i == 0) return _uyeEkleDugmesi(isDark, liste.length);
+                if (i == liste.length + 1) {
+                  return _pdfDugmesi(
+                    isDark,
+                    'Üye Listesi PDF',
+                    Icons.picture_as_pdf_outlined,
+                    () => _uyeListesiPdf(liste),
+                  );
+                }
+                return _uyeSatiri(isDark, liste[i - 1], i);
+              },
             ),
+    );
+  }
+
+  /// Üye ekleme düğmesi — listenin başında, gömülü.
+  ///
+  /// Önce kayan bir FAB'dı; son satırı kapatıyordu ve listeyle
+  /// ilişkisi görünmüyordu. Burada üye sayısını da gösteriyor.
+  Widget _uyeEkleDugmesi(bool isDark, int mevcut) {
+    return Material(
+      color: AppColors.primary.withValues(alpha: isDark ? 0.16 : 0.09),
+      borderRadius: BorderRadius.circular(13),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(13),
+        onTap: _uyeEkle,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.add_rounded,
+                    size: 20, color: Colors.white),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Üye Ekle',
+                      style: AppFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    Text(
+                      '$mevcut üye kayıtlı · farklı şubelerden seçebilirsiniz',
+                      style: AppFonts.outfit(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: isDark
+                            ? AppColors.textSecondaryDark
+                            : AppColors.textSecondaryLight,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 
@@ -287,7 +383,29 @@ class _ClubDetailViewState extends ConsumerState<ClubDetailView>
                     : AppColors.textSecondaryLight,
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: _uyeEkle,
+              icon: const Icon(Icons.person_add_alt_1_rounded,
+                  size: 18, color: Colors.white),
+              label: Text(
+                'Üye Ekle',
+                style: AppFonts.outfit(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(11),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
             // Üye girilmemiş olsa da evrak bugün lazım olabilir: boş
             // çizelge basılır, öğretmen elle doldurur.
             OutlinedButton.icon(
@@ -355,7 +473,11 @@ class _ClubDetailViewState extends ConsumerState<ClubDetailView>
   Future<void> _uyeEkle() async {
     final id = _kulup.id;
     if (id == null) return;
-    await ClubMemberPickerSheet.show(context, clubId: id);
+    await ClubMemberPickerSheet.show(
+      context,
+      clubId: id,
+      kulupAdi: _kulup.ad,
+    );
     if (!mounted) return;
     ref.invalidate(clubMembersProvider(id));
   }

@@ -20,31 +20,35 @@ import '../screens/clubs_hub_screen.dart' show temaIkonu, temaRengi;
 class ClubCatalogSheet extends ConsumerStatefulWidget {
   const ClubCatalogSheet({super.key, this.kaydirma});
 
-  /// DraggableScrollableSheet'in kaydirma denetleyicisi.
+  /// DraggableScrollableSheet'in kaydırma denetleyicisi.
   final ScrollController? kaydirma;
 
-  /// Sayfayi acar.
+  /// Sayfayı açar.
   ///
-  /// `ResponsiveBottomSheet` KULLANILMIYOR: o yardimci icerigi
-  /// `SingleChildScrollView` icine koyuyor, yani sinirsiz yukseklik
-  /// veriyor. Icerideki `Expanded` orada sifir yukseklik alir ve liste
-  /// hic cizilmez. `DraggableScrollableSheet` kendi yuksekligini bilir.
+  /// `ResponsiveBottomSheet` KULLANILMIYOR: o yardımcı içeriği
+  /// `SingleChildScrollView` içine koyuyor, yani sınırsız yükseklik
+  /// veriyor. İçerideki `Expanded` orada sıfır yükseklik alır ve liste
+  /// hiç çizilmez. `DraggableScrollableSheet` kendi yüksekliğini bilir.
   static Future<void> show(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor: isDark ? AppColors.darkCardBackground : Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (_) => DraggableScrollableSheet(
         expand: false,
         initialChildSize: 0.85,
         minChildSize: 0.5,
         maxChildSize: 0.95,
-        builder: (_, kaydirma) => ClubCatalogSheet(kaydirma: kaydirma),
+        builder: (_, kaydirma) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkBackground : Colors.white,
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(22)),
+          ),
+          child: ClubCatalogSheet(kaydirma: kaydirma),
+        ),
       ),
     );
   }
@@ -90,85 +94,19 @@ class _ClubCatalogSheetState extends ConsumerState<ClubCatalogSheet> {
     };
 
     return Column(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Kulüp Kur',
-                style: AppFonts.outfit(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : const Color(0xFF0F172A),
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                'MEB Öğrenci Kulüpleri Çizelgesi (EK-4) — 52 kulüp',
-                style: AppFonts.outfit(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: isDark
-                      ? AppColors.textSecondaryDark
-                      : AppColors.textSecondaryLight,
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _aramaKontrol,
-                onChanged: (v) => setState(() => _arama = v),
-                style: AppFonts.outfit(
-                  fontSize: 14,
-                  color: isDark ? Colors.white : const Color(0xFF0F172A),
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Kulüp ara…',
-                  hintStyle: AppFonts.outfit(
-                    fontSize: 14,
-                    color: isDark
-                        ? AppColors.textSecondaryDark
-                        : AppColors.textSecondaryLight,
-                  ),
-                  prefixIcon: Icon(
-                    Icons.search_rounded,
-                    size: 20,
-                    color: isDark
-                        ? AppColors.textSecondaryDark
-                        : AppColors.textSecondaryLight,
-                  ),
-                  isDense: true,
-                  filled: true,
-                  fillColor: isDark
-                      ? Colors.white.withValues(alpha: 0.06)
-                      : const Color(0xFFF1F5F9),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(11),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        _tutamak(isDark),
+        _baslik(isDark),
+        _arayici(isDark),
         Expanded(
           child: katalog.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  'Kulüp çizelgesi okunamadı.\nKendi kulübünüzü elle '
-                  'kurabilirsiniz.',
-                  textAlign: TextAlign.center,
-                  style: AppFonts.outfit(
-                    fontSize: 13,
-                    color: isDark ? Colors.white70 : const Color(0xFF334155),
-                  ),
-                ),
-              ),
+            error: (e, _) => _bilgi(
+              isDark,
+              Icons.error_outline_rounded,
+              'Kulüp çizelgesi okunamadı',
+              'Kendi kulübünüzü elle kurabilirsiniz.',
+              dugme: _ozelKulupSor,
             ),
             data: (liste) {
               final suzulmus = _arama.trim().isEmpty
@@ -177,15 +115,23 @@ class _ClubCatalogSheetState extends ConsumerState<ClubCatalogSheet> {
                       .where((k) => _sade(k.ad).contains(_sade(_arama.trim())))
                       .toList();
 
+              if (suzulmus.isEmpty) {
+                return _bilgi(
+                  isDark,
+                  Icons.search_off_rounded,
+                  'Kulüp bulunamadı',
+                  'Çizelge dışında kendi kulübünüzü kurabilirsiniz.',
+                  dugme: _ozelKulupSor,
+                );
+              }
+
               return ListView.separated(
                 controller: widget.kaydirma,
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
                 itemCount: suzulmus.length + 1,
                 separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (context, i) {
-                  if (i == suzulmus.length) {
-                    return _ozelKulupKarti(isDark);
-                  }
+                  if (i == suzulmus.length) return _ozelKulupKarti(isDark);
                   final k = suzulmus[i];
                   return _katalogKarti(
                     isDark,
@@ -201,6 +147,140 @@ class _ClubCatalogSheetState extends ConsumerState<ClubCatalogSheet> {
     );
   }
 
+  /// Sürükleme tutamağı — sayfanın çekilebildiğini gösterir.
+  Widget _tutamak(bool isDark) => Padding(
+        padding: const EdgeInsets.only(top: 10, bottom: 4),
+        child: Container(
+          width: 38,
+          height: 4,
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+      );
+
+  Widget _baslik(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 12, 12),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.13),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.groups_2_rounded,
+                size: 20, color: AppColors.primary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Kulüp Kur',
+                  style: AppFonts.outfit(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                ),
+                Text(
+                  'MEB çizelgesi (EK-4) · 52 kulüp',
+                  style: AppFonts.outfit(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: isDark
+                        ? AppColors.textSecondaryDark
+                        : AppColors.textSecondaryLight,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: Icon(Icons.close_rounded,
+                size: 21,
+                color: isDark
+                    ? AppColors.textSecondaryDark
+                    : AppColors.textSecondaryLight),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _arayici(bool isDark) {
+    final cerceve = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.08)
+            : const Color(0xFFE2E8F0),
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      child: TextField(
+        controller: _aramaKontrol,
+        onChanged: (v) => setState(() => _arama = v),
+        style: AppFonts.outfit(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: isDark ? Colors.white : const Color(0xFF0F172A),
+        ),
+        decoration: InputDecoration(
+          hintText: 'Kulüp ara…',
+          hintStyle: AppFonts.outfit(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: isDark
+                ? AppColors.textSecondaryDark
+                : AppColors.textSecondaryLight,
+          ),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            size: 20,
+            color: isDark
+                ? AppColors.textSecondaryDark
+                : AppColors.textSecondaryLight,
+          ),
+          suffixIcon: _arama.isEmpty
+              ? null
+              : IconButton(
+                  onPressed: () {
+                    _aramaKontrol.clear();
+                    setState(() => _arama = '');
+                  },
+                  icon: Icon(Icons.close_rounded,
+                      size: 18,
+                      color: isDark
+                          ? AppColors.textSecondaryDark
+                          : AppColors.textSecondaryLight),
+                ),
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 13),
+          filled: true,
+          fillColor: isDark
+              ? Colors.white.withValues(alpha: 0.05)
+              : const Color(0xFFF8FAFC),
+          border: cerceve,
+          enabledBorder: cerceve,
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _katalogKarti(
     bool isDark,
     ClubCatalogItem k, {
@@ -209,25 +289,40 @@ class _ClubCatalogSheetState extends ConsumerState<ClubCatalogSheet> {
     final renk = temaRengi(k.tema);
 
     return Material(
-      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
-      borderRadius: BorderRadius.circular(12),
+      color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(13),
         onTap: zatenKurulu ? null : () => _kur(k),
-        child: Opacity(
-          opacity: zatenKurulu ? 0.5 : 1,
+        child: Ink(
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.04)
+                : const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(
+              color: zatenKurulu
+                  ? AppColors.success.withValues(alpha: 0.35)
+                  : (isDark
+                      ? Colors.white.withValues(alpha: 0.07)
+                      : const Color(0xFFE2E8F0)),
+            ),
+          ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
             child: Row(
               children: [
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: 38,
+                  height: 38,
                   decoration: BoxDecoration(
-                    color: renk.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(10),
+                    color: renk.withValues(alpha: zatenKurulu ? 0.08 : 0.14),
+                    borderRadius: BorderRadius.circular(11),
                   ),
-                  child: Icon(temaIkonu(k.tema), color: renk, size: 19),
+                  child: Icon(
+                    temaIkonu(k.tema),
+                    color: zatenKurulu ? renk.withValues(alpha: 0.5) : renk,
+                    size: 19,
+                  ),
                 ),
                 const SizedBox(width: 11),
                 Expanded(
@@ -239,30 +334,40 @@ class _ClubCatalogSheetState extends ConsumerState<ClubCatalogSheet> {
                         style: AppFonts.outfit(
                           fontSize: 13.5,
                           fontWeight: FontWeight.w600,
-                          color:
-                              isDark ? Colors.white : const Color(0xFF0F172A),
+                          height: 1.25,
+                          color: zatenKurulu
+                              ? (isDark
+                                  ? AppColors.textSecondaryDark
+                                  : AppColors.textSecondaryLight)
+                              : (isDark
+                                  ? Colors.white
+                                  : const Color(0xFF0F172A)),
                         ),
                       ),
+                      const SizedBox(height: 1),
                       Text(
                         zatenKurulu
                             ? 'Bu yıl zaten kurulu'
-                            : 'EK-4 sıra ${k.no} · hazır yıllık plan',
+                            : 'Hazır yıllık plan · EK-4 sıra ${k.no}',
                         style: AppFonts.outfit(
-                          fontSize: 11.5,
+                          fontSize: 11,
                           fontWeight: FontWeight.w500,
-                          color: isDark
-                              ? AppColors.textSecondaryDark
-                              : AppColors.textSecondaryLight,
+                          color: zatenKurulu
+                              ? AppColors.success
+                              : (isDark
+                                  ? AppColors.textSecondaryDark
+                                  : AppColors.textSecondaryLight),
                         ),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 6),
                 Icon(
                   zatenKurulu
                       ? Icons.check_circle_rounded
                       : Icons.add_circle_outline_rounded,
-                  size: 20,
+                  size: 21,
                   color: zatenKurulu ? AppColors.success : renk,
                 ),
               ],
@@ -278,49 +383,136 @@ class _ClubCatalogSheetState extends ConsumerState<ClubCatalogSheet> {
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: Material(
-        color: isDark
-            ? AppColors.primary.withValues(alpha: 0.14)
-            : AppColors.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(13),
           onTap: _ozelKulupSor,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-            child: Row(
-              children: [
-                const Icon(Icons.edit_note_rounded,
-                    color: AppColors.primary, size: 21),
-                const SizedBox(width: 11),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Çizelge dışı kulüp kur',
-                        style: AppFonts.outfit(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
-                          color:
-                              isDark ? Colors.white : const Color(0xFF0F172A),
-                        ),
-                      ),
-                      Text(
-                        'Öğretmenler kurulu kararıyla açılan kulüp',
-                        style: AppFonts.outfit(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w500,
-                          color: isDark
-                              ? AppColors.textSecondaryDark
-                              : AppColors.textSecondaryLight,
-                        ),
-                      ),
-                    ],
+          child: Ink(
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: isDark ? 0.14 : 0.07),
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.35),
+              ),
+            ),
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+              child: Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: const Icon(Icons.edit_note_rounded,
+                        color: AppColors.primary, size: 20),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Çizelge dışı kulüp kur',
+                          style: AppFonts.outfit(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF0F172A),
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          'Öğretmenler kurulu kararıyla açılan kulüp',
+                          style: AppFonts.outfit(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: isDark
+                                ? AppColors.textSecondaryDark
+                                : AppColors.textSecondaryLight,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded,
+                      size: 20, color: AppColors.primary),
+                ],
+              ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _bilgi(
+    bool isDark,
+    IconData ikon,
+    String baslik,
+    String aciklama, {
+    VoidCallback? dugme,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(ikon,
+                size: 44,
+                color: isDark ? Colors.white24 : const Color(0xFFCBD5E1)),
+            const SizedBox(height: 12),
+            Text(
+              baslik,
+              style: AppFonts.outfit(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              aciklama,
+              textAlign: TextAlign.center,
+              style: AppFonts.outfit(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+                height: 1.45,
+                color: isDark
+                    ? AppColors.textSecondaryDark
+                    : AppColors.textSecondaryLight,
+              ),
+            ),
+            if (dugme != null) ...[
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: dugme,
+                icon: const Icon(Icons.edit_note_rounded,
+                    size: 18, color: Colors.white),
+                label: Text(
+                  'Kendi Kulübümü Kur',
+                  style: AppFonts.outfit(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -331,19 +523,22 @@ class _ClubCatalogSheetState extends ConsumerState<ClubCatalogSheet> {
     if (!mounted) return;
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${k.ad} kuruldu.')),
+      SnackBar(content: Text('${k.ad} kuruldu. Belgeleri hazır.')),
     );
   }
 
   Future<void> _ozelKulupSor() async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final kontrol = TextEditingController();
+    // Aramada yazdığı metin varsa oradan başlat: "Robotik" arayıp
+    // bulamayan öğretmen aynı adı tekrar yazmasın.
+    final kontrol = TextEditingController(text: _arama.trim());
 
     final ad = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor:
-            isDark ? AppColors.darkCardBackground : Colors.white,
+        backgroundColor: isDark ? AppColors.darkCardBackground : Colors.white,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Kulüp Adı',
           style: AppFonts.outfit(
@@ -358,6 +553,7 @@ class _ClubCatalogSheetState extends ConsumerState<ClubCatalogSheet> {
           textCapitalization: TextCapitalization.words,
           style: AppFonts.outfit(
             fontSize: 14,
+            fontWeight: FontWeight.w500,
             color: isDark ? Colors.white : const Color(0xFF0F172A),
           ),
           decoration: InputDecoration(
@@ -385,6 +581,12 @@ class _ClubCatalogSheetState extends ConsumerState<ClubCatalogSheet> {
             ),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
             onPressed: () =>
                 Navigator.of(dialogContext).pop(kontrol.text.trim()),
             child: Text(
@@ -403,7 +605,7 @@ class _ClubCatalogSheetState extends ConsumerState<ClubCatalogSheet> {
     kontrol.dispose();
     if (ad == null) return;
 
-    // Kulup adi serbest metin; yalnizca bosluk sadelestirilir.
+    // Kulüp adı serbest metin; yalnızca boşluk sadeleştirilir.
     final temiz = ad.replaceAll(RegExp(r'\s+'), ' ').trim();
     if (temiz.isEmpty) return;
 
