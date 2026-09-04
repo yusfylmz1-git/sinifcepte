@@ -87,6 +87,18 @@ Bunlar şema kararlarıdır, sonradan eklenemezler:
 | 5 | Son 20 duyuruyu sınıf dokümanında toplama | ⏸️ Ertelendi |
 | 6 | Token bağlantı sonrası silinir | ✅ Faz 2 |
 | 7 | Toplu yazma (`WriteBatch`) | ✅ Faz 2 |
+| 8 | Sınav takvimi Remote Config yükünde (Storage/Firestore değil) | ✅ |
+
+**#8 neden Remote Config:** Sınav paketi 7 KB, parametre sınırı 1 MB.
+Storage'dan dağıtmak ayda ~1 dolar tutardı (30.000 öğretmen), Firestore
+ise 1 MB doküman sınırı yüzünden parçalama gerektirirdi. Remote Config
+ücretsiz ve kotasız — aynı işi sıfır maliyetle yapıyor.
+
+Bu, veriyi **gerçekten indiren ilk modül**. Takvim, kazanım ve okul
+dizini APK ile geliyor; sürüm numarası yalnızca "güncelleme var" uyarısı
+üretiyor. Sınav tarihleri yıl içinde değiştiği için (ertelenen LGS,
+açıklanan başvuru tarihi) bu modülde uygulama güncellemesi beklemek
+kabul edilemezdi.
 
 **#5 neden ertelendi:** Delta senkron zaten okumaların %90'ını sıfırlıyor.
 Bu ek optimizasyon gerçek kullanım verisi görülmeden yapılırsa şemayı

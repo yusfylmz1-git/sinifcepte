@@ -54,12 +54,19 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
             tooltip: 'Sınav Takvimini Yenile',
             icon: const Icon(Icons.sync_rounded, color: Colors.white, size: 20),
             onPressed: () async {
-              await ref.read(examTrackingProvider.notifier).syncOfficialExams();
+              // Mesaj DÜRÜST olmalı: eskiden hiçbir şey değişmese bile
+              // "güncellendi!" deniyordu. Öğretmen yeni tarih beklerken
+              // eski veriyle kalıyor ama sistem başarı bildiriyordu.
+              final yeniVeriGeldi = await ref
+                  .read(examTrackingProvider.notifier)
+                  .syncOfficialExams();
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Resmî sınav takvimi güncellendi! 🏛️'),
-                    duration: Duration(seconds: 2),
+                  SnackBar(
+                    content: Text(yeniVeriGeldi
+                        ? 'Sınav takvimi güncellendi 🏛️'
+                        : 'Sınav takviminiz güncel ✨'),
+                    duration: const Duration(seconds: 2),
                     behavior: SnackBarBehavior.floating,
                   ),
                 );

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/notification_service.dart';
 import '../data/models/exam_model.dart';
 import '../data/repositories/exam_operations_repository.dart';
+import '../../sync/services/sync_service.dart';
 import '../data/services/exam_sync_service.dart';
 import 'quiz_tracking_provider.dart';
 
@@ -83,17 +84,44 @@ class ExamTrackingNotifier extends StateNotifier<ExamTrackingState> {
     }
   }
 
-  /// Uzaktan veya Yerel Asset'ten Resmî Sınavları Senkronize Et
-  Future<void> syncOfficialExams({String? customJson}) async {
+  /// Resmî sınav takvimini yeniler.
+  ///
+  /// ## Sıra: önce bulut, sonra varlık
+  /// Sınav tarihleri yıl içinde değişiyor — ertelenen bir LGS, açıklanan
+  /// yeni başvuru tarihi. Öğretmenin bunun için uygulama güncellemesi
+  /// beklemesi kabul edilemez, o yüzden önce buluta bakılır.
+  ///
+  /// Bulutta yeni sürüm yoksa ya da ağ kapalıysa APK'daki varlık
+  /// kullanılır: offline-first bozulmaz, ekran hiçbir zaman boş kalmaz.
+  ///
+  /// `true` dönerse buluttan GERÇEKTEN yeni veri indi.
+  Future<bool> syncOfficialExams({String? customJson}) async {
     try {
       if (customJson != null && customJson.isNotEmpty) {
         await _syncService.syncFromJsonString(customJson);
-      } else {
+        await loadExams();
+        return true;
+      }
+
+      // Buluttan indirme denemesi. force: kullanıcı açıkça yeniledi,
+      // Remote Config'in 6 saatlik önbelleğini atla.
+      final sonuc = await SyncService.instance.checkAndSyncData(force: true);
+      final bulutGuncelledi =
+          sonuc.updatedModules.contains('Resmî Sınav Takvimi');
+
+      // Veritabanı boşsa (ilk açılış, bulut da boş) varlığa düş.
+      final mevcut = await _repository.getAllExams();
+      if (mevcut.isEmpty) {
         await _syncService.syncFromLocalAsset();
       }
+
       await loadExams();
+      return bulutGuncelledi;
     } catch (e, stackTrace) {
       debugPrint('ExamTrackingNotifier.syncOfficialExams error: $e\n$stackTrace');
+      // Hata hâlinde bile ekran dolu kalsın.
+      await loadExams();
+      return false;
     }
   }
 

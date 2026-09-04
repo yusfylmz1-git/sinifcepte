@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../../core/cloud/remote_manifest_service.dart';
 import '../../../core/database/database_helper.dart';
+import '../../exam_operations/data/services/exam_sync_service.dart';
 
 /// Senkronizasyon Sonucu
 class SyncResult {
@@ -50,6 +51,7 @@ class SyncService {
   static const String _kCalendarSyncKey = 'sync_academic_calendar';
   static const String _kOutcomesSyncKey = 'sync_curriculum_outcomes';
   static const String _kSchoolsSyncKey = 'sync_school_directory';
+  static const String _kExamsSyncKey = 'sync_official_exams';
 
   /// Uygulamanın yayımlanmış sürümü (pubspec `version` alanıyla eşleşir).
   static const String currentAppVersion = '1.0.0';
@@ -90,6 +92,7 @@ class SyncService {
       final localCalendar = await db.syncMetadataVersionGetir(_kCalendarSyncKey);
       final localOutcomes = await db.syncMetadataVersionGetir(_kOutcomesSyncKey);
       final localSchools = await db.syncMetadataVersionGetir(_kSchoolsSyncKey);
+      final localExams = await db.syncMetadataVersionGetir(_kExamsSyncKey);
 
       // Sunucuda daha yeni sürüm var mı?
       //
@@ -101,7 +104,10 @@ class SyncService {
       // öğretmen yeni tatili göremiyor ama sistem "güncel" diyordu.
       // Üstelik sayaç ilerlediği için bir dahaki sefere "zaten güncel"
       // deyip sorunu kalıcı hale getiriyordu.
+      // İki ayrı liste: biri "yeni sürüm var ama uygulama güncellemesi
+      // gerekiyor", diğeri "veri ŞİMDİ indirildi".
       final outdatedModules = <String>[];
+      final updatedModules = <String>[];
 
       if (manifest.calendarVersion > localCalendar) {
         outdatedModules.add('MEB Akademik Takvimi');
@@ -111,6 +117,24 @@ class SyncService {
       }
       if (manifest.schoolDirectoryVersion > localSchools) {
         outdatedModules.add('Okul Dizini');
+      }
+
+      // SINAV FARKLI: veri GERÇEKTEN indirilir.
+      //
+      // Diğer üç modül APK ile gelir, sürüm yalnızca "güncelleme var"
+      // demek için kullanılır. Sınav tarihleri ise yıl içinde değişiyor
+      // — ertelenen bir LGS, açıklanan yeni başvuru tarihi. Öğretmenin
+      // bunun için uygulama güncellemesi beklemesi kabul edilemez.
+      //
+      // Veri Remote Config'te taşınıyor (7 KB, sınır 1 MB): ücretsiz,
+      // kotasız, ek altyapı yok.
+      final examsUpdated = await _syncExams(
+        manifest.examsVersion,
+        localExams,
+        manifest.examsPayload,
+      );
+      if (examsUpdated) {
+        updatedModules.add('Resmî Sınav Takvimi');
       }
 
       // Sayaç YALNIZCA veri gerçekten yenilendiğinde ilerlemelidir.
@@ -130,18 +154,27 @@ class SyncService {
           manifest.schoolDirectoryVersion,
         );
       }
+      // Sınav sayacı `force`a bağlı DEĞİL: veri gerçekten indiği için
+      // sayaç `_syncExams` içinde ilerletiliyor.
+
+      // Mesaj iki durumu AYIRIR: indirilen veri ile uygulama
+      // güncellemesi bekleyen modül aynı cümlede anlatılamaz.
+      final parcalar = <String>[];
+      if (updatedModules.isNotEmpty) {
+        parcalar.add('${updatedModules.join(', ')} güncellendi.');
+      }
+      if (outdatedModules.isNotEmpty) {
+        parcalar.add('${outdatedModules.join(', ')} için yeni sürüm '
+            'yayımlandı; uygulamayı güncelleyerek alabilirsiniz.');
+      }
 
       return SyncResult(
         success: true,
-        // "Güncelleme var" demek, indirildiği anlamına gelmez: yeni
-        // içerik uygulama güncellemesiyle gelir.
-        hasUpdates: outdatedModules.isNotEmpty,
-        updatedModules: outdatedModules,
+        hasUpdates: outdatedModules.isNotEmpty || updatedModules.isNotEmpty,
+        updatedModules: [...updatedModules, ...outdatedModules],
         updateRequired: updateRequired,
-        message: outdatedModules.isNotEmpty
-            ? '${outdatedModules.join(', ')} için yeni sürüm yayımlandı. '
-                'Uygulamayı güncelleyerek alabilirsiniz.'
-            : 'Verileriniz güncel ✨',
+        message:
+            parcalar.isEmpty ? 'Verileriniz güncel ✨' : parcalar.join(' '),
       );
     } catch (e, stackTrace) {
       debugPrint('---------------- HATA DETAYI (SyncService.checkAndSyncData) ----------------');
@@ -154,6 +187,49 @@ class SyncService {
         message: 'Senkronizasyon sırasında bir sorun oluştu. '
             'Uygulamanız yerel verilerle çalışmaya devam ediyor.',
       );
+    }
+  }
+
+  /// Resmî sınav takvimini Remote Config'ten indirir.
+  ///
+  /// `true` dönerse veri gerçekten yenilendi.
+  ///
+  /// ## Neden ayrı yöntem
+  /// Diğer modüller yalnızca sürüm karşılaştırıyor; burada gerçek yazma
+  /// var. Hata durumunda sayaç ilerlemez — aksi hâlde bir kez başarısız
+  /// olan indirme kalıcı olarak "güncel" sayılırdı.
+  Future<bool> _syncExams(
+    int uzakSurum,
+    int yerelSurum,
+    String payload,
+  ) async {
+    // Sunucuda yeni sürüm yoksa dokunma.
+    if (uzakSurum <= yerelSurum) return false;
+
+    // Sürüm artmış ama veri konmamış: yönetici sayacı yanlışlıkla
+    // ilerletmiş olabilir. Sessizce geç — eski veri elde kalsın.
+    if (payload.trim().isEmpty) {
+      debugPrint('SyncService: exams_version arttı ama exams_payload boş.');
+      return false;
+    }
+
+    try {
+      final yazilan = await ExamSyncService().syncFromJsonString(payload);
+      if (yazilan <= 0) {
+        // Bozuk JSON ya da beklenmeyen biçim. Sayaç ilerlemez ki
+        // yönetici düzeltince yeniden denensin.
+        debugPrint('SyncService: sınav verisi ayrıştırılamadı.');
+        return false;
+      }
+
+      await DatabaseHelper.instance
+          .syncMetadataVersionGuncelle(_kExamsSyncKey, uzakSurum);
+      debugPrint('SyncService: $yazilan resmî sınav güncellendi '
+          '(v$yerelSurum → v$uzakSurum).');
+      return true;
+    } catch (e, stackTrace) {
+      debugPrint('SyncService._syncExams hatası: $e\n$stackTrace');
+      return false;
     }
   }
 }

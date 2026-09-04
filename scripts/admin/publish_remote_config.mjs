@@ -61,8 +61,10 @@ const template = await rc.getTemplate();
 if (showOnly) {
   console.log('\nMevcut Remote Config parametreleri:\n');
   for (const [key, param] of Object.entries(template.parameters)) {
-    const value = param.defaultValue?.value ?? '(tanımsız)';
-    console.log(`  ${key.padEnd(26)} = ${value}`);
+    const value = String(param.defaultValue?.value ?? '(tanımsız)');
+    const gosterim =
+      value.length > 60 ? `${value.slice(0, 45)}… (${value.length} bayt)` : value;
+    console.log(`  ${key.padEnd(26)} = ${gosterim}`);
   }
   console.log(`\nSürüm: ${template.version?.versionNumber ?? '?'}\n`);
   process.exit(0);
@@ -111,7 +113,11 @@ console.log('\n✓ Remote Config yayınlandı.');
 console.log(`  Sürüm: ${published.version?.versionNumber}`);
 console.log('\nYayınlanan değerler:');
 for (const [key, value] of Object.entries(params)) {
-  console.log(`  ${key.padEnd(26)} = ${value}`);
+  // Veri tasiyan parametreler (exams_payload gibi) kilobaytlarca JSON
+  // olabiliyor; konsolu bogmasin diye ozetlenir.
+  const str = String(value);
+  const gosterim = str.length > 60 ? `${str.slice(0, 45)}… (${str.length} bayt)` : str;
+  console.log(`  ${key.padEnd(26)} = ${gosterim}`);
 }
 console.log(
   '\nMobil cihazlar en geç 6 saat içinde alır; kullanıcı "senkronize et"\n' +

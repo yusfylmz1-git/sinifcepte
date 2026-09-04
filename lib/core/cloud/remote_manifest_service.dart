@@ -10,6 +10,26 @@ class RemoteManifest {
   final int outcomesVersion;
   final int announcementsVersion;
   final int schoolDirectoryVersion;
+
+  /// Resmî sınav takvimi sürümü.
+  ///
+  /// Diğer sürümlerden FARKI: bu modül veriyi GERÇEKTEN indirir.
+  /// Takvim ve kazanım APK ile gelir, sürüm yalnızca "güncelleme var"
+  /// demek için kullanılır. Sınav tarihleri ise yıl içinde değişiyor
+  /// (ertelenen LGS, açıklanan başvuru tarihi) ve öğretmen uygulama
+  /// güncellemesi bekleyemez.
+  final int examsVersion;
+
+  /// Sınav takvimi verisi — JSON dizisi.
+  ///
+  /// ## Neden Remote Config
+  /// Paket 7 KB; parametre sınırı 1 MB. Storage veya Firestore
+  /// gereksiz karmaşıklık olurdu. Remote Config ücretsiz ve kotasız
+  /// (maliyet kararı #3).
+  ///
+  /// Boşsa APK'daki varlık kullanılır — offline-first bozulmaz.
+  final String examsPayload;
+
   final String minAppVersion;
   final String latestAppVersion;
   final bool maintenanceMode;
@@ -31,6 +51,8 @@ class RemoteManifest {
     this.outcomesVersion = 1,
     this.announcementsVersion = 1,
     this.schoolDirectoryVersion = 1,
+    this.examsVersion = 1,
+    this.examsPayload = '',
     this.minAppVersion = '1.0.0',
     this.latestAppVersion = '1.0.0',
     this.maintenanceMode = false,
@@ -113,6 +135,9 @@ class RemoteManifestService {
         'outcomes_version': 1,
         'announcements_version': 1,
         'school_directory_version': 1,
+        'exams_version': 1,
+        // Boş: sunucuda değer yoksa APK'daki varlık kullanılır.
+        'exams_payload': '',
         'min_app_version': '1.0.0',
         'latest_app_version': '1.0.0',
         'maintenance_mode': false,
@@ -159,6 +184,8 @@ class RemoteManifestService {
         outcomesVersion: config.getInt('outcomes_version'),
         announcementsVersion: config.getInt('announcements_version'),
         schoolDirectoryVersion: config.getInt('school_directory_version'),
+        examsVersion: config.getInt('exams_version'),
+        examsPayload: config.getString('exams_payload'),
         minAppVersion: config.getString('min_app_version'),
         latestAppVersion: config.getString('latest_app_version'),
         maintenanceMode: config.getBool('maintenance_mode'),

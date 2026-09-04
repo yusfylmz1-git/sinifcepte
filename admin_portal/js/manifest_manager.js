@@ -73,6 +73,23 @@ class ManifestManager {
   }
 
   /**
+   * Sinav takvimi surumunu artirir.
+   *
+   * DIGERLERINDEN FARKLI: bu surum artisi mobil tarafta GERCEK indirme
+   * tetikler. Takvim ve kazanim yalnizca "guncelleme var" uyarisi
+   * uretir; sinav verisi Remote Config uzerinden dogrudan iner.
+   *
+   * Bu yuzden surumu artirmadan once `exams_payload` degerinin de
+   * yayinlandigindan emin olun — `toRemoteConfigParams()` ikisini
+   * birlikte uretir.
+   */
+  incrementExamsVersion() {
+    this.manifest.examsVersion = (this.manifest.examsVersion || 1) + 1;
+    this.save();
+    return this.manifest.examsVersion;
+  }
+
+  /**
    * Manifesti Firebase Remote Config parametrelerine çevirir.
    *
    * Panel tarayıcıda çalıştığı ve Remote Config'e yazmak Admin SDK
@@ -82,22 +99,37 @@ class ManifestManager {
    *
    * Mobil taraf bu parametreleri RemoteManifestService ile okur.
    */
-  toRemoteConfigParams() {
-    return {
+  toRemoteConfigParams(examsManager = null) {
+    const params = {
       calendar_version: this.manifest.calendarVersion,
       outcomes_version: this.manifest.outcomesVersion,
       announcements_version: this.manifest.announcementsVersion,
       school_directory_version: this.manifest.schoolDirectoryVersion || 1,
+      exams_version: this.manifest.examsVersion || 1,
       min_app_version: this.manifest.minRequiredAppVersion,
       latest_app_version: this.manifest.latestAppVersion,
       maintenance_mode: this.manifest.maintenanceMode,
       maintenance_message: this.manifest.maintenanceMessage || '',
     };
+
+    // Sinav VERISI de parametreye girer.
+    //
+    // Paket ~7 KB; Remote Config parametre siniri 1 MB. Storage veya
+    // Firestore gereksiz karmasiklik olurdu — Remote Config ucretsiz
+    // ve kotasiz (maliyet karari #3).
+    //
+    // examsManager verilmezse alan hic yazilmaz; boylece yalnizca
+    // surum degistirmek isteyen yonetici veriyi yanlislikla silmez.
+    if (examsManager) {
+      params.exams_payload = JSON.stringify(examsManager.getAllExams());
+    }
+
+    return params;
   }
 
   /** Remote Config parametrelerini JSON dosyası olarak indirir. */
-  downloadRemoteConfigJson() {
-    const params = this.toRemoteConfigParams();
+  downloadRemoteConfigJson(examsManager = null) {
+    const params = this.toRemoteConfigParams(examsManager);
     const blob = new Blob([JSON.stringify(params, null, 2)], {
       type: 'application/json',
     });

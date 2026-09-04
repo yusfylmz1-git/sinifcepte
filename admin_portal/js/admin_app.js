@@ -1286,6 +1286,44 @@ class AdminApp {
     this.showToast('Resmî Sınav Takvimi JSON olarak indirildi 📥', 'success');
   }
 
+  /**
+   * Sinav takvimini mobil uygulamalara yayinlar.
+   *
+   * DIGER MODULLERDEN FARKLI: takvim ve kazanim yalnizca "guncelleme
+   * var" uyarisi uretir, veri APK ile gelir. Sinav tarihleri ise yil
+   * icinde degisiyor (ertelenen LGS, acilanan basvuru tarihi) ve
+   * ogretmen uygulama guncellemesi bekleyemez.
+   *
+   * Uretilen dosya Remote Config'e su komutla yayinlanir:
+   *   node scripts/admin/publish_remote_config.mjs remote_config_params.json
+   */
+  publishExamsToMobile() {
+    const sinavSayisi = this.examsManager.getAllExams().length;
+    if (sinavSayisi === 0) {
+      this.showToast('Yayınlanacak sınav yok.', 'error');
+      return;
+    }
+
+    const onay = confirm(
+      `${sinavSayisi} sınav mobil uygulamalara yayınlanacak.\n\n` +
+        'Öğretmenler uygulamayı güncellemeden yeni tarihleri görecek.\n' +
+        'Sürüm numarası artırılacak ve indirilen dosyayı yayın komutuyla ' +
+        'Remote Config’e göndermeniz gerekecek.\n\nDevam edilsin mi?'
+    );
+    if (!onay) return;
+
+    const yeniSurum = this.manifestManager.incrementExamsVersion();
+    // examsManager verilince `exams_payload` da dosyaya girer.
+    this.manifestManager.downloadRemoteConfigJson(this.examsManager);
+
+    this.updateDashboardStats();
+    this.showToast(
+      `Sınav takvimi v${yeniSurum} hazırlandı (${sinavSayisi} sınav). ` +
+        'İndirilen dosyayı publish_remote_config.mjs ile yayınlayın 🚀',
+      'success'
+    );
+  }
+
   resetExamsToDefault() {
     if (confirm('Tüm sınav takvimini orijinal MEB & ÖSYM resmî varsayılanlarına sıfırlamak istiyor musunuz?')) {
       const count = this.examsManager.resetToDefaultExams();
