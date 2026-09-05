@@ -23,7 +23,7 @@ void main() {
       options: OpenDatabaseOptions(version: 1),
     );
     await db.execute('''
-      CREATE TABLE curriculum_outcomes (
+      CREATE TABLE IF NOT EXISTS curriculum_outcomes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         doc_id TEXT,
         grade_level INTEGER NOT NULL,
@@ -53,7 +53,13 @@ void main() {
         date_range_str TEXT,
         is_estimated_schedule INTEGER DEFAULT 0,
         is_otp_week INTEGER DEFAULT 0,
-        is_social_event_week INTEGER DEFAULT 0
+        is_social_event_week INTEGER DEFAULT 0,
+        -- DB v25: kaynak bilgisi. Maarif rozeti buradan türer;
+        -- önce metin aramasıyla veriliyordu ve 89 ders rozet
+        -- alması gerekirken almıyordu.
+        is_maarif INTEGER DEFAULT 0,
+        source_portal TEXT,
+        source_program TEXT
       )
     ''');
     return db;

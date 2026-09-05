@@ -693,13 +693,30 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
                         final subjectName = groupedMap.keys.elementAt(index);
                         final items = groupedMap[subjectName]!;
 
-                        if (items.length == 1) {
-                          // Tek Yayınevi Olan Ders Kartı
-                          return _buildSingleSubjectCard(context, grade, items.first, favoriteKeys, isDark);
-                        } else {
-                          // Çoklu Yayınevi Olan Açılır-Kapanır Akordeon Kartı
-                          return _buildAccordionSubjectCard(context, grade, subjectName, items, favoriteKeys, isDark);
-                        }
+                        final kart = items.length == 1
+                            // Tek Yayınevi Olan Ders Kartı
+                            ? _buildSingleSubjectCard(
+                                context, grade, items.first, favoriteKeys, isDark)
+                            // Çoklu Yayınevi Olan Açılır-Kapanır Akordeon Kartı
+                            : _buildAccordionSubjectCard(
+                                context, grade, subjectName, items,
+                                favoriteKeys, isDark);
+
+                        // Seçmeli bölümün başlığı.
+                        //
+                        // Öğretmen kendi dersini ararken pilot okul
+                        // dersleri (Çoklu Yabancı Dil) ve seçmeliler
+                        // arasında kaybolmamalı. Sorgu zaten temel
+                        // dersleri öne alıyor; burada görsel ayrım
+                        // yapılıyor.
+                        if (!_secmeliBasliyor(groupedMap, index)) return kart;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _secmeliAyirici(isDark),
+                            kart,
+                          ],
+                        );
                       },
                     ),
             ),
@@ -883,6 +900,49 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
   }
 
   /// Ders İsmine Göre Gruplama (Akordeon İçin)
+  /// Bu satırda seçmeli bölüm mü başlıyor?
+  ///
+  /// Sorgu sırası: temel (core) -> imam hatip (iho) -> seçmeli.
+  /// Ayırıcı yalnızca geçişte bir kez çizilir.
+  bool _secmeliBasliyor(
+    Map<String, List<Map<String, dynamic>>> gruplar,
+    int index,
+  ) {
+    if (index == 0) return false;
+    String kategori(int i) =>
+        gruplar[gruplar.keys.elementAt(i)]!.first['category'] as String? ??
+        'core';
+    final bu = kategori(index);
+    if (bu == 'core' || bu == 'iho') return false;
+    final onceki = kategori(index - 1);
+    return onceki == 'core' || onceki == 'iho';
+  }
+
+  /// Temel derslerle seçmelileri ayıran başlık.
+  Widget _secmeliAyirici(bool isDark) {
+    final cizgi = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 16, 4, 6),
+      child: Row(
+        children: [
+          Expanded(child: Divider(thickness: 0.8, color: cizgi)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Text(
+              'Seçmeli ve özel program dersleri',
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white54 : const Color(0xFF64748B),
+              ),
+            ),
+          ),
+          Expanded(child: Divider(thickness: 0.8, color: cizgi)),
+        ],
+      ),
+    );
+  }
+
   Map<String, List<Map<String, dynamic>>> _groupSubjects(List<Map<String, dynamic>> subjects) {
     final Map<String, List<Map<String, dynamic>>> map = {};
     for (final item in subjects) {
@@ -902,10 +962,14 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
   ) {
     final subjectCode = item['subject_code'] as String? ?? '';
     final subjectName = item['subject_name'] as String? ?? 'Ders';
-    final publisher = item['publisher'] as String? ?? 'MEB Yayınları';
-    final isMaarif = publisher.toLowerCase().contains('maarif') ||
-        publisher.toLowerCase().contains('tymm') ||
-        (item['full_title'] as String? ?? '').toLowerCase().contains('maarif');
+    final publisher = item['publisher'] as String? ?? '';
+    // Rozet VERIDEN gelir, metin aramasiyla degil.
+    //
+    // Once publisher'da "maarif"/"tymm" geciyor mu diye bakiliyordu.
+    // Olcum: 89 ders rozet almasi gerekirken almiyor, 2 ders yanlis
+    // aliyordu — publisher hem kaynagi hem okul turunu tasiyor,
+    // bulunamayinca "MEB Yayinlari" yaziliyordu.
+    final isMaarif = (item['is_maarif'] as int? ?? 0) == 1;
 
     final favKey = '${grade}_${subjectCode}_$publisher';
     final isFav = favoriteKeys.contains(favKey);
@@ -1103,11 +1167,10 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
                 ),
                 itemBuilder: (context, idx) {
                   final subItem = items[idx];
-                  final publisher = subItem['publisher'] as String? ?? 'MEB Yayınları';
+                  final publisher = subItem['publisher'] as String? ?? '';
                   final subjectCode = subItem['subject_code'] as String? ?? '';
-                  final isMaarif = publisher.toLowerCase().contains('maarif') ||
-                      publisher.toLowerCase().contains('tymm') ||
-                      (subItem['full_title'] as String? ?? '').toLowerCase().contains('maarif');
+                  // Rozet veriden gelir (bkz. yukarıdaki not).
+                  final isMaarif = (subItem['is_maarif'] as int? ?? 0) == 1;
                   final favKey = '${grade}_${subjectCode}_$publisher';
                   final isFav = favoriteKeys.contains(favKey);
 

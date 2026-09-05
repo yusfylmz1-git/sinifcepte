@@ -151,7 +151,26 @@ class CurriculumOutcomeModel {
   final int gradeLevel; // 1 to 12
   final String subjectCode; // Örn: "BILISIM", "MAT", "FEN", "TURKCE"
   final String subjectName; // Örn: "Bilişim Teknolojileri ve Yazılım", "Matematik"
-  final String publisher; // Örn: "TYMM (Maarif Modeli)", "MEB Yayınları"
+  /// Okul türü: "Anadolu Lisesi", "Fen Lisesi" veya boş.
+  ///
+  /// KAYNAK BİLGİSİ DEĞİL. Önce bu alan üç işi birden yapıyordu
+  /// (kaynak, okul türü, "bilinmiyor" için "MEB Yayınları") ve Maarif
+  /// rozetinin yanlış basılmasına yol açıyordu. Kaynak artık
+  /// [sourcePortal] ve [sourceProgram] alanlarında.
+  final String publisher;
+
+  /// Verinin geldiği MEB sitesi: 'tymm' | 'dogm' | ''.
+  ///
+  /// İkisi de resmî MEB yayını, farklı genel müdürlük: TYMM genel
+  /// dersleri, DÖGM imam hatip ve din derslerini yayımlıyor.
+  final String sourcePortal;
+
+  /// Öğretim programı: 'maarif' | 'legacy' | ''.
+  ///
+  /// Excel sütun başlığından ölçülür, tahmin edilmez:
+  ///   "ÖĞRENME ÇIKTILARI VE SÜREÇ BİLEŞENLERİ" -> maarif
+  ///   "KAZANIM" + "KAZANIM AÇIKLAMASI"         -> legacy
+  final String sourceProgram;
   final String fullTitle; // Örn: "5. Sınıf - Bilişim Teknolojileri ve Yazılım - TYMM (Maarif Modeli)"
   final String category; // 'core', 'elective', 'course', 'iho', 'harezmi'
   final int weekNumber; // 1 to 39 (Takvim Sırası)
@@ -219,7 +238,9 @@ class CurriculumOutcomeModel {
     required this.gradeLevel,
     required this.subjectCode,
     required this.subjectName,
-    this.publisher = 'MEB Yayınları',
+    this.publisher = '',
+    this.sourcePortal = '',
+    this.sourceProgram = '',
     this.fullTitle = '',
     this.category = 'core',
     required this.weekNumber,
@@ -254,6 +275,8 @@ class CurriculumOutcomeModel {
     String? subjectCode,
     String? subjectName,
     String? publisher,
+    String? sourcePortal,
+    String? sourceProgram,
     String? fullTitle,
     String? category,
     int? weekNumber,
@@ -287,6 +310,8 @@ class CurriculumOutcomeModel {
       subjectCode: subjectCode ?? this.subjectCode,
       subjectName: subjectName ?? this.subjectName,
       publisher: publisher ?? this.publisher,
+      sourcePortal: sourcePortal ?? this.sourcePortal,
+      sourceProgram: sourceProgram ?? this.sourceProgram,
       fullTitle: fullTitle ?? this.fullTitle,
       category: category ?? this.category,
       weekNumber: weekNumber ?? this.weekNumber,
@@ -322,7 +347,9 @@ class CurriculumOutcomeModel {
       gradeLevel: map['grade_level'] as int? ?? 5,
       subjectCode: map['subject_code'] as String? ?? 'GENEL',
       subjectName: map['subject_name'] as String? ?? 'Genel Ders',
-      publisher: map['publisher'] as String? ?? 'MEB Yayınları',
+      publisher: map['publisher'] as String? ?? '',
+      sourcePortal: map['source_portal'] as String? ?? '',
+      sourceProgram: map['source_program'] as String? ?? '',
       fullTitle: map['full_title'] as String? ?? '',
       category: map['category'] as String? ?? 'core',
       weekNumber: map['week_number'] as int? ?? 1,
@@ -376,6 +403,9 @@ class CurriculumOutcomeModel {
       'span_total': spanTotal,
       'official_activity': officialActivity,
       'is_estimated_schedule': isEstimatedSchedule ? 1 : 0,
+      'is_maarif': isMaarif ? 1 : 0,
+      'source_portal': sourcePortal,
+      'source_program': sourceProgram,
       'academic_year': academicYear,
       'is_holiday_week': isHolidayWeek ? 1 : 0,
       'is_otp_week': isOtpWeekFlag ? 1 : 0,
@@ -400,7 +430,9 @@ class CurriculumOutcomeModel {
       gradeLevel: json['gradeLevel'] as int? ?? 5,
       subjectCode: json['subjectCode'] as String? ?? 'GENEL',
       subjectName: json['subjectName'] as String? ?? 'Genel Ders',
-      publisher: json['publisher'] as String? ?? 'MEB Yayınları',
+      publisher: json['publisher'] as String? ?? '',
+      sourcePortal: json['sourcePortal'] as String? ?? '',
+      sourceProgram: json['sourceProgram'] as String? ?? '',
       fullTitle: json['fullTitle'] as String? ?? '',
       category: json['category'] as String? ?? 'core',
       weekNumber: json['weekNumber'] as int? ?? 1,
@@ -435,6 +467,8 @@ class CurriculumOutcomeModel {
       'subjectCode': subjectCode,
       'subjectName': subjectName,
       'publisher': publisher,
+      'sourcePortal': sourcePortal,
+      'sourceProgram': sourceProgram,
       'fullTitle': fullTitle,
       'category': category,
       'weekNumber': weekNumber,
@@ -462,13 +496,26 @@ class CurriculumOutcomeModel {
     };
   }
 
-  /// Türkiye Yüzyılı Maarif Modeli (TYMM) uyumlu mu?
-  bool get isMaarif =>
-      publisher.toLowerCase().contains('maarif') ||
-      publisher.toLowerCase().contains('tymm') ||
-      unitTitle.toLowerCase().contains('maarif') ||
-      fullTitle.toLowerCase().contains('maarif') ||
-      (maarifSummary != null && maarifSummary!.isNotEmpty);
+  /// Güncel öğretim programına (Maarif Modeli) göre mi?
+  ///
+  /// Önce METİN ARAMASIYLA karar veriliyordu: publisher veya başlıkta
+  /// "maarif"/"tymm" geçiyor mu. Ölçüm: 89 ders rozet alması
+  /// gerekirken almıyor, 2 ders yanlış alıyordu — çünkü publisher
+  /// hem kaynağı hem okul türünü taşıyordu ve bulunamayınca
+  /// "MEB Yayınları" yazılıyordu.
+  ///
+  /// Artık kaynak veriden geliyor ve Excel sütun başlığından
+  /// ölçülüyor. MEB aynı dosyada iki programı birden yayımlıyor
+  /// (Fen Bilimleri 3 Maarif, 4 eski program), bu yüzden kademeden
+  /// çıkarım da yeterli değil.
+  bool get isMaarif => sourceProgram == 'maarif';
+
+  /// Kaynağın okunabilir adı — öğretmene detayda gösterilir.
+  String get sourceLabel => switch (sourcePortal) {
+        'tymm' => 'MEB TYMM',
+        'dogm' => 'MEB DÖGM',
+        _ => '',
+      };
 
   /// Okul Temelli Planlama (OTP) Haftası mı?
   ///

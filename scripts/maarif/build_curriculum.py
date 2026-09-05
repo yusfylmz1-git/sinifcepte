@@ -352,6 +352,11 @@ def rebuild(records: list[dict], academic_year: str) -> list[dict]:
         # okul turu degil "bilinmiyor" demekti ve kaynak alaniyla
         # karisip Maarif rozetini bozuyordu.
         publisher = (record.get("publisher") or "").strip()
+        # "MEB Yayinlari" bir OKUL TURU degil, eski verideki
+        # "bilinmiyor" degeri. Kaynak alaniyla karisip Maarif rozetini
+        # bozan buydu; tasinmaz.
+        if fold(publisher) in ("meb yayinlari", "meb yayınları"):
+            publisher = ""
         week = int(record.get("weekNumber") or 1)
         if not 1 <= week <= TOTAL_WEEKS:
             continue

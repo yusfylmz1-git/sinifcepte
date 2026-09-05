@@ -153,7 +153,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 24,
+      version: 25,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
       onConfigure: _onConfigure,
@@ -600,7 +600,17 @@ class DatabaseHelper {
         date_range_str $textNullable,
         is_estimated_schedule $intType DEFAULT 0,
         is_otp_week $intType DEFAULT 0,
-        is_social_event_week $intType DEFAULT 0
+        is_social_event_week $intType DEFAULT 0,
+        -- Kaynak bilgisi. Maarif rozeti BURADAN turer.
+        --
+        -- Once bu sutunlar yoktu ve rozet metin aramasiyla
+        -- veriliyordu (publisher'da "maarif" geciyor mu). Olcum: 89
+        -- ders rozet almasi gerekirken almiyor, 2 ders yanlis
+        -- aliyordu. Ustelik veri her kayda isMaarif=true diyordu,
+        -- Maarif'in yururlukte olmadigi 4, 8 ve 12. siniflar dahil.
+        is_maarif $intType DEFAULT 0,
+        source_portal $textNullable,
+        source_program $textNullable
       )
     ''');
 
@@ -936,6 +946,31 @@ class DatabaseHelper {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 25) {
+      // Kaynak bilgisi: Maarif rozeti artik metin aramasiyla degil bu
+      // sutunlardan karar veriliyor.
+      //
+      // Sutunlar eklendikten sonra mufredat YENIDEN TOHUMLANMALI;
+      // eski kayitlarda bu alanlar bos. Tohumlama zaten varlik
+      // parmak izi degisince kendiliginden calisiyor ve bu surumde
+      // varlik da degisti.
+      const kaynakSutunlari = <String, String>{
+        'is_maarif': 'INTEGER DEFAULT 0',
+        'source_portal': 'TEXT',
+        'source_program': 'TEXT',
+      };
+      for (final entry in kaynakSutunlari.entries) {
+        try {
+          await db.execute(
+            'ALTER TABLE curriculum_outcomes ADD COLUMN '
+            '${entry.key} ${entry.value}',
+          );
+        } catch (e) {
+          debugPrint('DB Upgrade (curriculum_outcomes.${entry.key}): $e');
+        }
+      }
+    }
+
     if (oldVersion < 24) {
       // Ogretmenin kendi belirledigi tarih ve olcut.
       //
@@ -1586,17 +1621,35 @@ class DatabaseHelper {
   Future<List<Map<String, dynamic>>> mevcutDersleriGetir(int gradeLevel) async {
     try {
       final db = await instance.database;
+      // SIRALAMA: temel dersler ustte, secmeli/CYDEM altta.
+      //
+      // Ogretmen kendi dersini ararken pilot okul dersleri (Coklu
+      // Yabanci Dil) ve secmeliler arasinda kaybolmamali. Kategori
+      // alani zaten var: 'core' temel, 'iho' imam hatip, gerisi
+      // secmeli.
+      //
+      // is_maarif ve kaynak sutunlari da getirilir: rozet artik metin
+      // aramasiyla degil bu alandan karar veriliyor.
       return await db.rawQuery('''
-        SELECT 
-          subject_code, 
-          subject_name, 
-          COALESCE(publisher, 'MEB Yayınları') as publisher,
+        SELECT
+          subject_code,
+          subject_name,
+          COALESCE(publisher, '') as publisher,
           COALESCE(full_title, '') as full_title,
+          COALESCE(category, 'core') as category,
+          MAX(COALESCE(is_maarif, 0)) as is_maarif,
+          COALESCE(MAX(source_portal), '') as source_portal,
           COUNT(*) as outcome_count
-        FROM curriculum_outcomes 
+        FROM curriculum_outcomes
         WHERE grade_level = ?
         GROUP BY subject_code, publisher
-        ORDER BY subject_name ASC
+        ORDER BY
+          CASE COALESCE(category, 'core')
+            WHEN 'core' THEN 0
+            WHEN 'iho' THEN 1
+            ELSE 2
+          END ASC,
+          subject_name ASC
       ''', [gradeLevel]);
     } catch (e, stackTrace) {
       debugPrint('---------------- HATA DETAYI (DatabaseHelper.mevcutDersleriGetir) ----------------');
