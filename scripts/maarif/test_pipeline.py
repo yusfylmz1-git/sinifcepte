@@ -341,6 +341,124 @@ class TymmPlanImportTests(unittest.TestCase):
         self.assertIsNone(self.extract_code("Serbest metin"))
 
 
+class MebYeniDuzenTests(unittest.TestCase):
+    """MEB'in Eylül 2026 ilkokul/ortaokul dosya düzenleri.
+
+    ## Neden bu testler var
+    MEB bu ay ilkokul ve ortaokul için taslak yıllık planları
+    yayımladı. Sayfa adları eski kalıba uymuyordu ve
+    `read_sheet` kademeyi okuyamayınca **uyarı bile üretmeden**
+    atlıyordu: Fen Bilimleri'nin tamamı, Türkçe'nin çoğu düştü.
+
+    Ölçüm: 4610 -> 5500 kayıt (890 kurtarıldı), 129 -> 157 ders grubu.
+    """
+
+    def setUp(self):
+        from import_tymm_plans import (
+            detect_grade, detect_school_type, locate_header, parse_week,
+        )
+        self.detect_grade = detect_grade
+        self.detect_school_type = detect_school_type
+        self.locate_header = locate_header
+        self.parse_week = parse_week
+
+    def test_yeni_sayfa_adlarindan_kademe(self):
+        """MEB'in yeni sekme adlarında kademe okunmalı."""
+        # Bunların hepsi None dönüyordu ve sayfa sessizce düşüyordu.
+        durumlar = [
+            ("FEN BİLİMLERİ 3 (TYMM)", 3),
+            ("FEN BİLİMLERİ 4", 4),
+            ("TÜRKÇE 5 ÇERÇEVE YILLIK PLANLAR", 5),
+            ("MÜZİK-1 (TYMM)", 1),
+            ("BTY_5", 5),          # Bilişim Teknolojileri, alt çizgi
+            ("TEK-TAS 7", 7),      # Teknoloji Tasarım, tire
+        ]
+        for sekme, beklenen in durumlar:
+            with self.subTest(sekme=sekme):
+                self.assertEqual(self.detect_grade(sekme, "x.xlsx"), beklenen)
+
+    def test_eski_kaliplar_bozulmadi(self):
+        """Yeni kalıp eklenirken mevcut korumalar korunmalı."""
+        # "SBÇ 2" sınıf değil ders seviyesidir; sosyal bilimler
+        # lisesinde 11. sınıfta okutulur. Sayıyı sınıf sanmak
+        # 2. sınıf kaydı üretiyordu.
+        self.assertEqual(self.detect_grade("SBÇ 2", "x.xlsx"), 11)
+        self.assertEqual(self.detect_grade("Sosyoloji 1", "x.xlsx"), 11)
+        self.assertEqual(self.detect_grade("9. SINIF", "x.xlsx"), 9)
+        # Hazırlık sınıfı 1-12 dışı.
+        self.assertIsNone(self.detect_grade("Hazırlık Sınıfı", "x.xlsx"))
+
+    def test_adsiz_sekme_kademe_sanilmaz(self):
+        """KRİTİK: "Sayfa1" 1. sınıf DEĞİLDİR."""
+        # Sondaki sayı sekme numarasıdır. Önce 1. sınıf sanılıyordu ve
+        # o dosyanın tamamı yanlış kademeye yazılıyordu — sessiz hata.
+        for sekme in ("Sayfa1", "Sayfa2", "Sheet1", "Tablo1"):
+            with self.subTest(sekme=sekme):
+                self.assertIsNone(self.detect_grade(sekme, "hayat_bilgisi.xlsx"))
+
+    def test_ingilizce_hafta_etiketi(self):
+        """ÇYDEM planlarında hafta etiketi İngilizce."""
+        # Türkçe kalıp sayıyı ÖNDE bekliyor ("1. Hafta"); İngilizce'de
+        # sonda ("Week 1"). Başlıklar okunsa bile tek kayıt
+        # üretilmiyordu.
+        self.assertEqual(self.parse_week("Week 1:\n 14-18 September"), 1)
+        self.assertEqual(self.parse_week("Week 4: 5-9 October"), 4)
+        # Türkçe bozulmamalı.
+        self.assertEqual(self.parse_week("1. Hafta\n\n 14-18 Eylül"), 1)
+
+    def test_ingilizce_sutun_basliklari(self):
+        """ÇYDEM planlarında sütun başlıkları İngilizce."""
+        # locate_header aday satırı "hafta" sözcüğüyle buluyordu;
+        # İngilizce sayfada "week" yazdığı için hiçbir satır aday
+        # olmuyor ve ipuçlarına hiç bakılmıyordu.
+        satirlar = [
+            ("2026-2027 ACADEMIC YEAR", None, None, None, None, None, None),
+            ("DURATION", None, None, "THEME AND CONTENT FRAME", None,
+             "LEARNING OUTCOMES", None),
+            ("MONTH", "WEEK", "CLASS HOUR", "THEME", "CONTENT FRAME",
+             "LEARNING OUTCOMES", "ASSESSMENT AND EVALUATION"),
+        ]
+        index, mapping, duzen = self.locate_header(satirlar)
+        self.assertNotEqual(index, -1, "İngilizce başlık satırı bulunamadı")
+        self.assertIn("week", mapping)
+        self.assertIn("outcome", mapping)
+        # İngilizce de olsa bu bir Maarif planı.
+        self.assertEqual(duzen, "maarif")
+
+    def test_duzen_kaynagi_belirler(self):
+        """KRİTİK: Maarif mi eski program mı, SÜTUN BAŞLIĞINDAN."""
+        # Ölçüldü: MEB aynı dosyada iki programı birden veriyor.
+        #   FEN BİLİMLERİ 3 (TYMM) -> "ÖĞRENME ÇIKTILARI VE SÜREÇ..."
+        #   FEN BİLİMLERİ 4        -> "KAZANIM" + "KAZANIM AÇIKLAMASI"
+        # Sayfa adındaki "(TYMM)" işareti tek başına yetmez: lise
+        # dosyalarında hiç yok, oysa içerikleri Maarif düzeninde.
+        maarif = [
+            ("AY", "HAFTA", "DERS SAATİ", "ÜNİTE/TEMA", "KONU",
+             "ÖĞRENME ÇIKTILARI", "SÜREÇ BİLEŞENLERİ"),
+        ]
+        _, _, duzen = self.locate_header(maarif)
+        self.assertEqual(duzen, "maarif")
+
+        eski = [
+            ("AY", "HAFTA", "DERS SAATİ", "ÜNİTE", "KONU",
+             "KAZANIM", "KAZANIM AÇIKLAMASI"),
+        ]
+        _, _, duzen = self.locate_header(eski)
+        self.assertEqual(duzen, "legacy")
+
+    def test_okul_turu_bulunamazsa_bos(self):
+        """KRİTİK: "MEB Yayınları" bir okul türü DEĞİLDİR."""
+        # Önce bulunamayınca "MEB Yayınları" yazılıyordu; bu bir okul
+        # türü değil "bilinmiyor" demekti ve kaynak alanıyla karışıp
+        # Maarif rozetinin yanlış basılmasına yol açıyordu (ölçüm:
+        # 89 ders rozet alması gerekirken almıyordu).
+        self.assertEqual(self.detect_school_type("matematik.xlsx"), "")
+        self.assertEqual(
+            self.detect_school_type("FIZIK ANADOLU LISESI.xlsx"),
+            "Anadolu Lisesi",
+        )
+
+
 class ShippedDataTests(unittest.TestCase):
     """Depoya işlenmiş gerçek veri paketini doğrular."""
 

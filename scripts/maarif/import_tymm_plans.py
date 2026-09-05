@@ -64,6 +64,29 @@ SCHOOL_TYPES = [
 
 COURSE_NAMES = {
     "beden-egitimi-ve-spor-dersi": "Beden Eğitimi ve Spor",
+
+    # MEB Eylül 2026'da ilkokul/ortaokul planlarini yayimladi. Klasor
+    # adlari damga tasiyor (`_20260903_120014_364`); slug eslesmesi
+    # damgasiz on ek uzerinden yapilir (bkz. `_slug_kok`).
+    "beden-egitimi-ve-oyun-dersi": "Beden Eğitimi ve Oyun",
+    "bilisim-teknolojileri-ve-yazilim-dersi": "Bilişim Teknolojileri ve Yazılım",
+    "coklu-yabanci-dil-egitim-modeli-almanca-dersi": "Almanca",
+    "coklu-yabanci-dil-egitim-modeli-ingilizce": "İngilizce",
+    "fen-bilimleri-dersi": "Fen Bilimleri",
+    "hayat-bilgisi-dersi": "Hayat Bilgisi",
+    "ilkokul-matematik-dersi": "Matematik",
+    "ilkokul-turkce-dersi": "Türkçe",
+    "ilkokul-turkce-dersi-ada-yayinlari-ders-kitabi-yillik-plani": "Türkçe",
+    "ingilizce-dersi": "İngilizce",
+    "insan-haklarivatandaslik-ve-demokrasi-dersi":
+        "İnsan Hakları, Yurttaşlık ve Demokrasi",
+    "ortaokul-matematik-dersi": "Matematik",
+    "ortaokul-teknoloji-ve-tasarim-dersi": "Teknoloji ve Tasarım",
+    "ortaokul-turkce-dersi": "Türkçe",
+    "sosyal-bilgiler-dersi": "Sosyal Bilgiler",
+    "tc-inkilap-tarihi-ve-ataturkculuk-dersi":
+        "T.C. İnkılap Tarihi ve Atatürkçülük",
+
     "biyoloji-dersi": "Biyoloji",
     "cografya-dersi": "Coğrafya",
     "felsefe-dersi": "Felsefe",
@@ -137,11 +160,20 @@ def flatten(value) -> str:
 
 
 def detect_school_type(filename: str) -> str:
+    """Dosya adindan okul turu (Anadolu / Fen / Sosyal Bilimler Lisesi).
+
+    Bulunamazsa BOS doner. Once "MEB Yayınları" donuyordu ve bu bir
+    okul turu degil, "bilinmiyor" demekti; kaynak alaniyla karisip
+    Maarif rozetinin yanlis basilmasina yol aciyordu (olcum: 89 ders
+    rozet almasi gerekirken almiyordu).
+
+    Kaynak bilgisi artik ayri alanda: bkz. `source`.
+    """
     lowered = fold(filename)
     for needles, label in SCHOOL_TYPES:
         if any(n in lowered for n in needles):
             return label
-    return "MEB Yayınları"
+    return ""
 
 
 # Sosyal bilimler lisesi seçmeli dersleri ('SBÇ 1/2/3', 'Sosyoloji 1')
@@ -172,6 +204,31 @@ def detect_grade(sheet_name: str, filename: str = "") -> int | None:
     if re.match(r"^(sbc|scb|sosyoloji|psikoloji|mantik)\b", folded_sheet):
         return SOCIAL_SCIENCE_ELECTIVE_GRADE
 
+    # MEB'in Eylul 2026 ilkokul/ortaokul dosyalarinda sekme adi
+    # "FEN BILIMLERI 3 (TYMM)", "MUZIK-1 (TYMM)", "TURKCE 5 CERCEVE..."
+    # bicimindedir; "SINIF" sozcugu gecmez. Bu sayfalar SESSIZCE
+    # dusuyordu (Fen Bilimleri hic gelmedi, Turkce'nin 22 kaydi geldi).
+    #
+    # Sayi DERS ADINA BITISIK aranir; serbest gezen sayi ders numarasi
+    # olabiliyor ("SBC 2"). Yukaridaki seceli ders kontrolu zaten
+    # onden calistigi icin o durumlar buraya hic ulasmaz.
+    # "Sayfa1" / "Sheet1" adsiz sekmedir; sondaki sayi SEKME numarasi,
+    # sinif DEGIL. Once 1. sinif sanilip dosyanin tamami oraya
+    # yaziliyordu. Kademe dosya adindan okunmali (asagida).
+    if re.match(r"^(sayfa|sheet|tablo)\s*\d*$", folded_sheet):
+        pass
+    else:
+        # "FEN BILIMLERI 3 (TYMM)", "MUZIK-1", "BTY_5", "TEK-TAS 7":
+        # ders adi/kisaltmasi + kademe. Ayirici bosluk, tire veya alt
+        # cizgi olabilir.
+        ders_bitisik = re.match(
+            r"^([a-z][a-z .'_-]{1,}?)[\s_-]*(\d{1,2})(?![0-9])", folded_sheet
+        )
+        if ders_bitisik:
+            grade = int(ders_bitisik.group(2))
+            if 1 <= grade <= 12:
+                return grade
+
     if filename:
         name = fold(filename)
         # Yıl önekini ('2026-2027') at, kalanında sınıf numarasını ara.
@@ -193,6 +250,29 @@ def detect_grade(sheet_name: str, filename: str = "") -> int | None:
     return None
 
 
+# Klasor adindaki MEB damgasi: "..._20260903_120014_364"
+_DAMGA = re.compile(r"[-_]?\d{8}[-_]\d{6}[-_]\d+$")
+# Ad kuyrugu: "...-dersi-yillik-planlar" / "...-taslak-yillik-planlar"
+_AD_KUYRUGU = re.compile(
+    r"[-_](taslak[-_])?(cerceve[-_])?yillik[-_]plan(lar|i)?$"
+)
+
+
+def _slug_kok(course_slug: str) -> str:
+    """Klasor adindan damgayi ve plan kuyrugunu atar.
+
+    MEB dosyalari `_20260903_120014_364` damgasi tasiyor ve bu damga
+    her yayinda degisiyor. Slug'i damgayla eslestirseydik MEB dosyayi
+    her guncelledigi vakit ders adi bozulurdu.
+    """
+    kok = _DAMGA.sub("", course_slug)
+    onceki = None
+    while kok != onceki:
+        onceki = kok
+        kok = _AD_KUYRUGU.sub("", kok)
+    return kok
+
+
 def detect_subject(course_slug: str, sheet_name: str, filename: str) -> str:
     haystack = fold(f"{sheet_name} {filename}")
     for needle, name in SHEET_SUBJECT_OVERRIDES:
@@ -203,7 +283,14 @@ def detect_subject(course_slug: str, sheet_name: str, filename: str) -> str:
         for needle, name in AIHL_SUBJECTS:
             if needle in fold(filename):
                 return name
-    return COURSE_NAMES.get(course_slug, course_slug.replace("-", " ").title())
+    kok = _slug_kok(course_slug)
+    bilinen = COURSE_NAMES.get(course_slug) or COURSE_NAMES.get(kok)
+    if bilinen:
+        return bilinen
+    # Bilinmeyen ders: damgasiz kokten okunabilir bir ad uret. MEB yeni
+    # bir ders yayimladiginda ad bozuk cikmasin diye; sozluge eklenene
+    # kadar gecici olarak kullanilir.
+    return kok.replace("-", " ").replace("_", " ").strip().title()
 
 
 def detect_variant(sheet_name: str) -> str:
@@ -221,10 +308,18 @@ def detect_variant(sheet_name: str) -> str:
 _MONTH_NAMES = {
     "ocak": 1, "subat": 2, "mart": 3, "nisan": 4, "mayis": 5, "haziran": 6,
     "temmuz": 7, "agustos": 8, "eylul": 9, "ekim": 10, "kasim": 11, "aralik": 12,
+    # Yabanci dil planlari (CYDEM, Ingilizce) tarihleri INGILIZCE yazar.
+    # Tarih eslesmesi etiketten guvenilir oldugu icin (tatil haftalari
+    # kaymasin) bu adlar da taninmali.
+    "january": 1, "february": 2, "march": 3, "april": 4, "may": 5,
+    "june": 6, "july": 7, "august": 8, "september": 9, "october": 10,
+    "november": 11, "december": 12,
 }
 _DAY_MONTH = re.compile(
     r"(\d{1,2})\s*(?:-|–|\s)\s*(?:\d{1,2}\s*)?"
-    r"(ocak|subat|mart|nisan|mayis|haziran|temmuz|agustos|eylul|ekim|kasim|aralik)"
+    r"(ocak|subat|mart|nisan|mayis|haziran|temmuz|agustos|eylul|ekim|kasim|"
+    r"aralik|january|february|march|april|may|june|july|august|september|"
+    r"october|november|december)"
 )
 
 
@@ -234,6 +329,13 @@ def parse_week_label(value: str) -> int | None:
     if not text:
         return None
     match = re.match(r"\s*(\d{1,2})\s*\.?\s*(?:hafta|week)", text, re.IGNORECASE)
+    if match:
+        week = int(match.group(1))
+        return week if 1 <= week <= TOTAL_WEEKS else None
+    # Ingilizce planlarda sayi SONRA gelir: "Week 1: 14-18 September".
+    # Turkce kalip ("1. Hafta") bunu yakalamiyordu ve CYDEM sayfalari
+    # basliklari okunsa bile tek kayit uretmiyordu.
+    match = re.match(r"\s*week\s*(\d{1,2})", text, re.IGNORECASE)
     if match:
         week = int(match.group(1))
         return week if 1 <= week <= TOTAL_WEEKS else None
@@ -314,8 +416,21 @@ def split_outcome_list(text: str) -> list[str]:
     return merged or [text.strip()]
 
 
-def locate_header(rows: list[tuple]) -> tuple[int, dict[str, int]]:
-    """Alt başlık satırını bulur ve sütun eşlemesi döner."""
+def locate_header(rows: list[tuple]) -> tuple[int, dict[str, int], str]:
+    """Alt başlık satırını bulur; sütun eşlemesi ve PROGRAM DÜZENİ döner.
+
+    Düzen, kaynağın hangi öğretim programına ait olduğunu söyler ve
+    ölçümle doğrulandı: MEB aynı dosyada iki programı birden veriyor.
+
+        FEN BİLİMLERİ 3 (TYMM) -> "ÖĞRENME ÇIKTILARI VE SÜREÇ BİLEŞENLERİ"
+        FEN BİLİMLERİ 4        -> "KAZANIM" + "KAZANIM AÇIKLAMASI"
+
+    Sayfa adındaki "(TYMM)" işareti tek başına yetmez: lise
+    dosyalarında hiç yok, oysa içerikleri Maarif düzeninde. Sütun
+    başlığı ise içeriğin kendisinden gelir.
+
+    Dönen düzen: 'maarif' | 'legacy'
+    """
     # Sıra ÖNEMLİ ve eşleşme TAM BAŞLIK üzerinden yapılır. Gevşek "içeriyor"
     # eşlemesi yanlış sütun seçiyordu: "ÖLÇME VE DEĞERLENDİRME" başlığı
     # "değerler" ipucuyla eşleşip DEĞERLER sütununun yerine geçiyor, kazanım
@@ -325,14 +440,24 @@ def locate_header(rows: list[tuple]) -> tuple[int, dict[str, int]]:
     # bozduğu için burada KULLANILMAZ ("HAFTA" -> "hafta" güvenli değil,
     # "ÖLÇME" gibi başlıklarda birleşen nokta kalıyordu).
     hints: list[tuple[str, tuple[str, ...]]] = [
-        ("hours", ("ders saati", "ders saat")),
-        ("week", ("hafta",)),
-        ("month", ("ay",)),
-        ("unit", ("unite/tema", "unite", "tema")),
-        ("topic", ("konu (icerik cercevesi)", "konu")),
-        ("outcome", ("ogrenme ciktilari", "kazanim")),
-        ("process", ("surec bilesenleri", "kazanim aciklamasi")),
-        ("assessment", ("olcme ve degerlendirme", "olcme")),
+        # Yabanci dil planlarinda (CYDEM, Ingilizce) sutun basliklari
+        # INGILIZCE yazilmis: WEEK / LEARNING OUTCOMES / THEME. Yalnizca
+        # Turkce ipucu arandigi icin 8 sayfa dusuyordu — 5-8. sinif
+        # Ingilizce ve Almanca, yani Maarif'in yururlukte oldugu
+        # kademeler.
+        ("hours", ("ders saati", "ders saat", "class hour", "lesson hour")),
+        ("week", ("hafta", "week")),
+        ("month", ("ay", "month")),
+        ("unit", ("unite/tema", "unite", "tema", "theme and content frame",
+                  "theme")),
+        ("topic", ("konu (icerik cercevesi)", "konu", "content frame",
+                   "sub-theme")),
+        ("outcome", ("ogrenme ciktilari", "kazanim", "learning outcomes",
+                     "learning outcome")),
+        ("process", ("surec bilesenleri", "kazanim aciklamasi",
+                     "indicators for learning", "process components")),
+        ("assessment", ("olcme ve degerlendirme", "olcme",
+                        "assessment and evaluation", "assessment")),
         ("sel", ("sosyal - duygusal ogrenme becerileri", "sosyal-duygusal",
                  "sosyal duygusal")),
         ("values", ("degerler",)),
@@ -354,9 +479,25 @@ def locate_header(rows: list[tuple]) -> tuple[int, dict[str, int]]:
                         best_field, best_len = field, len(needle)
         return best_field
 
+    # Hangi ipucunun eslestigi duzeni belirler.
+    def duzen_belirle(basliklar: list[str]) -> str:
+        for c in basliklar:
+            if (c.startswith("ogrenme ciktilari")
+                    or c.startswith("surec bilesenleri")
+                    or c.startswith("learning outcomes")):
+                return "maarif"
+        return "legacy"
+
+    # Aday satirin isareti "hafta" sutunudur. Yabanci dil planlarinda
+    # bu sutun "WEEK" yazar; yalnizca Turkce arandigi icin o sayfalarin
+    # hicbir satiri aday olmuyor ve ipuclarina bakilmadan dusuyorlardi.
+    def hafta_sutunu(c: str) -> bool:
+        return (c == "hafta" or c.startswith("hafta")
+                or c == "week" or c.startswith("week "))
+
     for index in range(min(8, len(rows))):
         cells = [fold(flatten(c)) for c in rows[index]]
-        if not any(c == "hafta" or c.startswith("hafta") for c in cells):
+        if not any(hafta_sutunu(c) for c in cells):
             continue
 
         # Başlıklar birden fazla satıra yayılabiliyor. Arapça çerçeve
@@ -385,8 +526,8 @@ def locate_header(rows: list[tuple]) -> tuple[int, dict[str, int]]:
                 mapping[field] = col
 
         if "week" in mapping and "outcome" in mapping:
-            return index, mapping
-    return -1, {}
+            return index, mapping, duzen_belirle(merged)
+    return -1, {}, "legacy"
 
 
 def build_date_index(academic_year: str) -> dict[tuple[int, int], int]:
@@ -412,20 +553,29 @@ def read_sheet(worksheet, sheet_name: str, course_slug: str,
     problems: list[str] = []
     grade = detect_grade(sheet_name, filename)
     if grade is None:
-        return [], []  # hazırlık sınıfı vb. sessizce atlanır
+        # Hazirlik sinifi bilerek atlanir (1-12 disi) ve uyari uretmez.
+        # Ama BASKA bir sebeple kademe okunamiyorsa bu veri kaybidir ve
+        # gorunur olmali: Fen Bilimleri'nin tamami boyle sessizce
+        # dusmustu, uyari listesinde bile yoktu.
+        if not re.search(r"hazırlık|hazirlik", clean(sheet_name), re.IGNORECASE):
+            return [], [
+                f"{filename} / {sheet_name}: kademe okunamadi, sayfa atlandi"
+            ]
+        return [], []
 
     rows = list(worksheet.iter_rows(values_only=True))
-    header_index, columns = locate_header(rows)
+    header_index, columns, duzen = locate_header(rows)
     if header_index == -1:
         return [], [f"{filename} / {sheet_name}: baslik satiri bulunamadi"]
 
     subject = detect_subject(course_slug, sheet_name, filename)
     # Yayınevi etiketi grubun kimliğini taşır: aynı sınıf-branşın farklı
     # okul türü ve ders saati planları ayrı gruplar olarak durmalı.
+    # Okul turu bulunamazsa BOS kalir; "MEB Yayinlari" uydurulmaz.
     publisher = detect_school_type(filename)
     variant = detect_variant(sheet_name)
     if variant:
-        publisher = f"{publisher} · {variant}"
+        publisher = f"{publisher} · {variant}" if publisher else variant
 
     def cell(row: tuple, field: str) -> str:
         index = columns.get(field, -1)
@@ -497,6 +647,10 @@ def read_sheet(worksheet, sheet_name: str, course_slug: str,
             "maarifValues": values or None,
             "maarifSkills": skills or None,
             "differentiation": cell(row, "diff") or None,
+            # Kaynak: Excel sutun basligindan olculdu, tahmin degil.
+            # 'maarif' -> "OGRENME CIKTILARI VE SUREC BILESENLERI"
+            # 'legacy' -> "KAZANIM" + "KAZANIM ACIKLAMASI"
+            "source": "tymm" if duzen == "maarif" else "legacy",
             "sourceFile": filename,
             "sourceSheet": sheet_name,
         })
