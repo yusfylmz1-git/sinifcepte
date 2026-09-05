@@ -70,8 +70,14 @@ COURSE_NAMES = {
     # damgasiz on ek uzerinden yapilir (bkz. `_slug_kok`).
     "beden-egitimi-ve-oyun-dersi": "Beden Eğitimi ve Oyun",
     "bilisim-teknolojileri-ve-yazilim-dersi": "Bilişim Teknolojileri ve Yazılım",
-    "coklu-yabanci-dil-egitim-modeli-almanca-dersi": "Almanca",
-    "coklu-yabanci-dil-egitim-modeli-ingilizce": "İngilizce",
+    # Coklu Yabanci Dil Egitim Modeli (CYDEM) SECILMIS okullarda
+    # okutuluyor; normal ortaokulda bu ders yok. Ad ayirt edilmezse
+    # ogretmen listede "Almanca" gorup kendi okulunda olmayan bir
+    # dersi arar.
+    "coklu-yabanci-dil-egitim-modeli-almanca-dersi":
+        "Almanca (Çoklu Yabancı Dil)",
+    "coklu-yabanci-dil-egitim-modeli-ingilizce":
+        "İngilizce (Çoklu Yabancı Dil)",
     "fen-bilimleri-dersi": "Fen Bilimleri",
     "hayat-bilgisi-dersi": "Hayat Bilgisi",
     "ilkokul-matematik-dersi": "Matematik",
@@ -157,6 +163,50 @@ def clean(value) -> str:
 def flatten(value) -> str:
     """Hücre içi satır sonlarını tek boşluğa indirger."""
     return re.sub(r"\s+", " ", clean(value)).strip()
+
+
+class _XlsSheet:
+    """xlrd sayfasini openpyxl arayuzuyle sunar.
+
+    `read_sheet` yalnizca `iter_rows(values_only=True)` kullaniyor;
+    tek ihtiyac bu.
+    """
+
+    def __init__(self, sheet):
+        self._sheet = sheet
+
+    def iter_rows(self, max_row=None, values_only=True):
+        son = self._sheet.nrows if max_row is None else min(max_row, self._sheet.nrows)
+        for i in range(son):
+            yield tuple(self._sheet.cell_value(i, j)
+                        for j in range(self._sheet.ncols))
+
+
+class _XlsBook:
+    """xlrd kitabini openpyxl arayuzuyle sunar."""
+
+    def __init__(self, path):
+        import xlrd  # yalnizca .xls varsa gerekir
+        self._book = xlrd.open_workbook(path)
+        self.sheetnames = list(self._book.sheet_names())
+
+    def __getitem__(self, name):
+        return _XlsSheet(self._book.sheet_by_name(name))
+
+    def close(self):
+        self._book.release_resources()
+
+
+def open_plan_workbook(path: str):
+    """Plan dosyasini acar; .xls ve .xlsx ikisini de destekler.
+
+    MEB bazi dersleri hala eski .xls biciminde yayimliyor (Gorsel
+    Sanatlar). openpyxl bu bicimi acmadigi icin o dosya TAMAMEN
+    dusuyordu — sekiz sinifin plani birden.
+    """
+    if path.lower().endswith(".xls"):
+        return _XlsBook(path)
+    return openpyxl.load_workbook(path, read_only=True, data_only=True)
 
 
 def detect_school_type(filename: str) -> str:
@@ -314,12 +364,16 @@ _MONTH_NAMES = {
     "january": 1, "february": 2, "march": 3, "april": 4, "may": 5,
     "june": 6, "july": 7, "august": 8, "september": 9, "october": 10,
     "november": 11, "december": 12,
+    # CYDEM Almanca planlari (september/november ingilizceyle ayni).
+    "januar": 1, "februar": 2, "marz": 3, "mai": 5, "juni": 6,
+    "juli": 7, "oktober": 10, "dezember": 12,
 }
 _DAY_MONTH = re.compile(
     r"(\d{1,2})\s*(?:-|–|\s)\s*(?:\d{1,2}\s*)?"
     r"(ocak|subat|mart|nisan|mayis|haziran|temmuz|agustos|eylul|ekim|kasim|"
     r"aralik|january|february|march|april|may|june|july|august|september|"
-    r"october|november|december)"
+    r"october|november|december|"
+    r"januar|februar|marz|mai|juni|juli|oktober|dezember)"
 )
 
 
@@ -336,6 +390,11 @@ def parse_week_label(value: str) -> int | None:
     # Turkce kalip ("1. Hafta") bunu yakalamiyordu ve CYDEM sayfalari
     # basliklari okunsa bile tek kayit uretmiyordu.
     match = re.match(r"\s*week\s*(\d{1,2})", text, re.IGNORECASE)
+    if match:
+        week = int(match.group(1))
+        return week if 1 <= week <= TOTAL_WEEKS else None
+    # Almanca: "1. Woche: 14.-18. September"
+    match = re.match(r"\s*(\d{1,2})\s*\.?\s*woche", text, re.IGNORECASE)
     if match:
         week = int(match.group(1))
         return week if 1 <= week <= TOTAL_WEEKS else None
@@ -368,7 +427,20 @@ def parse_week(value: str, date_index: dict[tuple[int, int], int] | None = None)
 
 
 
+# Turkce beceri parcalarini ayiran isaret.
+#
+# Dort beceri (dinleme, okuma, konusma, yazma) tek hucrede degil ayri
+# sutunlarda gelir ama birlestirildiginde 5900+ karakter olur ve tek
+# blok sayilir. Bu isaret, _spread_long_outcomes'in parcalari
+# ayirmasini saglar; boylece her hafta bir beceriyi gosterir.
+BECERI_AYIRICI = "␟"  # gorunmez birim ayirici
+
+
 def split_outcome_list(text: str) -> list[str]:
+    # Beceri sutunlarindan gelen metin zaten parcalanmis halde
+    # isaretlenmistir; kod tahminine gerek yok.
+    if BECERI_AYIRICI in text:
+        return [p.strip() for p in text.split(BECERI_AYIRICI) if p.strip()]
     """Tek hücreye sığdırılmış kazanım listesini parçalarına ayırır.
 
     Bazı çerçeve planlarda (Arapça) ünitenin TÜM kazanımları ünitenin ilk
@@ -416,6 +488,16 @@ def split_outcome_list(text: str) -> list[str]:
     return merged or [text.strip()]
 
 
+# Turkce planlarinda kazanimlarin dagildigi beceri sutunlari.
+# Etiket, hucre icerigi birlestirilirken basa yazilir.
+_BECERI_ALANLARI = {
+    "skill_listen": "Dinleme/İzleme",
+    "skill_read": "Okuma",
+    "skill_speak": "Konuşma",
+    "skill_write": "Yazma",
+}
+
+
 def locate_header(rows: list[tuple]) -> tuple[int, dict[str, int], str]:
     """Alt başlık satırını bulur; sütun eşlemesi ve PROGRAM DÜZENİ döner.
 
@@ -445,17 +527,37 @@ def locate_header(rows: list[tuple]) -> tuple[int, dict[str, int], str]:
         # Turkce ipucu arandigi icin 8 sayfa dusuyordu — 5-8. sinif
         # Ingilizce ve Almanca, yani Maarif'in yururlukte oldugu
         # kademeler.
-        ("hours", ("ders saati", "ders saat", "class hour", "lesson hour")),
-        ("week", ("hafta", "week")),
-        ("month", ("ay", "month")),
+        # CYDEM Almanca planlarinda basliklar ALMANCA yazilmis:
+        # WOCHE / LERNERGEBNISSE / INHALTSRAHMEN. Ingilizce destegi
+        # eklenmisti ama Almancasi yoktu ve dosya tamamen dusuyordu
+        # (5-8. sinif, Maarif isaretli).
+        ("hours", ("ders saati", "ders saat", "class hour", "class hours",
+                   "lesson hour", "unterrichtsstunde", "stunde")),
+        ("week", ("hafta", "week", "woche")),
+        ("month", ("ay", "month", "monat")),
         ("unit", ("unite/tema", "unite", "tema", "theme and content frame",
-                  "theme")),
+                  "theme", "unterrichtseinheiten", "thema")),
         ("topic", ("konu (icerik cercevesi)", "konu", "content frame",
-                   "sub-theme")),
-        ("outcome", ("ogrenme ciktilari", "kazanim", "learning outcomes",
-                     "learning outcome")),
+                   "sub-theme", "inhaltsrahmen", "lektion")),
+        # "learning skills and learning outcomes": Ingilizce planlarinda
+        # baslik boyle yaziliyor ve "learning outcomes" ile BASLAMIYOR.
+        # Eslesme baslangic uzerinden yapildigi icin 4., 7. ve 8. sinif
+        # sayfalari dusuyordu. Gevsek "iceriyor" eslesmesi tehlikeli
+        # (bkz. yukaridaki not), o yuzden tam ifade eklendi.
+        ("outcome", ("ogrenme ciktilari", "kazanim",
+                     "learning skills and learning outcomes",
+                     "learning outcomes", "learning outcome",
+                     "lernergebnisse", "lernziele")),
+        # Turkce planlarinda tek bir "ogrenme ciktilari" sutunu YOK;
+        # kazanimlar dort beceriye dagilmis. Ayri alanlar olarak
+        # taninir, sonra birlestirilir (bkz. `_BECERI_ALANLARI`).
+        ("skill_listen", ("dinleme/izleme", "dinleme")),
+        ("skill_read", ("okuma",)),
+        ("skill_speak", ("konusma",)),
+        ("skill_write", ("yazma",)),
         ("process", ("surec bilesenleri", "kazanim aciklamasi",
-                     "indicators for learning", "process components")),
+                     "indicators for learning", "process components",
+                     "prozesskomponenten")),
         ("assessment", ("olcme ve degerlendirme", "olcme",
                         "assessment and evaluation", "assessment")),
         ("sel", ("sosyal - duygusal ogrenme becerileri", "sosyal-duygusal",
@@ -469,12 +571,23 @@ def locate_header(rows: list[tuple]) -> tuple[int, dict[str, int], str]:
 
     def match_field(cell: str) -> str | None:
         """Başlık hücresini tek bir alana eşler; en uzun ipucu kazanır."""
+        # Sondaki cogul eki esnetilir: MEB ayni dosyada bile yazimi
+        # degistiriyor ("learning outcomes" / "learning outcome") ve
+        # tek harf yuzunden sayfa tamamen dusuyordu.
+        #
+        # Gevsek "iceriyor" eslesmesine DONULMEZ: o, "olcme ve
+        # degerlendirme" basligini "degerler"e kaydiriyordu.
+        def tekillestir(t: str) -> str:
+            return t[:-1] if t.endswith("s") else t
+
+        sade = tekillestir(cell)
         best_field, best_len = None, 0
         for field, needles in hints:
             for needle in needles:
-                # Tam eşleşme veya başlığın ipucuyla başlaması güvenlidir;
-                # "olcme ve degerlendirme" başlığı "degerler"e kaymaz.
-                if cell == needle or cell.startswith(needle):
+                sade_needle = tekillestir(needle)
+                if (cell == needle or cell.startswith(needle)
+                        or sade == sade_needle
+                        or sade.startswith(sade_needle)):
                     if len(needle) > best_len:
                         best_field, best_len = field, len(needle)
         return best_field
@@ -484,7 +597,15 @@ def locate_header(rows: list[tuple]) -> tuple[int, dict[str, int], str]:
         for c in basliklar:
             if (c.startswith("ogrenme ciktilari")
                     or c.startswith("surec bilesenleri")
-                    or c.startswith("learning outcomes")):
+                    or c.startswith("learning outcomes")
+                    or c.startswith("learning skills and learning outcomes")
+                    or c.startswith("lernergebnisse")
+                    or c.startswith("lernziele")
+                    # Turkce plani beceri sutunlariyla gelir ama ust
+                    # satirda "ogrenme ciktilari ve surec bilesenleri"
+                    # birlesik basligi durur; yine de acikca kontrol
+                    # edilir.
+                    or c.startswith("dinleme/izleme")):
                 return "maarif"
         return "legacy"
 
@@ -493,7 +614,8 @@ def locate_header(rows: list[tuple]) -> tuple[int, dict[str, int], str]:
     # hicbir satiri aday olmuyor ve ipuclarina bakilmadan dusuyorlardi.
     def hafta_sutunu(c: str) -> bool:
         return (c == "hafta" or c.startswith("hafta")
-                or c == "week" or c.startswith("week "))
+                or c == "week" or c.startswith("week ")
+                or c == "woche" or c.startswith("woche "))
 
     for index in range(min(8, len(rows))):
         cells = [fold(flatten(c)) for c in rows[index]]
@@ -525,7 +647,10 @@ def locate_header(rows: list[tuple]) -> tuple[int, dict[str, int], str]:
             if field and field not in mapping:
                 mapping[field] = col
 
-        if "week" in mapping and "outcome" in mapping:
+        # Turkce planinda `outcome` yok ama beceri sutunlari var;
+        # onlar da kazanim tasiyor.
+        beceri_var = any(k in mapping for k in _BECERI_ALANLARI)
+        if "week" in mapping and ("outcome" in mapping or beceri_var):
             return index, mapping, duzen_belirle(merged)
     return -1, {}, "legacy"
 
@@ -549,6 +674,7 @@ def build_date_index(academic_year: str) -> dict[tuple[int, int], int]:
 def read_sheet(worksheet, sheet_name: str, course_slug: str,
                filename: str,
                date_index: dict[tuple[int, int], int] | None = None,
+               portal: str = "tymm",
                ) -> tuple[list[dict], list[str]]:
     problems: list[str] = []
     grade = detect_grade(sheet_name, filename)
@@ -616,6 +742,21 @@ def read_sheet(worksheet, sheet_name: str, course_slug: str,
         # dev metni 5 hafta boyunca tekrar ediyordu. Bu durumda metin
         # yalnızca kendi haftasında kalır; diğer haftalar süreç bileşeni
         # veya ünite/konu başlığıyla temsil edilir.
+        # Turkce plani: kazanimlar dort beceri sutununda. Beceri adi
+        # basa yazilir ki hangi kazanimin hangi beceriye ait oldugu
+        # belli olsun.
+        if not own_outcome:
+            parcalar = []
+            for alan, etiket in _BECERI_ALANLARI.items():
+                metin = cell(row, alan)
+                if metin:
+                    parcalar.append(f"{etiket}: {metin}")
+            if parcalar:
+                # Ayirici ile birlestirilir: metin uzunsa
+                # _spread_long_outcomes bunlari haftalara dagitir,
+                # kisaysa ayirici temizlenir (asagida).
+                own_outcome = BECERI_AYIRICI.join(parcalar)
+
         outcome = own_outcome or (
             last_outcome if len(last_outcome) <= MAX_CARRIED_OUTCOME else ""
         )
@@ -647,15 +788,34 @@ def read_sheet(worksheet, sheet_name: str, course_slug: str,
             "maarifValues": values or None,
             "maarifSkills": skills or None,
             "differentiation": cell(row, "diff") or None,
-            # Kaynak: Excel sutun basligindan olculdu, tahmin degil.
-            # 'maarif' -> "OGRENME CIKTILARI VE SUREC BILESENLERI"
-            # 'legacy' -> "KAZANIM" + "KAZANIM ACIKLAMASI"
-            "source": "tymm" if duzen == "maarif" else "legacy",
+            # Kaynak IKI bilgi tasir:
+            #   portal : hangi MEB sitesinden indi (tymm / dogm)
+            #   duzen  : Maarif programi mi eski program mi
+            #
+            # Duzen Excel sutun basligindan OLCULUR, tahmin edilmez:
+            #   'maarif' -> "OGRENME CIKTILARI VE SUREC BILESENLERI"
+            #   'legacy' -> "KAZANIM" + "KAZANIM ACIKLAMASI"
+            #
+            # Ikisi ayri tutulur cunku DOGM planlari da Maarif duzeninde
+            # olabiliyor; onlara "TYMM" demek yaniltici olur.
+            "sourcePortal": portal,
+            "sourceProgram": "maarif" if duzen == "maarif" else "legacy",
+            "source": portal if duzen == "maarif" else "legacy",
             "sourceFile": filename,
             "sourceSheet": sheet_name,
         })
 
     records = _spread_long_outcomes(records)
+
+    # Beceri ayiricisi YALNIZCA parcalama icin vardi; nihai metne
+    # sizmamali. Gorunmez bir karakter resmi evraga ve ogretmenin
+    # gordugu karta girerse teshisi zor bir kusur olur.
+    for kayit in records:
+        metin = kayit.get("outcomeDescription") or ""
+        if BECERI_AYIRICI in metin:
+            kayit["outcomeDescription"] = re.sub(
+                r"\s+", " ", metin.replace(BECERI_AYIRICI, " ")
+            ).strip()
 
     if records and len(records) < 20:
         problems.append(
@@ -726,6 +886,11 @@ def extract_code(text: str) -> str | None:
 
 def import_directory(root: str, academic_year: str = "2026-2027"
                      ) -> tuple[list[dict], list[str]]:
+    # Portal klasor yolundan okunur: "data_sources/dogm_plans" -> dogm.
+    # Ayri bir bayrak istemek riskli olurdu; unutulursa kayitlar yanlis
+    # kaynakla etiketlenirdi.
+    portal = "dogm" if "dogm" in os.path.basename(
+        os.path.normpath(root)).lower() else "tymm"
     records: list[dict] = []
     problems: list[str] = []
     date_index = build_date_index(academic_year)
@@ -744,7 +909,7 @@ def import_directory(root: str, academic_year: str = "2026-2027"
 
             path = os.path.join(course_dir, filename)
             try:
-                workbook = openpyxl.load_workbook(path, read_only=True, data_only=True)
+                workbook = open_plan_workbook(path)
             except Exception as error:
                 problems.append(f"{filename}: acilamadi ({error})")
                 continue
@@ -752,7 +917,7 @@ def import_directory(root: str, academic_year: str = "2026-2027"
             for sheet_name in workbook.sheetnames:
                 sheet_records, sheet_problems = read_sheet(
                     workbook[sheet_name], sheet_name, course_slug, filename,
-                    date_index)
+                    date_index, portal)
                 records.extend(sheet_records)
                 problems.extend(sheet_problems)
             workbook.close()

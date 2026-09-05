@@ -24,6 +24,7 @@ import argparse
 import os
 import re
 import ssl
+import time
 import sys
 import urllib.error
 import urllib.parse
@@ -55,19 +56,43 @@ GROUP_NAMES = {
 }
 
 
+# Sunucu bir dosyayi bir kosuda verip otekinde reddedebiliyor.
+#
+# Olcum: script iki kez ust uste calistirildi, ikisinde de 46/52 indi
+# ama EKSIKLER FARKLIYDI. Yani dosyalar duruyor, dogm.meb.gov.tr
+# baglantiyi rastgele kapatiyor (WinError 10054). Ayni davranis
+# ÖSYM'de de gorulmustu.
+DENEME = 4
+
+
 def fetch(url: str, timeout: int = 90) -> bytes | None:
     url = urllib.parse.quote(url, safe=":/?&=%#")
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     context = ssl.create_default_context()  # sertifika doğrulaması açık
-    try:
-        with urllib.request.urlopen(request, context=context, timeout=timeout) as response:
-            return response.read()
-    except urllib.error.HTTPError as error:
-        print(f"  HTTP {error.code}: {url}")
-    except urllib.error.URLError as error:
-        print(f"  Baglanti hatasi: {error.reason}")
-    except TimeoutError:
-        print(f"  Zaman asimi: {url}")
+
+    for deneme in range(1, DENEME + 1):
+        try:
+            with urllib.request.urlopen(
+                request, context=context, timeout=timeout
+            ) as response:
+                return response.read()
+        except urllib.error.HTTPError as error:
+            # 404 gercekten yok demek; yeniden denemek bosuna.
+            # 5xx sunucu gecici hatasi olabilir, denenir.
+            if error.code < 500:
+                print(f"  HTTP {error.code}: {url}")
+                return None
+            son = f"HTTP {error.code}"
+        except urllib.error.URLError as error:
+            son = f"Baglanti hatasi: {error.reason}"
+        except TimeoutError:
+            son = "Zaman asimi"
+
+        if deneme < DENEME:
+            # Kisa bir bekleme sunucunun kendine gelmesine yetiyor.
+            time.sleep(1.5 * deneme)
+
+    print(f"  {son} ({DENEME} deneme): {url}")
     return None
 
 
