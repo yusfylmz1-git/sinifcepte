@@ -33,9 +33,37 @@ class ExamTrackingState {
     );
   }
 
-  List<ExamModel> get officialExams => exams.where((e) => !e.isSchoolExam).toList();
-  List<ExamModel> get favoriteExams => exams.where((e) => e.isFavorite).toList();
-  List<ExamModel> get schoolExams => exams.where((e) => e.isSchoolExam).toList();
+  /// Resmî sınavlar — YAKLAŞANLAR ÖNCE.
+  ///
+  /// ## Neden özel sıralama
+  /// Liste yalnızca tarihe göre sıralanınca geçmiş sınavlar en başta
+  /// duruyordu: öğretmen ekranı açtığında önce aylar önce bitmiş
+  /// sınavları görüyor, yaklaşanı bulmak için kaydırmak zorunda
+  /// kalıyordu.
+  ///
+  /// Doğru sıra: önce yaklaşanlar (en yakın tarih başta), sonra
+  /// geçmişler (en yeni biten başta — "geçen hafta neydi" sorusu
+  /// "üç ay önce neydi"den daha sık sorulur).
+  List<ExamModel> get officialExams => _yaklasanOnce(
+        exams.where((e) => !e.isSchoolExam).toList(),
+      );
+
+  List<ExamModel> get favoriteExams => _yaklasanOnce(
+        exams.where((e) => e.isFavorite).toList(),
+      );
+
+  List<ExamModel> get schoolExams => _yaklasanOnce(
+        exams.where((e) => e.isSchoolExam).toList(),
+      );
+
+  /// Yaklaşanlar tarih sırasıyla başta, geçmişler tersten sonda.
+  static List<ExamModel> _yaklasanOnce(List<ExamModel> liste) {
+    final yaklasan = liste.where((e) => !e.isPast).toList()
+      ..sort((a, b) => a.examDate.compareTo(b.examDate));
+    final gecmis = liste.where((e) => e.isPast).toList()
+      ..sort((a, b) => b.examDate.compareTo(a.examDate));
+    return [...yaklasan, ...gecmis];
+  }
 
   /// En yakın yaklaşan sınavlar
   List<ExamModel> get upcomingExams {

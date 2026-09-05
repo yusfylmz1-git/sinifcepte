@@ -76,6 +76,118 @@ function tariheCevir(ham) {
 }
 
 /**
+ * Öğretmeni ilgilendiren sınavlar.
+ *
+ * ## Neden süzüyoruz
+ * ÖSYM takviminde 67 sınav var ama çoğu öğretmenin işi değil: TUS,
+ * DUS, EUS, YDUS (tıp uzmanlık), HMGS (hukuk), GUY (gelir uzmanlığı),
+ * BKUBTS (tarım bayilik)… Hepsi listelenince öğretmen kendi sınavını
+ * bulamıyor.
+ *
+ * Üç grup kalıyor:
+ *   1. Öğretmenin GİRDİĞİ sınavlar   — AGS, EKYS, ALES, YDS, YÖKDİL
+ *   2. ÖĞRENCİSİNİN girdiği sınavlar — YKS, MSÜ, TR-YÖS, DGS
+ *   3. GÖREV ALDIĞI sınavlar         — KPSS, EKPSS (salon görevlisi)
+ *
+ * Anahtar sınav adının BAŞINDA aranıyor: "YDS Yabancı Dil…" eşleşir,
+ * "e-YDS" eşleşmez (o bilgisayarlı oturum, ayrı sınav).
+ */
+const OGRETMEN_SINAVLARI = new Map([
+  // Öğretmenin kendi girdiği
+  ['MEB-AGS', 'Öğretmenlik akademi giriş sınavı.'],
+  ['MEB-EKYS', 'Okul yöneticiliği seçme sınavı.'],
+  ['ALES', 'Lisansüstü eğitim ve akademik kadro giriş sınavı.'],
+  ['YDS', 'Yabancı dil seviye tespit sınavı.'],
+  ['e-YDS', 'Bilgisayarlı yabancı dil sınavı.'],
+  ['YÖKDİL', 'Yükseköğretim yabancı dil sınavı.'],
+  // Öğrencisinin girdiği
+  ['YKS', 'Üniversiteye giriş sınavı.'],
+  ['MSÜ', 'Askerî öğrenci aday belirleme sınavı.'],
+  ['TR-YÖS', 'Yurt dışından öğrenci kabul sınavı.'],
+  ['DGS', 'Ön lisanstan lisansa geçiş sınavı.'],
+  // Görev alınan
+  ['KPSS', 'Kamu personeli seçme sınavı; öğretmenler görev alır.'],
+  ['EKPSS', 'Engelli kamu personeli sınavı; öğretmenler görev alır.'],
+]);
+
+/**
+ * Sınav öğretmeni ilgilendiriyor mu?
+ *
+ * Eşleşirse kısa açıklamasını döndürür, yoksa null.
+ */
+function ogretmeniIlgilendirir(ad) {
+  // Uzun anahtar önce: "e-YDS" ile "YDS" karışmasın.
+  const anahtarlar = [...OGRETMEN_SINAVLARI.keys()].sort(
+    (a, b) => b.length - a.length
+  );
+  for (const anahtar of anahtarlar) {
+    // Sınav adının BAŞINDA olmalı; ortada geçen kelime yanlış eşleşir.
+    if (ad.startsWith(anahtar)) {
+      return OGRETMEN_SINAVLARI.get(anahtar);
+    }
+  }
+  return null;
+}
+
+/**
+ * Listede görünecek kısa ad.
+ *
+ * ## Neden gerekiyor
+ * ÖSYM adları telefon ekranına sığmıyor:
+ *
+ *   "MSÜ Millî Savunma Üniversitesi Askerî Öğrenci Aday Belirleme
+ *    Sınavı 2026-MSÜ"
+ *
+ * Kartta iki satıra taşıp okunmaz oluyor. Kısaltma zaten adın başında;
+ * onu alıp anlaşılır bir karşılık yazıyoruz.
+ *
+ * Oturum bilgisi (YKS 1. Oturum gibi) korunuyor — aynı gün iki sınav
+ * varsa ayırt edilmeli.
+ */
+const KISA_ADLAR = new Map([
+  ['MEB-AGS', 'AGS - Akademi Giriş Sınavı'],
+  ['MEB-EKYS', 'EKYS - Yönetici Seçme Sınavı'],
+  ['ALES', 'ALES - Akademik Personel Sınavı'],
+  ['YÖKDİL', 'YÖKDİL - Yabancı Dil Sınavı'],
+  ['e-YDS', 'e-YDS - Elektronik Yabancı Dil Sınavı'],
+  ['YDS', 'YDS - Yabancı Dil Sınavı'],
+  ['YKS', 'YKS - Yükseköğretim Kurumları Sınavı'],
+  ['MSÜ', 'MSÜ - Askerî Öğrenci Sınavı'],
+  ['TR-YÖS', 'TR-YÖS - Yurt Dışı Öğrenci Sınavı'],
+  ['DGS', 'DGS - Dikey Geçiş Sınavı'],
+  ['EKPSS', 'EKPSS - Engelli Kamu Personeli Sınavı'],
+  ['KPSS', 'KPSS - Kamu Personel Seçme Sınavı'],
+]);
+
+function adiKisalt(ad) {
+  const anahtarlar = [...KISA_ADLAR.keys()].sort((a, b) => b.length - a.length);
+  for (const anahtar of anahtarlar) {
+    if (!ad.startsWith(anahtar)) continue;
+
+    const temel = KISA_ADLAR.get(anahtar);
+
+    // Oturum/alan ayrımı korunur: "2026-YKS 1. Oturum" → "1. Oturum",
+    // "2026-KPSS Lisans (Genel Yetenek)" → "Lisans (Genel Yetenek)".
+    const ek = /\d{4}\s*[-–]\s*\S+\s+(.+)$/u.exec(ad);
+    if (ek && ek[1]) {
+      const parca = ek[1].replace(/\s+/g, ' ').trim();
+      if (parca && parca.length < 40) {
+        // Zaten parantezli ise iç içe koymuyoruz:
+        // "1. Oturum (TYT)" → "… — 1. Oturum (TYT)"
+        return `${temel} — ${parca}`;
+      }
+    }
+    return temel;
+  }
+
+  // Tabloda olmayan sınav: sondaki yıl-kod tekrarını at.
+  return ad
+    .replace(/\s*\d{4}\s*[-–]\s*\S+\s*$/u, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
  * Sınav adından kısa kod üretir.
  *
  * ÖSYM adları uzun: "MSÜ Millî Savunma Üniversitesi Askerî Öğrenci Aday
@@ -148,6 +260,7 @@ export function ayristir(html) {
   const satirlar = hedef.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
   const sinavlar = [];
   let atlanan = 0;
+  let elenen = 0;
 
   for (const satir of satirlar) {
     const hucre = (satir.match(/<t[dh][^>]*>[\s\S]*?<\/t[dh]>/gi) || []).map(metin);
@@ -170,31 +283,64 @@ export function ayristir(html) {
         ? tariheCevir(basvuruTarihleri[basvuruTarihleri.length - 1])
         : null;
 
+    // Öğretmeni ilgilendirmeyen sınavlar hiç alınmıyor: takvimde 67
+    // sınav var ama çoğu tıp/hukuk/tarım uzmanlık sınavı.
+    const aciklama = ogretmeniIlgilendirir(ad);
+    if (!aciklama) {
+      elenen++;
+      continue;
+    }
+
     const kod = kisaKod(ad);
-    const yil = tarih.slice(0, 4);
 
     sinavlar.push({
       doc_id: `osym_${kod}_${tarih.slice(0, 10).replace(/-/g, '')}`,
-      title: ad,
+      title: adiKisalt(ad),
       institution: 'ÖSYM',
       examDate: tarih,
       applicationDeadline: sonBasvuru,
       applicationUrl: 'https://ais.osym.gov.tr',
       category: 'ÖSYM',
-      description: `${yil} yılı ÖSYM sınav takviminden alındı.`,
+      // Tek cümle: liste kartında iki satırdan fazlası okunmuyor.
+      description: aciklama,
     });
+  }
+
+  // e-YDS yılda dokuz kez yapılıyor; hepsini listelemek öğretmenin
+  // takvimini boğuyor. En yakın iki oturum yeterli — kaçıran zaten
+  // ÖSYM sayfasına bakar.
+  const eYdsler = sinavlar.filter((x) => x.title.startsWith('e-YDS'));
+  if (eYdsler.length > 2) {
+    const tutulacak = new Set(
+      eYdsler
+        .slice()
+        .sort((a, b) => a.examDate.localeCompare(b.examDate))
+        .slice(0, 2)
+        .map((x) => x.doc_id)
+    );
+    for (let i = sinavlar.length - 1; i >= 0; i--) {
+      if (sinavlar[i].title.startsWith('e-YDS') &&
+          !tutulacak.has(sinavlar[i].doc_id)) {
+        sinavlar.splice(i, 1);
+        elenen++;
+      }
+    }
   }
 
   if (sinavlar.length === 0) {
     return {
       ok: false,
       mesaj:
-        'Tablo bulundu ama hiçbir satır ayrıştırılamadı. Sayfa yapısı ' +
-        'değişmiş olabilir; tarihleri elle kontrol edin.',
+        elenen > 0
+          ? `${elenen} sınav bulundu ama hiçbiri öğretmenleri ` +
+            'ilgilendirmiyor. Takvimde henüz YKS/AGS/KPSS yayımlanmamış ' +
+            'olabilir.'
+          : 'Tablo bulundu ama hiçbir satır ayrıştırılamadı. Sayfa ' +
+            'yapısı değişmiş olabilir; tarihleri elle kontrol edin.',
     };
   }
 
-  return { ok: true, sinavlar, atlanan };
+  return { ok: true, sinavlar, atlanan, elenen };
 }
 
 /**

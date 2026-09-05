@@ -142,3 +142,69 @@ test('bos mevcut liste cokmeye yol acmiyor', () => {
   assert.doesNotThrow(() => karsilastir(null, []));
   assert.doesNotThrow(() => karsilastir(undefined, [{ doc_id: 'a' }]));
 });
+
+// ---------------------------------------------------- öğretmen süzgeci
+
+/** Öğretmenle ilgili ve ilgisiz sınavları birlikte taşıyan sayfa. */
+const KARISIK = `
+<table>
+  <tr><th>S&#x131;nav Ad&#x131;</th><th>S&#x131;nav Tarihi</th><th>Ba&#x15F;vuru</th></tr>
+  <tr><td>TUS T&#x131;pta Uzmanl&#x131;k E&#x11F;itimi Giri&#x15F; S&#x131;nav&#x131; 2026-TUS</td>
+      <td>15.03.2026</td><td>-</td></tr>
+  <tr><td>HMGS Hukuk Mesleklerine Giri&#x15F; S&#x131;nav&#x131; 2026-HMGS/1</td>
+      <td>26.04.2026</td><td>-</td></tr>
+  <tr><td>YKS Y&#xFC;ksek&#xF6;&#x11F;retim Kurumlar&#x131; S&#x131;nav&#x131; 2026-YKS 1. Oturum (TYT)</td>
+      <td>20.06.2026</td><td>-</td></tr>
+  <tr><td>MEB-AGS Mill&#xEE; E&#x11F;itim Bakanl&#x131;&#x11F;&#x131; Akademi Giri&#x15F; S&#x131;nav&#x131; 2026-MEB-AGS</td>
+      <td>26.07.2026</td><td>-</td></tr>
+</table>`;
+
+test('KRITIK: ogretmeni ilgilendirmeyen sinavlar eleniyor', () => {
+  // ÖSYM takviminde 67 sınav var; çoğu tıp/hukuk/tarım uzmanlık
+  // sınavı. Hepsi listelenince öğretmen kendi sınavını bulamıyordu.
+  const r = ayristir(KARISIK);
+  assert.equal(r.ok, true, r.mesaj);
+  assert.equal(r.sinavlar.length, 2, 'süzgeç çalışmıyor');
+  assert.equal(r.elenen, 2);
+  assert.ok(!r.sinavlar.some((s) => /TUS|HMGS/.test(s.title)));
+});
+
+test('KRITIK: sinav adi kisaltiliyor', () => {
+  // "MEB-AGS Millî Eğitim Bakanlığı Akademi Giriş Sınavı 2026-MEB-AGS"
+  // telefon ekranına sığmıyordu.
+  const r = ayristir(KARISIK);
+  const ags = r.sinavlar.find((s) => s.title.startsWith('AGS'));
+  assert.ok(ags, 'AGS bulunamadı');
+  assert.ok(ags.title.length < 40, `ad hâlâ uzun: ${ags.title}`);
+  assert.ok(!ags.title.includes('2026-'), 'yıl-kod tekrarı kalmış');
+});
+
+test('oturum bilgisi korunuyor', () => {
+  // Aynı gün birden çok oturum olabiliyor; ayırt edilmeli.
+  const r = ayristir(KARISIK);
+  const yks = r.sinavlar.find((s) => s.title.startsWith('YKS'));
+  assert.match(yks.title, /1\. Oturum/);
+});
+
+test('KRITIK: aciklama TEK CUMLE', () => {
+  const r = ayristir(KARISIK);
+  for (const s of r.sinavlar) {
+    const nokta = (s.description.match(/\./g) || []).length;
+    assert.ok(
+      nokta <= 1,
+      `açıklama birden çok cümle: "${s.description}"`
+    );
+    assert.ok(
+      s.description.length < 70,
+      `açıklama çok uzun: "${s.description}"`
+    );
+  }
+});
+
+test('tumu elenirse aciklayici mesaj veriliyor', () => {
+  const sadeceIlgisiz = KARISIK.replace(/YKS[\s\S]*?<\/tr>/, '')
+    .replace(/MEB-AGS[\s\S]*?<\/tr>/, '');
+  const r = ayristir(sadeceIlgisiz);
+  assert.equal(r.ok, false);
+  assert.match(r.mesaj, /ilgilendirmiyor/);
+});

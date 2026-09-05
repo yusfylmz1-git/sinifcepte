@@ -58,5 +58,30 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!--
+            Baglanti acma (url_launcher).
+
+            Android 11'den itibaren uygulama, hangi uygulamalarin hangi
+            islemi yapabildigini goremiyor; bunu burada BILDIRMEK
+            gerekiyor. Bildirilmeyince `canLaunchUrl` HER ZAMAN false
+            donuyor ve "Baglanti acilamadi" hatasi veriyordu — sinav
+            basvuru sayfalari hic acilmiyordu.
+        -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="http"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="mailto"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL"/>
+            <data android:scheme="tel"/>
+        </intent>
     </queries>
 </manifest>
