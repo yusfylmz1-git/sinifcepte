@@ -399,6 +399,10 @@
                   ➕ Yeni Sınav Ekle
                 </button>
 
+                <button class="btn btn-secondary" data-paste-meb title="MEB duyuru metnini yapıştırın, sınav tarihleri ayıklansın. Onaylamadan hiçbir şey değişmez." onclick="window.adminApp.mebMetinAc()">
+                  📋 MEB Duyurusu Yapıştır
+                </button>
+
                 <button class="btn btn-secondary" data-fetch-osym title="ÖSYM takvimini okumayı DENER — yılda bir, yeni takvim yayımlanınca kullanışlıdır. ÖSYM sitesi kararsız; yanıt vermezse tarihleri elle girebilirsiniz. Onaylamadan hiçbir şey yayınlanmaz." onclick="window.adminApp.osymdenCek()">
                   🔄 ÖSYM'den Güncelle
                 </button>
@@ -1111,18 +1115,19 @@
   </div>
 
   <!-- JAVASCRIPT MODÜLLERİ -->
-  <script src="js/smart_circular_parser.js?v=202609051446"></script>
-  <script src="js/smart_excel_importer.js?v=202609051446"></script>
-  <script src="js/calendar_wizard.js?v=202609051446"></script>
-  <script src="js/calendar_to_weeks.js?v=202609051446"></script>
-  <script src="js/curriculum_presets.js?v=202609051446"></script>
-  <script src="js/calendar_manager.js?v=202609051446"></script>
-  <script src="js/outcomes_manager.js?v=202609051446"></script>
-  <script src="js/exams_manager.js?v=202609051446"></script>
-  <script src="js/exam_sources.js?v=202609051446"></script>
-  <script src="js/manifest_manager.js?v=202609051446"></script>
-  <script src="js/cloud_exporter.js?v=202609051446"></script>
-  <script src="js/admin_app.js?v=202609051446"></script>
+  <script src="js/smart_circular_parser.js?v=202609051517"></script>
+  <script src="js/smart_excel_importer.js?v=202609051517"></script>
+  <script src="js/calendar_wizard.js?v=202609051517"></script>
+  <script src="js/calendar_to_weeks.js?v=202609051517"></script>
+  <script src="js/curriculum_presets.js?v=202609051517"></script>
+  <script src="js/calendar_manager.js?v=202609051517"></script>
+  <script src="js/outcomes_manager.js?v=202609051517"></script>
+  <script src="js/exams_manager.js?v=202609051517"></script>
+  <script src="js/exam_text_parser.js?v=202609051517"></script>
+  <script src="js/exam_sources.js?v=202609051517"></script>
+  <script src="js/manifest_manager.js?v=202609051517"></script>
+  <script src="js/cloud_exporter.js?v=202609051517"></script>
+  <script src="js/admin_app.js?v=202609051517"></script>
   <!--
     ES modulu: Firebase Web SDK'yi CDN'den ice aktariyor. Panelde derleme
     adimi yok, bu yuzden paket yoneticisi yerine dogrudan modul yolu.
@@ -1134,6 +1139,39 @@
     Cekilen veri DOGRUDAN uygulanmaz: yonetici ne degistigini gorup
     onaylar. Ayristirma bozulursa yanlis tarih 30.000 ogretmene gider.
   -->
+  <!--
+    MEB DUYURU YAPISTIRMA
+    MEB sinav tarihlerini yapilandirilmis veri olarak yayimlamiyor;
+    duyuru metni icinde geciyor ve bicim her yil degisiyor. Otomatik
+    okumak guvenilmez. Bu yol ortayi buluyor: yonetici metni
+    yapistiriyor, tarihler ayiklaniyor, o onayliyor.
+  -->
+  <div id="meb-paste-modal" class="modal-backdrop">
+    <div class="modal-box" style="max-width: 680px;">
+      <div class="modal-header">
+        <h3>📋 MEB Duyurusundan Sınav Tarihi Ayıkla</h3>
+        <button class="btn btn-secondary" onclick="window.adminApp.mebMetinKapat()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin: 0 0 12px; font-size: 13px; line-height: 1.55; color: var(--text-muted);">
+          MEB duyurusundaki metni kopyalayıp aşağıya yapıştırın.
+          Ortak yazılılar, LGS, İOKBS, BİLSEM ve açık öğretim sınavları
+          tanınır. <strong>Onaylamadan hiçbir şey değişmez.</strong>
+        </p>
+        <textarea id="meb-paste-input" class="form-control" rows="9"
+                  placeholder="Örnek:&#10;1. Dönem 1. Ortak Yazılı Sınavları 12-13 Kasım 2026 tarihlerinde yapılacaktır.&#10;LGS merkezi sınavı 13 Haziran 2027 Pazar günü saat 09.30'da yapılacaktır."
+                  style="width: 100%; font-family: inherit; font-size: 13px; line-height: 1.5;"></textarea>
+        <div id="meb-paste-result" style="margin-top: 14px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="window.adminApp.mebMetinKapat()">Vazgeç</button>
+        <button class="btn btn-secondary" onclick="window.adminApp.mebMetinAyristir()">🔍 Ayıkla</button>
+        <button class="btn btn-primary" id="meb-paste-apply" style="display: none;"
+                onclick="window.adminApp.mebMetinUygula()">Uygula</button>
+      </div>
+    </div>
+  </div>
+
   <div id="osym-diff-modal" class="modal-backdrop">
     <div class="modal-box" style="max-width: 720px;">
       <div class="modal-header">
@@ -1152,6 +1190,6 @@
     </div>
   </div>
 
-  <script type="module" src="js/auth_gate.js?v=202609051446"></script>
+  <script type="module" src="js/auth_gate.js?v=202609051517"></script>
 </body>
 </html>

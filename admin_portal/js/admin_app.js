@@ -1355,6 +1355,171 @@ class AdminApp {
   }
 
   /**
+   * MEB duyuru metninden sınav tarihi ayıklama penceresini açar.
+   *
+   * ## Neden yapıştırma
+   * MEB sınav tarihlerini yapılandırılmış veri olarak yayımlamıyor —
+   * duyuru metni ve PDF içinde geçiyor, biçim her yıl değişiyor.
+   * ÖSYM'de yaptığımız gibi sayfayı otomatik okumak burada güvenilmez:
+   * yanlış ayrıştırma 30.000 öğretmene yanlış LGS tarihi göndermek
+   * demek.
+   *
+   * Bu yol ortayı buluyor: yönetici metni yapıştırıyor, tarihler
+   * ayıklanıyor, o onaylıyor. Sıfırdan elle girmek yok.
+   */
+  mebMetinAc() {
+    const giris = document.getElementById('meb-paste-input');
+    const sonuc = document.getElementById('meb-paste-result');
+    const uygula = document.getElementById('meb-paste-apply');
+    if (giris) giris.value = '';
+    if (sonuc) sonuc.innerHTML = '';
+    if (uygula) uygula.style.display = 'none';
+    this._mebSonuc = null;
+    this.openModal('meb-paste-modal');
+  }
+
+  mebMetinKapat() {
+    this.closeModal('meb-paste-modal');
+    this._mebSonuc = null;
+  }
+
+  /** Yapıştırılan metni ayrıştırır ve sonucu gösterir. */
+  mebMetinAyristir() {
+    const giris = document.getElementById('meb-paste-input');
+    const kutu = document.getElementById('meb-paste-result');
+    const uygula = document.getElementById('meb-paste-apply');
+    if (!giris || !kutu) return;
+
+    const metin = giris.value.trim();
+    if (!metin) {
+      kutu.innerHTML = this.mebUyari('Önce duyuru metnini yapıştırın.');
+      return;
+    }
+
+    const r = window.ExamTextParser.ayristir(metin);
+    this._mebSonuc = r;
+
+    if (r.sinavlar.length === 0) {
+      kutu.innerHTML = this.mebUyari(
+        'Metinde tanınan sınav bulunamadı. Tarihlerin "12 Kasım 2026" ' +
+          'ya da "12.11.2026" biçiminde olduğundan emin olun.'
+      );
+      if (uygula) uygula.style.display = 'none';
+      return;
+    }
+
+    // Mevcut kayıtlarla karşılaştır: hangisi yeni, hangisi değişiyor?
+    const mevcut = this.examsManager.getAllExams();
+    const eskiler = new Map(mevcut.map((x) => [x.doc_id, x]));
+
+    const tarihYaz = (iso) =>
+      new Date(iso).toLocaleDateString('tr-TR', {
+        day: '2-digit', month: 'long', year: 'numeric',
+      });
+
+    let html = `<h4 style="margin: 0 0 10px; font-size: 14px;">
+                  ${r.sinavlar.length} sınav bulundu</h4>`;
+
+    for (const s of r.sinavlar) {
+      const eski = eskiler.get(s.doc_id);
+      const durum = eski ? 'güncellenecek' : 'yeni eklenecek';
+      const renk = eski ? '245,158,11' : '99,102,241';
+
+      html += `
+        <div style="padding: 10px 12px; margin-bottom: 7px; border-radius: 10px;
+                    background: rgba(${renk},0.08);
+                    border: 1px solid rgba(${renk},0.28);">
+          <div style="font-weight: 700; font-size: 13px;">
+            ${this.kacisliMetin(s.title)}
+          </div>
+          <div style="font-size: 12.5px; margin-top: 2px;">
+            📅 ${tarihYaz(s.examDate)}
+            <span style="color: var(--text-muted); font-size: 11.5px;">
+              · ${durum}
+            </span>
+          </div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;
+                      font-style: italic;">
+            "${this.kacisliMetin(s.kaynakSatir)}"
+          </div>
+        </div>`;
+    }
+
+    if (r.taninmayan.length > 0) {
+      html += `
+        <h4 style="margin: 16px 0 8px; font-size: 13.5px;">
+          ⚠️ Tarihi var ama tanınmadı (${r.taninmayan.length})
+        </h4>
+        <p style="margin: 0 0 8px; font-size: 11.5px; color: var(--text-muted);">
+          Bu satırlar atlanacak; gerekiyorsa elle ekleyin.
+        </p>`;
+      for (const t of r.taninmayan) {
+        html += `
+          <div style="padding: 8px 11px; margin-bottom: 5px; border-radius: 8px;
+                      background: rgba(100,116,139,0.07); font-size: 11.5px;
+                      color: var(--text-muted);">
+            ${t.tarih} — "${this.kacisliMetin(t.satir)}"
+          </div>`;
+      }
+    }
+
+    html += `
+      <p style="margin: 14px 0 0; font-size: 11.5px; color: var(--text-muted);
+                line-height: 1.5;">
+        Uygulamak yalnızca paneli günceller. Öğretmenlere ulaşması için
+        ardından <strong>"Mobil Uygulamaya Yayınla"</strong> demeniz gerekir.
+      </p>`;
+
+    kutu.innerHTML = html;
+    if (uygula) {
+      uygula.style.display = '';
+      uygula.textContent = `${r.sinavlar.length} Sınavı Uygula`;
+    }
+  }
+
+  /** Ayıklanan sınavları panele işler. */
+  mebMetinUygula() {
+    const r = this._mebSonuc;
+    if (!r || r.sinavlar.length === 0) return;
+
+    let sayac = 0;
+    for (const s of r.sinavlar) {
+      // Ayrıştırıcıya özel alanlar veriye girmesin.
+      const { kaynakSatir, yil, ...temiz } = s;
+      const mevcut = this.examsManager
+        .getAllExams()
+        .find((x) => x.doc_id === temiz.doc_id);
+
+      if (mevcut) {
+        this.examsManager.updateExam({ ...mevcut, ...temiz });
+      } else {
+        this.examsManager.addExam(temiz);
+      }
+      sayac++;
+    }
+
+    this.renderExamsTable();
+    this.updateDashboardStats();
+    this.mebMetinKapat();
+
+    this.showToast(
+      `${sayac} sınav güncellendi. Öğretmenlere ulaşması için ` +
+        '"Mobil Uygulamaya Yayınla" deyin.',
+      'success'
+    );
+  }
+
+  mebUyari(mesaj) {
+    return `
+      <div style="padding: 12px 14px; border-radius: 10px;
+                  background: rgba(245,158,11,0.1);
+                  border: 1px solid rgba(245,158,11,0.3);
+                  font-size: 12.5px; line-height: 1.5;">
+        ${this.kacisliMetin(mesaj)}
+      </div>`;
+  }
+
+  /**
    * ÖSYM takvimini çeker ve farkları gösterir.
    *
    * YAYINLAMAZ. Sunucu sayfayı okuyup mevcut veriyle karşılaştırıyor;

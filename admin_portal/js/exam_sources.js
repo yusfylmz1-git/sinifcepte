@@ -56,11 +56,16 @@ window.SinavKaynaklari = {
     MEB: {
       ad: 'MEB Ölçme ve Değerlendirme (ODSGM)',
       url: 'https://odsgm.meb.gov.tr/www/duyurular/kategori/1',
+      // MEB İKİ ayrı belge yayımlıyor:
+      //   Çalışma takvimi (tatiller, dönemler) — Haziran
+      //   Ortak sınav tarihleri               — daha geç, genelde Eylül-Ekim
+      // 2026-2027 çalışma takvimi 13 Haziran 2026'da yayımlandı ama
+      // ortak sınav tarihleri Temmuz sonunda hâlâ açıklanmamıştı.
       aciklama:
         'Ortak yazılılar, LGS, bursluluk (İOKBS). Çalışma takvimi ' +
-        'genelde Ağustos ayında duyurulur.',
+        'Haziran’da, sınav tarihleri genelde Eylül-Ekim’de duyurulur.',
       otomatik: false,
-      nezaman: 'Ağustos',
+      nezaman: 'Eylül-Ekim',
       ekKaynaklar: [
         { ad: 'MEB Duyurular', url: 'https://www.meb.gov.tr/duyurular/' },
         { ad: 'e-Okul', url: 'https://e-okul.meb.gov.tr' },
