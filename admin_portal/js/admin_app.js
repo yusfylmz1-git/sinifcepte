@@ -1575,8 +1575,12 @@ class AdminApp {
         return 'Bu işlem için süper yönetici yetkisi gerekiyor.';
       case 'functions/invalid-argument':
         return `Veri reddedildi: ${e.message}`;
-      case 'functions/unavailable':
       case 'functions/deadline-exceeded':
+        // Sunucunun kendi mesajı daha bilgilendirici: sorunun ÖSYM'de
+        // olduğunu söylüyor. Genel "internet bağlantınızı kontrol
+        // edin" metni kullanıcıyı yanlış yere baktırıyordu.
+        return e.message || 'İşlem zaman aşımına uğradı.';
+      case 'functions/unavailable':
         return 'Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin.';
       case 'functions/not-found':
         return 'İşlev bulunamadı. Önce `firebase deploy --only functions` çalıştırın.';

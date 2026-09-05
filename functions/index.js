@@ -136,7 +136,11 @@ export const publishRemoteConfig = onCall(
  * Tek denemede başarı şansı ~1/3. Üç denemeyle ~%97'ye çıkıyor.
  */
 async function osymSayfasiniAl() {
-  const DENEME = 3;
+  // ÖSYM bazen uzun süre hiç yanıt vermiyor. Ölçüm (5 Eylül 2026):
+  // üç deneme de 12 sn'de takıldı. Deneme sayısı 5'e çıkarıldı;
+  // fonksiyon zaman aşımı 60 sn, 5 × (12 + 1.5) = 67 sn'yi aşmasın
+  // diye bekleme 1 sn'ye indirildi.
+  const DENEME = 5;
   let sonHata = null;
 
   for (let i = 1; i <= DENEME; i++) {
@@ -164,16 +168,20 @@ async function osymSayfasiniAl() {
       sonHata = e;
       // Son denemeden sonra beklemeye gerek yok.
       if (i < DENEME) {
-        await new Promise((r) => setTimeout(r, 1500));
+        await new Promise((r) => setTimeout(r, 1000));
       }
     }
   }
 
+  // 'unavailable' yerine 'deadline-exceeded': panel bunu "internet
+  // bağlantınızı kontrol edin" diye çeviriyordu ve kullanıcıyı yanlış
+  // yere baktırıyordu. Sorun ÖSYM'de.
   throw new HttpsError(
-    'unavailable',
-    `ÖSYM sayfasına ${DENEME} denemede ulaşılamadı (${sonHata?.message}). ` +
-      'Site şu an yanıt vermiyor olabilir; birkaç dakika sonra tekrar ' +
-      'deneyin.'
+    'deadline-exceeded',
+    `ÖSYM sitesi ${DENEME} denemede yanıt vermedi. Sorun sizin ` +
+      'bağlantınızda değil — ÖSYM sunucusu şu an yavaş. Birkaç dakika ' +
+      'sonra tekrar deneyin; acele ediyorsanız tarihleri elle ' +
+      'girebilirsiniz.'
   );
 }
 
@@ -201,8 +209,8 @@ export const fetchOsymTakvim = onCall(
     region: BOLGE,
     maxInstances: 3,
     cors: true,
-    // ÖSYM sayfası yavaş yanıt verebiliyor.
-    timeoutSeconds: 60,
+    // 5 deneme × (12 sn zaman aşımı + 1 sn bekleme) = 65 sn.
+    timeoutSeconds: 90,
   },
   async (request) => {
     const yetki = yetkiKontrol(request.auth);

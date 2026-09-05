@@ -6,9 +6,14 @@
  * tarihi nerede yayımlanıyordu?" diye aramak zorunda kalıyordu. Kaynak
  * adresleri burada duruyor; panel her kurumun yanına bağlantı basıyor.
  *
- * ÖSYM sınavları ayrıca OTOMATİK çekiliyor (`fetchOsymTakvim`), ama
- * kaynak yine de gösteriliyor: yönetici çekilen veriyi doğrulamak
- * isteyebilir.
+ * ## Otomatik çekme neden ZORUNLU değil
+ * ÖSYM sayfası okunabiliyor (`fetchOsymTakvim`) ama sunucu kararsız:
+ * ölçümde beş deneme de zaman aşımına düştüğü oldu. Bu yüzden veri
+ * APK'ya gömülü (`assets/data/official_exams.json`); çekme yalnızca
+ * yılda bir, yeni takvim yayımlandığında işi kolaylaştıran bir
+ * yardımcı. Çalışmazsa iş durmuyor — tarihler elle girilir.
+ *
+ * Sınav takvimi yılda bir yayımlanan bir belge; sık değişmiyor.
  */
 window.SinavKaynaklari = {
   /**

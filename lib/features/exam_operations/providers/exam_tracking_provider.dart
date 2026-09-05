@@ -56,13 +56,33 @@ class ExamTrackingState {
         exams.where((e) => e.isSchoolExam).toList(),
       );
 
-  /// Yaklaşanlar tarih sırasıyla başta, geçmişler tersten sonda.
+  /// Yaklaşanlar başta, YAKIN geçmiş sonda; eskiler gizli.
+  ///
+  /// ## Neden eski sınavlar gizleniyor
+  /// Liste her sınavı sonsuza dek tutunca ekran "Tamamlandı" rozetiyle
+  /// doluyordu. Aylar önce bitmiş bir sınavın öğretmen için bir değeri
+  /// yok — takvim ileriye bakan bir araç.
+  ///
+  /// Yakın geçmiş görünür kalıyor: "geçen hafta hangi sınav vardı",
+  /// "başvurusu ne zaman bitmişti" soruları gerçek. Bir ay bunun için
+  /// yeterli, bir yıl fazlasıyla gereksiz.
+  static const Duration _gecmisPenceresi = Duration(days: 30);
+
   static List<ExamModel> _yaklasanOnce(List<ExamModel> liste) {
+    final simdi = DateTime.now();
+    final sinir = simdi.subtract(_gecmisPenceresi);
+
     final yaklasan = liste.where((e) => !e.isPast).toList()
       ..sort((a, b) => a.examDate.compareTo(b.examDate));
-    final gecmis = liste.where((e) => e.isPast).toList()
+
+    // Geçmişler tersten: en yeni biten önce. "Üç hafta önceki" sınav,
+    // "dört hafta önceki"nden daha sık sorulur.
+    final yakinGecmis = liste
+        .where((e) => e.isPast && e.examDate.isAfter(sinir))
+        .toList()
       ..sort((a, b) => b.examDate.compareTo(a.examDate));
-    return [...yaklasan, ...gecmis];
+
+    return [...yaklasan, ...yakinGecmis];
   }
 
   /// En yakın yaklaşan sınavlar
