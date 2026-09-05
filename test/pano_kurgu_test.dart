@@ -148,7 +148,15 @@ void main() {
 
       expect(sayfa, greaterThanOrEqualTo(1));
       expect(metin, contains('TARİH ŞERİDİ'));
-      expect(metin, contains('TBMM'));
+      // Kısaltma da açık yazım da geçerli. Kronoloji derinleştirilirken
+      // "TBMM" açılarak yazıldı; panoyu okuyan ilkokul öğrencisi
+      // kısaltmayı çözmek zorunda kalmasın diye. Aranan şey Meclis'in
+      // anılması, hangi biçimde yazıldığı değil.
+      expect(
+        metin.contains('TBMM') || metin.contains('Büyük Millet Meclisi'),
+        isTrue,
+        reason: 'tarih şeridinde Meclis anılmıyor',
+      );
     }, timeout: const Timeout(Duration(seconds: 120)));
 
     test('KRITIK: biliyor muydunuz olgulari tasir', () async {

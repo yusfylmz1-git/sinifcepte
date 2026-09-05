@@ -611,13 +611,30 @@ KURGU['Şehitler Günü'] = {
         'baslik': 'Şehitlerimize Mektubum',
         'yonerge': 'Şehitlerimize bir teşekkür cümlesi yaz.',
     },
+    # Kronoloji zaferin NASIL kazanıldığını anlatır.
+    #
+    # Önceki hâli "Çanakkale Deniz Zaferi kazanıldı" demekle
+    # yetiniyordu; öğrenci neyin nasıl olduğunu öğrenmiyordu. Nusret'in
+    # döktüğü mayınlar ve donanmanın geri çekilmesi olayın kendisidir.
     'kronoloji': [
+        {'yil': 'Şubat 1915',
+         'olay': 'Düşman donanması boğazı zorlamaya başladı; amaç '
+                 'İstanbul’a ulaşmaktı.'},
+        {'yil': '7-8 Mart 1915 gecesi',
+         'olay': 'Nusret mayın gemisi, fark edilmeden yirmi altı mayın '
+                 'döktü.'},
         {'yil': '18 Mart 1915',
-         'olay': 'Çanakkale Deniz Zaferi kazanıldı.'},
-        {'yil': '1915-1916',
-         'olay': 'Çanakkale kara savaşları sürdü; büyük kayıplar verildi.'},
+         'olay': 'Donanma boğazı geçmeye kalktı; mayınlar ve kıyı '
+                 'topları üç zırhlıyı batırdı.'},
+        {'yil': '18 Mart 1915, akşam',
+         'olay': 'Gücünün üçte birini kaybeden filo geri çekildi; boğaz '
+                 'geçilemedi.'},
+        {'yil': '25 Nisan 1915’ten sonra',
+         'olay': 'Kara savaşları başladı ve aylarca sürdü; iki tarafta '
+                 'da ağır kayıplar verildi.'},
         {'yil': 'Bugün',
-         'olay': '18 Mart, Şehitleri Anma Günü olarak anılır.'},
+         'olay': '18 Mart, Çanakkale Zaferi ve Şehitleri Anma Günü '
+                 'olarak anılır.'},
     ],
     'soruCevap': [
         {'soru': '18 Mart neyi anlatır?',
@@ -650,13 +667,27 @@ KURGU['Şehitler Günü'] = {
          'metin': 'En güzel teşekkür şudur:\nBarış içinde yaşamak.\n'
                   'Kavga etmeden büyümek,\nBirbirimize iyi bakmak.'},
     ],
+    # Maddeler OLGU taşır: sayı, ad, "ilk".
+    #
+    # Önceki hâlinde altı madde aynı şeyi farklı sözcüklerle
+    # söylüyordu ("zafer kazanıldı", "boğaz geçilemedi"). Öğrenci
+    # panodan yeni bir şey öğrenmiyordu.
     'biliyorMuydunuz': [
-        'Çanakkale Deniz Zaferi 18 Mart 1915’te kazanıldı.',
-        '18 Mart, Şehitleri Anma Günü olarak anılır.',
-        'Çanakkale’de birçok üniversite öğrencisi cepheye gitti.',
-        'Zafer, düşman donanmasının boğazı geçememesiyle kazanıldı.',
+        'Nusret mayın gemisi, 18 Mart’tan on gün önce fark edilmeden '
+        'yirmi altı mayın döktü; zaferin dönüm noktası bu oldu.',
+        'O gün üç düşman zırhlısı battı, birkaçı ağır hasar aldı.',
+        'Donanma gücünün yaklaşık üçte birini kaybederek geri çekildi.',
+        'Çanakkale’de birçok üniversite öğrencisi okulunu bırakıp '
+        'cepheye gitti; bir kısmı geri dönemedi.',
+        'Savaşta iki tarafta da yüz binlerce insan hayatını kaybetti; '
+        'Çanakkale bu yüzden yalnızca zafer değil, büyük bir kayıp '
+        'olarak da anılır.',
+        'Mustafa Kemal, Çanakkale’de tümen komutanıydı; buradaki '
+        'başarısı onu bütün ülkede tanınır kıldı.',
+        'Cephede karşı karşıya gelen askerler zaman zaman su ve '
+        'sigara paylaştı; savaşın ortasında bile insanlık '
+        'unutulmadı.',
         'Anma törenlerinde saygı duruşu ve İstiklâl Marşı yer alır.',
-        'Çanakkale direnişi Millî Mücadele’ye örnek oldu.',
     ],
     'sozler': [
         'Barış için yapacağım:',
@@ -733,7 +764,8 @@ KURGU['15 Temmuz Demokrasi ve Millî Birlik Günü'] = {
         'tek bir görüşün insanları değildi; farklı partilere oy vermiş, '
         'farklı düşünen insanlar aynı yerde buluştu. Emniyet mensupları, '
         'askerler ve siviller birlikte hareket etti. Girişim sonuçsuz '
-        'kaldı. O gece 251 vatandaşımız hayatını kaybetti, iki binden '
+        'kaldı. O gece iki yüzü aşkın vatandaşımız hayatını kaybetti, '
+        'iki binden '
         'fazla vatandaşımız gazi oldu.',
         'Bu günün okullarda anılmasının amacı korku aşılamak değildir. '
         'Amaç; millî iradenin, hukukun ve birlikte yaşama kültürünün '
@@ -771,18 +803,49 @@ KURGU['15 Temmuz Demokrasi ve Millî Birlik Günü'] = {
          'tanim': 'Vatanı savunurken yaralanan ve hayatta kalan kişi.'},
         {'kavram': 'Şehit',
          'tanim': 'Vatanı savunurken hayatını kaybeden kişi.'},
+        # Aşağıdakiler O GECEYE ait terimler. Sözlük yalnızca soyut
+        # kavramlardan oluşunca öğrenci panoda geçen sözcükleri
+        # anlamıyordu.
+        {'kavram': 'Sala',
+         'tanim': 'Camilerde okunan, halkı bir araya çağıran dinî '
+                  'çağrı. O gece meydanlara çağıran seslerden biri '
+                  'oldu.'},
+        {'kavram': 'Millî irade nöbeti',
+         'tanim': 'Girişimin ardından meydanlarda haftalarca süren '
+                  'toplanmalara verilen ad.'},
+        {'kavram': 'Anma günü',
+         'tanim': 'Bir olayın yıl dönümünde toplumca hatırlandığı, '
+                  'resmî olarak belirlenmiş gün.'},
     ],
+    # Kronoloji O GECENİN KENDİSİNİ anlatır.
+    #
+    # Önceki hâli genel demokrasi tarihiydi (1946 seçimi, TBMM'nin
+    # açılışı) ve öğrenci "o gece ne oldu" sorusunun cevabını
+    # bulamıyordu. Cumhuriyet ve Zafer Bayramı kronolojileri saat ve
+    # yer veriyor; bu gün de o ölçüde somut olmalı.
+    #
+    # Saatler birden çok haber kaynağından doğrulandı. Şehit sayısı
+    # kaynaklarda değiştiği için sayı yazılmadı.
     'kronoloji': [
-        {'yil': '1946',
-         'olay': 'Türkiye’de ilk çok partili seçim yapıldı.'},
-        {'yil': '15 Temmuz 2016',
-         'olay': 'Darbe girişimi başladı; halk sokağa çıktı.'},
-        {'yil': '16 Temmuz 2016',
-         'olay': 'Girişim başarısız oldu; millî irade korundu.'},
-        {'yil': '2016',
-         'olay': '15 Temmuz, resmî anma günü olarak kabul edildi.'},
-        {'yil': 'Bugün',
-         'olay': '15 Temmuz, Demokrasi ve Millî Birlik Günü olarak anılır.'},
+        {'yil': '15 Temmuz 2016, akşam',
+         'olay': 'Bir grup, silahlı güç kullanarak yönetime el koymaya '
+                 'kalkıştı. Köprü trafiğe kapatıldı, şehirlerde alçak '
+                 'uçuşlar başladı.'},
+        {'yil': 'Gece 23.00 sularında',
+         'olay': 'Girişim televizyonlardan duyuruldu. Halk, yöneticilerin '
+                 'çağrısıyla meydanlara çıkmaya başladı.'},
+        {'yil': 'Gece yarısı',
+         'olay': 'Camilerden salalar okundu. Farklı görüşten insanlar '
+                 'aynı meydanlarda buluştu.'},
+        {'yil': '16 Temmuz, gece 02.00 sularında',
+         'olay': 'Türkiye Büyük Millet Meclisi bombalandı. Meclis o gece '
+                 'açık kaldı ve oturumunu sürdürdü.'},
+        {'yil': '16 Temmuz, öğleden sonra',
+         'olay': 'Girişimin bastırıldığı açıklandı. Yaklaşık yirmi bir '
+                 'saat sürmüştü.'},
+        {'yil': 'Sonrasında',
+         'olay': '15 Temmuz, Demokrasi ve Millî Birlik Günü olarak resmî '
+                 'anma günü kabul edildi.'},
     ],
     # Önce/sonra — bu gün bir değişimi anlatır, kurgu burada anlamlı.
     'oncesiSonrasi': [
@@ -827,6 +890,19 @@ KURGU['15 Temmuz Demokrasi ve Millî Birlik Günü'] = {
         {'soru': 'Bir haberin doğru olduğunu nasıl anlarız?',
          'cevap': 'Kaynağına bakarız, başka güvenilir kaynaklarla '
                   'karşılaştırırız ve hemen paylaşmadan önce dururuz.'},
+        # Olaya bağlı muhakeme soruları. Sözlükte tanım var; burada
+        # "neden böyle oldu" sorusu sorulur.
+        {'soru': 'O gece insanları meydana çıkaran şey neydi?',
+         'cevap': 'Seçme hakkının ellerinden alınmasına razı '
+                  'olmamalarıydı. Kimse zorlamadı; kendi kararlarıyla '
+                  'çıktılar.'},
+        {'soru': 'Meclis neden önemliydi?',
+         'cevap': 'Meclis milletin kararını temsil eder. O gece '
+                  'bombalanmasına rağmen açık kalması, kararın yerinde '
+                  'durduğunu gösterdi.'},
+        {'soru': 'Farklı partilere oy verenler neden aynı yerde durdu?',
+         'cevap': 'Hangi partiye oy verdikleri farklıydı ama seçme '
+                  'hakkının kendisi hepsinin ortak değeriydi.'},
     ],
     'panoDortlukler': [
         {'baslik': 'Söz Milletin',
@@ -851,19 +927,31 @@ KURGU['15 Temmuz Demokrasi ve Millî Birlik Günü'] = {
          'metin': 'Bize kalan bir vatan,\nBir de sorumluluk var.\n'
                   'Büyüyünce anlarız,\nEmanet ne demekmiş.'},
     ],
+    # Maddeler GÜNE ÖZGÜ olgular taşır.
+    #
+    # Önceki hâlinde dokuz maddenin altısı genel demokrasi bilgisiydi
+    # (kelimenin Yunanca kökeni, oy yaşı, 1946 seçimi). Doğruydu ama
+    # o gecenin kendisini anlatmıyordu; öğrenci panodan bir şey
+    # öğrenmiyordu. Her madde artık ölçülebilir bir ayrıntı taşıyor:
+    # süre, yer, "ilk".
     'biliyorMuydunuz': [
-        '15 Temmuz, Demokrasi ve Millî Birlik Günü olarak anılır.',
-        'Demokrasi kelimesi Yunanca “halk” ve “yönetim” sözcüklerinden '
-        'gelir.',
-        'Türkiye’de ilk çok partili seçim 1946’da yapıldı.',
-        'Oy kullanma yaşı Türkiye’de on sekizdir.',
-        'Millî iradenin temeli “Egemenlik kayıtsız şartsız milletindir” '
-        'ilkesidir.',
-        'Sınıf başkanı seçimi de bir demokrasi uygulamasıdır.',
-        'Türkiye Büyük Millet Meclisi 23 Nisan 1920’de açıldı.',
-        'Oy vermek hem bir hak hem de bir sorumluluktur.',
-        'Bir ülkede farklı görüşlerin bulunması demokrasinin '
-        'zayıflığı değil, doğal hâlidir.',
+        'Türkiye Büyük Millet Meclisi, kurulduğu 1920’den bu yana ilk '
+        'kez 15 Temmuz gecesi bombalandı.',
+        'Meclis o gece kapanmadı; milletvekilleri binada kalarak '
+        'oturumu sürdürdü.',
+        'Girişim yaklaşık yirmi bir saatte sonuçsuz kaldı.',
+        'O gece iki yüzü aşkın vatandaşımız hayatını kaybetti, iki '
+        'binden fazla kişi gazi oldu.',
+        'Meydanlara çıkanlar tek bir görüşün insanları değildi; farklı '
+        'partilere oy vermiş insanlar aynı yerde buluştu.',
+        'Camilerden okunan salalar, o gece halkı meydanlara çağıran '
+        'seslerden biri oldu.',
+        'Şehit ve gazilerimizin adları bugün pek çok okulda, sokakta ve '
+        'köprüde yaşatılıyor.',
+        'Türkiye Büyük Millet Meclisi 23 Nisan 1920’de açıldı; o günden '
+        'beri kararı millet adına o veriyor.',
+        'Bir ülkede farklı görüşlerin bulunması demokrasinin zayıflığı '
+        'değil, doğal hâlidir.',
     ],
     'sozler': [
         'Sınıf kararına uymak için:',

@@ -208,13 +208,27 @@ TOREN = {
             'egemenliği küçük yaşta yaşamaktır. Bu pano o sözün asıldığı '
             'yerdir.',
         ],
+        # Kronoloji Meclis'in NASIL açıldığını anlatır.
+        #
+        # Önceki hâlinde üç satırdan ikisi tarih bile taşımıyordu
+        # ("Çocuklara armağan", "Bugün sınıfta"). Öğrenci o günün
+        # neden seçildiğini öğrenmiyordu.
         'kronoloji': [
+            {'yil': '1919-1920',
+             'olay': 'Ülke işgal altındaydı; İstanbul’daki meclis '
+                     'kapatıldı.'},
             {'yil': '23 Nisan 1920',
-             'olay': 'TBMM Ankara’da açıldı. Egemenlik millete geçti.'},
-            {'yil': 'Çocuklara armağan',
-             'olay': 'Atatürk bu günü dünya çocuklarına armağan etti.'},
-            {'yil': 'Bugün sınıfta',
-             'olay': 'Meclis, şiir, oyun ve dilek kartı: söz bizimdir.'},
+             'olay': 'Ankara’da Türkiye Büyük Millet Meclisi açıldı. '
+                     'Artık kararı millet adına bu meclis veriyordu.'},
+            {'yil': 'İlk oturum',
+             'olay': 'Mustafa Kemal meclis başkanı seçildi; egemenliğin '
+                     'millete ait olduğu kabul edildi.'},
+            {'yil': '1929',
+             'olay': '23 Nisan, çocuk bayramı olarak da kutlanmaya '
+                     'başlandı.'},
+            {'yil': 'Sonraki yıllar',
+             'olay': 'Başka ülkelerden çocuklar da bayrama katılmaya '
+                     'başladı; dünyada eşi az bulunan bir bayram oldu.'},
         ],
         'ogrenciGorevi': {
             'baslik': '23 Nisan Dileğim',
@@ -581,7 +595,8 @@ TOREN = {
             '15 Temmuz 2016 gecesi, milletin seçtiği düzene karşı silahlı '
             'bir darbe girişimi yapıldı. Meclis, demokrasi ve millî irade '
             'hedef alındı. Millet sokaklara çıktı; polis, asker ve sivil '
-            'birlikte durdu. Girişim engellendi. O gece 251 vatan evladı '
+            'birlikte durdu. Girişim engellendi. O gece iki yüzü aşkın '
+            'vatan evladı '
             'şehit oldu, iki binden fazla kişi gazi oldu.\n\n'
             'Bugün burada bir korku hikâyesi anlatmak için toplanmadık. '
             'Anlatmak istediğimiz şey çok daha sade: bir ülkede kararı '
@@ -615,7 +630,8 @@ TOREN = {
                 'demokratik düzen hedef alındı. Milletimiz bu girişime '
                 'karşı durdu; emniyet mensupları, askerler ve siviller '
                 'birlikte hareket etti ve girişim sonuçsuz kaldı.\n\n'
-                'O gece 251 vatandaşımız hayatını kaybetti, iki binden '
+                'O gece iki yüzü aşkın vatandaşımız hayatını kaybetti, '
+                'iki binden '
                 'fazla vatandaşımız yaralanarak gazi oldu. Bugün onları '
                 'saygı ve minnetle anıyoruz.\n\n'
                 'Bu günün okullarda anılmasının amacı bellidir: millî '
@@ -641,7 +657,8 @@ TOREN = {
                 'verdiği kararı tanımadı ve zorla yönetimi ele geçirmek '
                 'istedi. Ama millet buna izin vermedi. O gece sokağa '
                 'çıkanların çoğu asker değildi; öğretmendi, esnaftı, '
-                'şofördü, öğrenciydi. 251 kişi hayatını kaybetti.\n\n'
+                'şofördü, öğrenciydi. İki yüzü aşkın kişi hayatını '
+                'kaybetti.\n\n'
                 'Sizden bugün üzülmenizi değil, bir şeyi fark etmenizi '
                 'istiyorum: demokrasi uzakta, büyüklerin dünyasında olan '
                 'bir şey değil. Sıranızda başlıyor. Arkadaşınızın sözünü '
@@ -656,7 +673,7 @@ TOREN = {
                 'Sevgili öğrenciler;\n\n'
                 '15 Temmuz 2016 gecesi, milletin seçtiği düzene karşı bir '
                 'darbe girişimi oldu. Millet buna karşı durdu ve girişim '
-                'engellendi. O gece 251 kişi şehit oldu.\n\n'
+                'engellendi. O gece iki yüzü aşkın kişi şehit oldu.\n\n'
                 'Bugün onları anıyoruz. Anmak, bir ismi okumakla bitmez; '
                 'o insanların uğrunda durduğu şeyi yaşatmakla olur. '
                 'Bizim için bu; öğrenmek, birbirimizi dinlemek ve '
@@ -689,7 +706,7 @@ TOREN = {
                 '15 Temmuz 2016 gecesi ülkemizde bir darbe girişimi '
                 'yaşandı. Darbe demek, milletin seçtiği yönetimi zorla '
                 'devirmeye çalışmak demektir. O gece halkımız sokaklara '
-                'çıktı ve buna izin vermedi. 251 kişi hayatını '
+                'çıktı ve buna izin vermedi. İki yüzü aşkın kişi hayatını '
                 'kaybetti.\n\n'
                 'Demokrasi, kararı milletin vermesidir. Bunu okulda da '
                 'yaşıyoruz: sınıf başkanını biz seçiyoruz. Seçimi '
@@ -796,7 +813,7 @@ TOREN = {
             ),
             _kart(
                 'Emanet',
-                '251 şehit minnetle anılır. Emanet; öğrenmek, birlik olmak '
+                'şehitlerimiz minnetle anılır. Emanet; öğrenmek, birlik olmak '
                 've birbirine zarar vermemektir.',
             ),
             _kart(

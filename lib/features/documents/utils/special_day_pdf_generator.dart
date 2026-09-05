@@ -943,13 +943,21 @@ class SpecialDayPdfGenerator {
                     child: _panoIcerikKart(
                       'Kronoloji',
                       [
-                        for (final k in icerik.kronoloji.take(3))
+                        // Kronoloji sayfanın sabit bir çeyreğinde duruyor;
+                        // kart büyüyemediği için uzun listede punto
+                        // küçülür. Önceden liste ilk üç satırda kesiliyor,
+                        // günün sonu panoya hiç çıkmıyordu.
+                        for (final k in icerik.kronoloji.take(_kronolojiEnCok))
                           pw.Padding(
-                            padding: const pw.EdgeInsets.only(bottom: 6),
+                            padding: pw.EdgeInsets.only(
+                              bottom: icerik.kronoloji.length > 4 ? 4 : 6,
+                            ),
                             child: pw.Text(
                               '• ${k.baslik}: ${k.metin}',
-                              style: const pw.TextStyle(
-                                fontSize: 8.5,
+                              style: pw.TextStyle(
+                                fontSize: _kronolojiPunto(
+                                  icerik.kronoloji.length,
+                                ),
                                 lineSpacing: 1.6,
                               ),
                             ),
@@ -993,13 +1001,21 @@ class SpecialDayPdfGenerator {
                     child: _panoIcerikKart(
                       'Biliyor muydunuz?',
                       [
-                        for (final b in bilgi.take(3))
+                        // Kronolojiyle aynı sorun: 15 Temmuz'un dokuz
+                        // maddesinden panoya yalnızca üçü çıkıyordu.
+                        for (final b in bilgi.take(_bilgiEnCok))
                           pw.Padding(
-                            padding: const pw.EdgeInsets.only(bottom: 6),
+                            padding: pw.EdgeInsets.only(
+                              bottom: bilgi.length > 3 ? 4 : 6,
+                            ),
                             child: pw.Text(
                               '• $b',
-                              style: const pw.TextStyle(
-                                fontSize: 8.5,
+                              style: pw.TextStyle(
+                                fontSize: _bilgiPunto(
+                                  bilgi.length > _bilgiEnCok
+                                      ? _bilgiEnCok
+                                      : bilgi.length,
+                                ),
                                 lineSpacing: 1.6,
                               ),
                             ),
@@ -1196,6 +1212,37 @@ class SpecialDayPdfGenerator {
         ],
       ),
     );
+  }
+
+  /// "Biliyor muydunuz" kartına basılacak en çok madde.
+  ///
+  /// Kronolojiden düşük: buradaki maddeler tam cümle ve "başlık: metin"
+  /// kısaltması yok, satıra sarma payı daha büyük.
+  static const int _bilgiEnCok = 5;
+
+  /// Madde sayısına göre punto — [_kronolojiPunto] ile aynı mantık.
+  static double _bilgiPunto(int madde) {
+    if (madde <= 3) return 8.5;
+    if (madde == 4) return 7.8;
+    return 7.2;
+  }
+
+  /// Pano kronoloji kartına basılacak en çok satır.
+  ///
+  /// Kart sabit bir çeyrekte durduğu için sınırsız olamaz; altı satır
+  /// en küçük puntoda (7.2) ölçülerek sığdığı doğrulandı.
+  static const int _kronolojiEnCok = 6;
+
+  /// Satır sayısına göre punto.
+  ///
+  /// Kulüp faaliyet raporundaki imza taşmasıyla aynı çözüm: içerik
+  /// uzayınca kartı taşırmak yerine yazıyı küçültüyoruz. Alt sınır 7.2;
+  /// bunun altı panoda uzaktan okunmuyor.
+  static double _kronolojiPunto(int satir) {
+    if (satir <= 3) return 8.5;
+    if (satir == 4) return 8.0;
+    if (satir == 5) return 7.6;
+    return 7.2;
   }
 
   static List<PanoCard> _panoKartlar(SpecialDay gun, PanoContent? icerik) {
