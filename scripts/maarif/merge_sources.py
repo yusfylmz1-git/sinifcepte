@@ -95,10 +95,23 @@ def main() -> int:
     def add(records: list[dict], overwrite: bool) -> int:
         added = 0
         for record in records:
+            # publisher ANAHTAR ICIN normallestirilir.
+            #
+            # "MEB Yayinlari" ve bos ayni seyi ifade ediyor: "okul
+            # turu belirtilmemis". Ayri sayilinca ayni hafta iki kez
+            # giriyordu — olcumde Bilim Uygulamalari 5. sinifta hafta
+            # 1 DORT KEZ vardi (iki kaynak x iki publisher yazimi).
+            #
+            # Gercek okul turleri (Anadolu / Fen / Sosyal Bilimler
+            # Lisesi) ayri kalmaya devam eder: ayni sinifin farkli
+            # planlarini tasiyorlar.
+            pub = (record.get("publisher") or "").casefold().strip()
+            if pub in ("", "meb yayınları", "meb yayinlari"):
+                pub = ""
             key = (
                 record.get("gradeLevel"),
                 (record.get("subjectName") or "").casefold(),
-                (record.get("publisher") or "").casefold(),
+                pub,
                 record.get("weekNumber"),
             )
             if key in merged and not overwrite:
@@ -117,18 +130,45 @@ def main() -> int:
 
     # MEB'in resmî planı OLMAYAN dersler yalnızca ders listesinde
     # kalsın diye mevcut veriden alınır; içerikleri uydurulmaz.
+    #
+    # Kapsam DERS+KADEME bazında bakılır. Ders adına bakmak yetmiyordu:
+    # ölçümde Teknoloji ve Tasarım 7. sınıfta 33 hafta HEM resmî HEM
+    # eski kayıtla görünüyordu. Sebep, birleştirme anahtarının
+    # publisher içermesi — eski kayıtta "MEB Yayınları", resmîde boş,
+    # ikisi ayrı sayılıyordu. Öğretmen aynı haftayı iki kez görüyordu.
     resmi_kapsam = {
         (r.get("gradeLevel"), (r.get("subjectName") or "").casefold())
+        for r in list(tymm) + list(dogm)
+    }
+    # Aynı branşın farklı yazımları da kapsama girmeli: eski veride
+    # "BEDEN EGITIMI VE SPOR", resmîde "Beden Eğitimi ve Spor".
+    def _kok(ad: str) -> str:
+        return "".join(ch for ch in (ad or "").casefold() if ch.isalnum())
+
+    resmi_kok = {
+        (r.get("gradeLevel"), _kok(r.get("subjectName")))
         for r in list(tymm) + list(dogm)
     }
     plansiz = [
         r for r in shipped
         if (r.get("gradeLevel"),
             (r.get("subjectName") or "").casefold()) not in resmi_kapsam
+        and (r.get("gradeLevel"), _kok(r.get("subjectName"))) not in resmi_kok
     ]
     print(f"Resmi plani olmayan : {add(plansiz, overwrite=False)}")
-    # Seçmeli planlar TAHMİNÎ dağılımdır; resmî kaynakları ezmez.
-    print(f"Secmeli eklenen     : {add(elective, overwrite=False)}")
+    # Seçmeli planlar TAHMİNÎ dağılımdır ve resmî planı olan bir
+    # ders+kademede HİÇ kullanılmaz.
+    #
+    # `overwrite=False` tek başına yetmiyordu: birleştirme anahtarı
+    # publisher içeriyor ve tahminî kayıtta "MEB Yayınları", resmîde
+    # boş. Aynı hafta farklı anahtar üretiyor, çakışmıyor ve yan yana
+    # duruyordu — öğretmen aynı haftayı iki kez görüyordu (ölçüm:
+    # Teknoloji ve Tasarım 7-8, 33-34 hafta).
+    elective_suzulmus = [
+        r for r in elective
+        if (r.get("gradeLevel"), _kok(r.get("subjectName"))) not in resmi_kok
+    ]
+    print(f"Secmeli eklenen     : {add(elective_suzulmus, overwrite=False)}")
 
     records = list(merged.values())
     records.sort(key=lambda r: (r["gradeLevel"], r["subjectName"] or "",

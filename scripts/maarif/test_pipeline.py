@@ -459,6 +459,67 @@ class MebYeniDuzenTests(unittest.TestCase):
         )
 
 
+class KaynakKarisimiTests(unittest.TestCase):
+    """Aynı ders+kademede resmî ve eski kayıt bir arada durmamalı.
+
+    ## Neden bu test var
+    Ölçüm: Teknoloji ve Tasarım 7. sınıfta 33 hafta, 8. sınıfta 34
+    hafta HEM resmî HEM tahminî kayıtla görünüyordu. Öğretmen aynı
+    haftayı iki kez görüyor ve hangisinin doğru olduğunu bilemiyordu.
+
+    Sebep: birleştirme anahtarı `publisher` içeriyor ve tahminî
+    kayıtta "MEB Yayınları", resmîde boş. Aynı hafta farklı anahtar
+    üretiyor, çakışmıyor ve yan yana duruyordu.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        import json as _json
+        kok = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
+        yol = os.path.join(kok, "assets", "data",
+                           "official_maarif_kazanimlar.json")
+        with open(yol, encoding="utf-8") as handle:
+            cls.kayitlar = _json.load(handle)
+
+    def test_ayni_hafta_iki_kez_gorunmez(self):
+        """KRİTİK: bir ders+kademe+haftada tek kayıt olmalı."""
+        sayac = {}
+        for kayit in self.kayitlar:
+            anahtar = (
+                kayit.get("gradeLevel"),
+                kayit.get("subjectCode"),
+                kayit.get("publisher") or "",
+                kayit.get("weekNumber"),
+            )
+            sayac[anahtar] = sayac.get(anahtar, 0) + 1
+        tekrar = {k: v for k, v in sayac.items() if v > 1}
+        self.assertFalse(
+            tekrar,
+            f"{len(tekrar)} ders+kademe+hafta iki kez var: "
+            f"{list(tekrar)[:3]}",
+        )
+
+    def test_resmi_plan_varsa_tahmini_kullanilmaz(self):
+        """KRİTİK: resmî planı olan derste tahminî dağılım olmamalı."""
+        # Bir ders+kademede resmî kayıt varsa, aynı ders+kademede
+        # kaynaksız kayıt bulunmamalı — tahminî içerik resmî olanın
+        # yanında durursa öğretmen hangisine güveneceğini bilemez.
+        resmi = set()
+        kaynaksiz = set()
+        for kayit in self.kayitlar:
+            anahtar = (kayit.get("gradeLevel"), kayit.get("subjectCode"))
+            if kayit.get("sourcePortal"):
+                resmi.add(anahtar)
+            else:
+                kaynaksiz.add(anahtar)
+        karisik = resmi & kaynaksiz
+        self.assertFalse(
+            karisik,
+            f"{len(karisik)} ders+kademede resmî ve tahminî bir arada: "
+            f"{sorted(karisik)[:3]}",
+        )
+
+
 class ShippedDataTests(unittest.TestCase):
     """Depoya işlenmiş gerçek veri paketini doğrular."""
 
