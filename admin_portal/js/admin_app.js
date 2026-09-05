@@ -1757,13 +1757,38 @@ class AdminApp {
     }
   }
 
+  /**
+   * Sınav listesini başlangıç durumuna döndürür.
+   *
+   * ## Yıkıcı işlem
+   * Eskiden adı "Orijinal Takvimi Yükle"ydi ve kulağa zararsız
+   * geliyordu — sanki eksikleri tamamlayacak. Oysa TÜM düzenlemeleri
+   * siliyor. Onay penceresi de kaç kaydın gideceğini söylemiyordu.
+   *
+   * Ne zaman gerekli: listeyi karıştırdıysanız, yanlış tarihler
+   * girdiyseniz. Bir tür "geri al".
+   */
   resetExamsToDefault() {
-    if (confirm('Tüm sınav takvimini orijinal MEB & ÖSYM resmî varsayılanlarına sıfırlamak istiyor musunuz?')) {
-      const count = this.examsManager.resetToDefaultExams();
-      this.renderExamsTable();
-      this.updateDashboardStats();
-      this.showToast(`Sınavlar orijinal resmî takvime sıfırlandı (${count} Sınav) 🔄`, 'success');
-    }
+    const mevcutSayi = this.examsManager.getAllExams().length;
+
+    const onay = confirm(
+      `DİKKAT: Sınav listesi sıfırlanacak.\n\n` +
+        `Şu anki ${mevcutSayi} kayıt SİLİNECEK ve uygulamayla gelen ` +
+        `başlangıç listesi yüklenecek.\n\n` +
+        'Elle girdiğiniz tarihler, MEB duyurusundan ayıkladıklarınız ve ' +
+        'ÖSYM güncellemeleri kaybolur. Geri alınamaz.\n\n' +
+        'Devam edilsin mi?'
+    );
+    if (!onay) return;
+
+    const count = this.examsManager.resetToDefaultExams();
+    this.renderExamsTable();
+    this.updateDashboardStats();
+    this.showToast(
+      `Liste sıfırlandı: ${mevcutSayi} kayıt silindi, ${count} sınav ` +
+        'yüklendi. Yayınlamak için "Mobil Uygulamaya Yayınla" deyin.',
+      'success'
+    );
   }
 
   importExamsJSON(event) {
