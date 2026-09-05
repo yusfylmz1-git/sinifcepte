@@ -81,6 +81,12 @@ SUBJECT_RULES: list[tuple[str, tuple[str, ...]]] = [
     ("INKILAP", ("inkilap", "ataturkculuk")),
     ("EDEBIYAT", ("turk dili ve edebiyat", "edebiyat")),
     ("TURKCE", ("turkce",)),
+    # Coklu Yabanci Dil Egitim Modeli SECILMIS okullarda okutuluyor.
+    # Genel yabanci dil kurallarindan ONCE gelmeli: liste sirali
+    # taraniyor ve "ingilizce" ipucu once eslesirse CYDEM dersi normal
+    # dersle ayni koda duser, ikisi birbirini ezer.
+    ("INGILIZCE_CYDEM", ("ingilizce (coklu yabanci dil)",)),
+    ("ALMANCA_CYDEM", ("almanca (coklu yabanci dil)",)),
     ("INGILIZCE", ("ingilizce", "english")),
     ("ALMANCA", ("almanca", "deutsch")),
     ("FIZIK", ("fizik",)),
@@ -113,6 +119,10 @@ SUBJECT_RULES: list[tuple[str, tuple[str, ...]]] = [
     ("DIN", ("din kulturu", "ahlak bilgisi")),
     ("BEDEN_TEMEL", ("beden egitimi ve sporun temelleri",)),
     ("ATLETIK_PERF", ("cocuklarda atletik performans",)),
+    # MEB bunlari AYRI ders olarak yayimliyor: 1-4'te "Beden Egitimi ve
+    # Oyun", 5-12'de "Beden Egitimi ve Spor". Ayni koda duserlerse
+    # benzersizlik anahtari bozulup birbirlerini eziyorlar.
+    ("BEDEN_OYUN", ("beden egitimi ve oyun",)),
     ("BEDEN", ("beden egitimi", "spor", "oyun ve fiziki")),
     ("MUZIK", ("muzik",)),
     ("GORSEL", ("gorsel sanatlar", "resim")),

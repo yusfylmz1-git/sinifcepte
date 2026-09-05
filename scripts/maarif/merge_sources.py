@@ -3,21 +3,32 @@ SınıfCepte - Kaynakları birleştirip boru hattına verilecek ham veriyi üret
 
     python scripts/maarif/merge_sources.py
 
-Üç kaynak vardır ve hiçbiri diğerini kapsamaz:
+İKİ resmî kaynak vardır ve hiçbiri diğerini kapsamaz:
 
-  1. Zümre Excel'i (1-8. sınıf)        -> import_excel.py
-     Okulun kendi yıllık planı. MEB 1-8 için taslak plan yayımlamıyor.
-
-  2. TYMM taslak yıllık planları (9-12) -> fetch/import_tymm_plans.py
+  1. TYMM taslak yıllık planları -> fetch/import_tymm_plans.py
      tymm.meb.gov.tr/taslak-cerceve-planlari
+     MEB Eylül 2026'da ilkokul ve ortaokulu da yayımladı; artık
+     yalnızca lise değil, 1-12 arası kapsanıyor.
 
-  3. DÖGM çerçeve yıllık planları       -> fetch_dogm_plans.py
+  2. DÖGM çerçeve yıllık planları -> fetch_dogm_plans.py
      dogm.meb.gov.tr - İmam Hatip ve din dersleri. Bu dersler TYMM
      portalında YOKTUR; panelin İHÖ sekmesini yalnızca bu kaynak doldurur.
 
+## Zümre Excel'i neden kaynak DEĞİL
+
+Önceden 1-8. sınıf için mevcut yayın verisi taban alınıyordu; o veri
+okulun kendi Excel yıllık planından üretilmişti ve bir önceki yıla
+aitti. MEB artık bu kademeler için resmî plan yayımladığından elle
+girilen veriye gerek kalmadı — ve eski veriyi resmî kaynakla
+karıştırmak, öğretmene güncel olmayan içerik göstermek demekti.
+
+MEB'in yıllık plan yayımlamadığı seçmeli dersler (Bilim Uygulamaları,
+Görgü Kuralları, Yazarlık, Trafik Güvenliği...) ders listesinde kalır
+ama haftalık içerikleri UYDURULMAZ; panelde "resmî planı yok" diye
+ayrı gösterilir.
+
 Aynı (sınıf, ders, yayınevi, hafta) için birden fazla kayıt gelirse
-öncelik sırası: DÖGM > TYMM > mevcut/zümre. Resmî kaynak elle girilen
-veriyi ezer.
+öncelik: DÖGM > TYMM.
 """
 
 from __future__ import annotations
@@ -40,6 +51,11 @@ RAW_FIELDS = (
     "unitTitle", "topicTitle", "outcomeDescription", "outcomeCode",
     "maarifSummary", "maarifValues", "maarifSkills", "differentiation",
     "category", "isEstimatedSchedule",
+    # Kaynak bilgisi PAKETE kadar tasinmali: Maarif rozeti buradan
+    # turetiliyor. Tasinmayinca rozet metin aramasina dusuyor ve
+    # yanlis basiliyordu (olcum: 89 ders rozet almasi gerekirken
+    # almiyordu).
+    "sourcePortal", "sourceProgram",
 )
 
 
@@ -91,12 +107,26 @@ def main() -> int:
             added += 1
         return added
 
-    # 1-8 zümre verisi tabandır; 9-12'yi resmî kaynak yeniden yazar.
-    base = [r for r in shipped if (r.get("gradeLevel") or 0) <= 8]
-    add(base, overwrite=True)
-    print(f"\n1-8 taban kayit     : {len(base)}")
-    print(f"TYMM eklenen        : {add(tymm, overwrite=True)}")
+    # RESMİ KAYNAKLAR TABANDIR.
+    #
+    # Önce 1-8 için mevcut yayın verisi taban alınıyordu; o veri okulun
+    # kendi Excel planından geliyordu ve bir önceki yıla aitti. MEB
+    # artık bu kademeleri de yayımladığı için gerek kalmadı.
+    print(f"\nTYMM eklenen        : {add(tymm, overwrite=True)}")
     print(f"DOGM eklenen        : {add(dogm, overwrite=True)}")
+
+    # MEB'in resmî planı OLMAYAN dersler yalnızca ders listesinde
+    # kalsın diye mevcut veriden alınır; içerikleri uydurulmaz.
+    resmi_kapsam = {
+        (r.get("gradeLevel"), (r.get("subjectName") or "").casefold())
+        for r in list(tymm) + list(dogm)
+    }
+    plansiz = [
+        r for r in shipped
+        if (r.get("gradeLevel"),
+            (r.get("subjectName") or "").casefold()) not in resmi_kapsam
+    ]
+    print(f"Resmi plani olmayan : {add(plansiz, overwrite=False)}")
     # Seçmeli planlar TAHMİNÎ dağılımdır; resmî kaynakları ezmez.
     print(f"Secmeli eklenen     : {add(elective, overwrite=False)}")
 

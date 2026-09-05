@@ -31,6 +31,7 @@ from pedagogy import build_meta  # noqa: E402
 from turkish_text import (  # noqa: E402
     detect_category,
     detect_subject_code,
+    fold,
     school_type_for_grade,
     slugify,
 )
@@ -346,10 +347,21 @@ def rebuild(records: list[dict], academic_year: str) -> list[dict]:
     for record in records:
         grade = int(record.get("gradeLevel") or 5)
         subject_name = (record.get("subjectName") or "Genel Ders").strip()
-        publisher = (record.get("publisher") or "MEB Yayınları").strip()
+        # Publisher YALNIZCA okul turudur (Anadolu / Fen / Sosyal
+        # Bilimler Lisesi). Bos kalabilir; "MEB Yayinlari" yazmak bir
+        # okul turu degil "bilinmiyor" demekti ve kaynak alaniyla
+        # karisip Maarif rozetini bozuyordu.
+        publisher = (record.get("publisher") or "").strip()
         week = int(record.get("weekNumber") or 1)
         if not 1 <= week <= TOTAL_WEEKS:
             continue
+
+        # ADA Yayinlari plani ayri bir DERS degil; ayni Turkce dersinin
+        # farkli ders kitabina gore plani. Ders adi Turkce olmali,
+        # ayrim publisher alaninda durmali.
+        if "ada yayinlari" in fold(subject_name):
+            publisher = publisher or "ADA Yayınları"
+            subject_name = "Türkçe"
 
         # Branş kodu ham ders adından yeniden hesaplanır; eski verideki
         # 'GENEL' çöp kovası bu adımda temizlenir.
@@ -462,7 +474,17 @@ def rebuild(records: list[dict], academic_year: str) -> list[dict]:
             "fullTitle": f"{grade}. Sınıf - {subject_name} - {publisher}",
             "category": category,
             "schoolType": school_type,
-            "isMaarif": True,
+            # Kaynak: hangi MEB sitesinden geldi ve hangi programa ait.
+            # Excel sutun basligindan OLCULUR, tahmin edilmez.
+            "sourcePortal": record.get("sourcePortal") or "",
+            "sourceProgram": record.get("sourceProgram") or "",
+            # Maarif rozeti buradan turetilir.
+            #
+            # Once SABIT True yaziliyordu: 9087 kaydin hepsi, Maarif'in
+            # yururlukte olmadigi 3-4, 7-8, 11-12. siniflar dahil.
+            # Ogretmene guncel program diye eski programi gostermek
+            # yaniltici.
+            "isMaarif": record.get("sourceProgram") == "maarif",
             "weekNumber": week,
             "teachingWeekNumber": info["teaching_week"],
             "dateRangeStr": info["formatted"],
@@ -510,6 +532,31 @@ def rebuild(records: list[dict], academic_year: str) -> list[dict]:
         })
 
     rebuilt = _fill_missing_weeks(rebuilt, calendar, academic_year, used_ids)
+    # AYNI BRANS KODU TEK ADLA GORUNSUN.
+    #
+    # Ayni ders eski veride BUYUK HARF ("BEDEN EGITIMI VE SPOR"), yeni
+    # resmi veride Baslik Bicimi ("Beden Egitimi ve Spor") yazilmis.
+    # Ders listesinde iki kez gorunuyor ve ogretmen hangisinin guncel
+    # oldugunu bilemiyor.
+    #
+    # Resmi kaynaktan (sourcePortal dolu) gelen ad kazanir; esitlikte
+    # en cok kullanilan.
+    import collections as _c
+    ad_oylari: dict[str, _c.Counter] = {}
+    for r in rebuilt:
+        anahtar = r["subjectCode"]
+        sayac = ad_oylari.setdefault(anahtar, _c.Counter())
+        # Resmi kayitlar agir basar.
+        agirlik = 1000 if r.get("sourcePortal") else 1
+        sayac[r["subjectName"]] += agirlik
+    for r in rebuilt:
+        anahtar = r["subjectCode"]
+        kazanan = ad_oylari[anahtar].most_common(1)[0][0]
+        if r["subjectName"] != kazanan:
+            r["subjectName"] = kazanan
+            r["fullTitle"] = (f'{r["gradeLevel"]}. Sınıf - {kazanan}'
+                              + (f' - {r["publisher"]}' if r["publisher"] else ''))
+
     rebuilt.sort(key=lambda r: (r["gradeLevel"], r["subjectCode"], r["publisher"], r["weekNumber"]))
     annotate_multi_week_spans(rebuilt)
     return rebuilt

@@ -1002,13 +1002,26 @@ class DataAuditTests(unittest.TestCase):
         self.assertEqual(sorted(grades), list(range(1, 13)))
 
     def test_estimated_groups_are_flagged(self):
-        """Tahminî takvimli gruplar işaretli olmalı (seçmeli dersler)."""
+        """Resmî planı OLMAYAN seçmeli dersler tahminî işaretli olmalı.
+
+        Önce "kategori seçmeli ise takvim tahminî" deniyordu; MEB
+        seçmeliler için yıllık plan yayımlamadığı sürece doğruydu.
+
+        Artık bazı seçmelileri de yayımlıyor (Çoklu Yabancı Dil,
+        İnsan Hakları ve Yurttaşlık). Onların takvimi MEB'in kendi
+        dağılımı; tahminî işaretlemek yanlış olurdu. Ölçüt kaynağa
+        bağlandı.
+        """
         for report in self.reports:
-            if report.category == "elective":
-                with self.subTest(subject=report.subject):
-                    self.assertTrue(
-                        report.estimated,
-                        f"{report.grade}. {report.subject} tahminî işareti yok")
+            if report.category != "elective":
+                continue
+            resmi = any(r.get("sourcePortal") for r in report.records)
+            if resmi:
+                continue
+            with self.subTest(subject=report.subject):
+                self.assertTrue(
+                    report.estimated,
+                    f"{report.grade}. {report.subject} tahminî işareti yok")
 
 
 if __name__ == "__main__":
