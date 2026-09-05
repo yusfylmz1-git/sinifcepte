@@ -80,6 +80,17 @@ class _BepPlanViewState extends State<BepPlanView>
   final _school = TextEditingController();
   final _diag = TextEditingController();
 
+  /// Plan genelindeki olcut ve tarihler.
+  ///
+  /// Once ikisi de sabitti: her satira "4/5 (%80)" basiliyor, tarih
+  /// ogretim yilindan hesaplanip bitis her zaman 31 Mayis oluyordu.
+  /// Ogretmen sinifin duzeyine gore olcutu, RAM kararina gore tarihi
+  /// degistiremiyordu.
+  String _olcut = '';
+  final _olcutAlani = TextEditingController();
+  DateTime? _baslangic;
+  DateTime? _bitis;
+
   BepPlan? _plan;
   List<BepLongGoal> _goals = const [];
   List<UniqueOutcomeHit> _bank = const [];
@@ -101,6 +112,7 @@ class _BepPlanViewState extends State<BepPlanView>
     _perf.dispose();
     _school.dispose();
     _diag.dispose();
+    _olcutAlani.dispose();
     super.dispose();
   }
 
@@ -153,6 +165,10 @@ class _BepPlanViewState extends State<BepPlanView>
           ? plan.schoolName
           : widget.teacher.schoolName;
       _diag.text = plan.diagnosis;
+      _olcut = plan.defaultCriterion;
+      _olcutAlani.text = _olcut;
+      _baslangic = _tarihCoz(plan.startDate);
+      _bitis = _tarihCoz(plan.endDate);
     }
     // İLK AÇILIŞTA hangi sekme?
     //
@@ -381,6 +397,69 @@ class _BepPlanViewState extends State<BepPlanView>
     );
   }
 
+  /// "gg.aa.yyyy" -> DateTime. Bozuk kayit uygulamayi dusurmemeli.
+  static DateTime? _tarihCoz(String ham) {
+    final p = ham.trim().split('.');
+    if (p.length != 3) return null;
+    final g = int.tryParse(p[0]);
+    final a = int.tryParse(p[1]);
+    final y = int.tryParse(p[2]);
+    if (g == null || a == null || y == null) return null;
+    if (a < 1 || a > 12 || g < 1 || g > 31) return null;
+    return DateTime(y, a, g);
+  }
+
+  /// DateTime -> "gg.aa.yyyy". Bos ise bos metin: PDF o zaman eski
+  /// hesabina doner.
+  static String _tarihYaz(DateTime? t) {
+    if (t == null) return '';
+    String iki(int n) => n.toString().padLeft(2, '0');
+    return '${iki(t.day)}.${iki(t.month)}.${t.year}';
+  }
+
+  /// Tarih girilmediginde belgeye basilacak deger.
+  ///
+  /// PDF ile AYNI hesabi kullanir ([BepPdfGenerator.planDateRange]),
+  /// yoksa ekranda bir sey yazip belgeye baskasini basardik.
+  String _hesaplanan(bool baslangic) {
+    final plan = _plan;
+    if (plan == null) return baslangic ? 'Başlangıç' : 'Bitiş';
+    final aralik = BepPdfGenerator.planDateRange(
+      plan.academicYear,
+      plan.startMonth,
+    );
+    final p = aralik.split(' - ');
+    if (p.length != 2) return baslangic ? 'Başlangıç' : 'Bitiş';
+    return baslangic ? p[0] : p[1];
+  }
+
+  Future<void> _tarihSec({required bool baslangic}) async {
+    final plan = _plan;
+    // Takvim penceresi ogretim yilini kapsar; ogretmen yanlislikla
+    // baska yila gitmesin diye genis ama sinirli.
+    final yil = int.tryParse(
+          (plan?.academicYear ?? '').split('-').first,
+        ) ??
+        DateTime.now().year;
+    final secili = (baslangic ? _baslangic : _bitis) ??
+        DateTime(yil, baslangic ? 9 : 6, baslangic ? 1 : 30);
+    final sonuc = await showDatePicker(
+      context: context,
+      initialDate: secili,
+      firstDate: DateTime(yil - 1, 1, 1),
+      lastDate: DateTime(yil + 2, 12, 31),
+      helpText: baslangic ? 'Başlangıç tarihi' : 'Bitiş tarihi',
+    );
+    if (sonuc == null || !mounted) return;
+    setState(() {
+      if (baslangic) {
+        _baslangic = sonuc;
+      } else {
+        _bitis = sonuc;
+      }
+    });
+  }
+
   Future<void> _saveMeta() async {
     final plan = _plan;
     if (plan == null) return;
@@ -392,6 +471,9 @@ class _BepPlanViewState extends State<BepPlanView>
       digitalSupports: _dijital,
       schoolName: _school.text,
       diagnosis: _diag.text,
+      defaultCriterion: _olcut,
+      startDate: _tarihYaz(_baslangic),
+      endDate: _tarihYaz(_bitis),
     ));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -623,6 +705,132 @@ class _BepPlanViewState extends State<BepPlanView>
                                     decoration: const InputDecoration(
                                       labelText: 'Mevcut performans',
                                       border: OutlineInputBorder(),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  // Plan tarihi.
+                                  //
+                                  // Once tarih ogretim yilindan
+                                  // HESAPLANIYORDU ve bitis her zaman
+                                  // 31 Mayis'ti; RAM karari donem
+                                  // ortasinda biten bir plan
+                                  // ongoruyorsa yazilamiyordu.
+                                  Text(
+                                    'Plan tarihi',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelLarge
+                                        ?.copyWith(
+                                            fontWeight: FontWeight.w700),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Boş bırakırsanız okul takvimine '
+                                    'göre hesaplanır.',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          onPressed: () =>
+                                              _tarihSec(baslangic: true),
+                                          icon: const Icon(
+                                              Icons.event_outlined, size: 18),
+                                          // Bos ise HESAPLANANI goster:
+                                          // ogretmen belgeye ne
+                                          // basilacagini secmeden
+                                          // gormeli.
+                                          label: Text(
+                                            _baslangic == null
+                                                ? _hesaplanan(true)
+                                                : _tarihYaz(_baslangic),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: _baslangic == null
+                                                  ? Theme.of(context)
+                                                      .hintColor
+                                                  : null,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          onPressed: () =>
+                                              _tarihSec(baslangic: false),
+                                          icon: const Icon(
+                                              Icons.event_available_outlined,
+                                              size: 18),
+                                          label: Text(
+                                            _bitis == null
+                                                ? _hesaplanan(false)
+                                                : _tarihYaz(_bitis),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: _bitis == null
+                                                  ? Theme.of(context)
+                                                      .hintColor
+                                                  : null,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      if (_baslangic != null ||
+                                          _bitis != null)
+                                        IconButton(
+                                          tooltip: 'Tarihi temizle',
+                                          icon: const Icon(
+                                              Icons.backspace_outlined,
+                                              size: 18),
+                                          onPressed: () => setState(() {
+                                            _baslangic = null;
+                                            _bitis = null;
+                                          }),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 14),
+                                  // Plan genelinde olcut.
+                                  //
+                                  // Her satira "4/5 (%80)" sabiti
+                                  // basiliyordu; ogretmen sinifin
+                                  // duzeyine gore degistiremiyordu.
+                                  // Tek tek amaca girilen olcut
+                                  // buradakinden ustundur.
+                                  BepSingleChips(
+                                    baslik: 'Varsayılan ölçüt',
+                                    banka: bepOlcutBankasi,
+                                    secili: _olcut,
+                                    // Cip ile kutu ayni degeri
+                                    // gosterir; biri degisince oteki de
+                                    // guncellenmeli, yoksa ogretmen
+                                    // cipi secip kutuda eskisini gorur.
+                                    onChanged: (v) => setState(() {
+                                      _olcut = v;
+                                      _olcutAlani.text = v;
+                                    }),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  TextField(
+                                    key: const ValueKey('bep_olcut_alani'),
+                                    controller: _olcutAlani,
+                                    maxLength: 60,
+                                    onChanged: (v) => _olcut = v,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Kendi ölçütünüz',
+                                      hintText: '%70 / 7 denemenin 5\'inde',
+                                      helperText:
+                                          'Boş bırakılırsa 4/5 (%80) '
+                                          'kullanılır.',
+                                      border: OutlineInputBorder(),
+                                      counterText: '',
                                     ),
                                   ),
                                   const SizedBox(height: 14),
@@ -865,47 +1073,41 @@ class _GoalTile extends StatelessWidget {
               ),
             ],
           ),
-          if (canDo == false)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Row(
-                children: [
-                  for (final s in BepEvalStatus.values)
-                    Expanded(
-                      child: InkWell(
-                        onTap: enabled ? () => onStatus(s) : null,
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 28,
-                              height: 28,
-                              child: Checkbox(
-                                value: status == s,
-                                visualDensity: VisualDensity.compact,
-                                materialTapTargetSize:
-                                    MaterialTapTargetSize.shrinkWrap,
-                                onChanged: enabled
-                                    ? (v) {
-                                        if (v == true) onStatus(s);
-                                      }
-                                    : null,
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                s.compactLabel,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 11.5),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
+          // Donem sonu degerlendirmesi — TEK SECIM.
+          //
+          // Once Checkbox ile ciziliyordu. Ucu birbirini disliyor
+          // (birine basinca oteki kalkiyor) ama Checkbox bagimsiz
+          // ac/kapa demektir; ogretmen ucunu birden isaretlemeyi
+          // deneyip olmayinca bu kutucuklarin ne ise yaradigini
+          // soruyordu. ChoiceChip'te tek secim oldugu goruntuden
+          // anlasiliyor.
+          //
+          // Isaretlenen deger PDF'in "Degerlendirme" sutununa basilir.
+          if (canDo == false) ...[
+            const Padding(
+              padding: EdgeInsets.only(top: 6, bottom: 2),
+              child: Text(
+                'Dönem sonu değerlendirmesi',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
               ),
             ),
+            Wrap(
+              spacing: 6,
+              children: [
+                for (final s in BepEvalStatus.values)
+                  ChoiceChip(
+                    label: Text(
+                      s.compactLabel,
+                      style: const TextStyle(fontSize: 11.5),
+                    ),
+                    selected: status == s,
+                    onSelected: enabled ? (_) => onStatus(s) : null,
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );

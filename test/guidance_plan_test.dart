@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'package:sinifcepte/core/config/app_config.dart';
 import 'package:sinifcepte/core/database/database_helper.dart';
 import 'package:sinifcepte/data/models/class_model.dart';
 import 'package:sinifcepte/data/repositories/class_repository.dart';
@@ -23,6 +24,9 @@ import 'package:sinifcepte/features/guidance/data/repositories/guidance_plan_rep
 /// Paket yeniden uretildiginde bunlar sessizce geri gelebilir; bu
 /// testler veri KALITESINI dogrular, sadece kodu degil.
 void main() {
+  // Test dosyalari PARALEL kosuyor; ayni sqlite yolunu
+  // paylasirlarsa "database is locked" hatasi cikiyor.
+  AppConfig.testDbNameOverride = 'guidance_plan_test.db';
   TestWidgetsFlutterBinding.ensureInitialized();
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'package:sinifcepte/core/config/app_config.dart';
 import 'package:sinifcepte/core/database/database_helper.dart';
 import 'package:sinifcepte/core/utils/date_formatter.dart';
 import 'package:sinifcepte/data/models/class_model.dart';
@@ -15,6 +16,9 @@ import 'package:sinifcepte/features/bep/data/repositories/bep_repository.dart';
 import 'package:sinifcepte/features/outcomes/data/models/curriculum_outcome_model.dart';
 
 void main() {
+  // Test dosyalari PARALEL kosuyor; ayni sqlite yolunu
+  // paylasirlarsa "database is locked" hatasi cikiyor.
+  AppConfig.testDbNameOverride = 'bep_plan_test.db';
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
 
@@ -311,9 +315,13 @@ void main() {
         behavior: '2 basamaklı okur',
         criterion: '4/3',
       ));
+      // "Devam" isaretli: kazanilmis amaclar artik varsayilan olarak
+      // eleniyor (bkz. bep_yil_devri_test.dart). Burada olculen sey
+      // DEGERLENDIRME GECMISININ tasinmamasi; onun icin taşınan bir
+      // amac gerekiyor.
       await repo.addEvaluation(
         shortGoalId: shortId,
-        status: BepEvalStatus.achieved,
+        status: BepEvalStatus.ongoing,
       );
 
       final next = await repo.createPlan(

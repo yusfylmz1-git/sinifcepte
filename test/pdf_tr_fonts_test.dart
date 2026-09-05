@@ -41,14 +41,20 @@ void main() {
     expect(bytes.length, greaterThan(2000));
   });
 
-  test('BEP tarih aralığı öğretim yılına göre', () {
+  test('BEP tarih aralığı okul takvimine göre', () {
+    // Eskiden kaba bir sabitti: her yıl 01.09 - 31.05. Gerçek okul
+    // ne 1 Eylül'de açılır ne 31 Mayıs'ta kapanır; belgeye yanlış
+    // tarih giriyordu. Artık MEB hesabı kullanılıyor: eylülün ikinci
+    // pazartesisi + 39 hafta.
     expect(
       BepPdfGenerator.planDateRange('2026-2027', 'Eylül'),
-      '01.09.2026 - 31.05.2027',
+      '14.09.2026 - 11.06.2027',
     );
+    // Dönem ortasında açılan plan: o ayın ilk iş günü, bitiş yine
+    // öğretim yılının sonu.
     expect(
       BepPdfGenerator.planDateRange('2026-2027', 'Ocak'),
-      '01.01.2027 - 31.05.2027',
+      '01.01.2027 - 11.06.2027',
     );
   });
 }

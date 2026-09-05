@@ -119,6 +119,16 @@ class _BepListViewState extends State<BepListView> {
     final schoolCtrl = TextEditingController(text: widget.teacher.schoolName);
     var startMonth = 'Eylül';
     var copyPrev = false;
+    // Gecen yil plani VAR MI — onay kutusu buna gore cizilir.
+    //
+    // Once kutu her zaman gorunuyordu: gecen yil plani olmayan
+    // ogrencide ogretmen isaretliyor, hicbir sey olmuyor, sebebini
+    // ogrenemiyordu.
+    var oncekiVar = false;
+    // Kopyalarken kazanilmis amaclari atla.
+    var yeterliHaric = true;
+    // Gecen yilin kademesi — sinif degistiyse ogretmene soylenir.
+    var oncekiKademe = 0;
     var items = await _itemsFor(track: track, grade: grade);
     items = items.where((s) => !used.contains(s['subject_code'] as String? ?? '')).toList();
     if (!mounted) {
@@ -138,6 +148,33 @@ class _BepListViewState extends State<BepListView> {
       (s) => s['subject_code'] == guessed,
       orElse: () => items.first,
     );
+
+    /// Secili ders icin gecen yil plani var mi?
+    ///
+    /// Ders degistikce yeniden bakilir: matematikte gecen yil plan
+    /// olabilir ama turkcede olmayabilir.
+    Future<({bool var_, int kademe})> gecmisiAra(String kod) async {
+      if (kod.trim().isEmpty) return (var_: false, kademe: 0);
+      final onceki = await _repo.plansForStudent(student.id!);
+      BepPlan? bulunan;
+      for (final p in onceki) {
+        if (p.subjectCode != kod) continue;
+        if (p.academicYear.compareTo(_year) >= 0) continue;
+        if (bulunan == null ||
+            p.academicYear.compareTo(bulunan.academicYear) > 0) {
+          bulunan = p;
+        }
+      }
+      return (var_: bulunan != null, kademe: bulunan?.gradeLevel ?? 0);
+    }
+
+    final ilkGecmis = await gecmisiAra(selected['subject_code'] as String? ?? '');
+    oncekiVar = ilkGecmis.var_;
+    oncekiKademe = ilkGecmis.kademe;
+    if (!mounted) {
+      schoolCtrl.dispose();
+      return;
+    }
 
     final ok = await showDialog<bool>(
       context: context,
@@ -270,6 +307,16 @@ class _BepListViewState extends State<BepListView> {
                             orElse: () => items.first,
                           );
                         });
+                        // Ders degisti: gecen yil bu derste plan var
+                        // mi, yeniden bak.
+                        gecmisiAra(code ?? '').then((g) {
+                          if (!ctx.mounted) return;
+                          setLocal(() {
+                            oncekiVar = g.var_;
+                            oncekiKademe = g.kademe;
+                            if (!oncekiVar) copyPrev = false;
+                          });
+                        });
                       },
                     ),
                     const SizedBox(height: 10),
@@ -290,15 +337,67 @@ class _BepListViewState extends State<BepListView> {
                         setLocal(() => startMonth = v);
                       },
                     ),
-                    CheckboxListTile(
-                      contentPadding: EdgeInsets.zero,
-                      value: copyPrev,
-                      onChanged: (v) => setLocal(() => copyPrev = v ?? false),
-                      title: const Text(
-                        'Geçen yılın aynı alan amaçlarını kopyala',
-                        style: TextStyle(fontSize: 13),
+                    // Kutu YALNIZCA gecen yil plani varsa cizilir.
+                    if (oncekiVar) ...[
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: copyPrev,
+                        onChanged: (v) =>
+                            setLocal(() => copyPrev = v ?? false),
+                        title: const Text(
+                          'Geçen yılın amaçlarını bu plana taşı',
+                          style: TextStyle(fontSize: 13),
+                        ),
+                        subtitle: const Text(
+                          'Künye bilgileri de gelir; hepsini '
+                          'değiştirebilirsiniz.',
+                          style: TextStyle(fontSize: 11.5),
+                        ),
                       ),
-                    ),
+                      if (copyPrev) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            value: yeterliHaric,
+                            onChanged: (v) =>
+                                setLocal(() => yeterliHaric = v ?? true),
+                            title: const Text(
+                              '"Yeterli" işaretli amaçları hariç tut',
+                              style: TextStyle(fontSize: 12.5),
+                            ),
+                            subtitle: const Text(
+                              'Öğrencinin kazandığı amaçlar tekrar '
+                              'çalışılmaz.',
+                              style: TextStyle(fontSize: 11),
+                            ),
+                          ),
+                        ),
+                        // Sinif degistiyse ne olacagini SOYLE.
+                        //
+                        // Kazanim kodu sinifa aittir; eski kod yeni
+                        // planin bankasinda eslesmez. Amac metni
+                        // tasinir, kod dusurulur.
+                        if (oncekiKademe > 0 && oncekiKademe != grade)
+                          Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.only(top: 4),
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'Öğrenci $oncekiKademe. sınıftan '
+                              '$grade. sınıfa geçmiş. Amaç metinleri '
+                              'taşınacak, kazanım bağları yeni sınıfa '
+                              'göre yeniden kurulacak.',
+                              style: const TextStyle(
+                                  fontSize: 11.5, height: 1.3),
+                            ),
+                          ),
+                      ],
+                    ],
                   ],
                 ),
               ),
@@ -332,6 +431,7 @@ class _BepListViewState extends State<BepListView> {
       isHomeroom: widget.classModel.isHomeroom,
       academicYear: _year,
       copyFromPreviousYear: copyPrev,
+      yeterliHaricTut: yeterliHaric,
       placement: track.defaultPlacement,
       programKind: track.programKind,
       track: track,
@@ -339,6 +439,23 @@ class _BepListViewState extends State<BepListView> {
       schoolName: schoolName,
     );
     if (!mounted || plan.id == null) return;
+
+    // Kac amac geldi, SOYLE.
+    //
+    // Once kopyalama sessizdi: ogretmen kutuyu isaretliyor, plan
+    // bos aciliyor ve neden bos oldugunu anlamiyordu.
+    final devir = _repo.sonDevir;
+    if (copyPrev && devir != null) {
+      final mesaj = devir.kopyalanan == 0
+          ? 'Taşınacak amaç bulunamadı.'
+          : '${devir.kopyalanan} amaç taşındı'
+              '${devir.elenen > 0 ? ", ${devir.elenen} tanesi "
+                  "\"Yeterli\" olduğu için alınmadı" : ""}.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(mesaj)),
+      );
+    }
+
     await Navigator.push(
       context,
       MaterialPageRoute(

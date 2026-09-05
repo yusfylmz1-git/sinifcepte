@@ -17,8 +17,19 @@ class AppConfig {
 
   static bool get isDebug => environment == Environment.dev;
 
+  /// Testlerin veritabanı adını ayırmak için kullandığı geçersiz kılma.
+  ///
+  /// `flutter test` dosyaları PARALEL koşturuyor ve hepsi aynı sqlite
+  /// yoluna yazınca "database is locked" hatası çıkıyor. Her test
+  /// dosyası kendi adını verirse çakışma olmaz.
+  ///
+  /// Uygulamada hiçbir zaman set edilmez.
+  static String? testDbNameOverride;
+
   // Veritabanı Adı
   static String get dbName {
+    final o = testDbNameOverride;
+    if (o != null && o.isNotEmpty) return o;
     switch (environment) {
       case Environment.dev:
         return 'sinifcepte_dev.db';

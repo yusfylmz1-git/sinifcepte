@@ -153,7 +153,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 23,
+      version: 24,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
       onConfigure: _onConfigure,
@@ -817,6 +817,9 @@ class DatabaseHelper {
         diagnosis TEXT NOT NULL DEFAULT '',
         track TEXT NOT NULL DEFAULT 'primary',
         start_month TEXT NOT NULL DEFAULT 'Eylül',
+        start_date TEXT NOT NULL DEFAULT '',
+        end_date TEXT NOT NULL DEFAULT '',
+        default_criterion TEXT NOT NULL DEFAULT '',
         ram_decision TEXT,
         performance_level TEXT,
         physical_arrangements TEXT,
@@ -933,6 +936,37 @@ class DatabaseHelper {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 24) {
+      // Ogretmenin kendi belirledigi tarih ve olcut.
+      //
+      // Tarih bugune kadar academic_year + start_month'tan
+      // HESAPLANIYORDU ve bitis her zaman 31 Mayis'ti. Olcut de her
+      // satirda "4/5 (%80)" sabitiyle basiliyordu. Ikisi de artik
+      // plana yazilabiliyor; bos kalirsa eski hesap surer, boylece
+      // mevcut planlar oldugu gibi calismaya devam eder.
+      Future<void> ekle(String sql, String etiket) async {
+        try {
+          await db.execute(sql);
+        } catch (e) {
+          debugPrint('DB Upgrade (bep_plans.$etiket): $e');
+        }
+      }
+
+      await ekle(
+        "ALTER TABLE bep_plans ADD COLUMN start_date TEXT NOT NULL DEFAULT ''",
+        'start_date',
+      );
+      await ekle(
+        "ALTER TABLE bep_plans ADD COLUMN end_date TEXT NOT NULL DEFAULT ''",
+        'end_date',
+      );
+      await ekle(
+        "ALTER TABLE bep_plans ADD COLUMN default_criterion TEXT NOT NULL "
+        "DEFAULT ''",
+        'default_criterion',
+      );
+    }
+
     if (oldVersion < 23) {
       // Sosyal kulup modulu. Uc tablo birlikte gelir; biri olusup digeri
       // olusmazsa modul yarim calisir, o yuzden her biri ayri sarilir ve

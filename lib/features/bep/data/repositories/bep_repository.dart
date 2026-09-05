@@ -47,6 +47,9 @@ class BepRepository {
     required bool isHomeroom,
     String? academicYear,
     bool copyFromPreviousYear = false,
+    /// Gecen yildan kopyalarken "Yeterli" isaretli amaclari atla.
+    /// Ogrenci o amaci kazandiysa yeni yil tekrar calisilmaz.
+    bool yeterliHaricTut = true,
     BepPlacement placement = BepPlacement.inclusion,
     BepProgramKind programKind = BepProgramKind.general,
     String schoolName = '',
@@ -54,6 +57,7 @@ class BepRepository {
     BepTrack? track,
     String startMonth = 'Eylül',
   }) async {
+    sonDevir = null;
     final year = academicYear ?? AppDateFormatter.academicYearLabel();
     final subjectClean = subject.trim();
     final code = subjectCode.trim();
@@ -109,7 +113,7 @@ class BepRepository {
     );
 
     final id = await db.insert('bep_plans', plan.toMap()..remove('id'));
-    final created = plan.copyWith(id: id);
+    var created = plan.copyWith(id: id);
 
     if (copyFromPreviousYear) {
       final prev = await _previousPlan(
@@ -118,12 +122,45 @@ class BepRepository {
         beforeYear: year,
       );
       if (prev?.id != null) {
-        await _cloneGoals(fromPlanId: prev!.id!, toPlanId: id);
+        // KUNYE DE DEVREDILIR.
+        //
+        // Once yalnizca amaclar kopyalaniyordu; tani, RAM karari,
+        // performans ve uc ortam duzenlemesi her yil sifirdan
+        // dolduruluyordu. Bunlar yildan yila nadiren degisir.
+        //
+        // Cagride ACIKCA verilen deger ustundur: ogretmen dialogda
+        // okul adi veya tani yazdiysa o korunur.
+        created = created.copyWith(
+          diagnosis: diagnosis.trim().isEmpty ? prev!.diagnosis : null,
+          ramDecision: prev!.ramDecision,
+          performanceLevel: prev.performanceLevel,
+          physicalArrangements: prev.physicalArrangements,
+          socialArrangements: prev.socialArrangements,
+          digitalSupports: prev.digitalSupports,
+          defaultCriterion: prev.defaultCriterion,
+          schoolName: schoolName.trim().isEmpty ? prev.schoolName : null,
+        );
+        await updatePlan(created);
+
+        // Sinif degistiyse kazanim bagi koparilir.
+        final sinifDegisti = prev.gradeLevel != gradeLevel;
+        sonDevir = await cloneGoals(
+          fromPlanId: prev.id!,
+          toPlanId: id,
+          yeterliHaricTut: yeterliHaricTut,
+          kazanimBagiKopsun: sinifDegisti,
+        );
       }
     }
 
     return created;
   }
+
+  /// Son [createPlan] cagrisinin devir sonucu.
+  ///
+  /// Ogretmene "kac amac geldi" diye bildirmek icin; kopyalama sessizce
+  /// hicbir sey yapmadiysa bunu gormeli.
+  ({int kopyalanan, int elenen})? sonDevir;
 
   Future<BepPlan?> _previousPlan({
     required int studentId,
@@ -142,16 +179,60 @@ class BepRepository {
     return BepPlan.fromMap(rows.first);
   }
 
-  Future<void> _cloneGoals({
+  /// Bir plandan otekine amac kopyalar — yil devrinin govdesi.
+  ///
+  /// ## Neden bu kadar secenek var
+  /// Once bu metot her seyi oldugu gibi kopyaliyordu ve uc kusuru
+  /// vardi:
+  ///
+  /// 1. `materials` ve `assessment` **hic tasinmiyordu**. Bu iki alan
+  ///    modele sonradan eklenmis, klona yazilmayi unutulmus; ogretmen
+  ///    her yil ayni materyalleri yeniden seciyordu.
+  /// 2. Ogrencinin **kazandigi** amaclar da kopyalaniyordu. Yeterli
+  ///    isaretli bir amac yeni yil tekrar calisilmaz; ogretmen tek tek
+  ///    silmek zorunda kaliyordu.
+  /// 3. Ogrenci ust sinifa gecince **eski sinifin kazanim kodu**
+  ///    tasiniyordu. Kod sinifa aittir (2153 kodun 1877'si tek bir
+  ///    sinifa ait) ve yeni planin bankasi yalnizca kendi kademesini
+  ///    yukluyor: eski kod hicbir seye eslesmez, yalnizca resmi
+  ///    evrakta yanlis referans birakir.
+  ///
+  /// Degerlendirme gecmisi (`bep_evaluations`) KOPYALANMAZ: o gecen
+  /// yilin kaydidir, yeni plan sifirdan baslar.
+  ///
+  /// Geriye kac amacin kopyalandigini ve kacinin elendigini doner.
+  Future<({int kopyalanan, int elenen})> cloneGoals({
     required int fromPlanId,
     required int toPlanId,
+    bool yeterliHaricTut = false,
+    bool kazanimBagiKopsun = false,
   }) async {
     final longs = await longGoals(fromPlanId);
+    var kopyalanan = 0;
+    var elenen = 0;
+
     for (final long in longs) {
-      final newLongId = await insertLongGoal(
-        BepLongGoal(planId: toPlanId, title: long.title, orderIndex: long.orderIndex),
-      );
+      final alinacak = <BepShortGoal>[];
       for (final short in long.shorts) {
+        if (yeterliHaricTut &&
+            short.latestStatus == BepEvalStatus.achieved) {
+          elenen++;
+          continue;
+        }
+        alinacak.add(short);
+      }
+      // Butun kisa amaclari elenen uzun amac ACILMAZ: bos baslik
+      // resmi belgede eksik doldurulmus gibi duruyor.
+      if (alinacak.isEmpty) continue;
+
+      final newLongId = await insertLongGoal(
+        BepLongGoal(
+          planId: toPlanId,
+          title: long.title,
+          orderIndex: long.orderIndex,
+        ),
+      );
+      for (final short in alinacak) {
         await insertShortGoal(
           BepShortGoal(
             longGoalId: newLongId,
@@ -159,13 +240,20 @@ class BepRepository {
             behavior: short.behavior,
             criterion: short.criterion,
             method: short.method,
-            outcomeCode: short.outcomeCode,
-            outcomeDescription: short.outcomeDescription,
+            // Once bu ikisi dusuyordu.
+            materials: short.materials,
+            assessment: short.assessment,
+            // Sinif degistiyse kazanim bagi kopar; amac METNI kalir.
+            outcomeCode: kazanimBagiKopsun ? null : short.outcomeCode,
+            outcomeDescription:
+                kazanimBagiKopsun ? null : short.outcomeDescription,
             orderIndex: short.orderIndex,
           ),
         );
+        kopyalanan++;
       }
     }
+    return (kopyalanan: kopyalanan, elenen: elenen);
   }
 
   Future<List<BepPlan>> plansForStudent(int studentId, {String? year}) async {
@@ -328,7 +416,7 @@ class BepRepository {
   Future<int> insertShortGoal(BepShortGoal goal) async {
     if (!goal.isComplete) {
       throw StateError(
-        'Kısa amaç üç parçadır: koşul, davranış, ölçüt. Boş bırakılamaz.',
+        'Kısa amaçta koşul ve davranış boş bırakılamaz.',
       );
     }
     final db = await _db.database;
@@ -339,7 +427,7 @@ class BepRepository {
     if (goal.id == null) return;
     if (!goal.isComplete) {
       throw StateError(
-        'Kısa amaç üç parçadır: koşul, davranış, ölçüt. Boş bırakılamaz.',
+        'Kısa amaçta koşul ve davranış boş bırakılamaz.',
       );
     }
     final db = await _db.database;

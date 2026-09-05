@@ -193,6 +193,23 @@ class BepPlan {
   final BepProgramKind programKind;
   final BepTrack track;
   final String startMonth;
+
+  /// Ogretmenin kendi girdigi plan tarihleri (gg.aa.yyyy).
+  ///
+  /// Bos birakilirsa [planDateRange] eski davranisi surdurur:
+  /// ogretim yili ve baslangic ayindan hesaplar. Once tarih SADECE
+  /// hesaplaniyordu ve bitis her zaman 31 Mayis'ti; RAM kararina gore
+  /// erken baslayan veya donem ortasinda biten planlar yazilamiyordu.
+  final String startDate;
+  final String endDate;
+
+  /// Tum satirlar icin varsayilan olcut ("%80" gibi).
+  ///
+  /// Kisa amacin kendi olcutu bossa tabloda bu kullanilir. Once her
+  /// satira "4/5 (%80)" sabiti basiliyordu; ogretmen sinifin duzeyine
+  /// gore toplu degistiremiyordu.
+  final String defaultCriterion;
+
   final String schoolName;
   final String diagnosis;
   final String ramDecision;
@@ -222,6 +239,9 @@ class BepPlan {
     this.programKind = BepProgramKind.general,
     this.track = BepTrack.primary,
     this.startMonth = 'Eylül',
+    this.startDate = '',
+    this.endDate = '',
+    this.defaultCriterion = '',
     this.schoolName = '',
     this.diagnosis = '',
     this.ramDecision = '',
@@ -239,6 +259,9 @@ class BepPlan {
 
   BepPlan copyWith({
     int? id,
+    String? startDate,
+    String? endDate,
+    String? defaultCriterion,
     String? ramDecision,
     String? performanceLevel,
     String? physicalArrangements,
@@ -261,6 +284,9 @@ class BepPlan {
       programKind: programKind,
       track: track,
       startMonth: startMonth,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      defaultCriterion: defaultCriterion ?? this.defaultCriterion,
       schoolName: schoolName ?? this.schoolName,
       diagnosis: diagnosis ?? this.diagnosis,
       ramDecision: ramDecision ?? this.ramDecision,
@@ -288,6 +314,9 @@ class BepPlan {
       'program_kind': programKind.id,
       'track': track.id,
       'start_month': startMonth,
+      'start_date': startDate,
+      'end_date': endDate,
+      'default_criterion': defaultCriterion,
       'school_name': schoolName,
       'diagnosis': diagnosis,
       'ram_decision': ramDecision,
@@ -332,6 +361,9 @@ class BepPlan {
         );
       }(),
       startMonth: map['start_month'] as String? ?? 'Eylül',
+      startDate: map['start_date'] as String? ?? '',
+      endDate: map['end_date'] as String? ?? '',
+      defaultCriterion: map['default_criterion'] as String? ?? '',
       schoolName: map['school_name'] as String? ?? '',
       diagnosis: map['diagnosis'] as String? ?? '',
       ramDecision: map['ram_decision'] as String? ?? '',
@@ -431,10 +463,18 @@ class BepShortGoal {
     this.latestStatus,
   });
 
+  /// Kaydedilebilir mi?
+  ///
+  /// Olcut BURADA ARANMAZ. Once araniyordu ve ogretmen otuz amacin
+  /// her birine ayni olcutu elle yazmak zorunda kaliyordu. Artik
+  /// olcut bos birakilirsa plandaki varsayilan
+  /// ([BepPlan.defaultCriterion]) belgeye basiliyor; yani amac yine
+  /// olculebilir kaliyor, tekrar eden yazim kalkiyor.
+  ///
+  /// Kosul ve davranis zorunlu kalir: onlarin yerine gececek plan
+  /// duzeyinde bir varsayilan yok.
   bool get isComplete =>
-      condition.trim().isNotEmpty &&
-      behavior.trim().isNotEmpty &&
-      criterion.trim().isNotEmpty;
+      condition.trim().isNotEmpty && behavior.trim().isNotEmpty;
 
   /// Erbaram tarzı: kazanımı işaretleyince hazır amaç cümlesi.
   factory BepShortGoal.fromOutcomeSeed({
@@ -451,7 +491,10 @@ class BepShortGoal {
       longGoalId: longGoalId,
       condition: 'Sınıf ortamında',
       behavior: '$name $behavior',
-      criterion: '4/5 (%80)',
+      // Olcut BOS: plandaki varsayilan kullanilsin. Once burada
+      // '4/5 (%80)' sabiti vardi ve tohumlanan her amac onu tasidigi
+      // icin plan olcutu hicbir zaman devreye girmiyordu.
+      criterion: '',
       method: 'Görsel destek ve adım adım pekiştirme',
       materials: 'Çalışma Yaprağı, Görsel Kartlar',
       assessment: 'Ölçüt Bağımlı Ölçü Aracı, Gözlem Formu',
@@ -461,10 +504,19 @@ class BepShortGoal {
     );
   }
 
-  String get composed =>
-      '${condition.trim()} ${behavior.trim()}, ${criterion.trim()}.'
-          .replaceAll(RegExp(r'\s+'), ' ')
-          .trim();
+  /// Amac cumlesi: kosul + davranis (+ olcut).
+  ///
+  /// Olcut ARTIK BOS OLABILIYOR (plan varsayilani devreye giriyor).
+  /// Once her durumda ', ' + olcut + '.' ekleniyordu; olcut bosken
+  /// belgede "... sayilari okur, ." diye bir artik cikiyordu.
+  String get composed {
+    final govde = '${condition.trim()} ${behavior.trim()}'
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    final o = criterion.trim();
+    if (govde.isEmpty) return o;
+    return o.isEmpty ? '$govde.' : '$govde, $o.';
+  }
 
   Map<String, dynamic> toMap() => {
         'id': id,

@@ -67,7 +67,10 @@ class _EditorDialogState extends State<_EditorDialog> {
     final e = widget.existing;
     _condition = TextEditingController(text: e?.condition ?? 'Sınıf ortamında');
     _behavior = TextEditingController(text: e?.behavior ?? '');
-    _criterion = TextEditingController(text: e?.criterion ?? '4 denemenin 3\'ünde');
+    // Yeni amacta olcut BOS baslar: plan kunyesindeki varsayilan
+    // devreye girsin. Once burada sabit bir metin vardi ve ogretmen
+    // silmedigi surece plan olcutu hicbir zaman kullanilmiyordu.
+    _criterion = TextEditingController(text: e?.criterion ?? '');
     _method = e?.method ?? '';
     _materials = e?.materials ?? '';
     _assessment = e?.assessment ?? '';
@@ -122,7 +125,7 @@ class _EditorDialogState extends State<_EditorDialog> {
     if (!goal.isComplete) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Koşul, davranış ve ölçüt doldurulmalı.'),
+          content: Text('Koşul ve davranış doldurulmalı.'),
         ),
       );
       return;
@@ -182,6 +185,10 @@ class _EditorDialogState extends State<_EditorDialog> {
               decoration: const InputDecoration(
                 labelText: 'Ölçüt',
                 hintText: '4 denemenin 3\'ünde',
+                // Bos birakilabilir: plan kunyesindeki varsayilan
+                // olcut basilir. Once her amaca elle yazmak
+                // zorunluydu.
+                helperText: 'Boş bırakırsanız planın ölçütü kullanılır.',
                 border: OutlineInputBorder(),
               ),
             ),

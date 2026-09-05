@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'package:sinifcepte/core/config/app_config.dart';
 import 'package:sinifcepte/core/cloud/remote_manifest_service.dart';
 import 'package:sinifcepte/core/database/database_helper.dart';
 import 'package:sinifcepte/features/exam_operations/data/services/exam_sync_service.dart';
@@ -23,6 +24,9 @@ import 'package:sinifcepte/features/exam_operations/data/services/exam_sync_serv
 /// 1. Gelen JSON gerçekten veritabanına yazılıyor
 /// 2. Öğretmenin favorileri ve kişisel sınavları BOZULMUYOR
 void main() {
+  // Test dosyalari PARALEL kosuyor; ayni sqlite yolunu
+  // paylasirlarsa "database is locked" hatasi cikiyor.
+  AppConfig.testDbNameOverride = 'exam_cloud_sync_test.db';
   TestWidgetsFlutterBinding.ensureInitialized();
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;

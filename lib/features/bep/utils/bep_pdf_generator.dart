@@ -4,6 +4,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../../../core/pdf/pdf_tr_fonts.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/student_model.dart';
 import '../../outcomes/data/models/curriculum_outcome_model.dart';
 import '../data/models/bep_models.dart';
@@ -41,11 +42,22 @@ class BepPdfGenerator {
     final school = (plan.schoolName.isNotEmpty ? plan.schoolName : schoolName)
         .trim()
         .toUpperCase();
-    final dates = planDateRange(plan.academicYear, plan.startMonth);
-    final hitsByCode = <String, UniqueOutcomeHit>{
-      for (final h in bank)
-        if (h.code.isNotEmpty) h.code: h,
-    };
+    // Ogretmenin girdigi tarih varsa o basilir; yoksa ogretim yili ve
+    // baslangic ayindan hesaplanir (eski davranis).
+    final dates = planDates(plan);
+    // Ayni kazanim kodu mufredatta birden cok hafta tekrar ediyor ve
+    // MEB surec bilesenlerini her tekrarda yazmamis. Onceden ilk
+    // gorulen kayit aliniyordu; o kayit bilesensizse sutun bos
+    // kaliyordu. Olcum: 398 kodda veri baska haftanin satirinda VAR.
+    // Bu yuzden bilesen TASIYAN kayit oncelikli secilir.
+    final hitsByCode = <String, UniqueOutcomeHit>{};
+    for (final h in bank) {
+      if (h.code.isEmpty) continue;
+      final mevcut = hitsByCode[h.code];
+      if (mevcut == null || (mevcut.steps.isEmpty && h.steps.isNotEmpty)) {
+        hitsByCode[h.code] = h;
+      }
+    }
 
     final shorts = <BepShortGoal>[
       for (final g in goals) ...g.shorts,
@@ -58,13 +70,13 @@ class BepPdfGenerator {
         footer: (ctx) => pw.Row(
           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           children: [
-            pw.Expanded(
-              child: pw.Text(
-                'Taslak BEP. Okul BEP dosyası (EK-1…EK-7) yerine geçmez. '
-                'SınıfCepte MEB resmi ürünü değildir.',
-                style: const pw.TextStyle(fontSize: 6, color: PdfColors.grey700),
-              ),
-            ),
+            // Dip not kaldirildi.
+            //
+            // "Taslak BEP ... yerine gecmez" ibaresi belgeyi okul
+            // idaresinin gozunde gecersiz gosteriyordu; ogretmen
+            // dosyaya koyacagi evrakta boyle bir cekince istemiyor.
+            // Sayfa numarasi kaliyor, o resmi evrakta gerekli.
+            pw.SizedBox(),
             pw.Text(
               'Sayfa ${ctx.pageNumber}/${ctx.pagesCount}',
               style: const pw.TextStyle(fontSize: 7),
@@ -154,15 +166,12 @@ class BepPdfGenerator {
             shorts: shorts,
             hitsByCode: hitsByCode,
             dates: dates,
+            defaultCriterion: plan.defaultCriterion,
           ),
           pw.SizedBox(height: 4),
           _environmentRow(plan),
           pw.SizedBox(height: 16),
-          _signatures(
-            plan: plan,
-            teacherName: teacherName,
-            principalName: principalName,
-          ),
+          _signatures(),
         ],
       ),
     );
@@ -170,14 +179,66 @@ class BepPdfGenerator {
     return PdfTrFonts.kaydet(pdf);
   }
 
+  /// "Surec Bilesenleri" hucresi.
+  ///
+  /// Kaynakta bu alan kazanimlarin yaklasik yarisinda bos: MEB
+  /// bilesenleri her kazanim icin yazmamis (olcum: 1992 kodun
+  /// 1047'sinde hicbir haftada yok). Bos hucre resmi evrakta eksik
+  /// doldurulmus gibi duruyordu.
+  ///
+  /// Sirayla denenir: kazanimin kendi bilesenleri -> ogretmenin
+  /// yazdigi davranis -> kazanim metni. Hicbiri yoksa cizgi basilir,
+  /// boylece "doldurulmadi" ile "veri yok" ayirt edilir.
+  static String _surecBilesenleri(UniqueOutcomeHit? hit, BepShortGoal s) {
+    final bilesen = (hit?.steps ?? const <String>[])
+        .where((e) => e.trim().isNotEmpty)
+        .map((e) => e.trim())
+        .toList();
+    if (bilesen.isNotEmpty) return bilesen.join('\n');
+
+    // Yedek, YAN SUTUNU TEKRAR ETMEMELI.
+    //
+    // "Ogrenme Ciktisi" sutunu kazanim metnini basiyor. Yedek olarak
+    // ayni metni koyunca iki sutun ayni seyi yaziyor ve hucre dolu
+    // gorunse de ogretmene bir sey soylemiyordu. Amac cumlesi
+    // (kosul + davranis + olcut) kazanimdan farklidir: uygulama
+    // kosulunu tasir.
+    final cikti = s.outcomeDescription?.trim() ?? '';
+    final amac = s.composed.trim();
+    if (amac.isNotEmpty && amac != cikti) return amac;
+
+    final davranis = s.behavior.trim();
+    if (davranis.isNotEmpty && davranis != cikti) return davranis;
+
+    // Tekrar etmektense bos oldugunu soyle.
+    return '—';
+  }
+
   static pw.Widget _planTable({
     required List<BepLongGoal> goals,
     required List<BepShortGoal> shorts,
     required Map<String, UniqueOutcomeHit> hitsByCode,
     required String dates,
+    required String defaultCriterion,
   }) {
+    // Ogretmenin plan genelinde belirledigi olcut. Girmemisse eski
+    // sabit kullanilir.
+    final varsayilanOlcut =
+        defaultCriterion.trim().isNotEmpty ? defaultCriterion.trim() : '4/5 (%80)';
+    // Donem sonu degerlendirmesi yapilmis mi?
+    //
+    // Ogretmen amaclari "Yeterli / Devam / Gelistir" diye
+    // isaretliyordu ama sonuc PDF'e hic basilmiyordu; isaretlemenin
+    // belgede karsiligi yoktu. Sutun ancak en az bir amac
+    // degerlendirilmisse aciliyor — hic yoksa bos sutun sayfayi
+    // gereksiz daraltir.
+    final degerlendirmeVar = shorts.any((e) => e.latestStatus != null);
+
     final headers = [
-      'Öğrenme Alanı',
+      // "Ogrenme Alani" degil: bu sutun UZUN DONEMLI AMACI tasiyor.
+      // Eski basligi okuyan ogretmen sutunun ne oldugunu
+      // anlamiyordu.
+      'Uzun Dönemli Amaç',
       'Öğrenme Çıktısı',
       'Süreç Bileşenleri',
       'Yöntem ve Teknik',
@@ -186,6 +247,9 @@ class BepPdfGenerator {
       'Başlangıç-Bitiş Tarihi',
       'Ölçüt',
       'Ölçme-Değerlendirme',
+      // "Olcme-Degerlendirme" ARACI soyler (Gozlem Formu); bu sutun
+      // SONUCU soyler. Ayri tutuluyorlar.
+      if (degerlendirmeVar) 'Sonuç',
     ];
     final widths = {
       0: const pw.FlexColumnWidth(1.15),
@@ -197,6 +261,7 @@ class BepPdfGenerator {
       6: const pw.FlexColumnWidth(0.85),
       7: const pw.FlexColumnWidth(0.55),
       8: const pw.FlexColumnWidth(1.15),
+      if (degerlendirmeVar) 9: const pw.FlexColumnWidth(0.6),
     };
 
     final data = <List<String>>[];
@@ -209,29 +274,59 @@ class BepPdfGenerator {
         '',
         '',
         dates,
-        '4/5 (%80)',
+        varsayilanOlcut,
         '',
+        if (degerlendirmeVar) '',
       ]);
     } else {
-      var i = 0;
       for (final long in goals) {
+        // Uzun amac adi grubun YALNIZCA ILK satirinda basilir.
+        //
+        // Once her kisa amac satirinda tekrar ediliyordu; iki kisa
+        // amacli bir uzun amac belgede iki kez yaziliyor, ogretmen
+        // bir amacin nerede bitip otekinin nerede basladigini
+        // goremiyordu.
+        var ilk = true;
+        // Devam satirlari YALNIZCA ok tasir.
+        //
+        // Uc yol olculdu:
+        //   * Bos birakmak: 12 kisa amacli grup sayfayi asinca ikinci
+        //     sayfadaki satirlarin hangi amaca ait oldugu belgeden
+        //     anlasilmiyordu.
+        //   * Tam basligi her satira yazmak: kullanicinin asil
+        //     sikayeti buydu, sutun tekrarla doluyordu.
+        //   * n satirda bir isaret: sayfaya 10-11 satir siginca
+        //     isaret sayfa sonunda kaliyor, sayfa BASINDAKI satir yine
+        //     adsiz oluyordu. Satir yuksekligi icerige gore degistigi
+        //     icin sabit bir sayi guvenilir degil.
+        //
+        // Isaret hicbir satiri adsiz birakmiyor ("ustteki amaca
+        // ait" demek) ve sutunu tekrar eden metinle doldurmuyor.
+        // Sayfa nerede bolunurse bolunsun dogru kalir.
+        //
+        // Karakter secimi olcumle yapildi: ilk denemede ok (U+21B3)
+        // kullanildi ve PDF'te KUTU cikti — gomulu NotoSans'ta o glif
+        // yok. Fontun cmap'i okundu, U+2192 de yok; U+00BB var.
+        // Numara her uzun amac icinde bastan baslar (1., 2., ...);
+        // resmi formda numaralandirma boyledir.
+        var i = 0;
         for (final s in long.shorts) {
           i++;
           final hit = hitsByCode[s.outcomeCode ?? ''];
-          final steps = (hit?.steps ?? const <String>[])
-              .where((e) => e.trim().isNotEmpty)
-              .join('\n');
+          final steps = _surecBilesenleri(hit, s);
           data.add([
-            long.title,
+            ilk ? long.title : '»',
             '$i. ${s.outcomeDescription?.trim().isNotEmpty == true ? s.outcomeDescription! : s.behavior}',
             steps,
             s.method.trim().isNotEmpty ? s.method : _defaultMethods,
             s.materials.trim().isNotEmpty ? s.materials : _defaultMaterials,
             hit?.values ?? '',
             dates,
-            s.criterion.trim().isNotEmpty ? s.criterion : '4/5 (%80)',
+            s.criterion.trim().isNotEmpty ? s.criterion : varsayilanOlcut,
             s.assessment.trim().isNotEmpty ? s.assessment : _defaultAssess,
+            if (degerlendirmeVar) s.latestStatus?.compactLabel ?? '',
           ]);
+          ilk = false;
         }
       }
     }
@@ -260,96 +355,108 @@ class BepPdfGenerator {
   /// Etkilesim Ortami')` — govde metni basligin kendisiydi, icerik
   /// alani yoktu. Ogretmenin girdigi tedbirler belgeye cikmiyordu.
   static pw.Widget _environmentRow(BepPlan plan) {
-    pw.Widget box(String title, String body) => pw.Expanded(
-          child: pw.Container(
-            padding: const pw.EdgeInsets.all(4),
-            decoration: pw.BoxDecoration(
-              border: pw.Border.all(width: 0.45, color: PdfColors.blueGrey700),
-            ),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text(
-                  title,
-                  style: pw.TextStyle(fontSize: 6.6, fontWeight: pw.FontWeight.bold),
-                ),
-                pw.SizedBox(height: 2),
-                pw.Text(body, style: const pw.TextStyle(fontSize: 6.3)),
-              ],
-            ),
-          ),
-        );
     // Bos kutu resmi belgede kotu duruyor; ogretmen girmediyse
     // yaygin varsayilan yazilir.
     String ya(String girilen, String yedek) =>
         girilen.trim().isNotEmpty ? girilen.trim() : yedek;
 
-    return pw.Row(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
+    pw.Widget hucre(String title, String body) => pw.Container(
+          padding: const pw.EdgeInsets.all(4),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(
+                title,
+                style:
+                    pw.TextStyle(fontSize: 6.6, fontWeight: pw.FontWeight.bold),
+              ),
+              pw.SizedBox(height: 2),
+              pw.Text(body, style: const pw.TextStyle(fontSize: 6.3)),
+            ],
+          ),
+        );
+
+    // Row DEGIL Table.
+    //
+    // Row her kutuyu kendi icerigi kadar uzatiyordu: birinde dort
+    // secim, otekinde bir secim varsa cerceveler farkli boyda cikiyor,
+    // "kareler oturmuyor" goruntusu olusuyordu. Tablo satirinin
+    // hucreleri en uzun hucreye hizalanir — istenen davranis bu.
+    // pdf paketinde IntrinsicHeight yok, bu yuzden Row duzeltilemezdi.
+    //
+    // Kenarlik ve renk ust taraftaki plan tablosuyla ayni; alt blok
+    // onunla hizali duruyor.
+    return pw.Table(
+      border: pw.TableBorder.all(width: 0.45, color: PdfColors.blueGrey700),
+      columnWidths: const {
+        0: pw.FlexColumnWidth(1),
+        1: pw.FlexColumnWidth(1),
+        2: pw.FlexColumnWidth(1),
+      },
       children: [
-        box(
-          'Fiziksel Ortam Düzenlemeleri',
-          ya(plan.physicalArrangements,
-              'Öğretmene yakın oturtma, dikkat dağıtıcı uyaranların azaltılması'),
-        ),
-        box(
-          'Sosyal Etkileşim Ortamı',
-          ya(plan.socialArrangements,
-              'Akran desteği eşleştirmesi, olumlu davranış pekiştirme'),
-        ),
-        box(
-          'Dijital Destekler',
-          ya(plan.digitalSupports,
-              'Etkileşimli tahta uygulamaları, video destekli anlatım'),
+        pw.TableRow(
+          children: [
+            hucre(
+              'Fiziksel Ortam Düzenlemeleri',
+              ya(plan.physicalArrangements,
+                  'Öğretmene yakın oturtma, dikkat dağıtıcı uyaranların '
+                  'azaltılması'),
+            ),
+            hucre(
+              'Sosyal Etkileşim Ortamı',
+              ya(plan.socialArrangements,
+                  'Akran desteği eşleştirmesi, olumlu davranış pekiştirme'),
+            ),
+            hucre(
+              'Dijital Destekler',
+              ya(plan.digitalSupports,
+                  'Etkileşimli tahta uygulamaları, video destekli anlatım'),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  static pw.Widget _signatures({
-    required BepPlan plan,
-    required String teacherName,
-    required String principalName,
-  }) {
-    String nameFor(String needle, String fallback) {
-      for (final m in plan.committee) {
-        if (m.role.toLowerCase().contains(needle) && m.name.trim().isNotEmpty) {
-          return m.name.trim();
-        }
-      }
-      return fallback;
-    }
-
-    final slots = [
-      ('Öğrenci Velisi', nameFor('veli', '')),
-      ('Sınıf Rehber Öğretmeni', nameFor('sınıf', '')),
-      ('Branş Öğretmeni', nameFor('ders', teacherName)),
-      ('Rehber Öğretmen', nameFor('rehber', '')),
-      ('Birim Başkanı', nameFor('başkan', principalName)),
+  /// Imza blogu — SADECE GOREV ADI, kimsenin ismi yazilmaz.
+  ///
+  /// Once ogretmen adi, mudur adi ve kuruldaki isimler basiliyordu.
+  /// Resmi BEP formunda bu satirlar elle imzalanir; onceden basilmis
+  /// bir ad, kurul uyesi degistiginde belgeyi yanlis kilar ve
+  /// ogretmen PDF'i bastiktan sonra duzeltemez.
+  static pw.Widget _signatures() {
+    const slots = [
+      'Öğrenci Velisi',
+      'Sınıf Rehber Öğretmeni',
+      'Branş Öğretmeni',
+      'Rehber Öğretmen',
+      'Birim Başkanı',
     ];
     return pw.Row(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        for (final s in slots)
+        for (final gorev in slots)
           pw.Expanded(
             child: pw.Column(
               children: [
                 pw.Text(
-                  s.$1,
+                  gorev,
                   textAlign: pw.TextAlign.center,
                   style: const pw.TextStyle(fontSize: 7.2),
                 ),
+                // Elle imzalanacak bos alan, sonra cizgi.
+                pw.SizedBox(height: 22),
+                pw.Container(
+                  height: 0.5,
+                  margin: const pw.EdgeInsets.symmetric(horizontal: 10),
+                  color: PdfColors.blueGrey700,
+                ),
                 pw.SizedBox(height: 2),
                 pw.Text(
-                  s.$2.isEmpty ? 'İmza' : s.$2,
+                  'Adı Soyadı / İmza',
                   textAlign: pw.TextAlign.center,
-                  style: pw.TextStyle(fontSize: 7.4, fontWeight: pw.FontWeight.bold),
+                  style: const pw.TextStyle(fontSize: 6.4),
                 ),
-                if (s.$2.isNotEmpty)
-                  pw.Text(
-                    'İmza',
-                    textAlign: pw.TextAlign.center,
-                    style: const pw.TextStyle(fontSize: 7),
-                  ),
               ],
             ),
           ),
@@ -357,13 +464,50 @@ class BepPdfGenerator {
     );
   }
 
+  /// Tabloya basilacak tarih araligi.
+  ///
+  /// Ogretmen [BepPlan.startDate] / [BepPlan.endDate] girdiyse onlar
+  /// kullanilir. Once tarih SADECE hesaplaniyordu ve bitis her zaman
+  /// 31 Mayis'ti; RAM karari donem ortasinda biten bir plan
+  /// ongoruyorsa belgeye yazilamiyordu.
+  static String planDates(BepPlan plan) {
+    final b = plan.startDate.trim();
+    final t = plan.endDate.trim();
+    if (b.isNotEmpty && t.isNotEmpty) return '$b - $t';
+    // Tek tarafi girilmisse otekini hesaptan tamamla.
+    final hesap = planDateRange(plan.academicYear, plan.startMonth);
+    if (b.isEmpty && t.isEmpty) return hesap;
+    final parcalar = hesap.split(' - ');
+    final hb = parcalar.isNotEmpty ? parcalar.first : '';
+    final ht = parcalar.length > 1 ? parcalar[1] : '';
+    return '${b.isNotEmpty ? b : hb} - ${t.isNotEmpty ? t : ht}';
+  }
+
+  /// Ogretim yilindan hesaplanan plan tarihi araligi.
+  ///
+  /// Once kaba bir sabitti: her yil '01.09' - '31.05'. Gercek okul ne
+  /// 1 Eylul'de acilir ne 31 Mayis'ta kapanir; belgeye yanlis tarih
+  /// giriyordu.
+  ///
+  /// Artik projede zaten duran MEB hesabi kullaniliyor:
+  /// [AppDateFormatter.getAcademicYearStartDate] Eylul'un ikinci
+  /// pazartesisini verir, ogretim yili 39 haftadir.
+  ///
+  /// Plan Eylul disinda bir ayda basliyorsa (donem ortasinda acilan
+  /// BEP) o ayin ilk is gunu alinir; bitis yine yilin sonudur.
   static String planDateRange(String academicYear, String startMonth) {
-    final parts = academicYear.split('-');
-    final y1 = int.tryParse(parts.isNotEmpty ? parts.first : '') ?? DateTime.now().year;
-    final y2 = parts.length > 1
-        ? (int.tryParse(parts[1]) ?? y1 + 1)
-        : y1 + 1;
-    const map = {
+    final parcalar = academicYear.split('-');
+    final y1 = int.tryParse(parcalar.isNotEmpty ? parcalar.first : '') ??
+        DateTime.now().year;
+
+    // Yilin acilisi ve kapanisi.
+    final acilis = AppDateFormatter.getAcademicYearStartDate(
+      DateTime(y1, 9, 20),
+    );
+    // 39. haftanin cumasi: ilk gun pazartesi, +39 hafta -3 gun.
+    final kapanis = acilis.add(const Duration(days: 39 * 7 - 3));
+
+    const aylar = {
       'Eylül': 9,
       'Ekim': 10,
       'Kasım': 11,
@@ -374,9 +518,24 @@ class BepPdfGenerator {
       'Nisan': 4,
       'Mayıs': 5,
     };
-    final month = map[startMonth] ?? 9;
-    final startYear = month >= 9 ? y1 : y2;
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '01.${two(month)}.$startYear - 31.05.$y2';
+    final ay = aylar[startMonth] ?? 9;
+
+    DateTime baslangic;
+    if (ay == 9) {
+      baslangic = acilis;
+    } else {
+      // Eylul disi: o ayin ilk is gunu. Ocak-Mayis ikinci takvim
+      // yilina duser.
+      final yil = ay >= 9 ? y1 : y1 + 1;
+      var g = DateTime(yil, ay, 1);
+      while (g.weekday == DateTime.saturday || g.weekday == DateTime.sunday) {
+        g = g.add(const Duration(days: 1));
+      }
+      baslangic = g;
+    }
+
+    String iki(int n) => n.toString().padLeft(2, '0');
+    String yaz(DateTime t) => '${iki(t.day)}.${iki(t.month)}.${t.year}';
+    return '${yaz(baslangic)} - ${yaz(kapanis)}';
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'package:sinifcepte/core/config/app_config.dart';
 import 'package:sinifcepte/core/database/database_helper.dart';
 import 'package:sinifcepte/data/models/class_model.dart';
 import 'package:sinifcepte/data/models/student_model.dart';
@@ -19,6 +20,9 @@ import 'package:sinifcepte/data/repositories/class_repository.dart';
 /// Buradaki testler modelin URETTIGI haritayi gercek tabloya yazar:
 /// model bir alan eklerse ve sema guncellenmezse test kirmizi doner.
 void main() {
+  // Test dosyalari PARALEL kosuyor; ayni sqlite yolunu
+  // paylasirlarsa "database is locked" hatasi cikiyor.
+  AppConfig.testDbNameOverride = 'schema_model_sync_test.db';
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
 
