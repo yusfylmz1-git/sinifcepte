@@ -9,6 +9,17 @@ class ExamsManager {
     this.initDefaultExams();
   }
 
+  /**
+   * Varsayilan sinav takvimi — 35 sinav.
+   *
+   * ## Bu liste ELLE DUZENLENMEZ
+   * `assets/data/official_exams.json` dosyasindan uretiliyor; APK ile
+   * ayni kaynak. Eskiden panel kendi kopyasini tutuyordu ve iki taraf
+   * kaymisti (panelde 20, APK'da 35) — "Orijinal Takvimi Yukle" eski
+   * listeye donuyordu.
+   *
+   * Veri degisince `tool/panel_tohum_uret.py` calistirilir.
+   */
   getDefaultSeeds() {
     return [
       {
@@ -32,6 +43,16 @@ class ExamsManager {
         category: 'official',
       },
       {
+        doc_id: 'osym_eyds_20260124',
+        title: 'e-YDS - Elektronik Yabancı Dil Sınavı',
+        institution: 'ÖSYM',
+        examDate: '2026-01-24T09:00:00.000',
+        applicationDeadline: '2026-01-15T23:59:00.000',
+        applicationUrl: 'https://ais.osym.gov.tr',
+        description: 'Bilgisayarlı yabancı dil sınavı.',
+        category: 'ÖSYM',
+      },
+      {
         doc_id: 'meb_bilsem_on_degerlendirme_2026',
         title: 'BİLSEM - Bireysel Değerlendirme ve Ön Tarama Sınavı',
         institution: 'BİLSEM',
@@ -42,24 +63,44 @@ class ExamsManager {
         category: 'official',
       },
       {
-        doc_id: 'osym_eyds_2026',
+        doc_id: 'osym_eyds_20260214',
         title: 'e-YDS - Elektronik Yabancı Dil Sınavı',
-        institution: 'e-Sınav',
-        examDate: '2026-03-07T13:45:00.000',
-        applicationDeadline: '2026-02-26T23:59:59.000',
+        institution: 'ÖSYM',
+        examDate: '2026-02-14T09:00:00.000',
+        applicationDeadline: '2026-02-05T09:00:00.000',
         applicationUrl: 'https://ais.osym.gov.tr',
-        description: 'ÖSYM e-Sınav Merkezlerinde elektronik Yabancı Dil Bilgisi Seviye Tespit Sınavı',
-        category: 'official',
+        description: 'Bilgisayarlı yabancı dil sınavı.',
+        category: 'ÖSYM',
       },
       {
-        doc_id: 'meb_ekys_2026',
-        title: 'MEB EKYS - Eğitim Kurumlarına Yönetici Seçme Sınavı',
-        institution: 'EKYS',
-        examDate: '2026-03-15T10:15:00.000',
-        applicationDeadline: '2026-02-12T23:59:59.000',
+        doc_id: 'osym_msu_20260301',
+        title: 'MSÜ - Askerî Öğrenci Sınavı',
+        institution: 'ÖSYM',
+        examDate: '2026-03-01T10:15:00.000',
+        applicationDeadline: '2026-01-29T23:59:00.000',
         applicationUrl: 'https://ais.osym.gov.tr',
-        description: 'Milli Eğitim Bakanlığı Müdür ve Müdür Yardımcılığı seçme sınavı',
-        category: 'official',
+        description: 'Askerî öğrenci aday belirleme sınavı.',
+        category: 'ÖSYM',
+      },
+      {
+        doc_id: 'osym_yokdil_20260308',
+        title: 'YÖKDİL - Yabancı Dil Sınavı',
+        institution: 'ÖSYM',
+        examDate: '2026-03-08T09:00:00.000',
+        applicationDeadline: '2026-01-29T09:00:00.000',
+        applicationUrl: 'https://ais.osym.gov.tr',
+        description: 'Yükseköğretim yabancı dil sınavı.',
+        category: 'ÖSYM',
+      },
+      {
+        doc_id: 'osym_mebekys_20260315',
+        title: 'EKYS - Yönetici Seçme Sınavı',
+        institution: 'ÖSYM',
+        examDate: '2026-03-15T09:00:00.000',
+        applicationDeadline: '2026-02-05T09:00:00.000',
+        applicationUrl: 'https://ais.osym.gov.tr',
+        description: 'Okul yöneticiliği seçme sınavı.',
+        category: 'ÖSYM',
       },
       {
         doc_id: 'meb_mtsk_esinav_2026',
@@ -82,16 +123,6 @@ class ExamsManager {
         category: 'official',
       },
       {
-        doc_id: 'osym_msu_2026',
-        title: 'MSÜ - Milli Savunma Üniversitesi Askeri Öğrenci Belirleme Sınavı',
-        institution: 'MSÜ',
-        examDate: '2026-03-29T10:15:00.000',
-        applicationDeadline: '2026-01-25T23:59:59.000',
-        applicationUrl: 'https://ais.osym.gov.tr',
-        description: 'Harp Okulları ve Astsubay Meslek Yüksekokulları Giriş Sınavı',
-        category: 'official',
-      },
-      {
         doc_id: 'meb_acik_lise_esinav_2026',
         title: 'AÖK (Açık Lise & Ortaokul) 2. Dönem e-Sınavı',
         institution: 'e-Sınav',
@@ -102,14 +133,24 @@ class ExamsManager {
         category: 'official',
       },
       {
-        doc_id: 'osym_yds_1_2026',
-        title: 'YDS/1 - Yabancı Dil Bilgisi Seviye Tespit Sınavı',
+        doc_id: 'osym_yds_20260405',
+        title: 'YDS - Yabancı Dil Sınavı',
         institution: 'ÖSYM',
-        examDate: '2026-04-05T10:15:00.000',
-        applicationDeadline: '2026-02-25T23:59:59.000',
+        examDate: '2026-04-05T09:00:00.000',
+        applicationDeadline: '2026-02-26T09:00:00.000',
         applicationUrl: 'https://ais.osym.gov.tr',
-        description: 'Dil tazminatı ve lisansüstü eğitim için YDS İlkbahar oturumu',
-        category: 'official',
+        description: 'Yabancı dil seviye tespit sınavı.',
+        category: 'ÖSYM',
+      },
+      {
+        doc_id: 'osym_tryos_20260412',
+        title: 'TR-YÖS - Yurt Dışı Öğrenci Sınavı',
+        institution: 'ÖSYM',
+        examDate: '2026-04-12T09:00:00.000',
+        applicationDeadline: '2026-02-03T23:59:00.000',
+        applicationUrl: 'https://ais.osym.gov.tr',
+        description: 'Yurt dışından öğrenci kabul sınavı.',
+        category: 'ÖSYM',
       },
       {
         doc_id: 'aof_bahar_ara_2026',
@@ -122,14 +163,14 @@ class ExamsManager {
         category: 'official',
       },
       {
-        doc_id: 'osym_ales_1_2026',
-        title: 'ALES/1 - Akademik Personel ve Lisansüstü Eğitimi Giriş Sınavı',
+        doc_id: 'osym_ekpss_20260419',
+        title: 'EKPSS - Engelli Kamu Personeli Sınavı',
         institution: 'ÖSYM',
-        examDate: '2026-04-19T10:15:00.000',
-        applicationDeadline: '2026-03-12T23:59:59.000',
+        examDate: '2026-04-19T09:00:00.000',
+        applicationDeadline: '2026-02-24T09:00:00.000',
         applicationUrl: 'https://ais.osym.gov.tr',
-        description: 'Yüksek lisans ve doktora başvuruları için ALES İlkbahar dönemi',
-        category: 'official',
+        description: 'Engelli kamu personeli sınavı; öğretmenler görev alır.',
+        category: 'ÖSYM',
       },
       {
         doc_id: 'meb_iokbs_bursluluk_2026',
@@ -152,6 +193,16 @@ class ExamsManager {
         category: 'official',
       },
       {
+        doc_id: 'osym_ales_20260510',
+        title: 'ALES - Akademik Personel Sınavı',
+        institution: 'ÖSYM',
+        examDate: '2026-05-10T09:00:00.000',
+        applicationDeadline: '2026-04-02T09:00:00.000',
+        applicationUrl: 'https://ais.osym.gov.tr',
+        description: 'Lisansüstü eğitim ve akademik kadro giriş sınavı.',
+        category: 'ÖSYM',
+      },
+      {
         doc_id: 'meb_lgs_2026',
         title: 'LGS - Liselere Geçiş Sistemi Sınavı',
         institution: 'MEB',
@@ -162,61 +213,171 @@ class ExamsManager {
         category: 'official',
       },
       {
-        doc_id: 'osym_yks_tyt_2026',
-        title: 'YKS 1. Oturum - TYT (Temel Yeterlilik Testi)',
+        doc_id: 'osym_yks_20260620',
+        title: 'YKS - Yükseköğretim Kurumları Sınavı — 1. Oturum (TYT)',
         institution: 'ÖSYM',
-        examDate: '2026-06-20T10:15:00.000',
-        applicationDeadline: '2026-03-10T23:59:59.000',
+        examDate: '2026-06-20T09:00:00.000',
+        applicationDeadline: '2026-03-02T09:00:00.000',
         applicationUrl: 'https://ais.osym.gov.tr',
-        description: 'Yükseköğretim Kurumları Sınavı 1. Oturum TYT',
-        category: 'official',
+        description: 'Üniversiteye giriş sınavı.',
+        category: 'ÖSYM',
       },
       {
-        doc_id: 'osym_yks_ayt_2026',
-        title: 'YKS 2. Oturum - AYT (Alan Yeterlilik Testi)',
+        doc_id: 'osym_yks_20260621',
+        title: 'YKS - Yükseköğretim Kurumları Sınavı — 2. Oturum (AYT)',
         institution: 'ÖSYM',
-        examDate: '2026-06-21T10:15:00.000',
-        applicationDeadline: '2026-03-10T23:59:59.000',
+        examDate: '2026-06-21T09:00:00.000',
+        applicationDeadline: '2026-03-02T09:00:00.000',
         applicationUrl: 'https://ais.osym.gov.tr',
-        description: 'Yükseköğretim Kurumları Sınavı 2. Oturum AYT',
-        category: 'official',
+        description: 'Üniversiteye giriş sınavı.',
+        category: 'ÖSYM',
       },
       {
-        doc_id: 'meb_ags_oabt_2026',
-        title: 'MEB-AGS - Milli Eğitim Akademisi Giriş Sınavı & ÖABT',
-        institution: 'AGS',
-        examDate: '2026-07-12T10:15:00.000',
-        applicationDeadline: '2026-05-15T23:59:59.000',
+        doc_id: 'osym_yks_20260621',
+        title: 'YKS - Yükseköğretim Kurumları Sınavı — 3. Oturum (YDT)',
+        institution: 'ÖSYM',
+        examDate: '2026-06-21T09:00:00.000',
+        applicationDeadline: '2026-03-02T09:00:00.000',
         applicationUrl: 'https://ais.osym.gov.tr',
-        description: 'Öğretmenlik Meslek Kanunu (ÖMK) kapsamında Milli Eğitim Akademisi hazırlık eğitimi giriş sınavı',
-        category: 'official',
+        description: 'Üniversiteye giriş sınavı.',
+        category: 'ÖSYM',
       },
       {
-        doc_id: 'osym_kpss_lisans_2026',
-        title: 'KPSS Lisans - Genel Yetenek & Genel Kültür / Eğitim Bilimleri',
+        doc_id: 'osym_dgs_20260719',
+        title: 'DGS - Dikey Geçiş Sınavı',
         institution: 'ÖSYM',
-        examDate: '2026-07-19T10:15:00.000',
-        applicationDeadline: '2026-05-20T23:59:59.000',
+        examDate: '2026-07-19T09:00:00.000',
+        applicationDeadline: '2026-06-02T09:00:00.000',
         applicationUrl: 'https://ais.osym.gov.tr',
-        description: 'Kamu Personel Seçme Sınavı oturumları',
-        category: 'official',
+        description: 'Ön lisanstan lisansa geçiş sınavı.',
+        category: 'ÖSYM',
       },
       {
-        doc_id: 'osym_kpss_oabt_2026',
-        title: 'KPSS ÖABT - Öğretmenlik Alan Bilgisi Testi',
+        doc_id: 'osym_mebags_20260726',
+        title: 'AGS - Akademi Giriş Sınavı',
         institution: 'ÖSYM',
-        examDate: '2026-08-02T10:15:00.000',
-        applicationDeadline: '2026-05-20T23:59:59.000',
+        examDate: '2026-07-26T09:00:00.000',
+        applicationDeadline: '2026-05-20T09:00:00.000',
         applicationUrl: 'https://ais.osym.gov.tr',
-        description: 'Milli Eğitim Bakanlığı öğretmen alımı ÖABT oturumları',
-        category: 'official',
+        description: 'Öğretmenlik akademi giriş sınavı.',
+        category: 'ÖSYM',
+      },
+      {
+        doc_id: 'osym_ales_20260802',
+        title: 'ALES - Akademik Personel Sınavı',
+        institution: 'ÖSYM',
+        examDate: '2026-08-02T09:00:00.000',
+        applicationDeadline: '2026-06-18T09:00:00.000',
+        applicationUrl: 'https://ais.osym.gov.tr',
+        description: 'Lisansüstü eğitim ve akademik kadro giriş sınavı.',
+        category: 'ÖSYM',
+      },
+      {
+        doc_id: 'osym_yokdil_20260809',
+        title: 'YÖKDİL - Yabancı Dil Sınavı',
+        institution: 'ÖSYM',
+        examDate: '2026-08-09T09:00:00.000',
+        applicationDeadline: '2026-06-24T09:00:00.000',
+        applicationUrl: 'https://ais.osym.gov.tr',
+        description: 'Yükseköğretim yabancı dil sınavı.',
+        category: 'ÖSYM',
+      },
+      {
+        doc_id: 'osym_kpss_20260906',
+        title: 'KPSS - Kamu Personel Seçme Sınavı — Lisans (Genel Yetenek-Genel Kültür)',
+        institution: 'ÖSYM',
+        examDate: '2026-09-06T09:00:00.000',
+        applicationDeadline: '2026-07-13T09:00:00.000',
+        applicationUrl: 'https://ais.osym.gov.tr',
+        description: 'Kamu personeli seçme sınavı; öğretmenler görev alır.',
+        category: 'ÖSYM',
+      },
+      {
+        doc_id: 'osym_kpss_20260912',
+        title: 'KPSS - Kamu Personel Seçme Sınavı — Lisans (Alan Bilgisi) 1. gün',
+        institution: 'ÖSYM',
+        examDate: '2026-09-12T09:00:00.000',
+        applicationDeadline: '2026-07-13T09:00:00.000',
+        applicationUrl: 'https://ais.osym.gov.tr',
+        description: 'Kamu personeli seçme sınavı; öğretmenler görev alır.',
+        category: 'ÖSYM',
+      },
+      {
+        doc_id: 'osym_kpss_20260913',
+        title: 'KPSS - Kamu Personel Seçme Sınavı — Lisans (Alan Bilgisi) 2. gün',
+        institution: 'ÖSYM',
+        examDate: '2026-09-13T09:00:00.000',
+        applicationDeadline: '2026-07-13T09:00:00.000',
+        applicationUrl: 'https://ais.osym.gov.tr',
+        description: 'Kamu personeli seçme sınavı; öğretmenler görev alır.',
+        category: 'ÖSYM',
+      },
+      {
+        doc_id: 'osym_kpss_20261004',
+        title: 'KPSS - Kamu Personel Seçme Sınavı — Ön Lisans',
+        institution: 'ÖSYM',
+        examDate: '2026-10-04T10:15:00.000',
+        applicationDeadline: '2026-08-10T23:59:00.000',
+        applicationUrl: 'https://ais.osym.gov.tr',
+        description: 'Kamu personeli seçme sınavı; öğretmenler görev alır.',
+        category: 'ÖSYM',
+      },
+      {
+        doc_id: 'osym_tryos_20261011',
+        title: 'TR-YÖS - Yurt Dışı Öğrenci Sınavı',
+        institution: 'ÖSYM',
+        examDate: '2026-10-11T09:00:00.000',
+        applicationDeadline: '2026-08-03T09:00:00.000',
+        applicationUrl: 'https://ais.osym.gov.tr',
+        description: 'Yurt dışından öğrenci kabul sınavı.',
+        category: 'ÖSYM',
+      },
+      {
+        doc_id: 'osym_kpss_20261025',
+        title: 'KPSS - Kamu Personel Seçme Sınavı — Ortaöğretim',
+        institution: 'ÖSYM',
+        examDate: '2026-10-25T09:00:00.000',
+        applicationDeadline: '2026-09-08T23:59:00.000',
+        applicationUrl: 'https://ais.osym.gov.tr',
+        description: 'Kamu personeli seçme sınavı; öğretmenler görev alır.',
+        category: 'ÖSYM',
+      },
+      {
+        doc_id: 'osym_kpss_20261101',
+        title: 'KPSS - Kamu Personel Seçme Sınavı',
+        institution: 'ÖSYM',
+        examDate: '2026-11-01T09:00:00.000',
+        applicationDeadline: '2026-09-30T09:00:00.000',
+        applicationUrl: 'https://ais.osym.gov.tr',
+        description: 'Kamu personeli seçme sınavı; öğretmenler görev alır.',
+        category: 'ÖSYM',
+      },
+      {
+        doc_id: 'osym_yds_20261122',
+        title: 'YDS - Yabancı Dil Sınavı',
+        institution: 'ÖSYM',
+        examDate: '2026-11-22T09:00:00.000',
+        applicationDeadline: '2026-10-08T09:00:00.000',
+        applicationUrl: 'https://ais.osym.gov.tr',
+        description: 'Yabancı dil seviye tespit sınavı.',
+        category: 'ÖSYM',
+      },
+      {
+        doc_id: 'osym_ales_20261129',
+        title: 'ALES - Akademik Personel Sınavı',
+        institution: 'ÖSYM',
+        examDate: '2026-11-29T09:00:00.000',
+        applicationDeadline: '2026-10-15T09:00:00.000',
+        applicationUrl: 'https://ais.osym.gov.tr',
+        description: 'Lisansüstü eğitim ve akademik kadro giriş sınavı.',
+        category: 'ÖSYM',
       },
     ];
   }
 
   initDefaultExams() {
     const defaultSeeds = this.getDefaultSeeds();
-    const saved = localStorage.getItem('sinifcepte_admin_exams_v4');
+    const saved = localStorage.getItem('sinifcepte_admin_exams_v5');
     if (saved) {
       try {
         this.exams = JSON.parse(saved);
@@ -226,26 +387,16 @@ class ExamsManager {
       }
     }
 
-    // Eski versiyonlardaki hafızayı yeni tohumlarla (AGS, MTSK, e-Sınav, İOKBS, EKYS, ALES, AÖF) otomatik birleştir
-    const oldSaved = localStorage.getItem('sinifcepte_admin_exams_v3') || localStorage.getItem('sinifcepte_admin_exams_v2') || localStorage.getItem('sinifcepte_admin_exams');
-    if (oldSaved) {
-      try {
-        const oldExams = JSON.parse(oldSaved);
-        const existingIds = new Set(oldExams.map((e) => e.doc_id));
-        const merged = [...oldExams];
-        for (const seed of defaultSeeds) {
-          if (!existingIds.has(seed.doc_id)) {
-            merged.push(seed);
-          }
-        }
-        this.exams = merged;
-        this.save();
-        return;
-      } catch (e) {
-        console.error('Old exams merge error:', e);
-      }
-    }
-
+    // ESKİ SÜRÜMLERDEN BİRLEŞTİRME YAPILMIYOR.
+    //
+    // v3/v2 anahtarlarında ÖSYM'den süzülmemiş 87 sınav duruyor
+    // (tıp/hukuk uzmanlık sınavları dahil). Birleştirme onları geri
+    // getiriyor ve temiz liste kirleniyordu.
+    //
+    // Birleştirme eskiden gerekliydi: panele yeni sınav türü
+    // eklendiğinde yöneticinin düzenlemeleri kaybolmasın diye. Artık
+    // tohum listesi APK verisinden üretiliyor (tool/panel_tohum_uret.py),
+    // yani her iki taraf da aynı kaynağı kullanıyor.
     this.exams = defaultSeeds;
     this.save();
   }
@@ -257,9 +408,9 @@ class ExamsManager {
   }
 
   save() {
-    localStorage.setItem('sinifcepte_admin_exams_v4', JSON.stringify(this.exams));
-    localStorage.setItem('sinifcepte_admin_exams_v3', JSON.stringify(this.exams));
-    localStorage.setItem('sinifcepte_admin_exams_v2', JSON.stringify(this.exams));
+    // Tek anahtar: eski sürümlere de yazmak, kirli kopyaların
+    // yaşamasına yol açıyordu.
+    localStorage.setItem('sinifcepte_admin_exams_v5', JSON.stringify(this.exams));
     localStorage.setItem('sinifcepte_admin_exams', JSON.stringify(this.exams));
   }
 
