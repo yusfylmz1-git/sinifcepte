@@ -718,7 +718,7 @@ def write_presets_js(records: list[dict], academic_year: str, path: str) -> None
  *
  * OTOMATİK ÜRETİLDİ - elle düzenlemeyin.
  * Yeniden üretmek için:
- *   python scripts/maarif/build_curriculum.py --year {academic_year}
+ *   python scripts/maarif/yillik_guncelle.py --year {academic_year}
  *
  * Tekrar eden metinler _POOLS sözlüğünde tutulur; kayıtlarda indis olarak
  * durur ve yükleme sırasında geri yazılır.

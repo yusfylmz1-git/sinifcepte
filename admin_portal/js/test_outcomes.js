@@ -235,5 +235,67 @@ test('Ders listesi kategori bilgisi taşır (gruplama için)', () => {
     'tek kategori var, gruplama anlamsiz');
 });
 
+test('KRITIK: temel dersler ustte siralanir', () => {
+  // Kullanici istegi: "normal okullarda okutulan temel dersler ustte,
+  // secmeliler ve cydem gibi dersler altta listelenmeli."
+  //
+  // Once Map ekleme sirasinda donuyordu — veri dosyasindaki siraya
+  // bagliydi ve ongorulemezdi.
+  const storage = makeStorage();
+  const OM = loadManager(storage);
+  const om = new OM();
+  const subjects = om.getAvailableSubjectsForGrade(5, 'MIDDLE');
+  const oncelik = (k) => {
+    const c = (k || 'core').toLowerCase();
+    return c === 'core' ? 0 : c === 'iho' ? 1 : 2;
+  };
+  for (let i = 1; i < subjects.length; i++) {
+    assert.ok(
+      oncelik(subjects[i - 1].category) <= oncelik(subjects[i].category),
+      `siralama bozuk: ${subjects[i - 1].name} sonra ${subjects[i].name}`
+    );
+  }
+});
+
+test('KRITIK: Maarif rozeti metin aramasiyla basilmaz', () => {
+  // Once publisher'da "Maarif"/"TYMM" geciyor mu diye bakiliyordu.
+  // Olcum: 89 ders rozet almasi gerekirken almiyor, 2 ders yanlis
+  // aliyordu. Veri artik gercek kaynagi tasiyor.
+  const storage = makeStorage();
+  const OM = loadManager(storage);
+  const om = new OM();
+  om.outcomes = [{
+    docId: 'x', gradeLevel: 5, subjectCode: 'TURKCE', subjectName: 'Turkce',
+    // Yaniltici metin: publisher'da "Maarif" geciyor AMA veri eski
+    // programa ait diyor.
+    publisher: 'TYMM (Maarif Modeli)',
+    isMaarif: false, sourceProgram: 'legacy',
+    weekNumber: 1, unitTitle: 'Okuma', topicTitle: 'Okuma',
+    outcomeDescription: 'Metni anlayabilme', academicYear: '2026-2027',
+  }];
+  const dom = makeDom();
+  om.renderTable('ALL', 5, 'TURKCE', 'ALL', 'ALL', '');
+  assert.ok(!dom.html.includes('Maarif Modeli') || !dom.html.includes('• Maarif'),
+    'metinde "Maarif" gectigi icin rozet basilmis');
+});
+
+test('KRITIK: OTP haftasi hafta numarasindan tahmin edilmez', () => {
+  // 8, 17, 29 sabitleri varsayiliyordu. Bu haftalar MEB'in her yil
+  // tebligle belirledigi takvime gore DEGISIYOR; sabit numara
+  // varsaymak yanlis haftayi isaretler.
+  const storage = makeStorage();
+  const OM = loadManager(storage);
+  const om = new OM();
+  om.outcomes = [{
+    docId: 'y', gradeLevel: 5, subjectCode: 'MAT', subjectName: 'Matematik',
+    weekNumber: 8, isOtpWeek: false, isSocialEventWeek: false,
+    unitTitle: 'Sayilar', topicTitle: 'Sayilar',
+    outcomeDescription: 'Dogal sayilar', academicYear: '2026-2027',
+  }];
+  const dom = makeDom();
+  om.renderTable('ALL', 5, 'MAT', 'ALL', 'ALL', '');
+  assert.ok(!dom.html.includes('OTP'), '8. hafta oldugu icin OTP sanilmis');
+});
+
 console.log(`\n${passed} basarili, ${failed} basarisiz\n`);
 process.exit(failed === 0 ? 0 : 1);

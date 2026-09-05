@@ -40,7 +40,7 @@ class OutcomesManager {
       console.warn(
         'OutcomesManager: Resmî Maarif paketi yüklenemedi. ' +
           'curriculum_presets.js dosyası eksik veya bozuk olabilir; ' +
-          'yeniden üretmek için: python scripts/maarif/build_curriculum.py'
+          'yeniden üretmek için: python scripts/maarif/yillik_guncelle.py'
       );
       this.outcomes = [];
       return;
@@ -144,7 +144,7 @@ class OutcomesManager {
     if (presets.length === 0) {
       throw new Error(
         'Resmî Maarif veri paketi bulunamadı. curriculum_presets.js yüklenmemiş olabilir. ' +
-          'Yeniden üretmek için: python scripts/maarif/build_curriculum.py --year <yıl>'
+          'Yeniden üretmek için: python scripts/maarif/yillik_guncelle.py --year <yıl>'
       );
     }
     // Senkronizasyon paketi yeniden yükler; elle düzenlemeler temizlenir.
@@ -237,7 +237,24 @@ class OutcomesManager {
         if (o.publisher) item.publishers.add(o.publisher);
       }
     });
-    return Array.from(subjectsMap.values());
+
+    // SIRALAMA: temel dersler ustte, secmeli/CYDEM altta.
+    //
+    // Once Map ekleme sirasinda donuyordu — yani veri dosyasindaki
+    // siraya bagliydi ve ongorulemezdi. Ogretmen kendi dersini
+    // ararken pilot okul dersleri (Coklu Yabanci Dil) ve secmeliler
+    // arasinda kaybolmamali.
+    const oncelik = (kategori) => {
+      const k = (kategori || 'core').toLowerCase();
+      if (k === 'core') return 0;
+      if (k === 'iho') return 1;
+      return 2;
+    };
+    return Array.from(subjectsMap.values()).sort((a, b) => {
+      const fark = oncelik(a.category) - oncelik(b.category);
+      if (fark !== 0) return fark;
+      return (a.name || '').localeCompare(b.name || '', 'tr');
+    });
   }
 
   getAvailablePublishersFor(gradeLevel, subjectCode, schoolType = 'ALL') {
@@ -282,6 +299,19 @@ class OutcomesManager {
   }
 
   renderTable(schoolType = 'ALL', gradeLevel = 'ALL', subjectCode = 'ALL', publisher = 'ALL', category = 'ALL', searchQuery = '') {
+    /**
+     * Kaydin geldigi MEB sitesini okunabilir yazar.
+     *
+     * publisher YALNIZCA okul turudur (Anadolu / Fen / Sosyal
+     * Bilimler Lisesi) ve cogu derste bos. Bos rozette "MEB
+     * Yayinlari" yazmak yaniltiyordu: o bir okul turu degil,
+     * "bilinmiyor" demekti.
+     */
+    const sourceLabel = (item) => {
+      if (item.sourcePortal === 'tymm') return 'MEB TYMM';
+      if (item.sourcePortal === 'dogm') return 'MEB DÖGM';
+      return '';
+    };
     const tbody = document.getElementById('outcomes-tbody');
     if (!tbody) return;
 
@@ -325,9 +355,20 @@ class OutcomesManager {
 
     tbody.innerHTML = shown
       .map((item) => {
-        const isMaarif = item.isMaarif || (item.publisher && (item.publisher.includes('Maarif') || item.publisher.includes('TYMM') || item.publisher.includes('ÇYDEM')));
-        const isOtp = item.isOtpWeek || (item.weekNumber === 8 || item.weekNumber === 17 || item.weekNumber === 29);
-        const isSocial = item.isSocialEventWeek || (item.weekNumber === 18 || item.weekNumber === 37);
+        // Rozet ve hafta bayraklari VERIDEN gelir, tahminle degil.
+        //
+        // Once isMaarif metin aramasina geri dusuyordu (publisher'da
+        // "Maarif" geciyor mu) ve olcumde 89 ders rozet almasi
+        // gerekirken almiyordu. Veri artik gercek kaynagi tasiyor:
+        // program turu Excel sutun basligindan olculuyor.
+        //
+        // OTP ve sosyal etkinlik haftalari da hafta numarasindan
+        // tahmin ediliyordu (8, 17, 29 / 18, 37). Bu haftalar MEB'in
+        // her yil tebligle belirledigi takvime gore DEGISIYOR; sabit
+        // numara varsaymak yanlis haftayi isaretler.
+        const isMaarif = item.isMaarif === true;
+        const isOtp = item.isOtpWeek === true;
+        const isSocial = item.isSocialEventWeek === true;
         const isHoliday = item.isHolidayWeek;
 
         let dateStr = '';
@@ -338,7 +379,7 @@ class OutcomesManager {
         }
 
         const pubBadge = `<span class="badge" style="font-size: 10px; background: ${isMaarif ? 'rgba(16, 185, 129, 0.15)' : 'rgba(100, 116, 139, 0.12)'}; color: ${isMaarif ? '#059669' : 'var(--text-muted)'}; border: 1px solid ${isMaarif ? 'rgba(16, 185, 129, 0.3)' : 'transparent'};">
-          ${item.publisher || 'MEB Yayınları'} ${isMaarif ? '• Maarif' : ''}
+          ${item.publisher || sourceLabel(item) || 'Resmî plan yok'} ${isMaarif ? '• Maarif' : ''}
         </span>`;
 
         let statusBadge = '<span class="badge" style="background: rgba(16,185,129,0.1); color: #059669;">Ders</span>';
