@@ -190,8 +190,6 @@ Sayın Velimiz,
   }) async {
     final pdf = await PdfTrFonts.document();
 
-    final fontRegular = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
 
     final schoolTitle = teacher.fullSchoolTitle.isNotEmpty ? teacher.fullSchoolTitle : teacher.schoolName;
     final nowFormatted = DateFormat('dd.MM.yyyy').format(DateTime.now());
@@ -203,7 +201,6 @@ Sayın Velimiz,
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(28),
-        theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
         header: (pw.Context ctx) => pw.Column(
           children: [
             pw.Text(

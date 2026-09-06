@@ -42,7 +42,6 @@ class MyClassHubScreen extends ConsumerStatefulWidget {
 
 class _MyClassHubScreenState extends ConsumerState<MyClassHubScreen> {
   int? _selectedClassId;
-  int _activeTabIndex = 0; // 0: Resmî Evraklar, 1: Öğrenci & Veri
 
   @override
   void initState() {
@@ -271,15 +270,21 @@ class _MyClassHubScreenState extends ConsumerState<MyClassHubScreen> {
                         _buildClassGrid(context, activeClass, students, isDark),
                         const SizedBox(height: 20),
 
-                        // 3. Segmentli Sekme Switcher (Resmî Evraklar | Öğrenci Yönetimi)
-                        _buildSegmentedTab(isDark),
-                        const SizedBox(height: 14),
-
-                        // 4. Aktif Sekme İçeriği
-                        if (_activeTabIndex == 0)
-                          _buildDocumentsList(context, activeClass, students, isDark)
-                        else
-                          _buildStudentManagementTab(context, activeClass, students, isDark),
+                        // 4. RESMÎ EVRAKLAR
+                        //
+                        // Önce burada "Evraklar | Öğrenci Yönetimi"
+                        // sekmesi vardı. Öğrenci Yönetimi'ndeki üç iş
+                        // (öğrenci listesi, toplu yükleme, veri
+                        // sağlığı) yukarıdaki Sınıf Yönetimi
+                        // ızgarasına taşındı; sekme çubuğu bir tık
+                        // fazlalıktı.
+                        _buildSectionTitle(
+                          'Resmî Evraklar',
+                          Icons.assignment_outlined,
+                          isDark,
+                        ),
+                        const SizedBox(height: 10),
+                        _buildDocumentsList(context, activeClass, students, isDark),
 
                         const SizedBox(height: 90),
                       ],
@@ -783,6 +788,68 @@ class _MyClassHubScreenState extends ConsumerState<MyClassHubScreen> {
             );
           },
         ),
+
+        // Nöbetçi listesi oturma planının YANINDA.
+        //
+        // Önce yalnızca Evraklar listesinin içinde bir satırdı. İkisi
+        // de sınıfın fiziksel düzenine dair; öğretmen ikisini birlikte
+        // düşünüyor.
+        _buildBentoTile(
+          context: context,
+          title: 'Nöbetçi Listesi',
+          subtitle: 'Haftalık Çizelge',
+          icon: Icons.shield_outlined,
+          gradient: const [Color(0xFFF59E0B), Color(0xFFD97706)],
+          accent: const Color(0xFFF59E0B),
+          isDark: isDark,
+          onTap: () => DutyScheduleEditorModal.show(
+            context,
+            classModel: classModel,
+            students: students,
+            teacherProfile: ref.read(teacherProfileProvider),
+          ),
+        ),
+
+        // Aşağıdaki iki kart, kaldırılan "Öğrenci Yönetimi"
+        // sekmesinden taşındı. Toplu yükleme başka hiçbir yerde
+        // yoktu; sekmeyle birlikte silinseydi öğretmen PDF'ten
+        // öğrenci aktaramazdı.
+        _buildBentoTile(
+          context: context,
+          title: 'Öğrenci Listesi',
+          subtitle: '${students.length} Öğrenci',
+          icon: Icons.people_alt_rounded,
+          gradient: const [Color(0xFF6366F1), Color(0xFF4F46E5)],
+          accent: const Color(0xFF6366F1),
+          isDark: isDark,
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => StudentListScreen(classModel: classModel),
+              ),
+            );
+          },
+        ),
+        _buildBentoTile(
+          context: context,
+          title: 'Toplu Öğrenci Yükle',
+          subtitle: 'PDF / Excel Aktarım',
+          icon: Icons.upload_file_rounded,
+          gradient: const [Color(0xFF10B981), Color(0xFF059669)],
+          accent: const Color(0xFF10B981),
+          isDark: isDark,
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => StudentImportPreviewView(
+                  initialClassId: classModel.id,
+                  initialClassName: classModel.name,
+                  autoPickPdf: true,
+                ),
+              ),
+            );
+          },
+        ),
       ],
     );
   }
@@ -927,102 +994,6 @@ class _MyClassHubScreenState extends ConsumerState<MyClassHubScreen> {
       ),
     );
   }
-
-  /// Segmentli Sekme Switcher
-  Widget _buildSegmentedTab(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildSegmentButton(
-              title: 'Evraklar (PDF)',
-              icon: Icons.assignment_outlined,
-              isSelected: _activeTabIndex == 0,
-              isDark: isDark,
-              onTap: () => setState(() => _activeTabIndex = 0),
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: _buildSegmentButton(
-              title: 'Öğrenci Yönetimi',
-              icon: Icons.group_outlined,
-              isSelected: _activeTabIndex == 1,
-              isDark: isDark,
-              onTap: () => setState(() => _activeTabIndex = 1),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSegmentButton({
-    required String title,
-    required IconData icon,
-    required bool isSelected,
-    required bool isDark,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? (isDark ? AppColors.primary : Colors.white)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: isSelected && !isDark
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  )
-                ]
-              : null,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 15,
-              color: isSelected
-                  ? (isDark ? Colors.white : AppColors.primary)
-                  : (isDark ? Colors.white60 : Colors.grey.shade600),
-            ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                  color: isSelected
-                      ? (isDark ? Colors.white : AppColors.primary)
-                      : (isDark ? Colors.white60 : Colors.grey.shade600),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   /// Kompakt & Kategorize Edilmiş Resmî Evraklar (PDF) Merkezi
   Widget _buildDocumentsList(
     BuildContext context,
@@ -1052,18 +1023,6 @@ class _MyClassHubScreenState extends ConsumerState<MyClassHubScreen> {
             'color': const Color(0xFF3B82F6),
             'action': () => ClassroomDocumentsPdfGenerator.generateStudentListPdf(
                   context: context,
-                  classModel: classModel,
-                  students: students,
-                  teacherProfile: profile,
-                ),
-          },
-          {
-            'title': 'Haftalık Sınıf Nöbet Çizelgesi',
-            'desc': '1-4 nöbetçi sayısı & otomatik dağıtım motoru',
-            'icon': Icons.shield_outlined,
-            'color': const Color(0xFFF59E0B),
-            'action': () => DutyScheduleEditorModal.show(
-                  context,
                   classModel: classModel,
                   students: students,
                   teacherProfile: profile,
@@ -1313,267 +1272,6 @@ class _MyClassHubScreenState extends ConsumerState<MyClassHubScreen> {
       }).toList(),
     );
   }
-
-  /// Öğrenci Yönetimi Sekmesi İçeriği
-  Widget _buildStudentManagementTab(
-    BuildContext context,
-    ClassModel classModel,
-    List<StudentModel> students,
-    bool isDark,
-  ) {
-    final girls = students.where((s) => s.gender.toLowerCase().contains('kız')).length;
-    final boys = students.where((s) => s.gender.toLowerCase().contains('erkek')).length;
-    final withPhone = students.where((s) => s.parentPhone?.trim().isNotEmpty == true).length;
-    final missingPhone = students.length - withPhone;
-
-    return Column(
-      children: [
-        // 1 & 2: Öğrenci Listesi ve Toplu İçe Aktarım (Kompakt Liste Kartı)
-        GlassCard(
-          padding: EdgeInsets.zero,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Column(
-              children: [
-                // Sınıf Öğrenci Listesi
-                InkWell(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => StudentListScreen(classModel: classModel),
-                      ),
-                    );
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withValues(alpha: isDark ? 0.2 : 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Center(
-                            child: Icon(Icons.people_alt_rounded, color: Colors.blue, size: 17),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Sınıf Öğrenci Listesi',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${students.length} Öğrenci • Düzenle, Sil, Şube Taşı',
-                                style: TextStyle(
-                                  fontSize: 10.5,
-                                  color: isDark ? Colors.white60 : Colors.grey.shade600,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 13,
-                          color: isDark ? Colors.white38 : Colors.grey.shade400,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                Divider(
-                  height: 1,
-                  indent: 56,
-                  endIndent: 14,
-                  color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
-                ),
-
-                // Toplu Öğrenci Yükle
-                InkWell(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => StudentImportPreviewView(
-                          initialClassId: classModel.id,
-                          initialClassName: classModel.name,
-                          autoPickPdf: true,
-                        ),
-                      ),
-                    );
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981).withValues(alpha: isDark ? 0.2 : 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Center(
-                            child: Icon(Icons.file_upload_outlined, color: Color(0xFF10B981), size: 17),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Toplu Öğrenci Yükle',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'e-Okul PDF veya Excel sınıf listesinden aktar',
-                                style: TextStyle(
-                                  fontSize: 10.5,
-                                  color: isDark ? Colors.white60 : Colors.grey.shade600,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 13,
-                          color: isDark ? Colors.white38 : Colors.grey.shade400,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        // 3. Sınıf Veri & Sağlık Özeti (Health/Status Card)
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.insights_rounded, size: 16, color: AppColors.primary),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Şube Veri & Sağlık Özeti',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildMiniHealthItem(
-                      'Kız / Erkek',
-                      '$girls K / $boys E',
-                      Icons.people_outline_rounded,
-                      Colors.blue,
-                      isDark,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildMiniHealthItem(
-                      'Eksik Veli Tel',
-                      missingPhone > 0 ? '$missingPhone Öğrenci' : 'Eksik Yok 🎉',
-                      missingPhone > 0 ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded,
-                      missingPhone > 0 ? Colors.amber : Colors.green,
-                      isDark,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMiniHealthItem(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-    bool isDark,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: isDark ? 0.12 : 0.08),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(fontSize: 10, color: isDark ? Colors.white60 : Colors.grey.shade600),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  value,
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
 
   /// Henüz sınıf yoksa gösterilen durum
   Widget _buildNoClassState(BuildContext context, bool isDark) {

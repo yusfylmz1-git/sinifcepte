@@ -33,8 +33,6 @@ class ParticipationPdfGenerator {
   }) async {
     final pdf = await PdfTrFonts.document();
 
-    final fontRegular = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
 
     final resolvedSchoolName = schoolName != null && schoolName.isNotEmpty
         ? _cleanPdfText(schoolName)
@@ -55,20 +53,20 @@ class ParticipationPdfGenerator {
                 children: [
                   pw.Text(
                     'T.C.',
-                    style: pw.TextStyle(font: fontBold, fontSize: 11),
+                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
                   ),
                   pw.Text(
                     'MİLLÎ EĞİTİM BAKANLIĞI',
-                    style: pw.TextStyle(font: fontBold, fontSize: 12),
+                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12),
                   ),
                   pw.Text(
                     resolvedSchoolName.toUpperCase(),
-                    style: pw.TextStyle(font: fontBold, fontSize: 13),
+                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13),
                   ),
                   pw.SizedBox(height: 4),
                   pw.Text(
                     'DERS İÇİ KATILIM, ÖDEV VE PERFORMANS DEĞERLENDİRME ÇİZELGESİ',
-                    style: pw.TextStyle(font: fontBold, fontSize: 10.5, color: PdfColors.blue900),
+                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10.5, color: PdfColors.blue900),
                   ),
                   pw.Divider(thickness: 1.2, color: PdfColors.grey700),
                 ],
@@ -84,14 +82,14 @@ class ParticipationPdfGenerator {
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('Sınıf: ${_cleanPdfText(session.className)}', style: pw.TextStyle(font: fontBold, fontSize: 10.5)),
+                    pw.Text('Sınıf: ${_cleanPdfText(session.className)}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10.5)),
                     pw.SizedBox(height: 2),
-                    pw.Text('Ders: ${_cleanPdfText(session.subjectName)} (${session.lessonHour}. Saat)', style: pw.TextStyle(font: fontRegular, fontSize: 9.5)),
+                    pw.Text('Ders: ${_cleanPdfText(session.subjectName)} (${session.lessonHour}. Saat)', style: pw.TextStyle(fontSize: 9.5)),
                     pw.SizedBox(height: 2),
-                    pw.Text('Tarih: ${session.date}', style: pw.TextStyle(font: fontRegular, fontSize: 9.5)),
+                    pw.Text('Tarih: ${session.date}', style: pw.TextStyle(fontSize: 9.5)),
                     if (session.topicName != null && session.topicName!.isNotEmpty) ...[
                       pw.SizedBox(height: 2),
-                      pw.Text('İşlenen Konu: ${_cleanPdfText(session.topicName!)}', style: pw.TextStyle(font: fontRegular, fontSize: 9.5)),
+                      pw.Text('İşlenen Konu: ${_cleanPdfText(session.topicName!)}', style: pw.TextStyle(fontSize: 9.5)),
                     ],
                   ],
                 ),
@@ -105,7 +103,7 @@ class ParticipationPdfGenerator {
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
-                      pw.Text('Öğrenci Sayısı: ${session.totalStudents}', style: pw.TextStyle(font: fontBold, fontSize: 9)),
+                      pw.Text('Öğrenci Sayısı: ${session.totalStudents}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9)),
                       pw.SizedBox(height: 2),
                       // Söz hakkı özeti: raporun en değerli bilgisi.
                       // "Kaç öğrenci hiç konuşmadı" sorusunun cevabı.
@@ -113,7 +111,7 @@ class ParticipationPdfGenerator {
                         'Söz Hakkı: ${session.totalSpeakingTurns} kez '
                         '(${session.silentStudentCount} öğrenci hiç konuşmadı)',
                         style: pw.TextStyle(
-                          font: fontBold,
+                          fontWeight: pw.FontWeight.bold,
                           fontSize: 9,
                           color: PdfColors.orange800,
                         ),
@@ -129,15 +127,15 @@ class ParticipationPdfGenerator {
                                 '(${session.homeworkEvaluatedCount} öğrenci)'
                             : 'Ödev Teslim Oranı: işaretlenmedi',
                         style: pw.TextStyle(
-                          font: fontBold,
+                          fontWeight: pw.FontWeight.bold,
                           fontSize: 9,
                           color: PdfColors.green800,
                         ),
                       ),
                       pw.SizedBox(height: 2),
-                      pw.Text('Araç-Gereç Uyumu: %${session.materialsReadinessRate.toStringAsFixed(0)}', style: pw.TextStyle(font: fontRegular, fontSize: 8.5)),
+                      pw.Text('Araç-Gereç Uyumu: %${session.materialsReadinessRate.toStringAsFixed(0)}', style: pw.TextStyle(fontSize: 8.5)),
                       pw.SizedBox(height: 2),
-                      pw.Text('Toplam Katılım Yıldızı: ${session.totalStarsAwarded}', style: pw.TextStyle(font: fontRegular, fontSize: 8.5)),
+                      pw.Text('Toplam Katılım Yıldızı: ${session.totalStarsAwarded}', style: pw.TextStyle(fontSize: 8.5)),
                     ],
                   ),
                 ),
@@ -166,15 +164,15 @@ class ParticipationPdfGenerator {
                 pw.TableRow(
                   decoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
                   children: [
-                    _buildHeaderCell('No', fontBold, align: pw.TextAlign.center),
-                    _buildHeaderCell('Okul No', fontBold, align: pw.TextAlign.center),
-                    _buildHeaderCell('Öğrenci Adı Soyadı', fontBold),
-                    _buildHeaderCell('Söz Hakkı', fontBold, align: pw.TextAlign.center),
-                    _buildHeaderCell('Ödev', fontBold, align: pw.TextAlign.center),
-                    _buildHeaderCell('Materyal', fontBold, align: pw.TextAlign.center),
-                    _buildHeaderCell('Geliş', fontBold, align: pw.TextAlign.center),
-                    _buildHeaderCell('Derse Katılım', fontBold, align: pw.TextAlign.center),
-                    _buildHeaderCell('Gözlem / Özel Not', fontBold),
+                    _buildHeaderCell('No', align: pw.TextAlign.center),
+                    _buildHeaderCell('Okul No', align: pw.TextAlign.center),
+                    _buildHeaderCell('Öğrenci Adı Soyadı'),
+                    _buildHeaderCell('Söz Hakkı', align: pw.TextAlign.center),
+                    _buildHeaderCell('Ödev', align: pw.TextAlign.center),
+                    _buildHeaderCell('Materyal', align: pw.TextAlign.center),
+                    _buildHeaderCell('Geliş', align: pw.TextAlign.center),
+                    _buildHeaderCell('Derse Katılım', align: pw.TextAlign.center),
+                    _buildHeaderCell('Gözlem / Özel Not'),
                   ],
                 ),
                 // Öğrenci Satırları
@@ -260,21 +258,21 @@ class ParticipationPdfGenerator {
                         color: isEven ? PdfColors.white : PdfColors.grey100,
                       ),
                       children: [
-                        _buildCell('${i + 1}', fontRegular, align: pw.TextAlign.center),
-                        _buildCell('${e.studentNumber}', fontBold, align: pw.TextAlign.center),
-                        _buildCell(_cleanPdfText(e.studentName), fontBold),
+                        _buildCell('${i + 1}', align: pw.TextAlign.center),
+                        _buildCell('${e.studentNumber}', align: pw.TextAlign.center),
+                        _buildCell(_cleanPdfText(e.studentName)),
                         // Hiç konuşmayan öğrenci "-" ile görünür; ekrandaki
                         // gri noktanın kâğıt karşılığı.
                         _buildCell(
                           e.speakingTurns > 0 ? '${e.speakingTurns}' : '-',
-                          e.speakingTurns > 0 ? fontBold : fontRegular,
+                          bold: e.speakingTurns > 0,
                           align: pw.TextAlign.center,
                         ),
-                        _buildCell(hwLabel, fontRegular, align: pw.TextAlign.center),
-                        _buildCell(matLabel, fontRegular, align: pw.TextAlign.center),
-                        _buildCell(arrLabel, fontRegular, align: pw.TextAlign.center),
-                        _buildCell(starText, fontRegular, align: pw.TextAlign.center),
-                        _buildCell(finalNote, fontRegular),
+                        _buildCell(hwLabel, align: pw.TextAlign.center),
+                        _buildCell(matLabel, align: pw.TextAlign.center),
+                        _buildCell(arrLabel, align: pw.TextAlign.center),
+                        _buildCell(starText, align: pw.TextAlign.center),
+                        _buildCell(finalNote),
                       ],
                     );
                   }(),
@@ -289,18 +287,18 @@ class ParticipationPdfGenerator {
               children: [
                 pw.Column(
                   children: [
-                    pw.Text(cleanedTeacherName, style: pw.TextStyle(font: fontBold, fontSize: 10)),
-                    pw.Text('Ders Öğretmeni', style: pw.TextStyle(font: fontRegular, fontSize: 9)),
+                    pw.Text(cleanedTeacherName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
+                    pw.Text('Ders Öğretmeni', style: pw.TextStyle(fontSize: 9)),
                     pw.SizedBox(height: 22),
-                    pw.Text('İmza: .........................', style: pw.TextStyle(font: fontRegular, fontSize: 8.5)),
+                    pw.Text('İmza: .........................', style: pw.TextStyle(fontSize: 8.5)),
                   ],
                 ),
                 pw.Column(
                   children: [
-                    pw.Text(cleanedPrincipalName, style: pw.TextStyle(font: fontBold, fontSize: 10)),
-                    pw.Text('Okul Müdürü / Mühür', style: pw.TextStyle(font: fontRegular, fontSize: 9)),
+                    pw.Text(cleanedPrincipalName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
+                    pw.Text('Okul Müdürü / Mühür', style: pw.TextStyle(fontSize: 9)),
                     pw.SizedBox(height: 22),
-                    pw.Text('İmza - Mühür: .........................', style: pw.TextStyle(font: fontRegular, fontSize: 8.5)),
+                    pw.Text('İmza - Mühür: .........................', style: pw.TextStyle(fontSize: 8.5)),
                   ],
                 ),
               ],
@@ -333,29 +331,38 @@ class ParticipationPdfGenerator {
     );
   }
 
-  static pw.Widget _buildHeaderCell(String text, pw.Font font, {pw.TextAlign align = pw.TextAlign.left}) {
+  static pw.Widget _buildHeaderCell(String text,
+      {pw.TextAlign align = pw.TextAlign.left}) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 5),
       child: pw.Text(
         text,
         textAlign: align,
         style: pw.TextStyle(
-          font: font,
-          fontSize: 8.0,
+                    fontSize: 8.0,
           color: PdfColors.white,
         ),
       ),
     );
   }
 
-  static pw.Widget _buildCell(String text, pw.Font font, {pw.TextAlign align = pw.TextAlign.left}) {
+  /// Tablo hücresi.
+  ///
+  /// [bold] artık font nesnesi değil: gömülü Türkçe fontu taşıyan tema
+  /// kalın stili kendisi veriyor. Önce Roboto geçiliyordu ve ağdan
+  /// indiği için çevrimdışı öğretmende Türkçe harfler basılamıyordu.
+  static pw.Widget _buildCell(
+    String text, {
+    bool bold = false,
+    pw.TextAlign align = pw.TextAlign.left,
+  }) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 4),
       child: pw.Text(
         text,
         textAlign: align,
         style: pw.TextStyle(
-          font: font,
+          fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
           fontSize: 8.0,
           color: PdfColors.black,
         ),

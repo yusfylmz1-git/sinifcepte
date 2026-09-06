@@ -29,8 +29,6 @@ class SchedulePdfGenerator {
       final doc = await PdfTrFonts.document();
 
       // Türkçe Fontları Yükle
-      final fontRegular = await PdfGoogleFonts.robotoRegular();
-      final fontBold = await PdfGoogleFonts.robotoBold();
 
       doc.addPage(
         pw.Page(
@@ -41,17 +39,17 @@ class SchedulePdfGenerator {
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 // 1. ÜST BAŞLIK
-                _buildHeader(profile, fontRegular, fontBold),
+                _buildHeader(profile),
                 pw.SizedBox(height: 14),
 
                 // 2. HAFTALIK DERS MATRİS TABLOSU
                 pw.Expanded(
-                  child: _buildScheduleTable(lessons, settings, fontRegular, fontBold),
+                  child: _buildScheduleTable(lessons, settings),
                 ),
                 pw.SizedBox(height: 12),
 
                 // 3. İMZA VE ONAY ALANI
-                _buildFooter(profile, fontRegular, fontBold),
+                _buildFooter(profile),
               ],
             );
           },
@@ -79,8 +77,6 @@ class SchedulePdfGenerator {
 
   static pw.Widget _buildHeader(
     TeacherProfileModel profile,
-    pw.Font fontRegular,
-    pw.Font fontBold,
   ) {
     final school = profile.schoolName.isNotEmpty ? profile.schoolName.toUpperCase() : 'MİLLÎ EĞİTİM BAKANLIĞI';
     final teacher = profile.fullName.isNotEmpty ? profile.fullName : 'Öğretmen';
@@ -99,12 +95,12 @@ class SchedulePdfGenerator {
             children: [
               pw.Text(
                 school,
-                style: pw.TextStyle(font: fontBold, fontSize: 13, color: PdfColors.blue900),
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13, color: PdfColors.blue900),
               ),
               pw.SizedBox(height: 2),
               pw.Text(
                 'ÖĞRETMEN HAFTALIK DERS DAĞITIM ÇİZELGESİ',
-                style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.black),
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11, color: PdfColors.black),
               ),
             ],
           ),
@@ -113,12 +109,12 @@ class SchedulePdfGenerator {
             children: [
               pw.Text(
                 'Öğretmen: $teacher ($branch)',
-                style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.black),
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11, color: PdfColors.black),
               ),
               pw.SizedBox(height: 2),
               pw.Text(
                 'Eğitim Öğretim Yılı: 2025 - 2026',
-                style: pw.TextStyle(font: fontRegular, fontSize: 10, color: PdfColors.grey700),
+                style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
               ),
             ],
           ),
@@ -130,8 +126,6 @@ class SchedulePdfGenerator {
   static pw.Widget _buildScheduleTable(
     List<LessonModel> lessons,
     ScheduleSettings settings,
-    pw.Font fontRegular,
-    pw.Font fontBold,
   ) {
     final headers = ['Ders / Saat', ..._weekDays];
 
@@ -163,11 +157,11 @@ class SchedulePdfGenerator {
       headers: headers,
       data: rows,
       border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.8),
-      headerStyle: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.white),
+      headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.white),
       headerDecoration: const pw.BoxDecoration(color: PdfColors.blue800),
       headerAlignment: pw.Alignment.center,
       cellAlignment: pw.Alignment.center,
-      cellStyle: pw.TextStyle(font: fontRegular, fontSize: 9.5),
+      cellStyle: pw.TextStyle(fontSize: 9.5),
       cellPadding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       columnWidths: {
         0: const pw.FixedColumnWidth(85), // Saat sütunu
@@ -182,8 +176,6 @@ class SchedulePdfGenerator {
 
   static pw.Widget _buildFooter(
     TeacherProfileModel profile,
-    pw.Font fontRegular,
-    pw.Font fontBold,
   ) {
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -191,28 +183,28 @@ class SchedulePdfGenerator {
       children: [
         pw.Text(
           'Yukarıdaki ders programı .../.../2026 tarihinde yürürlüğe girmiştir.',
-          style: pw.TextStyle(font: fontRegular, fontSize: 8.5, color: PdfColors.grey700),
+          style: pw.TextStyle(fontSize: 8.5, color: PdfColors.grey700),
         ),
         pw.Row(
           children: [
             pw.Column(
               children: [
                 pw.Text(profile.fullName.isNotEmpty ? profile.fullName : 'Öğretmen',
-                    style: pw.TextStyle(font: fontBold, fontSize: 9.5)),
+                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9.5)),
                 pw.SizedBox(height: 2),
-                pw.Text('Ders Öğretmeni', style: pw.TextStyle(font: fontRegular, fontSize: 8.5)),
+                pw.Text('Ders Öğretmeni', style: pw.TextStyle(fontSize: 8.5)),
                 pw.SizedBox(height: 18),
-                pw.Text('İmza: ...................', style: pw.TextStyle(font: fontRegular, fontSize: 8.5)),
+                pw.Text('İmza: ...................', style: pw.TextStyle(fontSize: 8.5)),
               ],
             ),
             pw.SizedBox(width: 50),
             pw.Column(
               children: [
-                pw.Text('Okul Müdürü', style: pw.TextStyle(font: fontBold, fontSize: 9.5)),
+                pw.Text('Okul Müdürü', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9.5)),
                 pw.SizedBox(height: 2),
-                pw.Text('Mühür / İmza', style: pw.TextStyle(font: fontRegular, fontSize: 8.5)),
+                pw.Text('Mühür / İmza', style: pw.TextStyle(fontSize: 8.5)),
                 pw.SizedBox(height: 18),
-                pw.Text('İmza: ...................', style: pw.TextStyle(font: fontRegular, fontSize: 8.5)),
+                pw.Text('İmza: ...................', style: pw.TextStyle(fontSize: 8.5)),
               ],
             ),
           ],

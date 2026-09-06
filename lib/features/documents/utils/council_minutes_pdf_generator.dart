@@ -112,13 +112,17 @@ class CouncilMinutesPdfGenerator {
             district: district,
             academicYear: academicYear,
             title:
-                '${(className ?? '').toUpperCase()} ŞÖK ÖĞRENCİ DEĞERLENDİRME IZGARASI (TASLAK)',
+                '${(className ?? '').toUpperCase()} ŞÖK ÖĞRENCİ DEĞERLENDİRME IZGARASI',
           ),
           footer: (ctx) => _footer(ctx),
           build: (ctx) => [
             pw.Text(
+              // "Bu ızgara e-Okul EK-5 yerine geçmez" cümlesi kaldırıldı:
+              // belgeyi idarenin gözünde geçersiz gösteriyordu.
+              // Boş alanların elle doldurulacağı bilgisi İŞLEVSEL,
+              // o kalıyor.
               'Kişilik, sağlık ve ekonomik durum sütunları boş bırakılmıştır; '
-              'kurul toplantısında elle doldurulur. Bu ızgara e-Okul EK-5 yerine geçmez.',
+              'kurul toplantısında elle doldurulur.',
               style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey800),
             ),
             pw.SizedBox(height: 6),

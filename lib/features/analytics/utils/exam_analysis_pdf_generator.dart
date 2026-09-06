@@ -4,7 +4,6 @@ import 'package:flutter/material.dart'
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../auth_profile/data/models/teacher_profile_model.dart';
 import '../data/models/exam_analysis_model.dart';
@@ -21,8 +20,6 @@ class ExamAnalysisPdfGenerator {
     required TeacherProfileModel teacherProfile,
   }) async {
     try {
-      final fontRegular = await PdfGoogleFonts.robotoRegular();
-      final fontBold = await PdfGoogleFonts.robotoBold();
 
       final pdf = await PdfTrFonts.document();
 
@@ -40,7 +37,6 @@ class ExamAnalysisPdfGenerator {
         pw.MultiPage(
           pageFormat: pageFormat,
           margin: const pw.EdgeInsets.all(24),
-          theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
           header: (pw.Context ctx) => _buildOfficialHeader(
             teacherProfile: teacherProfile,
             exam: exam,

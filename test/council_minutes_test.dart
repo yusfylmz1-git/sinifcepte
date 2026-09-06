@@ -107,8 +107,19 @@ void main() {
       );
     });
 
-    test('PDF başlığı resmî ürün iddiası taşımaz; disclaimer vardır', () {
-      expect(CouncilMinutes.disclaimer.contains('resmî bir ürünü değildir'), isTrue);
+    test('PDF başlığı resmî ürün iddiası taşımaz; işlem notu vardır', () {
+      // Önce burada "resmî bir ürünü değildir" ibaresi ZORUNLU
+      // tutuluyordu. Öğretmen o çekincenin kalkmasını istedi:
+      // okul dosyasına konan evrakta belgeyi idarenin gözünde
+      // geçersiz gösteriyordu (BEP raporunda da aynısı kaldırıldı).
+      //
+      // Testin ardındaki kaygı meşru — belge MEB'in resmî ürünü gibi
+      // görünmemeli — ama bu, çekince cümlesiyle değil UYGULAMA
+      // ADININ belgede hiç geçmemesiyle sağlanır. Başlıkta okulun
+      // kendi adı basılıyor.
+      expect(CouncilMinutes.disclaimer.contains('SınıfCepte'), isFalse,
+          reason: 'uygulama adı resmî evrakta geçmemeli');
+      // İşlem notu KALIR: kararların nereye işleneceğini söylüyor.
       expect(CouncilMinutes.disclaimer.contains('e-Kurul'), isTrue);
       final title = CouncilMinutes.documentTitle(
         kind: CouncilKind.sok,

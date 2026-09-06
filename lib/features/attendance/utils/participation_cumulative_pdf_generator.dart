@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import '../../../core/pdf/pdf_tr_fonts.dart';
 
 /// SınıfCepte - Resmî MEB Dönem Sonu / Yıl Sonu ve Veli Toplantısı Kümülatif PDF Motoru
@@ -65,8 +64,6 @@ class ParticipationCumulativePdfGenerator {
   }) async {
     final pdf = await PdfTrFonts.document();
 
-    final fontRegular = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
 
     final resolvedSchool = schoolName != null && schoolName.isNotEmpty
         ? _cleanText(schoolName)
@@ -94,18 +91,18 @@ class ParticipationCumulativePdfGenerator {
             pw.Center(
               child: pw.Column(
                 children: [
-                  pw.Text('T.C.', style: pw.TextStyle(font: fontBold, fontSize: 11)),
-                  pw.Text('MİLLÎ EĞİTİM BAKANLIĞI', style: pw.TextStyle(font: fontBold, fontSize: 12)),
-                  pw.Text(resolvedSchool.toUpperCase(), style: pw.TextStyle(font: fontBold, fontSize: 13)),
+                  pw.Text('T.C.', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
+                  pw.Text('MİLLÎ EĞİTİM BAKANLIĞI', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
+                  pw.Text(resolvedSchool.toUpperCase(), style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
                   pw.SizedBox(height: 4),
                   pw.Text(
                     'DÖNEM SONU DERS İÇİ KATILIM, ÖDEV VE GELİŞİM RESMÎ ÇİZELGESİ',
-                    style: pw.TextStyle(font: fontBold, fontSize: 10.5, color: PdfColors.blue900),
+                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10.5, color: PdfColors.blue900),
                     textAlign: pw.TextAlign.center,
                   ),
                   pw.Text(
                     _cleanText(termName),
-                    style: pw.TextStyle(font: fontBold, fontSize: 9.5, color: PdfColors.grey800),
+                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9.5, color: PdfColors.grey800),
                   ),
                   pw.Divider(thickness: 1.2, color: PdfColors.grey700),
                 ],
@@ -120,11 +117,11 @@ class ParticipationCumulativePdfGenerator {
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('Sınıf / Şube: $className', style: pw.TextStyle(font: fontBold, fontSize: 10)),
+                    pw.Text('Sınıf / Şube: $className', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
                     pw.SizedBox(height: 2),
-                    pw.Text('Ders: $subjectName', style: pw.TextStyle(font: fontRegular, fontSize: 9.5)),
+                    pw.Text('Ders: $subjectName', style: pw.TextStyle(fontSize: 9.5)),
                     pw.SizedBox(height: 2),
-                    pw.Text('Toplam İşlenen / Değerlendirilen Ders: $totalLessons Saat', style: pw.TextStyle(font: fontRegular, fontSize: 9.5)),
+                    pw.Text('Toplam İşlenen / Değerlendirilen Ders: $totalLessons Saat', style: pw.TextStyle(fontSize: 9.5)),
                   ],
                 ),
                 pw.Container(
@@ -137,13 +134,13 @@ class ParticipationCumulativePdfGenerator {
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
-                      pw.Text('Öğrenci Mevcudu: $studentCount', style: pw.TextStyle(font: fontBold, fontSize: 9)),
+                      pw.Text('Öğrenci Mevcudu: $studentCount', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9)),
                       pw.SizedBox(height: 2),
-                      pw.Text('Sınıf Ödev Teslim Başarısı: %${avgHwRate.toStringAsFixed(1)}', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.green800)),
+                      pw.Text('Sınıf Ödev Teslim Başarısı: %${avgHwRate.toStringAsFixed(1)}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9, color: PdfColors.green800)),
                       pw.SizedBox(height: 2),
-                      pw.Text('Araç-Gereç / Kitap Uyumu: %${avgMatRate.toStringAsFixed(1)}', style: pw.TextStyle(font: fontRegular, fontSize: 8.5)),
+                      pw.Text('Araç-Gereç / Kitap Uyumu: %${avgMatRate.toStringAsFixed(1)}', style: pw.TextStyle(fontSize: 8.5)),
                       pw.SizedBox(height: 2),
-                      pw.Text('Toplam Katılım Yıldızı Puanı: $totalStars', style: pw.TextStyle(font: fontRegular, fontSize: 8.5)),
+                      pw.Text('Toplam Katılım Yıldızı Puanı: $totalStars', style: pw.TextStyle(fontSize: 8.5)),
                     ],
                   ),
                 ),
@@ -170,15 +167,15 @@ class ParticipationCumulativePdfGenerator {
                 pw.TableRow(
                   decoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
                   children: [
-                    _buildHeaderCell('No', fontBold, align: pw.TextAlign.center),
-                    _buildHeaderCell('Okul No', fontBold, align: pw.TextAlign.center),
-                    _buildHeaderCell('Öğrenci Adı Soyadı', fontBold),
-                    _buildHeaderCell('Ders', fontBold, align: pw.TextAlign.center),
-                    _buildHeaderCell('Ödev (Y/E/Y)', fontBold, align: pw.TextAlign.center),
-                    _buildHeaderCell('Ödev %', fontBold, align: pw.TextAlign.center),
-                    _buildHeaderCell('Materyal %', fontBold, align: pw.TextAlign.center),
-                    _buildHeaderCell('Katılım (Ort.)', fontBold, align: pw.TextAlign.center),
-                    _buildHeaderCell('Öne Çıkan Davranış & Görüş', fontBold),
+                    _buildHeaderCell('No', align: pw.TextAlign.center),
+                    _buildHeaderCell('Okul No', align: pw.TextAlign.center),
+                    _buildHeaderCell('Öğrenci Adı Soyadı'),
+                    _buildHeaderCell('Ders', align: pw.TextAlign.center),
+                    _buildHeaderCell('Ödev (Y/E/Y)', align: pw.TextAlign.center),
+                    _buildHeaderCell('Ödev %', align: pw.TextAlign.center),
+                    _buildHeaderCell('Materyal %', align: pw.TextAlign.center),
+                    _buildHeaderCell('Katılım (Ort.)', align: pw.TextAlign.center),
+                    _buildHeaderCell('Öne Çıkan Davranış & Görüş'),
                   ],
                 ),
                 // Satırlar
@@ -212,15 +209,15 @@ class ParticipationCumulativePdfGenerator {
                         color: isEven ? PdfColors.white : PdfColors.grey100,
                       ),
                       children: [
-                        _buildCell('${i + 1}', fontRegular, align: pw.TextAlign.center),
-                        _buildCell(sNum, fontBold, align: pw.TextAlign.center),
-                        _buildCell(sName, fontBold),
-                        _buildCell(sLessons, fontRegular, align: pw.TextAlign.center),
-                        _buildCell('$hwDone / $hwPart / $hwNone', fontRegular, align: pw.TextAlign.center),
-                        _buildCell('%${hwRateNum.toStringAsFixed(0)}', fontBold, align: pw.TextAlign.center),
-                        _buildCell('%${matRateNum.toStringAsFixed(0)}', fontRegular, align: pw.TextAlign.center),
-                        _buildCell('${avgStarsNum.toStringAsFixed(1)} / 3.0', fontBold, align: pw.TextAlign.center),
-                        _buildCell(feedbackStr, fontRegular),
+                        _buildCell('${i + 1}', align: pw.TextAlign.center),
+                        _buildCell(sNum, align: pw.TextAlign.center),
+                        _buildCell(sName),
+                        _buildCell(sLessons, align: pw.TextAlign.center),
+                        _buildCell('$hwDone / $hwPart / $hwNone', align: pw.TextAlign.center),
+                        _buildCell('%${hwRateNum.toStringAsFixed(0)}', align: pw.TextAlign.center),
+                        _buildCell('%${matRateNum.toStringAsFixed(0)}', align: pw.TextAlign.center),
+                        _buildCell('${avgStarsNum.toStringAsFixed(1)} / 3.0', align: pw.TextAlign.center),
+                        _buildCell(feedbackStr),
                       ],
                     );
                   }(),
@@ -235,18 +232,18 @@ class ParticipationCumulativePdfGenerator {
               children: [
                 pw.Column(
                   children: [
-                    pw.Text(teacher, style: pw.TextStyle(font: fontBold, fontSize: 10)),
-                    pw.Text('Ders Öğretmeni', style: pw.TextStyle(font: fontRegular, fontSize: 9)),
+                    pw.Text(teacher, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
+                    pw.Text('Ders Öğretmeni', style: pw.TextStyle(fontSize: 9)),
                     pw.SizedBox(height: 22),
-                    pw.Text('İmza: .........................', style: pw.TextStyle(font: fontRegular, fontSize: 8.5)),
+                    pw.Text('İmza: .........................', style: pw.TextStyle(fontSize: 8.5)),
                   ],
                 ),
                 pw.Column(
                   children: [
-                    pw.Text(principal, style: pw.TextStyle(font: fontBold, fontSize: 10)),
-                    pw.Text('Okul Müdürü / Mühür', style: pw.TextStyle(font: fontRegular, fontSize: 9)),
+                    pw.Text(principal, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
+                    pw.Text('Okul Müdürü / Mühür', style: pw.TextStyle(fontSize: 9)),
                     pw.SizedBox(height: 22),
-                    pw.Text('İmza - Mühür: .........................', style: pw.TextStyle(font: fontRegular, fontSize: 8.5)),
+                    pw.Text('İmza - Mühür: .........................', style: pw.TextStyle(fontSize: 8.5)),
                   ],
                 ),
               ],
@@ -268,8 +265,6 @@ class ParticipationCumulativePdfGenerator {
   }) async {
     final pdf = await PdfTrFonts.document();
 
-    final fontRegular = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
 
     final resolvedSchool = schoolName != null && schoolName.isNotEmpty
         ? _cleanText(schoolName)
@@ -292,14 +287,14 @@ class ParticipationCumulativePdfGenerator {
             pw.Center(
               child: pw.Column(
                 children: [
-                  pw.Text(resolvedSchool.toUpperCase(), style: pw.TextStyle(font: fontBold, fontSize: 12)),
+                  pw.Text(resolvedSchool.toUpperCase(), style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
                   pw.SizedBox(height: 2),
                   pw.Text(
                     'VELİ TOPLANTISI DERS İÇİ KATILIM, ÖDEV VE PERFORMANS KILAVUZU',
-                    style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.indigo900),
+                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11, color: PdfColors.indigo900),
                     textAlign: pw.TextAlign.center,
                   ),
-                  pw.Text('$className Sınıfı • $subjectName Dersi$dateNote', style: pw.TextStyle(font: fontRegular, fontSize: 9.5)),
+                  pw.Text('$className Sınıfı • $subjectName Dersi$dateNote', style: pw.TextStyle(fontSize: 9.5)),
                   pw.Divider(thickness: 1.2, color: PdfColors.indigo700),
                 ],
               ),
@@ -321,13 +316,13 @@ class ParticipationCumulativePdfGenerator {
                 pw.TableRow(
                   decoration: const pw.BoxDecoration(color: PdfColors.indigo800),
                   children: [
-                    _buildHeaderCell('No', fontBold, align: pw.TextAlign.center),
-                    _buildHeaderCell('Okul No', fontBold, align: pw.TextAlign.center),
-                    _buildHeaderCell('Öğrenci Adı Soyadı', fontBold),
-                    _buildHeaderCell('Ödev Başarısı', fontBold, align: pw.TextAlign.center),
-                    _buildHeaderCell('Araç-Gereç', fontBold, align: pw.TextAlign.center),
-                    _buildHeaderCell('Katılım (Ort.)', fontBold, align: pw.TextAlign.center),
-                    _buildHeaderCell('Veliye İletilecek Özet Bilgi & Öneri', fontBold),
+                    _buildHeaderCell('No', align: pw.TextAlign.center),
+                    _buildHeaderCell('Okul No', align: pw.TextAlign.center),
+                    _buildHeaderCell('Öğrenci Adı Soyadı'),
+                    _buildHeaderCell('Ödev Başarısı', align: pw.TextAlign.center),
+                    _buildHeaderCell('Araç-Gereç', align: pw.TextAlign.center),
+                    _buildHeaderCell('Katılım (Ort.)', align: pw.TextAlign.center),
+                    _buildHeaderCell('Veliye İletilecek Özet Bilgi & Öneri'),
                   ],
                 ),
                 for (int i = 0; i < students.length; i++) ...[
@@ -359,13 +354,13 @@ class ParticipationCumulativePdfGenerator {
                         color: isEven ? PdfColors.white : PdfColors.grey100,
                       ),
                       children: [
-                        _buildCell('${i + 1}', fontRegular, align: pw.TextAlign.center),
-                        _buildCell(sNum, fontBold, align: pw.TextAlign.center),
-                        _buildCell(sName, fontBold),
-                        _buildCell(hwSummary, fontBold, align: pw.TextAlign.center),
-                        _buildCell('%${matRateNum.toStringAsFixed(0)}', fontRegular, align: pw.TextAlign.center),
-                        _buildCell('${avgStarsNum.toStringAsFixed(1)} / 3.0', fontBold, align: pw.TextAlign.center),
-                        _buildCell(tipStr, fontRegular),
+                        _buildCell('${i + 1}', align: pw.TextAlign.center),
+                        _buildCell(sNum, align: pw.TextAlign.center),
+                        _buildCell(sName),
+                        _buildCell(hwSummary, align: pw.TextAlign.center),
+                        _buildCell('%${matRateNum.toStringAsFixed(0)}', align: pw.TextAlign.center),
+                        _buildCell('${avgStarsNum.toStringAsFixed(1)} / 3.0', align: pw.TextAlign.center),
+                        _buildCell(tipStr),
                       ],
                     );
                   }(),
@@ -378,8 +373,8 @@ class ParticipationCumulativePdfGenerator {
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.end,
                 children: [
-                  pw.Text(teacher, style: pw.TextStyle(font: fontBold, fontSize: 10)),
-                  pw.Text('Ders Öğretmeni', style: pw.TextStyle(font: fontRegular, fontSize: 9)),
+                  pw.Text(teacher, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
+                  pw.Text('Ders Öğretmeni', style: pw.TextStyle(fontSize: 9)),
                 ],
               ),
             ),
@@ -401,8 +396,6 @@ class ParticipationCumulativePdfGenerator {
   }) async {
     final pdf = await PdfTrFonts.document();
 
-    final fontRegular = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
 
     final resolvedSchool = schoolName != null && schoolName.isNotEmpty
         ? _cleanText(schoolName)
@@ -431,11 +424,11 @@ class ParticipationCumulativePdfGenerator {
               pw.Center(
                 child: pw.Column(
                   children: [
-                    pw.Text(resolvedSchool.toUpperCase(), style: pw.TextStyle(font: fontBold, fontSize: 13)),
+                    pw.Text(resolvedSchool.toUpperCase(), style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
                     pw.SizedBox(height: 2),
                     pw.Text(
                       'BİREYSEL ÖĞRENCİ GELİŞİM VE DERS İÇİ KATILIM ÖZETİ',
-                      style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.blue900),
+                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11, color: PdfColors.blue900),
                     ),
                     pw.Divider(thickness: 1.2, color: PdfColors.blue700),
                   ],
@@ -457,17 +450,17 @@ class ParticipationCumulativePdfGenerator {
                     pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
-                        pw.Text('Öğrenci: $sName', style: pw.TextStyle(font: fontBold, fontSize: 14)),
+                        pw.Text('Öğrenci: $sName', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
                         pw.SizedBox(height: 2),
-                        pw.Text('Okul No: $sNum • Sınıf: $className', style: pw.TextStyle(font: fontRegular, fontSize: 10)),
+                        pw.Text('Okul No: $sNum • Sınıf: $className', style: pw.TextStyle(fontSize: 10)),
                       ],
                     ),
                     pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.end,
                       children: [
-                        pw.Text('Ders: $subjectName', style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.blue800)),
+                        pw.Text('Ders: $subjectName', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11, color: PdfColors.blue800)),
                         pw.SizedBox(height: 2),
-                        pw.Text('Değerlendirilen Ders: $totalSessions Saat', style: pw.TextStyle(font: fontRegular, fontSize: 9.5)),
+                        pw.Text('Değerlendirilen Ders: $totalSessions Saat', style: pw.TextStyle(fontSize: 9.5)),
                       ],
                     ),
                   ],
@@ -476,12 +469,12 @@ class ParticipationCumulativePdfGenerator {
               pw.SizedBox(height: 16),
 
               // KPI İlerleme Çubukları
-              pw.Text('Ders İçi Katılım & Sorumluluk Göstergeleri', style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.blueGrey800)),
+              pw.Text('Ders İçi Katılım & Sorumluluk Göstergeleri', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11, color: PdfColors.blueGrey800)),
               pw.SizedBox(height: 8),
 
-              _buildProgressBar(title: 'Ödev Teslim Başarısı', percentage: hwRate, fontBold: fontBold, fontRegular: fontRegular, color: PdfColors.green700),
+              _buildProgressBar(title: 'Ödev Teslim Başarısı', percentage: hwRate, color: PdfColors.green700),
               pw.SizedBox(height: 8),
-              _buildProgressBar(title: 'Araç-Gereç / Kitap Hazırlığı', percentage: matRate, fontBold: fontBold, fontRegular: fontRegular, color: PdfColors.blue700),
+              _buildProgressBar(title: 'Araç-Gereç / Kitap Hazırlığı', percentage: matRate, color: PdfColors.blue700),
               pw.SizedBox(height: 8),
 
               pw.Container(
@@ -494,8 +487,8 @@ class ParticipationCumulativePdfGenerator {
                 child: pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text('Derse Katılım Ortalaması: $avgStars / 3.0 Puan', style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.amber900)),
-                    pw.Text('Toplam Yıldız Puanı: $totalStars', style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.amber900)),
+                    pw.Text('Derse Katılım Ortalaması: $avgStars / 3.0 Puan', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.amber900)),
+                    pw.Text('Toplam Yıldız Puanı: $totalStars', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.amber900)),
                   ],
                 ),
               ),
@@ -503,7 +496,7 @@ class ParticipationCumulativePdfGenerator {
 
               // Davranış Rozetleri
               if (tags.isNotEmpty) ...[
-                pw.Text('Öne Çıkan Davranış ve Nitelikler', style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.blueGrey800)),
+                pw.Text('Öne Çıkan Davranış ve Nitelikler', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11, color: PdfColors.blueGrey800)),
                 pw.SizedBox(height: 6),
                 pw.Wrap(
                   spacing: 6,
@@ -516,7 +509,7 @@ class ParticipationCumulativePdfGenerator {
                         border: pw.Border.all(color: PdfColors.blue300),
                         borderRadius: pw.BorderRadius.circular(6),
                       ),
-                      child: pw.Text(t, style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.blue900)),
+                      child: pw.Text(t, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9, color: PdfColors.blue900)),
                     );
                   }).toList(),
                 ),
@@ -524,7 +517,7 @@ class ParticipationCumulativePdfGenerator {
               ],
 
               // Öğretmen Gözlem ve Notları
-              pw.Text('Öğretmen Gözlem Notları ve Değerlendirmeleri', style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.blueGrey800)),
+              pw.Text('Öğretmen Gözlem Notları ve Değerlendirmeleri', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11, color: PdfColors.blueGrey800)),
               pw.SizedBox(height: 6),
               pw.Container(
                 width: double.infinity,
@@ -540,7 +533,7 @@ class ParticipationCumulativePdfGenerator {
                         children: notes.map((n) {
                           return pw.Padding(
                             padding: const pw.EdgeInsets.only(bottom: 4),
-                            child: pw.Text('• $n', style: pw.TextStyle(font: fontRegular, fontSize: 9.5)),
+                            child: pw.Text('• $n', style: pw.TextStyle(fontSize: 9.5)),
                           );
                         }).toList(),
                       )
@@ -552,7 +545,7 @@ class ParticipationCumulativePdfGenerator {
                           tags: tags,
                           notes: [],
                         ),
-                        style: pw.TextStyle(font: fontRegular, fontSize: 9.5, color: PdfColors.grey800),
+                        style: pw.TextStyle(fontSize: 9.5, color: PdfColors.grey800),
                       ),
               ),
               pw.Spacer(),
@@ -564,18 +557,18 @@ class ParticipationCumulativePdfGenerator {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text('Veli Görüşü / İmza', style: pw.TextStyle(font: fontBold, fontSize: 9.5)),
+                      pw.Text('Veli Görüşü / İmza', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9.5)),
                       pw.SizedBox(height: 20),
-                      pw.Text('İmza: .........................', style: pw.TextStyle(font: fontRegular, fontSize: 8.5)),
+                      pw.Text('İmza: .........................', style: pw.TextStyle(fontSize: 8.5)),
                     ],
                   ),
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
-                      pw.Text(_cleanText(teacherName), style: pw.TextStyle(font: fontBold, fontSize: 10)),
-                      pw.Text('Ders Öğretmeni', style: pw.TextStyle(font: fontRegular, fontSize: 9)),
+                      pw.Text(_cleanText(teacherName), style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
+                      pw.Text('Ders Öğretmeni', style: pw.TextStyle(fontSize: 9)),
                       pw.SizedBox(height: 20),
-                      pw.Text('İmza: .........................', style: pw.TextStyle(font: fontRegular, fontSize: 8.5)),
+                      pw.Text('İmza: .........................', style: pw.TextStyle(fontSize: 8.5)),
                     ],
                   ),
                 ],
@@ -592,8 +585,6 @@ class ParticipationCumulativePdfGenerator {
   static pw.Widget _buildProgressBar({
     required String title,
     required double percentage,
-    required pw.Font fontBold,
-    required pw.Font fontRegular,
     required PdfColor color,
   }) {
     final clamped = percentage.clamp(0.0, 100.0);
@@ -603,8 +594,8 @@ class ParticipationCumulativePdfGenerator {
         pw.Row(
           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           children: [
-            pw.Text(title, style: pw.TextStyle(font: fontBold, fontSize: 9.5)),
-            pw.Text('%${clamped.toStringAsFixed(0)}', style: pw.TextStyle(font: fontBold, fontSize: 9.5, color: color)),
+            pw.Text(title, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9.5)),
+            pw.Text('%${clamped.toStringAsFixed(0)}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9.5, color: color)),
           ],
         ),
         pw.SizedBox(height: 3),
@@ -631,30 +622,30 @@ class ParticipationCumulativePdfGenerator {
     );
   }
 
-  static pw.Widget _buildHeaderCell(String text, pw.Font font, {pw.TextAlign align = pw.TextAlign.left}) {
+  static pw.Widget _buildHeaderCell(String text,
+      {pw.TextAlign align = pw.TextAlign.left}) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 5),
       child: pw.Text(
         text,
         textAlign: align,
         style: pw.TextStyle(
-          font: font,
-          fontSize: 8.0,
+                    fontSize: 8.0,
           color: PdfColors.white,
         ),
       ),
     );
   }
 
-  static pw.Widget _buildCell(String text, pw.Font font, {pw.TextAlign align = pw.TextAlign.left}) {
+  static pw.Widget _buildCell(String text,
+      {pw.TextAlign align = pw.TextAlign.left}) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 4),
       child: pw.Text(
         text,
         textAlign: align,
         style: pw.TextStyle(
-          font: font,
-          fontSize: 8.0,
+                    fontSize: 8.0,
           color: PdfColors.black,
         ),
       ),

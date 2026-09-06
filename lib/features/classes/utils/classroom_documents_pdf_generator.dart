@@ -2,17 +2,33 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart' show BuildContext;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import '../../../../data/models/student_model.dart';
 import '../../../../data/models/class_model.dart';
 import '../../auth_profile/data/models/teacher_profile_model.dart';
 import '../../../../shared/screens/pdf_preview_screen.dart';
 import '../../../core/pdf/pdf_tr_fonts.dart';
+import '../../../core/utils/date_formatter.dart';
 
 /// SınıfCepte - T.C. Millî Eğitim Bakanlığı Resmî Standartlarına %100 Uyumlu PDF Motoru
 /// Resmî Yazışmalarda Uygulanacak Usul ve Esaslar Hakkında Yönetmelik & MEB Matbu Evrak Formatı.
 class ClassroomDocumentsPdfGenerator {
   ClassroomDocumentsPdfGenerator._();
+
+  /// Belgeye basılacak öğretim yılı satırı.
+  ///
+  /// Önce 13 yerde `'2024-2025 EĞİTİM-ÖĞRETİM YILI'` ELLE yazılıydı
+  /// ve her yıl eskiyordu. Kulüp PDF'i aynı hatayı çözerken not
+  /// düşmüştü: *"Sınıf belgelerinde yıl elle yazılmıştı."*
+  ///
+  /// Sınıfın KENDİ kaydı tercih edilir: geçen yılın sınıfının evrakı
+  /// açıldığında arşiv belgesi olarak doğru yılı gösterir. Kayıt
+  /// boşsa takvimden hesaplanır — belge yılsız kalmaz.
+  static String ogretimYili(ClassModel classModel) {
+    final yil = classModel.academicYear.trim();
+    final secilen =
+        yil.isNotEmpty ? yil : AppDateFormatter.academicYearLabel();
+    return '$secilen EĞİTİM-ÖĞRETİM YILI';
+  }
 
   // ==========================================
   // 1. RESMÎ SINIF ÖĞRENCİ LİSTESİ FORMU
@@ -23,8 +39,6 @@ class ClassroomDocumentsPdfGenerator {
     required TeacherProfileModel teacherProfile,
   }) async {
     final pdf = await PdfTrFonts.document();
-    final fontRegular = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
 
     final sortedStudents = List<StudentModel>.from(students)
       ..sort((a, b) => a.schoolNumber.compareTo(b.schoolNumber));
@@ -33,11 +47,10 @@ class ClassroomDocumentsPdfGenerator {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-        theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
         header: (pw.Context ctx) => _buildOfficialHeader(
           schoolName: teacherProfile.schoolName,
           title: '${classModel.name} SINIFI ÖĞRENCİ İMZA VE NOT LİSTESİ',
-          academicYear: '2024-2025 EĞİTİM-ÖĞRETİM YILI',
+          academicYear: ogretimYili(classModel),
           documentCode: 'MEB.ÖĞR.01',
         ),
         footer: (pw.Context ctx) => _buildOfficialFooter(
@@ -54,13 +67,16 @@ class ClassroomDocumentsPdfGenerator {
             cellStyle: const pw.TextStyle(fontSize: 8.5, color: PdfColors.black),
             cellPadding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 4),
             columnWidths: {
-              0: const pw.FixedColumnWidth(28), // Sıra
-              1: const pw.FixedColumnWidth(55), // No
+              // Genişlikler gömülü Noto Sans'a göre. Önce Roboto'ya
+              // göre ölçülmüştü ve başlıklar iki satıra sarıyordu
+              // ("S.NO", "CİNSİYETİ").
+              0: const pw.FixedColumnWidth(34), // Sıra
+              1: const pw.FixedColumnWidth(58), // No
               2: const pw.FlexColumnWidth(3), // Ad Soyad
-              3: const pw.FixedColumnWidth(48), // Cinsiyet
+              3: const pw.FixedColumnWidth(62), // Cinsiyet
               4: const pw.FlexColumnWidth(2.5), // İmza / Açıklama
             },
-            headers: ['S.NO', 'OKUL NO', 'ADI VE SOYADI', 'CİNSİYETİ', 'İMZA / AÇIKLAMA'],
+            headers: ['S.NO', 'OKUL NO', 'ADI VE SOYADI', 'CİNSİYET', 'İMZA / AÇIKLAMA'],
             data: List.generate(sortedStudents.length, (index) {
               final s = sortedStudents[index];
               return [
@@ -90,8 +106,6 @@ class ClassroomDocumentsPdfGenerator {
     required TeacherProfileModel teacherProfile,
   }) async {
     final pdf = await PdfTrFonts.document();
-    final fontRegular = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
 
     final sortedStudents = List<StudentModel>.from(students)
       ..sort((a, b) => a.schoolNumber.compareTo(b.schoolNumber));
@@ -100,11 +114,10 @@ class ClassroomDocumentsPdfGenerator {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4.landscape,
         margin: const pw.EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
         header: (pw.Context ctx) => _buildOfficialHeader(
           schoolName: teacherProfile.schoolName,
           title: '${classModel.name} SINIFI ${classModel.subject.toUpperCase()} DERSİ DERS İÇİ ETKİNLİK VE DEĞERLENDİRME ÇİZELGESİ',
-          academicYear: '2024-2025 EĞİTİM-ÖĞRETİM YILI',
+          academicYear: ogretimYili(classModel),
           documentCode: 'MEB.DEĞ.02',
         ),
         footer: (pw.Context ctx) => _buildOfficialFooter(
@@ -191,8 +204,6 @@ class ClassroomDocumentsPdfGenerator {
     List<String>? dutyRules,
   }) async {
     final pdf = await PdfTrFonts.document();
-    final fontRegular = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
 
     final days = ['PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA'];
 
@@ -223,7 +234,6 @@ class ClassroomDocumentsPdfGenerator {
       pw.Page(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-        theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
         build: (pw.Context ctx) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -231,7 +241,7 @@ class ClassroomDocumentsPdfGenerator {
               _buildOfficialHeader(
                 schoolName: teacherProfile.schoolName,
                 title: '${classModel.name} SINIFI HAFTALIK NÖBETÇİ ÖĞRENCİ ÇİZELGESİ',
-                academicYear: '2024-2025 EĞİTİM-ÖĞRETİM YILI',
+                academicYear: ogretimYili(classModel),
                 documentCode: 'MEB.NÖB.03',
               ),
               pw.SizedBox(height: 12),
@@ -304,8 +314,6 @@ class ClassroomDocumentsPdfGenerator {
     String? customNote,
   }) async {
     final pdf = await PdfTrFonts.document();
-    final fontRegular = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
 
     final resolvedSchool = teacherProfile.schoolName.isNotEmpty ? teacherProfile.schoolName : 'OKUL MÜDÜRLÜĞÜ';
     final resolvedTeacher = teacherProfile.fullName.isNotEmpty ? teacherProfile.fullName : 'Sınıf Rehber Öğretmeni';
@@ -420,7 +428,6 @@ class ClassroomDocumentsPdfGenerator {
       pw.Page(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
         build: (pw.Context ctx) {
           return pw.GridView(
             crossAxisCount: 2,
@@ -443,8 +450,6 @@ class ClassroomDocumentsPdfGenerator {
     required List<String> rules,
   }) async {
     final pdf = await PdfTrFonts.document();
-    final fontRegular = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
 
     final resolvedSchool = teacherProfile.schoolName.isNotEmpty ? teacherProfile.schoolName : 'OKULUMUZ';
     final resolvedTeacher = teacherProfile.fullName.isNotEmpty ? teacherProfile.fullName : 'Sınıf Rehber Öğretmeni';
@@ -453,7 +458,6 @@ class ClassroomDocumentsPdfGenerator {
       pw.Page(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(24),
-        theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
         build: (pw.Context ctx) {
           return pw.Container(
             padding: const pw.EdgeInsets.all(14),
@@ -467,7 +471,7 @@ class ClassroomDocumentsPdfGenerator {
                 pw.Text('MİLLÎ EĞİTİM BAKANLIĞI', style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold)),
                 pw.Text(resolvedSchool.toUpperCase(), style: pw.TextStyle(fontSize: 11.5, fontWeight: pw.FontWeight.bold)),
                 pw.SizedBox(height: 4),
-                pw.Text('2024-2025 EĞİTİM-ÖĞRETİM YILI', style: const pw.TextStyle(fontSize: 8.5)),
+                pw.Text(ogretimYili(classModel), style: const pw.TextStyle(fontSize: 8.5)),
                 pw.SizedBox(height: 6),
                 pw.Container(
                   width: double.infinity,
@@ -580,8 +584,6 @@ class ClassroomDocumentsPdfGenerator {
     List<String>? decisions,
   }) async {
     final pdf = await PdfTrFonts.document();
-    final fontRegular = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
 
     final sortedStudents = List<StudentModel>.from(students)
       ..sort((a, b) => a.schoolNumber.compareTo(b.schoolNumber));
@@ -606,11 +608,10 @@ class ClassroomDocumentsPdfGenerator {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-        theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
         header: (pw.Context ctx) => _buildOfficialHeader(
           schoolName: teacherProfile.schoolName,
           title: '${classModel.name} SINIFI VELİ TOPLANTI TUTANAĞI VE İMZA SİRKÜSÜ',
-          academicYear: '2024-2025 EĞİTİM-ÖĞRETİM YILI',
+          academicYear: ogretimYili(classModel),
           documentCode: 'MEB.TOP.04',
         ),
         footer: (pw.Context ctx) => _buildOfficialFooter(
@@ -744,14 +745,11 @@ class ClassroomDocumentsPdfGenerator {
     String? decisionsTaken,
   }) async {
     final pdf = await PdfTrFonts.document();
-    final fontRegular = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
 
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-        theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
         build: (pw.Context ctx) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -759,7 +757,7 @@ class ClassroomDocumentsPdfGenerator {
               _buildOfficialHeader(
                 schoolName: teacherProfile.schoolName,
                 title: 'BİREYSEL VELİ GÖRÜŞME KAYIT VE TAKİP FORMU',
-                academicYear: '2024-2025 EĞİTİM-ÖĞRETİM YILI',
+                academicYear: ogretimYili(classModel),
                 documentCode: 'MEB.REH.05',
               ),
               pw.SizedBox(height: 8),
@@ -871,14 +869,11 @@ class ClassroomDocumentsPdfGenerator {
     String? actionPlan,
   }) async {
     final pdf = await PdfTrFonts.document();
-    final fontRegular = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
 
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-        theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
         build: (pw.Context ctx) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -886,7 +881,7 @@ class ClassroomDocumentsPdfGenerator {
               _buildOfficialHeader(
                 schoolName: teacherProfile.schoolName,
                 title: 'BİREYSEL ÖĞRENCİ GÖRÜŞME VE REHBERLİK FORMU',
-                academicYear: '2024-2025 EĞİTİM-ÖĞRETİM YILI',
+                academicYear: ogretimYili(classModel),
                 documentCode: 'MEB.REH.06 (GİZLİ)',
               ),
               pw.SizedBox(height: 6),
@@ -1001,8 +996,6 @@ class ClassroomDocumentsPdfGenerator {
     List<Map<String, String>>? goalsList,
   }) async {
     final pdf = await PdfTrFonts.document();
-    final fontRegular = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
 
     final resolvedSubject = subjectName ?? classModel.subject;
     final defaultGoals = goalsList ?? [
@@ -1016,11 +1009,10 @@ class ClassroomDocumentsPdfGenerator {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-        theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
         header: (pw.Context ctx) => _buildOfficialHeader(
           schoolName: teacherProfile.schoolName,
           title: 'BEP (BİREYSELLEŞTİRİLMİŞ EĞİTİM PLANI) DÖNEMLİK GELİŞİM FORMU',
-          academicYear: '2024-2025 EĞİTİM-ÖĞRETİM YILI',
+          academicYear: ogretimYili(classModel),
           documentCode: 'MEB.ÖZG.07',
         ),
         footer: (pw.Context ctx) => _buildOfficialFooter(
@@ -1108,14 +1100,11 @@ class ClassroomDocumentsPdfGenerator {
     StudentModel? student,
   }) async {
     final pdf = await PdfTrFonts.document();
-    final fontRegular = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
 
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.symmetric(horizontal: 26, vertical: 22),
-        theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
         build: (pw.Context ctx) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -1123,7 +1112,7 @@ class ClassroomDocumentsPdfGenerator {
               _buildOfficialHeader(
                 schoolName: teacherProfile.schoolName,
                 title: 'ÖĞRENCİ TANIMA FİŞİ (BİREYİ TANIMA FORMU)',
-                academicYear: '2024-2025 EĞİTİM-ÖĞRETİM YILI',
+                academicYear: ogretimYili(classModel),
                 documentCode: 'MEB.REH.08',
               ),
               pw.SizedBox(height: 6),
@@ -1250,8 +1239,6 @@ class ClassroomDocumentsPdfGenerator {
     String? costText,
   }) async {
     final pdf = await PdfTrFonts.document();
-    final fontRegular = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
 
     final resolvedSchool = teacherProfile.schoolName.isNotEmpty ? teacherProfile.schoolName : 'OKUL MÜDÜRLÜĞÜ';
     final resolvedTeacher = teacherProfile.fullName.isNotEmpty ? teacherProfile.fullName : 'Sınıf Rehber Öğretmeni';
@@ -1351,7 +1338,6 @@ class ClassroomDocumentsPdfGenerator {
       pw.Page(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(16),
-        theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
         build: (pw.Context ctx) {
           return pw.Column(
             children: [
@@ -1376,8 +1362,6 @@ class ClassroomDocumentsPdfGenerator {
     required TeacherProfileModel teacherProfile,
   }) async {
     final pdf = await PdfTrFonts.document();
-    final fontRegular = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
 
     final sortedStudents = List<StudentModel>.from(students)
       ..sort((a, b) => a.schoolNumber.compareTo(b.schoolNumber));
@@ -1386,11 +1370,10 @@ class ClassroomDocumentsPdfGenerator {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-        theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
         header: (pw.Context ctx) => _buildOfficialHeader(
           schoolName: teacherProfile.schoolName,
           title: '${classModel.name} SINIFI SOSYAL KULÜP ÖĞRENCİ DAĞILIM ÇİZELGESİ',
-          academicYear: '2024-2025 EĞİTİM-ÖĞRETİM YILI',
+          academicYear: ogretimYili(classModel),
           documentCode: 'MEB.KUL.09',
         ),
         footer: (pw.Context ctx) => _buildOfficialFooter(
@@ -1441,8 +1424,6 @@ class ClassroomDocumentsPdfGenerator {
     required TeacherProfileModel teacherProfile,
   }) async {
     final pdf = await PdfTrFonts.document();
-    final fontRegular = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
 
     final sortedStudents = List<StudentModel>.from(students)
       ..sort((a, b) => a.schoolNumber.compareTo(b.schoolNumber));
@@ -1451,11 +1432,10 @@ class ClassroomDocumentsPdfGenerator {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-        theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
         header: (pw.Context ctx) => _buildOfficialHeader(
           schoolName: teacherProfile.schoolName,
           title: '${classModel.name} SINIFI ACİL DURUM VE VELİ İLETİŞİM LİSTESİ',
-          academicYear: '2024-2025 EĞİTİM-ÖĞRETİM YILI',
+          academicYear: ogretimYili(classModel),
           documentCode: 'MEB.ACİ.10 (HASSAS)',
         ),
         footer: (pw.Context ctx) => _buildOfficialFooter(

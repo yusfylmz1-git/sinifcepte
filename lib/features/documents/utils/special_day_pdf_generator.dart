@@ -69,8 +69,12 @@ class SpecialDayPdfGenerator {
           }),
           pw.SizedBox(height: 8),
           pw.Text(
-            'Taslak programdır. Boş adlar uygulama öncesi doldurulur; sıra '
-            'okuluna göre değiştirilir. MEB resmî evrakı değildir.',
+            // "Taslak programdır ... MEB resmî evrakı değildir" ibaresi
+            // kaldırıldı: öğretmen bu programı okul panosuna ve
+            // dosyasına koyuyor, çekince orada yeri yok. Boş adların
+            // doldurulacağı bilgisi İŞLEVSEL, kalıyor.
+            'Boş adlar uygulama öncesi doldurulur; sıra okulun '
+            'programına göre değiştirilebilir.',
             style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
           ),
           pw.SizedBox(height: 8),
@@ -412,8 +416,8 @@ class SpecialDayPdfGenerator {
           }),
           pw.SizedBox(height: 8),
           pw.Text(
-            'Uygulama sonrası doldurulur. Boş satırlara okuluna göre ekleme '
-            'yapınız. MEB resmî evrakı değildir.',
+            'Uygulama sonrası doldurulur. Boş satırlara okuluna göre '
+            'ekleme yapınız.',
             style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
           ),
           pw.SizedBox(height: 8),
@@ -534,8 +538,7 @@ class SpecialDayPdfGenerator {
             ),
             pw.SizedBox(height: 8),
             pw.Text(
-              'Saat ve görevli sütunları uygulama öncesi doldurulur. '
-              'MEB resmî evrakı değildir.',
+              'Saat ve görevli sütunları uygulama öncesi doldurulur.',
               style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700),
             ),
             pw.Spacer(),

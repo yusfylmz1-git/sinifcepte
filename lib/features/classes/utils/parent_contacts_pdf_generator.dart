@@ -4,9 +4,9 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:printing/printing.dart';
 import '../../../../data/models/student_model.dart';
 import '../../../../data/models/class_model.dart';
+import 'classroom_documents_pdf_generator.dart';
 import '../../../core/pdf/pdf_tr_fonts.dart';
 
 /// MEB Standartlarında Resmî Sınıf Veli İletişim ve Acil Durum Çizelgesi PDF Motoru
@@ -38,8 +38,6 @@ class ParentContactsPdfGenerator {
     try {
       final pdf = await PdfTrFonts.document();
 
-      final fontRegular = await PdfGoogleFonts.robotoRegular();
-      final fontBold = await PdfGoogleFonts.robotoBold();
 
       // Öğrencileri okul numarasına göre sırala
       final sortedStudents = List<StudentModel>.from(students)
@@ -52,7 +50,6 @@ class ParentContactsPdfGenerator {
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(28),
-          theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
           header: (pw.Context ctx) => _buildHeader(classModel),
           footer: (pw.Context ctx) => _buildFooter(ctx, totalCount, withPhoneCount),
           build: (pw.Context ctx) {
@@ -96,7 +93,7 @@ class ParentContactsPdfGenerator {
         ),
         pw.SizedBox(height: 2),
         pw.Text(
-          '2024-2025 EĞİTİM-ÖĞRETİM YILI',
+          ClassroomDocumentsPdfGenerator.ogretimYili(classModel),
           style: const pw.TextStyle(fontSize: 9.5, color: PdfColors.grey700),
         ),
         pw.SizedBox(height: 4),

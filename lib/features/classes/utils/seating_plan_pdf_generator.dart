@@ -4,9 +4,9 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:printing/printing.dart';
 import '../../../../data/models/student_model.dart';
 import '../../../../data/models/class_model.dart';
+import 'classroom_documents_pdf_generator.dart';
 import '../models/seating_plan_model.dart';
 import '../../../core/pdf/pdf_tr_fonts.dart';
 
@@ -22,14 +22,11 @@ class SeatingPlanPdfGenerator {
   }) async {
     final pdf = await PdfTrFonts.document();
 
-    final fontRegular = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
 
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(28),
-        theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
         build: (pw.Context ctx) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.center,
@@ -79,7 +76,7 @@ class SeatingPlanPdfGenerator {
         ),
         pw.SizedBox(height: 2),
         pw.Text(
-          '2024-2025 EĞİTİM-ÖĞRETİM YILI',
+          ClassroomDocumentsPdfGenerator.ogretimYili(classModel),
           style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
         ),
         pw.SizedBox(height: 4),

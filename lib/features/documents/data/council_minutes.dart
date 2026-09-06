@@ -83,10 +83,15 @@ class CouncilAttendee {
 class CouncilMinutes {
   CouncilMinutes._();
 
+  /// Belgenin altına basılan işlem notu.
+  ///
+  /// Önce "SınıfCepte, Millî Eğitim Bakanlığı'nın resmî bir ürünü
+  /// değildir" çekincesi de vardı; öğretmenin okul dosyasına koyacağı
+  /// evrakta bu ibare belgeyi idarenin gözünde geçersiz gösteriyordu.
+  /// Kalan cümle İŞLEVSEL: kararların nereye işleneceğini söylüyor.
   static const String disclaimer =
-      'Taslak tutanak (arşiv kopyası). Gündem ve kararlar e-Kurul ve Zümre '
-      'Modülüne işlenir; müdür onayından sonra uygulanır. SınıfCepte, Millî '
-      'Eğitim Bakanlığı\'nın resmî bir ürünü değildir.';
+      'Arşiv kopyasıdır. Gündem ve kararlar e-Kurul ve Zümre Modülüne '
+      'işlenir; müdür onayından sonra uygulanır.';
 
   static const String decisionHint =
       'Cümle "karar verildi / uygulanmasına karar verildi" ile bitsin. '
