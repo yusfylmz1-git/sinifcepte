@@ -1719,8 +1719,24 @@ class DatabaseHelper {
         whereArgs.add(subjectCode);
       }
       if (publisher != null && publisher != 'ALL') {
-        conditions.add('publisher = ?');
-        whereArgs.add(publisher);
+        // "MEB Yayınları" ARTIK BOŞ demek.
+        //
+        // Bu alan eskiden üç işi birden yapıyordu: kaynak, okul türü
+        // ve "bilinmiyor" için "MEB Yayınları". Artık yalnızca okul
+        // türü (Anadolu / Fen / Sosyal Bilimler Lisesi) ve çoğu
+        // derste boş.
+        //
+        // Eski favoriler o değeri taşıyor: kullanıcı favorisini
+        // açtığında sorgu hiçbir kayıt bulamıyor ve ders boş
+        // görünüyordu (yalnızca takvimden üretilen 40. hafta kartı
+        // kalıyordu). Favorilerin silinmesini istemeyiz.
+        final aranan = yayinciNormalize(publisher);
+        if (aranan.isEmpty) {
+          conditions.add("(publisher IS NULL OR publisher = '')");
+        } else {
+          conditions.add('publisher = ?');
+          whereArgs.add(aranan);
+        }
       }
       if (weekNumber != null) {
         conditions.add('week_number = ?');
@@ -1799,6 +1815,25 @@ class DatabaseHelper {
     }
   }
 
+  /// Yayınevi/okul türü alanını karşılaştırma için normalleştirir.
+  ///
+  /// Bu alan eskiden ÜÇ işi birden yapıyordu: kaynak
+  /// ("TYMM (Maarif Modeli)"), okul türü ("Anadolu Lisesi") ve
+  /// "bilinmiyor" ("MEB Yayınları"). Artık yalnızca okul türü ve çoğu
+  /// derste boş.
+  ///
+  /// Eski kayıtlar — özellikle öğretmenin kendi yazdığı notlar ve
+  /// favoriler — "MEB Yayınları" değerini taşıyor. Normalleştirilmezse
+  /// o notlar bulunamaz hale gelir ve öğretmenin emeği kaybolur.
+  ///
+  /// Gerçek okul türleri ayrı kalır: aynı sınıfın Anadolu ve Fen
+  /// Lisesi planları farklı içerik taşıyor.
+  static String yayinciNormalize(String? deger) {
+    final t = (deger ?? '').trim();
+    if (t.isEmpty || t == 'MEB Yayınları') return '';
+    return t;
+  }
+
   // --- KAZANIM ÖZEL NOTLARI (outcome_notes) ---
 
   Future<String?> getOutcomeNote({
@@ -1813,7 +1848,7 @@ class DatabaseHelper {
         'outcome_notes',
         columns: ['note_text'],
         where: 'grade = ? AND subject_code = ? AND publisher = ? AND week_number = ?',
-        whereArgs: [grade, subjectCode, publisher, weekNumber],
+        whereArgs: [grade, subjectCode, yayinciNormalize(publisher), weekNumber],
       );
       if (res.isNotEmpty) {
         return res.first['note_text'] as String?;
@@ -1836,7 +1871,7 @@ class DatabaseHelper {
         'outcome_notes',
         columns: ['week_number', 'note_text'],
         where: 'grade = ? AND subject_code = ? AND publisher = ?',
-        whereArgs: [grade, subjectCode, publisher],
+        whereArgs: [grade, subjectCode, yayinciNormalize(publisher)],
       );
       final map = <int, String>{};
       for (final row in res) {
@@ -1876,7 +1911,9 @@ class DatabaseHelper {
         {
           'grade': grade,
           'subject_code': subjectCode,
-          'publisher': publisher,
+          // Okuma ile AYNI deger yazilmali; yoksa not kaydedilip
+          // bulunamaz hale gelir.
+          'publisher': yayinciNormalize(publisher),
           'week_number': weekNumber,
           'note_text': noteText.trim(),
           'updated_at': DateTime.now().toIso8601String(),
@@ -1899,7 +1936,7 @@ class DatabaseHelper {
       await db.delete(
         'outcome_notes',
         where: 'grade = ? AND subject_code = ? AND publisher = ? AND week_number = ?',
-        whereArgs: [grade, subjectCode, publisher, weekNumber],
+        whereArgs: [grade, subjectCode, yayinciNormalize(publisher), weekNumber],
       );
     } catch (e, stackTrace) {
       debugPrint('DatabaseHelper.deleteOutcomeNote error: $e\n$stackTrace');

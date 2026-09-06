@@ -388,7 +388,11 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
               final parts = key.split('_');
               final grade = int.tryParse(parts[0]) ?? 5;
               final subjectCode = parts.length > 1 ? parts[1] : 'GENEL';
-              final publisher = parts.length > 2 ? parts.sublist(2).join('_') : 'MEB Yayınları';
+              // Boş publisher BOŞ kalır: "MEB Yayınları" bir okul türü
+              // değil, eski verideki "bilinmiyor" değeriydi. Varsayılan
+              // olarak yazılınca favori açıldığında sorgu hiçbir kayıt
+              // bulamıyor ve ders boş görünüyordu.
+              final publisher = parts.length > 2 ? parts.sublist(2).join('_') : '';
 
               final iconColor = _getSubjectColor(subjectCode);
               final iconData = _getSubjectIcon(subjectCode, subjectCode);
@@ -1494,7 +1498,11 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
               final parts = key.split('_');
               final grade = int.tryParse(parts[0]) ?? 5;
               final subjectCode = parts.length > 1 ? parts[1] : 'GENEL';
-              final publisher = parts.length > 2 ? parts.sublist(2).join('_') : 'MEB Yayınları';
+              // Boş publisher BOŞ kalır: "MEB Yayınları" bir okul türü
+              // değil, eski verideki "bilinmiyor" değeriydi. Varsayılan
+              // olarak yazılınca favori açıldığında sorgu hiçbir kayıt
+              // bulamıyor ve ders boş görünüyordu.
+              final publisher = parts.length > 2 ? parts.sublist(2).join('_') : '';
 
               final iconColor = _getSubjectColor(subjectCode);
               final iconData = _getSubjectIcon(subjectCode, subjectCode);
