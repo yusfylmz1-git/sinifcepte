@@ -174,6 +174,71 @@ void main() {
     });
   });
 
+  group('Diger evraklar da Turkce basiyor', () {
+    // Aynı font hatası 13 üreticinin hepsinde vardı; hepsi
+    // düzeldi mi ölçülüyor.
+    test('KRITIK: nobet cizelgesi', () async {
+      final b =
+          await ClassroomDocumentsPdfGenerator.generateCustomDutySchedulePdfBytes(
+        classModel: sinif,
+        teacherProfile: profil,
+        dailyDutyCount: 2,
+        // Anahtarlar BÜYÜK harf; üretici gün adlarını böyle tutuyor.
+        dayAssignments: const {
+          'PAZARTESİ': ['101 Işıl Çağrı', '102 Oğuz Şahin'],
+        },
+      );
+      final t = await metin(b);
+      expect(t.contains('NÖBETÇİ'), isTrue);
+      expect(t.contains('ÇARŞAMBA'), isTrue, reason: '"Ç"/"Ş" bozuk');
+      expect(t.contains('PERŞEMBE'), isTrue);
+      expect(t.contains('2026-2027'), isTrue);
+      // Atanan öğrenci adları da basılmalı.
+      expect(t.contains('IŞIL'), isTrue, reason: 'nöbetçi adı basılmamış');
+    }, timeout: const Timeout(Duration(minutes: 2)));
+
+    test('KRITIK: acil iletisim listesi', () async {
+      final b = await ClassroomDocumentsPdfGenerator
+          .generateEmergencyContactListPdfBytes(
+        classModel: sinif,
+        students: ogrenciler,
+        teacherProfile: profil,
+      );
+      final t = await metin(b);
+      expect(t.contains('MİLLÎ'), isTrue);
+      expect(t.contains('2026-2027'), isTrue);
+      expect(t.contains('IŞIL'), isTrue);
+    }, timeout: const Timeout(Duration(minutes: 2)));
+
+    test('KRITIK: degerlendirme cizelgesi', () async {
+      final b =
+          await ClassroomDocumentsPdfGenerator.generateEvaluationSheetPdfBytes(
+        classModel: sinif,
+        students: ogrenciler,
+        teacherProfile: profil,
+      );
+      final t = await metin(b);
+      expect(t.contains('MİLLÎ'), isTrue);
+      expect(t.contains('2026-2027'), isTrue);
+    }, timeout: const Timeout(Duration(minutes: 2)));
+
+    test('KRITIK: sinif kurallari afisi', () async {
+      final b = await ClassroomDocumentsPdfGenerator
+          .generateClassroomRulesPosterPdfBytes(
+        classModel: sinif,
+        teacherProfile: profil,
+        rules: const [
+          'Derse zamanında gelirim, sıramı düzenli tutarım.',
+          'Söz alarak konuşur, arkadaşımı dinlerim.',
+        ],
+      );
+      final t = await metin(b);
+      expect(t.contains('zamanında'), isTrue, reason: '"ı" bozuk');
+      expect(t.contains('arkadaşımı'), isTrue, reason: '"ş"/"ı" bozuk');
+      expect(t.contains('2026-2027'), isTrue);
+    }, timeout: const Timeout(Duration(minutes: 2)));
+  });
+
   group('Ogretim yili degisken', () {
     test('KRITIK: sinifin KENDI yili basiliyor', () async {
       final b = await ClassroomDocumentsPdfGenerator.generateStudentListPdfBytes(
