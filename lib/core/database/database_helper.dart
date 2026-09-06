@@ -1551,15 +1551,46 @@ class DatabaseHelper {
 
   // --- MÜFREDAT KAZANIM SORGULARI ---
 
-  /// Assets içindeki 2.301 resmî kazanım verisini SQLite veritabanına aktarır (%100 Offline)
+  /// Kazanım paketinin sürümü.
+  ///
+  /// **Paket her değiştiğinde ARTIRILMALI.**
+  ///
+  /// Tohumlama önce yalnızca "tabloda 1000+ kayıt var mı" diye
+  /// bakıyordu. Sonuç: yeni paket APK ile geliyor ama telefonda eski
+  /// veri durduğu için hiç yüklenmiyordu. Kaynak alanları
+  /// (`is_maarif`, `source_portal`) eklendiğinde bu görünür oldu —
+  /// sütunlar geliyor ama boş kalıyor ve Maarif rozeti hiçbir yerde
+  /// çıkmıyordu.
+  ///
+  /// Dosyayı hash'lemek 30 MB JSON'u her açılışta okumak demekti;
+  /// paket yılda bir değiştiği için elle artırılan bir sayı yeterli.
+  ///
+  /// | Sürüm | Ne değişti |
+  /// |---|---|
+  /// | 1 | İlk paket |
+  /// | 2 | MEB Eylül 2026 ilkokul/ortaokul planları + kaynak alanları |
+  static const int kazanimPaketSurumu = 2;
+
+  static const String _kKazanimPaketKey = 'curriculum_asset_version';
+
+  /// APK'daki resmî kazanım paketini SQLite'a aktarır (%100 çevrimdışı).
+  ///
+  /// Paket sürümü değişmişse veri yeniden yazılır; öğretmenin kendi
+  /// verisine dokunulmaz.
   Future<void> seedCurriculumOutcomesFromAssets({bool force = false}) async {
     try {
       final db = await instance.database;
       final countQuery = await db.rawQuery('SELECT COUNT(*) as c FROM curriculum_outcomes');
       final count = Sqflite.firstIntValue(countQuery) ?? 0;
-      
-      // Eğer force değilse ve zaten veriler yüklüyse tekrar yükleme yapma
-      if (count >= 1000 && !force) {
+
+      // Yuklu paketin surumu. Paket degistiyse veri YENIDEN yazilir;
+      // ogretmenin kendi verisine (sinif, ogrenci, BEP, not)
+      // dokunulmaz — yalnizca curriculum_outcomes tablosu yenilenir.
+      final yukluPaket = await syncMetadataVersionGetir(_kKazanimPaketKey);
+      final paketEski = yukluPaket < kazanimPaketSurumu;
+
+      // Veri zaten yuklu VE paket degismemisse dokunma.
+      if (count >= 1000 && !force && !paketEski) {
         return;
       }
 
@@ -1593,6 +1624,13 @@ class DatabaseHelper {
         // gereksiz şişiriyordu.
         await batch.commit(noResult: true);
       });
+      // Damga YAZMA BASARILI OLDUKTAN SONRA ilerler: yarida kalan bir
+      // tohumlama "guncel" sayilmamali, sonraki acilista yeniden
+      // denenmeli.
+      await syncMetadataVersionGuncelle(
+        _kKazanimPaketKey,
+        kazanimPaketSurumu,
+      );
       debugPrint('DatabaseHelper: ${satirlar.length} resmî kazanım assets üzerinden SQLite veritabanına başarıyla yüklendi 🚀');
     } catch (e, stackTrace) {
       debugPrint('---------------- HATA DETAYI (DatabaseHelper.seedCurriculumOutcomesFromAssets) ----------------');
