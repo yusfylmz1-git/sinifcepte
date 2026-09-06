@@ -153,7 +153,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 25,
+      version: 26,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
       onConfigure: _onConfigure,
@@ -886,6 +886,13 @@ class DatabaseHelper {
         outcome_description TEXT NOT NULL,
         unit_title TEXT,
         can_do INTEGER NOT NULL,
+        -- Kaba Degerlendirme Formu kunyesi.
+        --
+        -- Resmi formda degerlendirmenin NE ZAMAN ve KIM tarafindan
+        -- yapildigi yazar. Once yalnizca isaret tutuluyordu ve belge
+        -- uretilirken bu alanlar bos kaliyordu.
+        evaluated_at TEXT,
+        evaluated_by TEXT,
         FOREIGN KEY (plan_id) REFERENCES bep_plans (id) ON DELETE CASCADE,
         UNIQUE(plan_id, outcome_code)
       )
@@ -946,6 +953,25 @@ class DatabaseHelper {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 26) {
+      // Kaba Degerlendirme Formu kunyesi: degerlendirme tarihi ve
+      // degerlendiren kisi. Eski kayitlarda bos kalir; belge o
+      // durumda noktali satir basar, yine imzalanabilir olur.
+      const kdfSutunlari = <String, String>{
+        'evaluated_at': 'TEXT',
+        'evaluated_by': 'TEXT',
+      };
+      for (final entry in kdfSutunlari.entries) {
+        try {
+          await db.execute(
+            'ALTER TABLE bep_coarse ADD COLUMN ${entry.key} ${entry.value}',
+          );
+        } catch (e) {
+          debugPrint('DB Upgrade (bep_coarse.${entry.key}): $e');
+        }
+      }
+    }
+
     if (oldVersion < 25) {
       // Kaynak bilgisi: Maarif rozeti artik metin aramasiyla degil bu
       // sutunlardan karar veriliyor.

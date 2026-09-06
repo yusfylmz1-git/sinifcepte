@@ -539,6 +539,51 @@ class BepRepository {
     };
   }
 
+  /// Kaba Değerlendirme Formu için TAM kayıtlar.
+  ///
+  /// [coarseForPlan] yalnızca işareti dönüyor (ekran için yeterli);
+  /// belge uzun amaç başlığına göre gruplandığı için `unitTitle` ve
+  /// açıklama da gerekiyor.
+  Future<List<BepCoarseMark>> coarseMarksForPlan(int planId) async {
+    final db = await _db.database;
+    final rows = await db.query(
+      'bep_coarse',
+      where: 'plan_id = ?',
+      whereArgs: [planId],
+      orderBy: 'unit_title ASC, id ASC',
+    );
+    return [
+      for (final r in rows)
+        BepCoarseMark(
+          code: r['outcome_code'] as String? ?? '',
+          description: r['outcome_description'] as String? ?? '',
+          unitTitle: r['unit_title'] as String? ?? '',
+          canDo: (r['can_do'] as int? ?? 0) == 1,
+        ),
+    ];
+  }
+
+  /// Formun künyesi: değerlendirme ne zaman, kim tarafından yapıldı.
+  ///
+  /// İlk işaretin tarihi alınır — form bir oturumda doldurulan bir
+  /// belge; her tıkta tarihin ilerlemesi yanıltıcı olurdu.
+  Future<({String tarih, String kisi})> coarseHeader(int planId) async {
+    final db = await _db.database;
+    final rows = await db.query(
+      'bep_coarse',
+      columns: ['evaluated_at', 'evaluated_by'],
+      where: 'plan_id = ? AND evaluated_at IS NOT NULL',
+      whereArgs: [planId],
+      orderBy: 'evaluated_at ASC',
+      limit: 1,
+    );
+    if (rows.isEmpty) return (tarih: '', kisi: '');
+    return (
+      tarih: rows.first['evaluated_at'] as String? ?? '',
+      kisi: rows.first['evaluated_by'] as String? ?? '',
+    );
+  }
+
   /// Kaba değerlendirme: [canDo] true = Yapıyor, false = Yapamıyor (plana alınır).
   Future<void> setCoarse({
     required int planId,
@@ -547,9 +592,31 @@ class BepRepository {
     required String outcomeDescription,
     required String studentFirstName,
     required bool canDo,
+    String evaluatedBy = '',
   }) async {
     final db = await _db.database;
     final key = _coarseKey(outcomeCode, outcomeDescription);
+
+    // Künye YALNIZCA ilk işarette yazılır.
+    //
+    // Form bir oturumda doldurulan bir belge; öğretmen otuz amacı
+    // işaretlerken tarihin her tıkta ilerlemesi belgeyi yanıltıcı
+    // kılardı. Bu plan için daha önce işaret varsa o tarih korunur.
+    final onceki = await db.query(
+      'bep_coarse',
+      columns: ['evaluated_at', 'evaluated_by'],
+      where: 'plan_id = ? AND evaluated_at IS NOT NULL',
+      whereArgs: [planId],
+      orderBy: 'evaluated_at ASC',
+      limit: 1,
+    );
+    final tarih = onceki.isNotEmpty
+        ? onceki.first['evaluated_at'] as String?
+        : DateTime.now().toIso8601String();
+    final kisi = onceki.isNotEmpty
+        ? (onceki.first['evaluated_by'] as String? ?? '')
+        : evaluatedBy.trim();
+
     await db.insert(
       'bep_coarse',
       {
@@ -558,6 +625,8 @@ class BepRepository {
         'outcome_description': outcomeDescription,
         'unit_title': unitTitle,
         'can_do': canDo ? 1 : 0,
+        'evaluated_at': tarih,
+        'evaluated_by': kisi,
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );

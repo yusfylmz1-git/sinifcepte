@@ -14,6 +14,7 @@ import '../../data/bep_developmental_bank.dart';
 import '../../data/models/bep_models.dart';
 import '../../data/repositories/bep_repository.dart';
 import '../../utils/bep_pdf_generator.dart';
+import '../../utils/bep_coarse_pdf_generator.dart';
 import '../widgets/bep_short_goal_editor.dart';
 import '../../data/bep_option_banks.dart';
 import '../widgets/bep_option_chips.dart';
@@ -246,6 +247,9 @@ class _BepPlanViewState extends State<BepPlanView>
         outcomeDescription: hit.description,
         studentFirstName: widget.student.firstName,
         canDo: canDo,
+        // Kaba Degerlendirme Formunun kunyesi. Yalnizca ILK
+        // isarette yazilir; ogretmene ayrica form doldurtulmuyor.
+        evaluatedBy: widget.teacher.fullName,
       );
       await _reload();
     } finally {
@@ -397,6 +401,60 @@ class _BepPlanViewState extends State<BepPlanView>
     );
   }
 
+  /// Kaba Değerlendirme Formunu üretir.
+  ///
+  /// Bu form BEP'in girdisidir: öğretmen kazanımları "yapıyor /
+  /// yapamıyor" diye işaretler, yapamadıkları plana kısa dönemli
+  /// amaç olarak girer. İşaretleme zaten vardı; eksik olan belgenin
+  /// kendisiydi — öğretmen formu okul dosyasına koyamıyordu.
+  Future<void> _kabaDegerlendirmePdf() async {
+    final plan = _plan;
+    if (plan?.id == null) return;
+
+    final marks = await _repo.coarseMarksForPlan(plan!.id!);
+    if (!mounted) return;
+
+    // Boş bir değerlendirme formu imzalanacak bir belge değil.
+    if (marks.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Önce amaçları "Yapıyor / Yapamıyor" olarak değerlendirin.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final kunye = await _repo.coarseHeader(plan.id!);
+    if (!mounted) return;
+
+    await PdfPreviewScreen.open(
+      context,
+      title: 'Kaba Değerlendirme Formu',
+      subtitle: '${widget.student.fullName} · ${plan.subject}',
+      fileName:
+          'Kaba_Degerlendirme_${widget.student.fullName}_${plan.subject}.pdf',
+      documentBuilder: (_) => BepCoarsePdfGenerator.build(
+        plan: plan,
+        student: widget.student,
+        className: widget.classModel.name,
+        schoolName: widget.teacher.schoolName,
+        marks: marks,
+        evaluatedAt: _tarihMetni(kunye.tarih),
+        evaluatedBy: kunye.kisi,
+      ),
+    );
+  }
+
+  /// ISO tarihi belgeye basılacak biçime çevirir.
+  static String _tarihMetni(String iso) {
+    final t = DateTime.tryParse(iso);
+    if (t == null) return '';
+    String iki(int n) => n.toString().padLeft(2, '0');
+    return '${iki(t.day)}.${iki(t.month)}.${t.year}';
+  }
+
   /// "gg.aa.yyyy" -> DateTime. Bozuk kayit uygulamayi dusurmemeli.
   static DateTime? _tarihCoz(String ham) {
     final p = ham.trim().split('.');
@@ -534,10 +592,33 @@ class _BepPlanViewState extends State<BepPlanView>
       ),
       floatingActionButton: plan == null
           ? null
-          : FloatingActionButton.extended(
-              onPressed: selected.isEmpty ? null : _pdf,
-              icon: const Icon(Icons.picture_as_pdf_outlined),
-              label: Text('PDF (${selected.length})'),
+          // İKİ AYRI BELGE.
+          //
+          // Kaba Değerlendirme Formu BEP'in girdisidir: öğretmen
+          // kazanımları işaretler, yapamadıkları plana amaç olarak
+          // girer. Koşulları da ayrı — KDF için işaretlenmiş amaç,
+          // BEP için plana alınmış amaç gerekir.
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                FloatingActionButton.extended(
+                  heroTag: 'kdf',
+                  onPressed:
+                      _coarse.isEmpty ? null : _kabaDegerlendirmePdf,
+                  backgroundColor:
+                      _coarse.isEmpty ? null : const Color(0xFF0F766E),
+                  icon: const Icon(Icons.fact_check_outlined),
+                  label: const Text('Kaba Değerlendirme'),
+                ),
+                const SizedBox(height: 10),
+                FloatingActionButton.extended(
+                  heroTag: 'bep',
+                  onPressed: selected.isEmpty ? null : _pdf,
+                  icon: const Icon(Icons.picture_as_pdf_outlined),
+                  label: Text('BEP (${selected.length})'),
+                ),
+              ],
             ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
