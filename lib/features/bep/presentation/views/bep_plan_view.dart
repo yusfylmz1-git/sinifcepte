@@ -102,7 +102,7 @@ class _BepPlanViewState extends State<BepPlanView>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 2, vsync: this);
+    _tab = TabController(length: 3, vsync: this);
     _reload();
   }
 
@@ -590,36 +590,6 @@ class _BepPlanViewState extends State<BepPlanView>
         title: plan == null ? 'BEP' : 'BEP · ${plan.subject}',
         showProfileAvatar: false,
       ),
-      floatingActionButton: plan == null
-          ? null
-          // İKİ AYRI BELGE.
-          //
-          // Kaba Değerlendirme Formu BEP'in girdisidir: öğretmen
-          // kazanımları işaretler, yapamadıkları plana amaç olarak
-          // girer. Koşulları da ayrı — KDF için işaretlenmiş amaç,
-          // BEP için plana alınmış amaç gerekir.
-          : Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                FloatingActionButton.extended(
-                  heroTag: 'kdf',
-                  onPressed:
-                      _coarse.isEmpty ? null : _kabaDegerlendirmePdf,
-                  backgroundColor:
-                      _coarse.isEmpty ? null : const Color(0xFF0F766E),
-                  icon: const Icon(Icons.fact_check_outlined),
-                  label: const Text('Kaba Değerlendirme'),
-                ),
-                const SizedBox(height: 10),
-                FloatingActionButton.extended(
-                  heroTag: 'bep',
-                  onPressed: selected.isEmpty ? null : _pdf,
-                  icon: const Icon(Icons.picture_as_pdf_outlined),
-                  label: Text('BEP (${selected.length})'),
-                ),
-              ],
-            ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : plan == null
@@ -635,9 +605,11 @@ class _BepPlanViewState extends State<BepPlanView>
                       indicatorColor: AppColors.primary,
                       labelStyle: const TextStyle(
                           fontSize: 13, fontWeight: FontWeight.w700),
+                      isScrollable: false,
                       tabs: const [
-                        Tab(text: 'BEP'),
-                        Tab(text: 'BEP Detayı'),
+                        Tab(text: 'Amaçlar'),
+                        Tab(text: 'Plan Bilgileri'),
+                        Tab(text: 'Belgeler'),
                       ],
                     ),
                     Expanded(
@@ -647,7 +619,7 @@ class _BepPlanViewState extends State<BepPlanView>
                           // 1. sekme — asıl iş: amaçları belirle.
                           ListView(
                             padding:
-                                const EdgeInsets.fromLTRB(16, 12, 16, 96),
+                                const EdgeInsets.fromLTRB(16, 12, 16, 28),
                             children: [
                               _hizliIslemler(isDark, selected),
                                   if (_bank.isNotEmpty)
@@ -742,7 +714,7 @@ class _BepPlanViewState extends State<BepPlanView>
                           // üretilir.
                           ListView(
                             padding:
-                                const EdgeInsets.fromLTRB(16, 12, 16, 96),
+                                const EdgeInsets.fromLTRB(16, 12, 16, 28),
                             children: [
                                   const SizedBox(height: 12),
                                   TextField(
@@ -970,11 +942,82 @@ class _BepPlanViewState extends State<BepPlanView>
                                   ),
                             ],
                           ),
+                          // 3. sekme — belgeler.
+                          //
+                          // Once iki genis kayan dugme listenin
+                          // uzerine biniyordu ve ikisi de pasifken
+                          // NEDEN pasif olduklarini soylemiyordu.
+                          _belgelerSekmesi(isDark, selected),
                         ],
                       ),
                     ),
                   ],
                 ),
+    );
+  }
+
+  /// Belgeler sekmesi: bu plandan üretilebilecek resmî evraklar.
+  ///
+  /// ## Neden ayrı sekme
+  /// İki belge de tek bir düğmeye sığmıyordu: koşulları farklı
+  /// (KDF işaretlenmiş amaç ister, BEP plana alınmış amaç) ve
+  /// sırası önemli — kaba değerlendirme BEP'in girdisi.
+  /// Kartlarda hazır olup olmadığı ve hazır değilse ne yapılması
+  /// gerektiği yazıyor.
+  Widget _belgelerSekmesi(bool isDark, Set<String> selected) {
+    final isaretli = _coarse.length;
+    final yapamiyor = _coarse.values.where((v) => !v).length;
+    final planlanan = _goals.fold<int>(0, (a, g) => a + g.shorts.length);
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+      children: [
+        Text(
+          'Bu plandan üretilebilecek belgeler',
+          style: TextStyle(
+            fontSize: 12,
+            color: isDark ? Colors.white60 : AppColors.textSecondaryLight,
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Sıra önemli: kaba değerlendirme BEP'in girdisidir.
+        _BelgeKarti(
+          isDark: isDark,
+          sira: 1,
+          renk: const Color(0xFF0F766E),
+          simge: Icons.fact_check_outlined,
+          baslik: 'Kaba Değerlendirme Formu',
+          aciklama:
+              'Kazanımların "Yapıyor / Yapamıyor" değerlendirmesi. '
+              'BEP amaçları bu formdan çıkar.',
+          durum: isaretli == 0
+              ? 'Henüz değerlendirme yapılmadı'
+              : '$isaretli kazanım değerlendirildi · '
+                  '$yapamiyor tanesi "Yapamıyor"',
+          hazir: isaretli > 0,
+          engelMetni:
+              'Amaçlar sekmesinde kazanımları + / − olarak işaretleyin.',
+          onTap: _kabaDegerlendirmePdf,
+        ),
+        const SizedBox(height: 12),
+        _BelgeKarti(
+          isDark: isDark,
+          sira: 2,
+          renk: AppColors.primary,
+          simge: Icons.picture_as_pdf_outlined,
+          baslik: 'BEP Takip Formu',
+          aciklama:
+              'Uzun ve kısa dönemli amaçlar, ölçüt ve dönem '
+              'değerlendirmeleriyle birlikte.',
+          durum: planlanan == 0
+              ? 'Plana alınmış amaç yok'
+              : '$planlanan kısa dönemli amaç planda',
+          hazir: selected.isNotEmpty || planlanan > 0,
+          engelMetni:
+              'Amaçlar sekmesinde en az bir kazanımı plana alın.',
+          onTap: _pdf,
+        ),
+      ],
     );
   }
 
@@ -1078,6 +1121,169 @@ class _BepPlanViewState extends State<BepPlanView>
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Belgeler sekmesindeki tek bir evrak karti.
+///
+/// Hazir degilse dokunuldugunda NE yapilmasi gerektigini soyler —
+/// eskiden dugme sadece soluklasiyordu ve ogretmen sebebini
+/// goremiyordu.
+class _BelgeKarti extends StatelessWidget {
+  final bool isDark;
+  final int sira;
+  final Color renk;
+  final IconData simge;
+  final String baslik;
+  final String aciklama;
+  final String durum;
+  final bool hazir;
+  final String engelMetni;
+  final VoidCallback onTap;
+
+  const _BelgeKarti({
+    required this.isDark,
+    required this.sira,
+    required this.renk,
+    required this.simge,
+    required this.baslik,
+    required this.aciklama,
+    required this.durum,
+    required this.hazir,
+    required this.engelMetni,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final solgun = isDark ? Colors.white54 : Colors.black54;
+
+    return Opacity(
+      opacity: hazir ? 1 : 0.75,
+      child: Material(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () {
+            if (hazir) {
+              onTap();
+              return;
+            }
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(engelMetni)),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: hazir
+                    ? renk.withValues(alpha: 0.45)
+                    : (isDark
+                        ? const Color(0xFF334155)
+                        : const Color(0xFFE2E8F0)),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: renk.withValues(alpha: hazir ? 0.14 : 0.07),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(simge,
+                      size: 21, color: hazir ? renk : solgun),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          // Sira numarasi: KDF once, BEP sonra.
+                          Text(
+                            '$sira. ',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                              color: solgun,
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              baslik,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        aciklama,
+                        style: TextStyle(fontSize: 12, color: solgun),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(
+                            hazir
+                                ? Icons.check_circle_outline
+                                : Icons.info_outline,
+                            size: 14,
+                            color: hazir ? renk : solgun,
+                          ),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              durum,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: hazir ? renk : solgun,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: hazir ? onTap : null,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: renk,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          icon: const Icon(Icons.description_outlined,
+                              size: 17),
+                          label: const Text('Belgeyi oluştur'),
+                        ),
+                      ),
+                      if (!hazir) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          engelMetni,
+                          style: TextStyle(fontSize: 11, color: solgun),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
