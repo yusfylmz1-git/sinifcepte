@@ -5,6 +5,7 @@ import '../../../../core/theme/app_fonts.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../clubs/presentation/screens/clubs_hub_screen.dart';
 import 'special_days_view.dart';
+import 'teacher_file_view.dart';
 
 /// Sınıf dışı resmî evraklar.
 ///
@@ -28,14 +29,9 @@ class OtherDocumentsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    /// Planlanan belgeler. `hazir: false` olanlar gri görünür.
-    const planlanan = <({String ad, String aciklama, IconData ikon})>[
-      (
-        ad: 'Öğretmen Dosyası',
-        aciklama: 'Özlük bilgileri, ders programı ve yıllık plan özeti',
-        ikon: Icons.badge_outlined,
-      ),
-    ];
+    // "Yakında" listesi şimdilik boş: Öğretmen Dosyası da üretilir
+    // hâle geldi. Yeni belge planlandığında buraya eklenir.
+    const planlanan = <({String ad, String aciklama, IconData ikon})>[];
 
     return Scaffold(
       backgroundColor:
@@ -50,6 +46,18 @@ class OtherDocumentsView extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
           children: [
             _tasindiNotu(isDark),
+            const SizedBox(height: 18),
+            // Teftişte ilk istenen dosya bu; listenin başında durur.
+            _hazirKart(
+              context,
+              isDark,
+              ad: 'Öğretmen Dosyası',
+              aciklama:
+                  'Kapak, Atatürk köşesi, İstiklâl Marşı, özlük künyesi · '
+                  '13 resmî evrak',
+              ikon: Icons.badge_outlined,
+              hedef: const TeacherFileView(),
+            ),
             const SizedBox(height: 18),
             _hazirKart(
               context,
@@ -68,6 +76,7 @@ class OtherDocumentsView extends StatelessWidget {
               ikon: Icons.groups_2_outlined,
               hedef: const ClubsHubScreen(),
             ),
+            if (planlanan.isNotEmpty) ...[
             const SizedBox(height: 18),
             Text(
               'Yakında',
@@ -79,6 +88,7 @@ class OtherDocumentsView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             for (final b in planlanan) _yakindaKart(isDark, b),
+            ],
           ],
         ),
       ),
