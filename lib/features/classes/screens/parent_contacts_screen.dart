@@ -81,22 +81,9 @@ class _ParentContactsScreenState extends ConsumerState<ParentContactsScreen> {
   }
 
   /// Telefon Numarasını Standart Türkiye Formatına (0 (5XX) XXX XX XX) Çevirici
-  static String formatPhoneNumber(String? phone) {
-    if (phone == null || phone.trim().isEmpty) return '';
-    final cleaned = phone.replaceAll(RegExp(r'[^0-9]'), '');
-    if (cleaned.length == 11 && cleaned.startsWith('0')) {
-      return '0 (${cleaned.substring(1, 4)}) ${cleaned.substring(4, 7)} ${cleaned.substring(7, 9)} ${cleaned.substring(9, 11)}';
-    } else if (cleaned.length == 10 && cleaned.startsWith('5')) {
-      return '0 (${cleaned.substring(0, 3)}) ${cleaned.substring(3, 6)} ${cleaned.substring(6, 8)} ${cleaned.substring(8, 10)}';
-    } else if (cleaned.length == 12 && cleaned.startsWith('90')) {
-      return '0 (${cleaned.substring(2, 5)}) ${cleaned.substring(5, 8)} ${cleaned.substring(8, 10)} ${cleaned.substring(10, 12)}';
-    }
-    // Hatalı veya aşırı uzun ise güvenli göster
-    if (phone.length > 20) {
-      return '${phone.substring(0, 17)}...';
-    }
-    return phone;
-  }
+  /// Biçimlendirme tek yerde: [PhoneFormatter.toDisplay].
+  static String formatPhoneNumber(String? phone) =>
+      PhoneFormatter.toDisplay(phone);
 
   @override
   Widget build(BuildContext context) {

@@ -153,7 +153,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 26,
+      version: 27,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
       onConfigure: _onConfigure,
@@ -639,6 +639,7 @@ class DatabaseHelper {
 
     await _createBepTables(db);
     await _createGuidanceTables(db);
+    await _createAbsenceTables(db);
 
     // D. 2025-2026 Resmî MEB Çalışma Takvimi Tohumlama (Seed Data)
     final calendarCountQuery = await db.rawQuery('SELECT COUNT(*) as c FROM academic_calendar_events');
@@ -783,6 +784,41 @@ class DatabaseHelper {
     }
   }
 
+
+  /// Devamsiz ogrenci takip tablosu (Bakanlik devamsizlik calismasi).
+  ///
+  /// Uygulamada GUNLUK YOKLAMA YOK. Ogretmen e-Okul'daki devamsizliga
+  /// bakip listeden ogrenciyi isaretliyor; bu tablo o isareti, nedenini
+  /// ve ogretmen notunu tutar.
+  ///
+  /// Not neden `students.notes` degil: o sutun genel amacli ("alerjisi
+  /// var", "servisle geliyor"). Devamsizlik notu oraya yazilsaydi ders
+  /// yili bitince silinmesi gereken bilgi kalici nota karisirdi.
+  ///
+  /// Kayit ders yiliyla benzersiz: ayni ogrenci ayni yil iki kez
+  /// isaretlenemez, ama gecen yilin kaydi durur (arsiv).
+  Future<void> _createAbsenceTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS absence_followups (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id INTEGER NOT NULL,
+        class_id INTEGER NOT NULL,
+        academic_year TEXT NOT NULL,
+        reason TEXT NOT NULL DEFAULT 'bilinmiyor',
+        note TEXT,
+        marked_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (student_id) REFERENCES students (id) ON DELETE CASCADE,
+        FOREIGN KEY (class_id) REFERENCES classes (id) ON DELETE CASCADE,
+        UNIQUE(student_id, academic_year)
+      )
+    ''');
+    // Liste her acilista "bu sinif + bu yil" ile sorgulaniyor.
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_absence_class_year '
+      'ON absence_followups (class_id, academic_year)',
+    );
+  }
 
   /// Sinif rehberlik plani uygulama kaydi.
   ///
@@ -953,6 +989,12 @@ class DatabaseHelper {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 27) {
+      // Devamsiz ogrenci takibi. Tablo yeni oldugu icin ALTER degil
+      // CREATE; mevcut kayitlara dokunmaz.
+      await _createAbsenceTables(db);
+    }
+
     if (oldVersion < 26) {
       // Kaba Degerlendirme Formu kunyesi: degerlendirme tarihi ve
       // degerlendiren kisi. Eski kayitlarda bos kalir; belge o

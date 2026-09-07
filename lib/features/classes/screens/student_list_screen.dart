@@ -4,7 +4,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/models/class_model.dart';
 import '../../../shared/widgets/custom_app_bar.dart';
 import '../../../shared/widgets/glass_card.dart';
+import '../../../data/models/absence_followup_model.dart';
+import '../providers/absence_followup_provider.dart';
 import '../providers/student_provider.dart';
+import 'absence_followup_screen.dart';
 import '../providers/class_provider.dart';
 import '../../../data/models/student_model.dart';
 import '../widgets/add_student_dialog.dart';
@@ -43,6 +46,14 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
   final Set<int> _selectedStudentIds = {};
   bool get _isSelectionMode => _selectedStudentIds.isNotEmpty;
 
+  /// Yalnizca devamsiz isaretli ogrencileri goster.
+  ///
+  /// Ogretmen listeyi "devamsizlar" gozuyle okumak istedigi anda
+  /// baska ekrana gitmek zorunda kalmasin diye burada da var; veri
+  /// ayni kaynaktan (absenceFollowupProvider) geliyor, iki liste
+  /// birbirinden ayrisamaz.
+  bool _onlyAbsent = false;
+
   @override
   void dispose() {
     _searchDebouncer.dispose();
@@ -53,6 +64,8 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
   @override
   Widget build(BuildContext context) {
     final studentListAsync = ref.watch(studentListProvider(widget.classModel.id!));
+    // Devamsiz isaretli kimlikler: kart rozeti ve suzgec bunu kullanir.
+    final absentIds = ref.watch(absentStudentIdsProvider(widget.classModel));
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -83,6 +96,13 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                     });
                   },
                 ),
+                if (widget.classModel.isHomeroom)
+                  IconButton(
+                    icon: const Icon(Icons.event_busy_rounded),
+                    tooltip: 'Devamsız Olarak İşaretle',
+                    onPressed: () =>
+                        _markSelectedAbsent(_selectedStudentIds.toList()),
+                  ),
                 IconButton(
                   icon: const Icon(Icons.drive_file_move_outline),
                   tooltip: 'Başka Sınıfa Taşı',
@@ -302,6 +322,65 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                   ],
                 ),
 
+              // Devamsızlık şeridi.
+              //
+              // Yalnızca rehberlik sınıfında ve gerçekten işaretli
+              // öğrenci varken görünür; boş bir süzgeç düğmesi
+              // öğretmene "burada bir şey var" diye yanlış işaret
+              // verirdi.
+              if (widget.classModel.isHomeroom && absentIds.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilterChip(
+                        selected: _onlyAbsent,
+                        showCheckmark: false,
+                        avatar: Icon(
+                          Icons.event_busy_rounded,
+                          size: 16,
+                          color: _onlyAbsent
+                              ? Colors.white
+                              : const Color(0xFFEF4444),
+                        ),
+                        label: Text(
+                          'Devamsız Öğrenciler (${absentIds.length})',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: _onlyAbsent
+                                ? Colors.white
+                                : (isDark ? Colors.white70 : const Color(0xFF475569)),
+                          ),
+                        ),
+                        selectedColor: const Color(0xFFEF4444),
+                        backgroundColor: isDark
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : Colors.grey.shade100,
+                        side: BorderSide(
+                          color: const Color(0xFFEF4444)
+                              .withValues(alpha: _onlyAbsent ? 0 : 0.35),
+                        ),
+                        onSelected: (v) => setState(() => _onlyAbsent = v),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: 'Devamsızlık Takip Ekranı',
+                      onPressed: () => openAbsenceFollowupScreen(
+                        context,
+                        widget.classModel,
+                      ),
+                      icon: const Icon(
+                        Icons.open_in_new_rounded,
+                        size: 20,
+                        color: Color(0xFFEF4444),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+
               if (studentListAsync.valueOrNull != null && studentListAsync.valueOrNull!.isNotEmpty)
                 const SizedBox(height: 16),
 
@@ -323,6 +402,9 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                     }
 
                     var filtered = students.where((s) {
+                      if (_onlyAbsent && !absentIds.contains(s.id)) {
+                        return false;
+                      }
                       if (_searchQuery.isEmpty) return true;
                       // `toLowerCase` Turkce'de yaniltiyordu: ogretmen
                       // "Isil" yazinca "Isil" ogrencisi bulunamiyordu.
@@ -350,7 +432,9 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                     if (filtered.isEmpty) {
                       return Center(
                         child: Text(
-                          'Arama sonucunda öğrenci bulunamadı.',
+                          _onlyAbsent
+                              ? 'Devamsız işaretli öğrenci yok.'
+                              : 'Arama sonucunda öğrenci bulunamadı.',
                           style: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
                         ),
                       );
@@ -363,6 +447,7 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                         final student = filtered[index];
 
                         final isSelected = _selectedStudentIds.contains(student.id);
+                        final isAbsent = absentIds.contains(student.id);
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 10.0),
@@ -468,6 +553,32 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                                   ),
                                 ),
 
+                                // Devamsızlık rozeti.
+                                //
+                                // Ayrı ekrana bakmadan da görünmesi
+                                // gerekiyor: öğretmen listede gezerken
+                                // kimin takipte olduğunu bilmeli.
+                                if (isAbsent) ...[
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEF4444)
+                                          .withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Text(
+                                      'Devamsız',
+                                      style: TextStyle(
+                                        color: Color(0xFFEF4444),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 10.5,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                ],
+
                                 // 3 Nokta İşlem Menüsü (Düzenle, Sınıfı Değiştir, Sil)
                                 PopupMenuButton<String>(
                                   icon: Icon(
@@ -481,6 +592,8 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                                   onSelected: (value) {
                                     if (value == 'edit') {
                                       _openAddStudentDialog(context, student: student);
+                                    } else if (value == 'absent') {
+                                      _toggleAbsent(student, isAbsent);
                                     } else if (value == 'move') {
                                       _showMoveStudentSheet(context, ref, student);
                                     } else if (value == 'delete') {
@@ -505,6 +618,37 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                                         ],
                                       ),
                                     ),
+                                    // Devamsızlık işareti yalnızca
+                                    // rehberlik sınıfında: çalışmayı
+                                    // sınıf rehber öğretmeni yürütüyor.
+                                    if (widget.classModel.isHomeroom)
+                                      PopupMenuItem(
+                                        value: 'absent',
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              isAbsent
+                                                  ? Icons.person_remove_rounded
+                                                  : Icons.event_busy_rounded,
+                                              size: 18,
+                                              color: const Color(0xFFEF4444),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Text(
+                                              isAbsent
+                                                  ? 'Devamsız İşaretini Kaldır'
+                                                  : 'Devamsız Olarak İşaretle',
+                                              style: TextStyle(
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : AppColors.textPrimaryLight,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     PopupMenuItem(
                                       value: 'move',
                                       child: Row(
@@ -564,6 +708,82 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
         backgroundColor: AppColors.primary,
         child: const Icon(Icons.person_add_rounded, color: Colors.white),
       ),
+    );
+  }
+
+  /// Tek öğrenciyi devamsız işaretler veya işareti kaldırır.
+  ///
+  /// İşareti kaldırmak yazılmış notu da siler; bu yüzden not varken
+  /// onay soruluyor. Sessizce silinseydi öğretmenin veli görüşme
+  /// kaydı kaybolurdu.
+  Future<void> _toggleAbsent(StudentModel student, bool isAbsent) async {
+    final notifier =
+        ref.read(absenceFollowupProvider(widget.classModel).notifier);
+
+    if (!isAbsent) {
+      final ok = await notifier.mark(student.id!);
+      if (!mounted) return;
+      _showSnack(ok
+          ? '${student.fullName} devamsızlık takibine eklendi.'
+          : 'İşlem başarısız.');
+      return;
+    }
+
+    final entries =
+        ref.read(absenceFollowupProvider(widget.classModel)).valueOrNull ??
+            const <AbsenceFollowupEntry>[];
+    final kayit = entries
+        .where((e) => e.followup.studentId == student.id)
+        .firstOrNull;
+
+    if (kayit != null && kayit.followup.hasNote) {
+      final onay = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('İşareti Kaldır'),
+          content: Text(
+            '${student.fullName} için yazdığınız devamsızlık notu da '
+            'silinecek.\n\nDevam edilsin mi?',
+            style: const TextStyle(fontSize: 13, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Vazgeç'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Kaldır'),
+            ),
+          ],
+        ),
+      );
+      if (onay != true) return;
+    }
+
+    final ok = await notifier.unmark(student.id!);
+    if (!mounted) return;
+    _showSnack(ok ? 'Devamsızlık işareti kaldırıldı.' : 'İşlem başarısız.');
+  }
+
+  /// Toplu seçimdeki öğrencileri devamsız işaretler.
+  Future<void> _markSelectedAbsent(List<int> ids) async {
+    if (ids.isEmpty) return;
+    final ok = await ref
+        .read(absenceFollowupProvider(widget.classModel).notifier)
+        .markBatch(ids);
+    if (!mounted) return;
+    if (ok) setState(() => _selectedStudentIds.clear());
+    _showSnack(ok
+        ? '${ids.length} öğrenci devamsızlık takibine eklendi.'
+        : 'İşlem başarısız.');
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
     );
   }
 

@@ -56,4 +56,37 @@ class PhoneFormatter {
     if (digitCount < _nationalLength) return null;
     return cleaned;
   }
+
+  /// Ekranda ve belgede gösterilecek biçim: `0 (5XX) XXX XX XX`.
+  ///
+  /// Aynı işlev veli rehberi ekranında ve veli iletişim PDF'inde
+  /// AYRI AYRI kopyalanmıştı; biri düzeltilip diğeri unutulabilirdi.
+  /// Tek fark boş değerin karşılığıydı, o da [emptyPlaceholder] ile
+  /// veriliyor (ekran boş bırakır, tablo '-' basar).
+  ///
+  /// Tanınmayan biçim olduğu gibi döner: öğretmen sabit hat veya
+  /// yurt dışı numarası girmiş olabilir, numarayı yutmak yerine
+  /// göstermek doğru.
+  static String toDisplay(String? raw, {String emptyPlaceholder = ''}) {
+    if (raw == null || raw.trim().isEmpty) return emptyPlaceholder;
+
+    final cleaned = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    String bicimle(String d) =>
+        '0 (${d.substring(0, 3)}) ${d.substring(3, 6)} '
+        '${d.substring(6, 8)} ${d.substring(8, 10)}';
+
+    if (cleaned.length == 11 && cleaned.startsWith('0')) {
+      return bicimle(cleaned.substring(1));
+    }
+    if (cleaned.length == _nationalLength && cleaned.startsWith('5')) {
+      return bicimle(cleaned);
+    }
+    if (cleaned.length == 12 && cleaned.startsWith(_countryCode)) {
+      return bicimle(cleaned.substring(2));
+    }
+
+    // Aşırı uzun girdi satırı taşırıyordu.
+    if (raw.length > 20) return '${raw.substring(0, 17)}...';
+    return raw;
+  }
 }

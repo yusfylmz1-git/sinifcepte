@@ -8,27 +8,17 @@ import '../../../../data/models/student_model.dart';
 import '../../../../data/models/class_model.dart';
 import 'classroom_documents_pdf_generator.dart';
 import '../../../core/pdf/pdf_tr_fonts.dart';
+import '../../parent_portal/data/services/phone_formatter.dart';
 
 /// MEB Standartlarında Resmî Sınıf Veli İletişim ve Acil Durum Çizelgesi PDF Motoru
 class ParentContactsPdfGenerator {
   ParentContactsPdfGenerator._();
 
   /// Telefon Numarasını Standart Türkiye Formatına (0 5XX XXX XX XX) Çevirici
-  static String formatPhoneNumber(String? phone) {
-    if (phone == null || phone.trim().isEmpty) return '-';
-    final cleaned = phone.replaceAll(RegExp(r'[^0-9]'), '');
-    if (cleaned.length == 11 && cleaned.startsWith('0')) {
-      return '0 (${cleaned.substring(1, 4)}) ${cleaned.substring(4, 7)} ${cleaned.substring(7, 9)} ${cleaned.substring(9, 11)}';
-    } else if (cleaned.length == 10 && cleaned.startsWith('5')) {
-      return '0 (${cleaned.substring(0, 3)}) ${cleaned.substring(3, 6)} ${cleaned.substring(6, 8)} ${cleaned.substring(8, 10)}';
-    } else if (cleaned.length == 12 && cleaned.startsWith('90')) {
-      return '0 (${cleaned.substring(2, 5)}) ${cleaned.substring(5, 8)} ${cleaned.substring(8, 10)} ${cleaned.substring(10, 12)}';
-    }
-    if (phone.length > 20) {
-      return '${phone.substring(0, 17)}...';
-    }
-    return phone;
-  }
+  /// Biçimlendirme tek yerde: [PhoneFormatter.toDisplay].
+  /// Tabloda boş hücre yerine '-' basılır.
+  static String formatPhoneNumber(String? phone) =>
+      PhoneFormatter.toDisplay(phone, emptyPlaceholder: '-');
 
   static Future<void> generateAndShare({
     required BuildContext context,

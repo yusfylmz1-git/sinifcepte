@@ -7,6 +7,7 @@ import '../../../shared/widgets/custom_app_bar.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../auth_profile/providers/teacher_profile_provider.dart';
 import '../providers/class_provider.dart';
+import '../providers/absence_followup_provider.dart';
 import '../providers/student_provider.dart';
 import '../utils/classroom_documents_pdf_generator.dart';
 import '../presentation/views/student_import_preview_view.dart';
@@ -17,6 +18,7 @@ import '../presentation/widgets/classroom_rules_editor_modal.dart';
 import '../presentation/widgets/parent_meeting_editor_modal.dart';
 import '../../../../shared/screens/pdf_preview_screen.dart';
 import 'seating_plan_screen.dart';
+import 'absence_followup_screen.dart';
 import 'student_list_screen.dart';
 import 'parent_contacts_screen.dart';
 import '../../../shared/widgets/custom_bottom_nav_bar.dart';
@@ -757,6 +759,17 @@ class _MyClassHubScreenState extends ConsumerState<MyClassHubScreen> {
     );
   }
 
+  /// Devamsızlık kartının alt metni: kaç öğrenci takipte.
+  ///
+  /// Sayı kartta görünmeseydi öğretmen listeyi açmadan durumu
+  /// bilemezdi; kart o zaman yalnızca bir kısayol olurdu.
+  String _absenceSubtitle(ClassModel classModel) {
+    final entries = ref.watch(absenceFollowupProvider(classModel)).valueOrNull;
+    if (entries == null) return 'Yükleniyor...';
+    if (entries.isEmpty) return 'Takipte öğrenci yok';
+    return '${entries.length} öğrenci takipte';
+  }
+
   /// Sınıf yönetimi kartları.
   Widget _buildClassGrid(
     BuildContext context,
@@ -830,6 +843,27 @@ class _MyClassHubScreenState extends ConsumerState<MyClassHubScreen> {
             );
           },
         ),
+        // Devamsızlık takibi (Bakanlık çalışması).
+        //
+        // Çalışmayı SINIF REHBER ÖĞRETMENİ yürütüyor; branş sınıfında
+        // kart pasif görünür ve nedenini söyler.
+        _buildBentoTile(
+          context: context,
+          title: 'Devamsızlık Takibi',
+          subtitle: classModel.isHomeroom
+              ? _absenceSubtitle(classModel)
+              : 'Rehberlik sınıfına özel',
+          icon: Icons.event_busy_rounded,
+          gradient: const [Color(0xFFEF4444), Color(0xFFDC2626)],
+          accent: const Color(0xFFEF4444),
+          isDark: isDark,
+          disabledReason: classModel.isHomeroom
+              ? null
+              : 'Devamsızlık takibi sınıf rehber öğretmenine ait bir '
+                  'çalışmadır. ${classModel.name} rehberlik sınıfınız değil.',
+          onTap: () => openAbsenceFollowupScreen(context, classModel),
+        ),
+
         _buildBentoTile(
           context: context,
           title: 'Toplu Öğrenci Yükle',
@@ -864,7 +898,17 @@ class _MyClassHubScreenState extends ConsumerState<MyClassHubScreen> {
     required Color accent,
     required bool isDark,
     required VoidCallback onTap,
+    /// Doluysa kart pasiftir ve dokununca bu metin gösterilir.
+    ///
+    /// Kart tamamen gizlenseydi öğretmen özelliğin var olduğunu bile
+    /// bilemezdi; pasif kart NEDEN kullanılamadığını söyler.
+    String? disabledReason,
   }) {
+    final devreDisi = disabledReason != null;
+    final etkinAccent = devreDisi ? const Color(0xFF94A3B8) : accent;
+    final etkinGradient = devreDisi
+        ? const [Color(0xFFCBD5E1), Color(0xFF94A3B8)]
+        : gradient;
     return Container(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
@@ -874,25 +918,25 @@ class _MyClassHubScreenState extends ConsumerState<MyClassHubScreen> {
           colors: isDark
               ? [
                   const Color(0xFF1E293B),
-                  Color.alphaBlend(accent.withValues(alpha: 0.08), const Color(0xFF1E293B)),
+                  Color.alphaBlend(etkinAccent.withValues(alpha: 0.08), const Color(0xFF1E293B)),
                 ]
               : [
                   Colors.white,
-                  Color.alphaBlend(accent.withValues(alpha: 0.04), Colors.white),
+                  Color.alphaBlend(etkinAccent.withValues(alpha: 0.04), Colors.white),
                 ],
         ),
         borderRadius: BorderRadius.circular(15),
         border: Border.all(
           color: isDark
-              ? accent.withValues(alpha: 0.22)
-              : accent.withValues(alpha: 0.16),
+              ? etkinAccent.withValues(alpha: 0.22)
+              : etkinAccent.withValues(alpha: 0.16),
           width: 1.1,
         ),
         boxShadow: [
           BoxShadow(
             color: isDark
                 ? Colors.black.withValues(alpha: 0.2)
-                : accent.withValues(alpha: 0.06),
+                : etkinAccent.withValues(alpha: 0.06),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -909,7 +953,7 @@ class _MyClassHubScreenState extends ConsumerState<MyClassHubScreen> {
               child: Icon(
                 icon,
                 size: 48,
-                color: accent.withValues(alpha: isDark ? 0.04 : 0.035),
+                color: etkinAccent.withValues(alpha: isDark ? 0.04 : 0.035),
               ),
             ),
 
@@ -917,9 +961,13 @@ class _MyClassHubScreenState extends ConsumerState<MyClassHubScreen> {
             Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: onTap,
-                splashColor: accent.withValues(alpha: 0.12),
-                highlightColor: accent.withValues(alpha: 0.06),
+                onTap: devreDisi
+                    ? () => ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(disabledReason)),
+                        )
+                    : onTap,
+                splashColor: etkinAccent.withValues(alpha: 0.12),
+                highlightColor: etkinAccent.withValues(alpha: 0.06),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   child: Row(
@@ -931,14 +979,14 @@ class _MyClassHubScreenState extends ConsumerState<MyClassHubScreen> {
                         height: 36,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: gradient,
+                            colors: etkinGradient,
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(10),
                           boxShadow: [
                             BoxShadow(
-                              color: gradient[0].withValues(alpha: 0.35),
+                              color: etkinGradient[0].withValues(alpha: 0.35),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
@@ -967,7 +1015,9 @@ class _MyClassHubScreenState extends ConsumerState<MyClassHubScreen> {
                               style: TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                color: devreDisi
+                                    ? (isDark ? Colors.white38 : const Color(0xFF94A3B8))
+                                    : (isDark ? Colors.white : const Color(0xFF0F172A)),
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -1056,6 +1106,25 @@ class _MyClassHubScreenState extends ConsumerState<MyClassHubScreen> {
                   students: students,
                   teacherProfile: profile,
                 ),
+          },
+          // Devamsızlık çizelgesi evrak merkezinde de var: öğretmen
+          // belgeyi ararken önce buraya bakıyor. Liste boşken de
+          // basılabilir (elle doldurulacak boş çizelge).
+          {
+            'title': 'Devamsız Öğrenci Takip Çizelgesi',
+            'desc': 'Veli iletişimli, imzalı devamsızlık takip formu',
+            'icon': Icons.event_busy_outlined,
+            'color': const Color(0xFFEF4444),
+            'action': () => ClassroomDocumentsPdfGenerator
+                .generateAbsenceFollowupPdf(
+              context: context,
+              classModel: classModel,
+              entries: ref
+                      .read(absenceFollowupProvider(classModel))
+                      .valueOrNull ??
+                  const [],
+              teacherProfile: profile,
+            ),
           },
           {
             'title': 'Acil Durum & Veli İletişim Listesi',

@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart' show BuildContext;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import '../../../../data/models/absence_followup_model.dart';
 import '../../../../data/models/student_model.dart';
 import '../../../../data/models/class_model.dart';
 import '../../auth_profile/data/models/teacher_profile_model.dart';
@@ -1491,6 +1492,167 @@ class ClassroomDocumentsPdfGenerator {
   // ==========================================
   // DOĞRUDAN ÖNİZLEME YARDIMCILARI (PREVIEW HELPERS)
   // ==========================================
+
+  // ==========================================
+  // DEVAMSIZ ÖĞRENCİ TAKİP ÇİZELGESİ
+  // ==========================================
+
+  /// Bakanlığın devamsızlık çalışması için sınıf rehber öğretmeninin
+  /// dolduracağı çizelge.
+  ///
+  /// Ekranda görünen sütunların aynısı basılır (No · Adı Soyadı ·
+  /// Veli · Veli Telefonu · Neden · Açıklama). Ekran ile belge farklı
+  /// sıralasaydı öğretmen imzaladığı listeyi uygulamadakiyle
+  /// eşleştiremezdi; ikisi de okul numarasına göre sıralı.
+  static Future<Uint8List> generateAbsenceFollowupPdfBytes({
+    required ClassModel classModel,
+    required List<AbsenceFollowupEntry> entries,
+    required TeacherProfileModel teacherProfile,
+  }) async {
+    final pdf = await PdfTrFonts.document();
+
+    final sirali = List<AbsenceFollowupEntry>.from(entries)
+      ..sort((a, b) => a.schoolNumber.compareTo(b.schoolNumber));
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.symmetric(horizontal: 26, vertical: 24),
+        header: (pw.Context ctx) => _buildOfficialHeader(
+          schoolName: teacherProfile.schoolName,
+          title: '${classModel.name} SINIFI DEVAMSIZ ÖĞRENCİ TAKİP ÇİZELGESİ',
+          academicYear: ogretimYili(classModel),
+          documentCode: 'MEB.DVM.01',
+        ),
+        footer: (pw.Context ctx) => _buildOfficialFooter(
+          teacherName: teacherProfile.fullName,
+          principalName: teacherProfile.schoolPrincipalName,
+          pageNumber: 'Sayfa ${ctx.pageNumber} / ${ctx.pagesCount}',
+        ),
+        build: (pw.Context ctx) => [
+          pw.SizedBox(height: 6),
+
+          // Çizelge boş basılabilmeli: öğretmen listeyi elle
+          // doldurmak isteyebilir. Boş tabloyu bastırmak yerine
+          // uyarı satırı yazılsaydı belge imzalanamazdı.
+          pw.TableHelper.fromTextArray(
+            border: pw.TableBorder.all(color: PdfColors.black, width: 0.6),
+            headerStyle: pw.TextStyle(
+              fontSize: 8.5,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.black,
+            ),
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+            cellStyle: const pw.TextStyle(fontSize: 8, color: PdfColors.black),
+            cellPadding:
+                const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            cellAlignments: {
+              0: pw.Alignment.center,
+              1: pw.Alignment.center,
+              2: pw.Alignment.centerLeft,
+              3: pw.Alignment.centerLeft,
+              4: pw.Alignment.center,
+              5: pw.Alignment.center,
+              6: pw.Alignment.centerLeft,
+            },
+            columnWidths: {
+              0: const pw.FixedColumnWidth(28), // Sıra
+              1: const pw.FixedColumnWidth(42), // Okul no
+              2: const pw.FlexColumnWidth(2.6), // Ad soyad
+              3: const pw.FlexColumnWidth(2.1), // Veli adı
+              4: const pw.FixedColumnWidth(76), // Veli telefonu
+              5: const pw.FixedColumnWidth(58), // Neden
+              6: const pw.FlexColumnWidth(3.2), // Açıklama
+            },
+            headers: const [
+              'S.NO',
+              'OKUL NO',
+              'ADI VE SOYADI',
+              'VELİ ADI SOYADI',
+              'VELİ TELEFONU',
+              'NEDEN',
+              'YAPILAN ÇALIŞMA / AÇIKLAMA',
+            ],
+            data: sirali.isEmpty
+                ? List.generate(
+                    12,
+                    (i) => [
+                      '${i + 1}',
+                      '',
+                      '',
+                      '',
+                      '',
+                      '',
+                      '',
+                    ],
+                  )
+                : List.generate(sirali.length, (index) {
+                    final e = sirali[index];
+                    return [
+                      '${index + 1}',
+                      '${e.schoolNumber}',
+                      e.fullName,
+                      (e.parentName ?? '').trim(),
+                      (e.parentPhone ?? '').trim(),
+                      e.followup.reason.label,
+                      (e.followup.note ?? '').trim(),
+                    ];
+                  }),
+          ),
+
+          pw.SizedBox(height: 10),
+          pw.Container(
+            width: double.infinity,
+            padding: const pw.EdgeInsets.all(6),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.black, width: 0.6),
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  'AÇIKLAMALAR',
+                  style: pw.TextStyle(
+                    fontSize: 8,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.black,
+                  ),
+                ),
+                pw.SizedBox(height: 3),
+                pw.Text(
+                  'Bu çizelge, devamsızlığı takip edilen öğrenciler için sınıf '
+                  'rehber öğretmeni tarafından düzenlenmiştir. Öğrenci sayısı: '
+                  '${sirali.length}.',
+                  style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.black),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return pdf.save();
+  }
+
+  static Future<void> generateAbsenceFollowupPdf({
+    required BuildContext context,
+    required ClassModel classModel,
+    required List<AbsenceFollowupEntry> entries,
+    required TeacherProfileModel teacherProfile,
+  }) async {
+    await PdfPreviewScreen.open(
+      context,
+      title: 'Devamsız Öğrenci Takip Çizelgesi',
+      subtitle: '${classModel.name} • ${entries.length} öğrenci',
+      fileName: 'Devamsizlik_Takip_${classModel.name}.pdf',
+      documentBuilder: (format) => generateAbsenceFollowupPdfBytes(
+        classModel: classModel,
+        entries: entries,
+        teacherProfile: teacherProfile,
+      ),
+    );
+  }
 
   static Future<void> generateStudentListPdf({
     required BuildContext context,
