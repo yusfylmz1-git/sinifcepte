@@ -79,7 +79,84 @@ class AbsenceFollowupRepository {
     String? note,
   }) async {
     final db = await _dbHelper.database;
+    await _markInternal(
+      db,
+      studentId: studentId,
+      classId: classId,
+      academicYear: academicYear,
+      reason: reason,
+      note: note,
+    );
+  }
+
+  /// Birden fazla ogrenciyi isaretler (toplu secim modu).
+  ///
+  /// Tek islemde: yarim kalirsa liste ile cizelge birbirini tutmazdi.
+  Future<void> markBatch({
+    required List<int> studentIds,
+    required int classId,
+    required String academicYear,
+  }) async {
+    if (studentIds.isEmpty) return;
+    final db = await _dbHelper.database;
+    await db.transaction((txn) async {
+      for (final id in studentIds) {
+        await _markInternal(
+          txn,
+          studentId: id,
+          classId: classId,
+          academicYear: academicYear,
+        );
+      }
+    });
+  }
+
+  /// Isaretlemenin ortak govdesi.
+  ///
+  /// SUBE DEGISIKLIGI TUZAGI: tabloda `UNIQUE(student_id,
+  /// academic_year)` var. Ogrenci yil icinde 5-A'dan 5-B'ye
+  /// gectiginde eski satir hâlâ eski `class_id` ile duruyor. Duz bir
+  /// `insert ... ignore` o satiri gormezden gelir; yeni sube listesi
+  /// BOS kalir ama ogretmene "eklendi" denir. Ogrenci ne listede
+  /// gorunur ne de yeniden eklenebilir.
+  ///
+  /// Bu yuzden once mevcut kayit aranir ve varsa yeni subeye TASINIR
+  /// — projenin veli kodu kuralindaki gibi: sube degisikliginde bag
+  /// kopmaz, tasinir. Ogretmenin yazdigi not ve neden korunur.
+  Future<void> _markInternal(
+    DatabaseExecutor db, {
+    required int studentId,
+    required int classId,
+    required String academicYear,
+    AbsenceReason reason = AbsenceReason.bilinmiyor,
+    String? note,
+  }) async {
     final now = DateTime.now();
+
+    final mevcut = await db.query(
+      _table,
+      columns: ['id', 'class_id'],
+      where: 'student_id = ? AND academic_year = ?',
+      whereArgs: [studentId, academicYear],
+      limit: 1,
+    );
+
+    if (mevcut.isNotEmpty) {
+      // Ayni subedeyse dokunma: yazilmis not ve neden korunmali.
+      if (mevcut.first['class_id'] == classId) return;
+
+      await db.update(
+        _table,
+        {
+          'class_id': classId,
+          'updated_at': now.toIso8601String(),
+        },
+        where: 'id = ?',
+        whereArgs: [mevcut.first['id']],
+      );
+      return;
+    }
+
     await db.insert(
       _table,
       AbsenceFollowupModel(
@@ -96,36 +173,15 @@ class AbsenceFollowupRepository {
     );
   }
 
-  /// Birden fazla ogrenciyi tek islemde isaretler (toplu secim modu).
-  Future<void> markBatch({
-    required List<int> studentIds,
-    required int classId,
-    required String academicYear,
-  }) async {
-    if (studentIds.isEmpty) return;
-    final db = await _dbHelper.database;
-    final now = DateTime.now();
-    final batch = db.batch();
-    for (final id in studentIds) {
-      batch.insert(
-        _table,
-        AbsenceFollowupModel(
-          studentId: id,
-          classId: classId,
-          academicYear: academicYear,
-          markedAt: now,
-          updatedAt: now,
-        ).toMap()
-          ..remove('id'),
-        conflictAlgorithm: ConflictAlgorithm.ignore,
-      );
-    }
-    await batch.commit(noResult: true);
-  }
-
   /// Neden ve notu gunceller.
+  ///
+  /// `class_id` kosulu SART: ogrenci yil icinde sube degistirirse
+  /// (moveStudent) eski subenin kaydi da ayni student_id'yi tasir.
+  /// Kosul olmadan bir subeden yapilan duzenleme otekinin notunu da
+  /// ezerdi.
   Future<void> updateDetails({
     required int studentId,
+    required int classId,
     required String academicYear,
     required AbsenceReason reason,
     String? note,
@@ -138,23 +194,25 @@ class AbsenceFollowupRepository {
         'note': note,
         'updated_at': DateTime.now().toIso8601String(),
       },
-      where: 'student_id = ? AND academic_year = ?',
-      whereArgs: [studentId, academicYear],
+      where: 'student_id = ? AND class_id = ? AND academic_year = ?',
+      whereArgs: [studentId, classId, academicYear],
     );
   }
 
   /// Takipten cikar (ogrenci artik devamsiz degil).
   ///
   /// Ogrenciyi SILMEZ; yalnizca devamsizlik kaydini kaldirir.
+  /// [updateDetails] ile ayni sinif kosulu gecerli.
   Future<void> unmark({
     required int studentId,
+    required int classId,
     required String academicYear,
   }) async {
     final db = await _dbHelper.database;
     await db.delete(
       _table,
-      where: 'student_id = ? AND academic_year = ?',
-      whereArgs: [studentId, academicYear],
+      where: 'student_id = ? AND class_id = ? AND academic_year = ?',
+      whereArgs: [studentId, classId, academicYear],
     );
   }
 }

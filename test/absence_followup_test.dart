@@ -247,6 +247,238 @@ void main() {
     });
   });
 
+  group('Sube degisikligi (regresyon)', () {
+    /// Uretimdeki _markInternal'in aynisi.
+    ///
+    /// TUZAK: tabloda UNIQUE(student_id, academic_year) var. Duz bir
+    /// "insert ... ignore" ogrenci sube degistirdiginde eski satiri
+    /// gormezden gelir: yeni sube listesi BOS kalir ama ogretmene
+    /// "eklendi" denir. Ogrenci ne gorunur ne yeniden eklenebilir.
+    Future<void> isaretle(
+      Database db, {
+      required int studentId,
+      required int classId,
+      String yil = '2025-2026',
+    }) async {
+      final mevcut = await db.query(
+        'absence_followups',
+        columns: ['id', 'class_id'],
+        where: 'student_id = ? AND academic_year = ?',
+        whereArgs: [studentId, yil],
+        limit: 1,
+      );
+      if (mevcut.isNotEmpty) {
+        if (mevcut.first['class_id'] == classId) return;
+        await db.update(
+          'absence_followups',
+          {'class_id': classId, 'updated_at': DateTime.now().toIso8601String()},
+          where: 'id = ?',
+          whereArgs: [mevcut.first['id']],
+        );
+        return;
+      }
+      await db.insert(
+        'absence_followups',
+        kayit(studentId: studentId, classId: classId, yil: yil),
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+    }
+
+    test('KRITIK: sube degisince kayit hayalet olmuyor', () async {
+      final db = await semaKur();
+      final aSubesi = await db.insert('classes', {
+        'name': '5-A',
+        'subject': 'Sınıf',
+        'academic_year': '2025-2026',
+        'is_homeroom': 1,
+      });
+      final bSubesi = await db.insert('classes', {
+        'name': '5-B',
+        'subject': 'Sınıf',
+        'academic_year': '2025-2026',
+        'is_homeroom': 1,
+      });
+      final ogrenciId = await ogrenciEkle(db, classId: aSubesi, no: 42);
+
+      await isaretle(db, studentId: ogrenciId, classId: aSubesi);
+      await db.update('absence_followups', {'note': 'Veli arandı'},
+          where: 'student_id = ?', whereArgs: [ogrenciId]);
+
+      // Ogrenci 5-B'ye tasindi, orada da isaretleniyor.
+      await db.update('students', {'class_id': bSubesi},
+          where: 'id = ?', whereArgs: [ogrenciId]);
+      await isaretle(db, studentId: ogrenciId, classId: bSubesi);
+
+      final yeniSube = await db.query(
+        'absence_followups',
+        where: 'class_id = ? AND academic_year = ?',
+        whereArgs: [bSubesi, '2025-2026'],
+      );
+      expect(yeniSube.length, 1,
+          reason: 'Ogrenci yeni sube listesinde GORUNMELI');
+      expect(yeniSube.first['note'], 'Veli arandı',
+          reason: 'Sube degisirken yazilan not korunmali (veli kodu kurali)');
+
+      // Kopya olusmamali: kayit tasinir, cogaltilmaz.
+      expect((await db.query('absence_followups')).length, 1);
+      final eskiSube = await db.query('absence_followups',
+          where: 'class_id = ?', whereArgs: [aSubesi]);
+      expect(eskiSube, isEmpty, reason: 'Eski subede satir kalmamali');
+
+      await db.close();
+    });
+
+    test('Ayni subede tekrar isaretleme notu bozmuyor', () async {
+      final db = await semaKur();
+      final classId = await db.insert('classes', {
+        'name': '5-A',
+        'subject': 'Sınıf',
+        'academic_year': '2025-2026',
+        'is_homeroom': 1,
+      });
+      final ogrenciId = await ogrenciEkle(db, classId: classId, no: 5);
+
+      await isaretle(db, studentId: ogrenciId, classId: classId);
+      await db.update('absence_followups',
+          {'note': 'Ev ziyareti yapıldı', 'reason': 'ailevi'},
+          where: 'student_id = ?', whereArgs: [ogrenciId]);
+
+      await isaretle(db, studentId: ogrenciId, classId: classId);
+
+      final satir = (await db.query('absence_followups')).single;
+      expect(satir['note'], 'Ev ziyareti yapıldı');
+      expect(satir['reason'], 'ailevi');
+
+      await db.close();
+    });
+  });
+
+  group('Sinif siniri (regresyon)', () {
+    test('KRITIK: guncelleme baska subenin kaydina dokunmuyor', () async {
+      final db = await semaKur();
+      final aSubesi = await db.insert('classes', {
+        'name': '5-A',
+        'subject': 'Sınıf',
+        'academic_year': '2025-2026',
+        'is_homeroom': 1,
+      });
+      final bSubesi = await db.insert('classes', {
+        'name': '5-B',
+        'subject': 'Sınıf',
+        'academic_year': '2025-2026',
+        'is_homeroom': 1,
+      });
+      final ogrA = await ogrenciEkle(db, classId: aSubesi, no: 1);
+      final ogrB = await ogrenciEkle(db, classId: bSubesi, no: 1);
+
+      await db.insert('absence_followups',
+          kayit(studentId: ogrA, classId: aSubesi, note: 'A notu'));
+      await db.insert('absence_followups',
+          kayit(studentId: ogrB, classId: bSubesi, note: 'B notu'));
+
+      // Uretimdeki updateDetails: student_id + class_id + yil
+      await db.update(
+        'absence_followups',
+        {'note': 'A guncellendi', 'reason': 'saglik'},
+        where: 'student_id = ? AND class_id = ? AND academic_year = ?',
+        whereArgs: [ogrA, aSubesi, '2025-2026'],
+      );
+
+      final bKaydi = (await db.query('absence_followups',
+              where: 'student_id = ?', whereArgs: [ogrB]))
+          .single;
+      expect(bKaydi['note'], 'B notu',
+          reason: 'Bir subeden yapilan duzenleme otekini ezmemeli');
+
+      await db.close();
+    });
+
+    test('Yazma yollari sinif kosulunu tasiyor', () {
+      final s = read(repo);
+      // updateDetails ve unmark: ikisi de sinifla sinirli olmali.
+      expect(
+        "AND class_id = ? AND academic_year = ?".allMatches(s).length,
+        2,
+        reason: 'updateDetails ve unmark sinif kosulu tasimali',
+      );
+    });
+  });
+
+  group('Provider maliyeti (regresyon)', () {
+    test('KRITIK: aile anahtari int, ClassModel degil', () {
+      final s = read(provider);
+      // ClassModel'in == operatoru yok: anahtar o olsaydi sinif
+      // listesi her yenilendiginde provider sifirdan kurulur, iki
+      // DB sorgusu bosuna atilirdi.
+      expect(s.contains('Provider.family<Set<int>, int>'), isTrue);
+      expect(s.contains('absenceFollowupProvider(classId)'), isTrue,
+          reason: 'family anahtari int classId olmali');
+    });
+
+    test('ClassModel hala == tasimiyor (varsayim dogrulamasi)', () {
+      // Bu dogruysa yukaridaki kural gecerli kalir. ClassModel'e
+      // ileride == eklenirse bu test duser ve kural gozden gecirilir.
+      final s = read('lib/data/models/class_model.dart');
+      expect(s.contains('operator =='), isFalse);
+    });
+
+    test('Toplu isaretleme tek islemde', () {
+      expect(read(repo).contains('db.transaction('), isTrue,
+          reason: 'Yarim kalan toplu yazim liste ile cizelgeyi ayirirdi');
+    });
+
+    test('Kapanmis notifier state yazmiyor', () {
+      // Ekran kapaninca gelen gec yanit "disposed" hatasi veriyordu.
+      expect(read(provider).contains('if (!mounted) return;'), isTrue);
+    });
+
+    test('Ders yili sinif kaydindan okunuyor, ekrandan degil', () {
+      final s = read(provider);
+      expect(s.contains('_classRepository.getClassById(classId)'), isTrue,
+          reason: 'Ekran eski kopya tutuyorsa kayit yanlis yila yazilirdi');
+    });
+  });
+
+  group('KVKK', () {
+    test('KRITIK: devamsizlik verisi buluta cikmiyor', () {
+      // Veri sahipligi karari (Secenek A): ogrenci verisi cihazda
+      // kalir. Devamsizlik nedeni saglik/ekonomik olabiliyor.
+      for (final yol in ['lib/core/cloud', 'lib/features/sync']) {
+        final dir = Directory(yol);
+        if (!dir.existsSync()) continue;
+        for (final f in dir.listSync(recursive: true).whereType<File>()) {
+          if (!f.path.endsWith('.dart')) continue;
+          expect(f.readAsStringSync().contains('absence_followups'), isFalse,
+              reason: '${f.path} devamsizlik tablosuna dokunmamali');
+        }
+      }
+    });
+
+    test('KRITIK: cizelge gizlilik ibaresi tasiyor', () {
+      final s = read(pdf);
+      expect(s.contains('MEB.DVM.01 (HASSAS)'), isTrue,
+          reason: 'Veli telefonu + saglik nedeni iceren belge hassas');
+      final bas = s.indexOf('generateAbsenceFollowupPdfBytes');
+      final son = s.indexOf('generateAbsenceFollowupPdf({', bas);
+      expect(s.substring(bas, son).contains('GİZLİDİR'), isTrue,
+          reason: 'Belge yazdirilip masada kalabiliyor, paylasilabiliyor');
+    });
+  });
+
+  group('Belge uretimi (regresyon)', () {
+    test('KRITIK: cizelge PdfTrFonts.kaydet ile uretiliyor', () {
+      // Duz `pdf.save()` VS Code hata ayiklayicisi bagliyken hic
+      // donmuyor; kullanici sonsuz "Belge Hazirlaniyor"da kaliyordu.
+      // Dosyadaki diger 13 belge de kaydet kullaniyor.
+      final s = read(pdf);
+      expect(s.contains('return pdf.save();'), isFalse,
+          reason: 'Zaman asimsiz save donma tuzagi');
+      final bas = s.indexOf('generateAbsenceFollowupPdfBytes');
+      final son = s.indexOf('generateAbsenceFollowupPdf({', bas);
+      expect(s.substring(bas, son).contains('PdfTrFonts.kaydet(pdf)'), isTrue);
+    });
+  });
+
   group('Model', () {
     test('Neden kodlari gidip geliyor', () {
       for (final r in AbsenceReason.values) {

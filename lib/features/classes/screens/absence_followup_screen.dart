@@ -58,7 +58,7 @@ class _AbsenceFollowupScreenState extends ConsumerState<AbsenceFollowupScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final entriesAsync = ref.watch(absenceFollowupProvider(widget.classModel));
+    final entriesAsync = ref.watch(absenceFollowupProvider(widget.classModel.id!));
     final entries = entriesAsync.valueOrNull ?? const <AbsenceFollowupEntry>[];
     final filtered = _applyFilters(entries);
 
@@ -615,7 +615,7 @@ class _AbsenceFollowupScreenState extends ConsumerState<AbsenceFollowupScreen> {
             const SizedBox(height: 12),
             FilledButton.icon(
               onPressed: () => ref
-                  .read(absenceFollowupProvider(widget.classModel).notifier)
+                  .read(absenceFollowupProvider(widget.classModel.id!).notifier)
                   .load(),
               icon: const Icon(Icons.refresh_rounded, size: 18),
               label: const Text('Yeniden Dene'),
@@ -729,7 +729,7 @@ class _AbsenceFollowupScreenState extends ConsumerState<AbsenceFollowupScreen> {
     if (onay != true || secilenler.isEmpty) return;
 
     final ok = await ref
-        .read(absenceFollowupProvider(widget.classModel).notifier)
+        .read(absenceFollowupProvider(widget.classModel.id!).notifier)
         .markBatch(secilenler.toList());
     _showSnack(
       ok
@@ -839,7 +839,7 @@ class _AbsenceFollowupScreenState extends ConsumerState<AbsenceFollowupScreen> {
     if (kaydet != true) return;
 
     final ok = await ref
-        .read(absenceFollowupProvider(widget.classModel).notifier)
+        .read(absenceFollowupProvider(widget.classModel.id!).notifier)
         .updateDetails(
           studentId: entry.followup.studentId,
           reason: reason,
@@ -876,7 +876,7 @@ class _AbsenceFollowupScreenState extends ConsumerState<AbsenceFollowupScreen> {
     if (onay != true) return;
 
     final ok = await ref
-        .read(absenceFollowupProvider(widget.classModel).notifier)
+        .read(absenceFollowupProvider(widget.classModel.id!).notifier)
         .unmark(entry.followup.studentId);
     _showSnack(ok ? 'Öğrenci takipten çıkarıldı.' : 'İşlem başarısız.');
   }
@@ -963,6 +963,6 @@ Future<bool> markStudentAbsent({
   required StudentModel student,
 }) {
   return ref
-      .read(absenceFollowupProvider(classModel).notifier)
+      .read(absenceFollowupProvider(classModel.id!).notifier)
       .mark(student.id!);
 }

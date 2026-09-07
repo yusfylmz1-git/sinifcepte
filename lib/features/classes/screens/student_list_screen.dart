@@ -65,7 +65,7 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
   Widget build(BuildContext context) {
     final studentListAsync = ref.watch(studentListProvider(widget.classModel.id!));
     // Devamsiz isaretli kimlikler: kart rozeti ve suzgec bunu kullanir.
-    final absentIds = ref.watch(absentStudentIdsProvider(widget.classModel));
+    final absentIds = ref.watch(absentStudentIdsProvider(widget.classModel.id!));
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -718,7 +718,7 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
   /// kaydı kaybolurdu.
   Future<void> _toggleAbsent(StudentModel student, bool isAbsent) async {
     final notifier =
-        ref.read(absenceFollowupProvider(widget.classModel).notifier);
+        ref.read(absenceFollowupProvider(widget.classModel.id!).notifier);
 
     if (!isAbsent) {
       final ok = await notifier.mark(student.id!);
@@ -730,7 +730,7 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
     }
 
     final entries =
-        ref.read(absenceFollowupProvider(widget.classModel)).valueOrNull ??
+        ref.read(absenceFollowupProvider(widget.classModel.id!)).valueOrNull ??
             const <AbsenceFollowupEntry>[];
     final kayit = entries
         .where((e) => e.followup.studentId == student.id)
@@ -771,7 +771,7 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
   Future<void> _markSelectedAbsent(List<int> ids) async {
     if (ids.isEmpty) return;
     final ok = await ref
-        .read(absenceFollowupProvider(widget.classModel).notifier)
+        .read(absenceFollowupProvider(widget.classModel.id!).notifier)
         .markBatch(ids);
     if (!mounted) return;
     if (ok) setState(() => _selectedStudentIds.clear());

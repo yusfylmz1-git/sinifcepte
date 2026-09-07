@@ -764,7 +764,7 @@ class _MyClassHubScreenState extends ConsumerState<MyClassHubScreen> {
   /// Sayı kartta görünmeseydi öğretmen listeyi açmadan durumu
   /// bilemezdi; kart o zaman yalnızca bir kısayol olurdu.
   String _absenceSubtitle(ClassModel classModel) {
-    final entries = ref.watch(absenceFollowupProvider(classModel)).valueOrNull;
+    final entries = ref.watch(absenceFollowupProvider(classModel.id!)).valueOrNull;
     if (entries == null) return 'Yükleniyor...';
     if (entries.isEmpty) return 'Takipte öğrenci yok';
     return '${entries.length} öğrenci takipte';
@@ -1120,7 +1120,7 @@ class _MyClassHubScreenState extends ConsumerState<MyClassHubScreen> {
               context: context,
               classModel: classModel,
               entries: ref
-                      .read(absenceFollowupProvider(classModel))
+                      .read(absenceFollowupProvider(classModel.id!))
                       .valueOrNull ??
                   const [],
               teacherProfile: profile,

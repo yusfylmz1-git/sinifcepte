@@ -1522,7 +1522,7 @@ class ClassroomDocumentsPdfGenerator {
           schoolName: teacherProfile.schoolName,
           title: '${classModel.name} SINIFI DEVAMSIZ ÖĞRENCİ TAKİP ÇİZELGESİ',
           academicYear: ogretimYili(classModel),
-          documentCode: 'MEB.DVM.01',
+          documentCode: 'MEB.DVM.01 (HASSAS)',
         ),
         footer: (pw.Context ctx) => _buildOfficialFooter(
           teacherName: teacherProfile.fullName,
@@ -1531,6 +1531,30 @@ class ClassroomDocumentsPdfGenerator {
         ),
         build: (pw.Context ctx) => [
           pw.SizedBox(height: 6),
+
+          // Gizlilik ibaresi.
+          //
+          // Çizelgede veli telefonu ve devamsızlık nedeni (sağlık,
+          // ekonomik) var — KVKK'da özel nitelikli veriye yakın
+          // duran bilgiler. Belge yazdırılıp öğretmen masasında
+          // kalabiliyor, "Paylaş" ile WhatsApp'a da gidebiliyor;
+          // ibare olmadan kimin görebileceği belirsiz kalırdı.
+          // Acil durum listesi de aynı ibareyi taşıyor.
+          pw.Container(
+            width: double.infinity,
+            padding: const pw.EdgeInsets.all(3.5),
+            decoration: pw.BoxDecoration(
+              border: pw.TableBorder.all(color: PdfColors.black, width: 0.6),
+            ),
+            child: pw.Text(
+              'GİZLİDİR: Bu çizelge devamsızlık takibi kapsamında sınıf '
+              'rehber öğretmeni ve okul idaresi tarafından kullanılmak '
+              'üzere düzenlenmiştir. Yetkisiz 3. kişilerle paylaşılamaz.',
+              style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold),
+              textAlign: pw.TextAlign.center,
+            ),
+          ),
+          pw.SizedBox(height: 8),
 
           // Çizelge boş basılabilmeli: öğretmen listeyi elle
           // doldurmak isteyebilir. Boş tabloyu bastırmak yerine
@@ -1632,7 +1656,7 @@ class ClassroomDocumentsPdfGenerator {
       ),
     );
 
-    return pdf.save();
+    return PdfTrFonts.kaydet(pdf);
   }
 
   static Future<void> generateAbsenceFollowupPdf({

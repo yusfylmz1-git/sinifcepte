@@ -5,7 +5,9 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/absence_followup_model.dart';
 import '../../../data/models/class_model.dart';
 import '../../../data/repositories/absence_followup_repository.dart';
+import '../../../data/repositories/class_repository.dart';
 import '../../../data/repositories/student_repository.dart';
+import 'class_provider.dart';
 import 'student_provider.dart';
 
 /// AbsenceFollowupRepository Provider
@@ -25,15 +27,24 @@ String absenceAcademicYear(ClassModel classModel) {
 }
 
 /// Devamsiz ogrenci takip listesi (sinif basina).
+///
+/// Aile anahtari `int classId` — projedeki diger family provider'lar
+/// (studentListProvider, seatingPlanProvider) da oyle.
+///
+/// ONEMLI: anahtar `ClassModel` OLAMAZ. O sinifin `==` operatoru yok,
+/// yani `classListProvider` her yenilendiginde DB'den gelen taze
+/// ornek FARKLI bir aile anahtari sayilirdi: provider her seferinde
+/// sifirdan kurulur, iki DB sorgusu bosuna atilir ve eski ornekler
+/// bellekte birikirdi.
 final absenceFollowupProvider = StateNotifierProvider.family<
     AbsenceFollowupNotifier,
     AsyncValue<List<AbsenceFollowupEntry>>,
-    ClassModel>((ref, classModel) {
+    int>((ref, classId) {
   return AbsenceFollowupNotifier(
-    ref: ref,
     repository: ref.watch(absenceFollowupRepositoryProvider),
     studentRepository: ref.watch(studentRepositoryProvider),
-    classModel: classModel,
+    classRepository: ref.watch(classRepositoryProvider),
+    classId: classId,
   );
 });
 
@@ -43,49 +54,69 @@ final absenceFollowupProvider = StateNotifierProvider.family<
 /// soruyor; tam kayit yerine yalnizca kimlik kumesi izlenirse liste
 /// gereksiz yere bastan cizilmez.
 final absentStudentIdsProvider =
-    Provider.family<Set<int>, ClassModel>((ref, classModel) {
-  final entries = ref.watch(absenceFollowupProvider(classModel)).valueOrNull;
+    Provider.family<Set<int>, int>((ref, classId) {
+  final entries = ref.watch(absenceFollowupProvider(classId)).valueOrNull;
   if (entries == null) return const <int>{};
   return entries.map((e) => e.followup.studentId).toSet();
 });
 
 class AbsenceFollowupNotifier
     extends StateNotifier<AsyncValue<List<AbsenceFollowupEntry>>> {
-  final Ref _ref;
   final AbsenceFollowupRepository _repository;
   final StudentRepository _studentRepository;
-  final ClassModel classModel;
+  final ClassRepository _classRepository;
+  final int classId;
+
+  /// Yuklemede sinif kaydindan okunan ders yili.
+  ///
+  /// Ekrandan gelen `ClassModel`'e guvenilmiyor: cagiran ekran eski
+  /// bir kopya tutuyor olabilir ve yil yanlis okunursa kayit BASKA
+  /// bir yila yazilir, liste bos gorunurdu.
+  String? _academicYear;
 
   AbsenceFollowupNotifier({
-    required Ref ref,
     required AbsenceFollowupRepository repository,
     required StudentRepository studentRepository,
-    required this.classModel,
-  })  : _ref = ref,
-        _repository = repository,
+    required ClassRepository classRepository,
+    required this.classId,
+  })  : _repository = repository,
         _studentRepository = studentRepository,
+        _classRepository = classRepository,
         super(const AsyncValue.loading()) {
     load();
   }
 
-  int get _classId => classModel.id!;
-  String get academicYear => absenceAcademicYear(classModel);
+  /// Sinif kaydindan ders yili. Bir kez okunur, sonra onbellekten.
+  Future<String> _resolveAcademicYear() async {
+    final onbellek = _academicYear;
+    if (onbellek != null) return onbellek;
+
+    final classModel = await _classRepository.getClassById(classId);
+    final yil = classModel != null
+        ? absenceAcademicYear(classModel)
+        : AppDateFormatter.academicYearLabel();
+    _academicYear = yil;
+    return yil;
+  }
 
   Future<void> load() async {
     try {
       state = const AsyncValue.loading();
-      final students = await _studentRepository.getStudentsByClassId(_classId);
+      final yil = await _resolveAcademicYear();
+      final students = await _studentRepository.getStudentsByClassId(classId);
       final entries = await _repository.getEntries(
-        classId: _classId,
-        academicYear: academicYear,
+        classId: classId,
+        academicYear: yil,
         students: students,
       );
+      if (!mounted) return;
       state = AsyncValue.data(entries);
     } catch (e, st) {
       debugPrint('---------------- HATA DETAYI (AbsenceFollowup.load) ----------------');
       debugPrint('Hata Mesajı : $e');
       debugPrint('Kod Satırı   : $st');
       debugPrint('-------------------------------------------------------------------');
+      if (!mounted) return;
       state = AsyncValue.error(e, st);
     }
   }
@@ -95,8 +126,8 @@ class AbsenceFollowupNotifier
     try {
       await _repository.mark(
         studentId: studentId,
-        classId: _classId,
-        academicYear: academicYear,
+        classId: classId,
+        academicYear: await _resolveAcademicYear(),
       );
       await load();
       return true;
@@ -114,8 +145,8 @@ class AbsenceFollowupNotifier
     try {
       await _repository.markBatch(
         studentIds: studentIds,
-        classId: _classId,
-        academicYear: academicYear,
+        classId: classId,
+        academicYear: await _resolveAcademicYear(),
       );
       await load();
       return true;
@@ -137,7 +168,8 @@ class AbsenceFollowupNotifier
     try {
       await _repository.updateDetails(
         studentId: studentId,
-        academicYear: academicYear,
+        classId: classId,
+        academicYear: await _resolveAcademicYear(),
         reason: reason,
         note: note,
       );
@@ -157,7 +189,8 @@ class AbsenceFollowupNotifier
     try {
       await _repository.unmark(
         studentId: studentId,
-        academicYear: academicYear,
+        classId: classId,
+        academicYear: await _resolveAcademicYear(),
       );
       await load();
       return true;
@@ -168,11 +201,5 @@ class AbsenceFollowupNotifier
       debugPrint('---------------------------------------------------------------------');
       return false;
     }
-  }
-
-  /// Ogrenci listesi degistikten sonra (ekleme/silme/tasima) tazele.
-  void refreshFromStudents() {
-    _ref.invalidate(studentListProvider(_classId));
-    load();
   }
 }
