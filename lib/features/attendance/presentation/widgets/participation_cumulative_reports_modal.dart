@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -179,6 +181,85 @@ class _ParticipationCumulativeReportsModalState
     );
   }
 
+  /// PDF üretimi için üst sınır.
+  ///
+  /// `PdfPreviewScreen` kendi akışında 45 saniyelik sınır uyguluyor;
+  /// bu ekran o ekranı atladığı için sınırı burada kurmak gerekiyor.
+  /// Sınır olmadan `save()` sessizce beklediğinde ana iş parçacığı
+  /// kilitleniyor ve Android uygulamayı ANR ile öldürüyor.
+  static const _pdfZamanAsimi = Duration(seconds: 45);
+
+  /// Bir PDF'i üretip paylaşır/yazdırır; hatayı KULLANICIYA gösterir.
+  ///
+  /// ## Neden bu yardımcı var
+  /// Beş ayrı üretim metodu (veli toplantısı, 1. dönem, 2. dönem, yıl
+  /// sonu, bireysel kart) aynı kalıbı kopyalamıştı ve hepsinde
+  /// `catch` yalnızca `debugPrint` yapıyordu. Release derlemede o
+  /// çıktı hiçbir yere gitmez: öğretmen dokunuyor, hiçbir şey
+  /// olmuyor, sebebini kimse göremiyordu.
+  ///
+  /// Cihaz logunda bunun karşılığı ANR'dı:
+  /// *"Input dispatching timed out ... Waited 5001ms for
+  /// MotionEvent(action=DOWN)"* — dokunuş bile işlenemiyordu.
+  ///
+  /// [uretici] belgeyi hazırlar; [isShare] paylaş/yazdır seçimidir.
+  Future<void> _pdfUret({
+    required String etiket,
+    required String dosyaAdi,
+    required Future<Uint8List> Function() uretici,
+    required bool isShare,
+  }) async {
+    try {
+      final pdfBytes = await uretici().timeout(
+        _pdfZamanAsimi,
+        onTimeout: () => throw TimeoutException(
+          'Belge ${_pdfZamanAsimi.inSeconds} saniyede hazırlanamadı.',
+          _pdfZamanAsimi,
+        ),
+      );
+
+      if (isShare) {
+        await Printing.sharePdf(bytes: pdfBytes, filename: dosyaAdi);
+      } else {
+        await Printing.layoutPdf(onLayout: (_) => pdfBytes, name: dosyaAdi);
+      }
+    } catch (e, stackTrace) {
+      debugPrint('$etiket hatası: $e\n$stackTrace');
+      _hataGoster(
+        e is TimeoutException
+            ? '$etiket hazırlanamadı: belge çok uzun sürdü. '
+                'Uygulamayı kapatıp yeniden deneyin.'
+            : '$etiket oluşturulamadı. Lütfen tekrar deneyin.',
+      );
+    }
+  }
+
+  /// Kullanıcıya görünür hata.
+  ///
+  /// `debugPrint` release'de görünmez; sessiz başarısızlık öğretmene
+  /// "uygulama bozuk" dedirtiyordu.
+  void _hataGoster(String mesaj) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mesaj),
+        backgroundColor: AppColors.danger,
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  /// Rapor verisi yoksa sebebini söyler.
+  ///
+  /// Önce sessizce `return` ediliyordu: öğretmen düğmeye basıyor,
+  /// hiçbir şey olmuyor ve neden olmadığını bilmiyordu.
+  void _veriYokUyarisi() {
+    _hataGoster(
+      'Bu aralıkta değerlendirme kaydı bulunamadı; '
+      'rapor oluşturulamadı.',
+    );
+  }
+
   /// Veli Toplantısı Kılavuzu Üret (Dönem Başından Seçilen Tarihe Kadar)
   Future<void> _generateMeetingReport({required bool isShare}) async {
     if (_selectedClassId == null) return;
@@ -188,29 +269,29 @@ class _ParticipationCumulativeReportsModalState
           await _fetchReportForRange(
             endDate: _meetingDate.toIso8601String().split('T').first,
           );
-      if (data == null) return;
+      if (data == null) {
+        _veriYokUyarisi();
+        return;
+      }
 
       final profile = ref.read(teacherProfileProvider);
       final turkishDate = AppDateFormatter.formatTurkishDate(_meetingDate);
 
-      final pdfBytes = await ParticipationCumulativePdfGenerator.generateParentMeetingGuidePdf(
-        reportData: data,
-        teacherName: profile.fullName,
-        schoolName: profile.schoolName,
-        meetingDateText: turkishDate,
+      await _pdfUret(
+        etiket: 'Veli toplantısı raporu',
+        dosyaAdi: '${data['className']}_Veli_Toplantisi_Raporu.pdf',
+        isShare: isShare,
+        uretici: () =>
+            ParticipationCumulativePdfGenerator.generateParentMeetingGuidePdf(
+          reportData: data,
+          teacherName: profile.fullName,
+          schoolName: profile.schoolName,
+          meetingDateText: turkishDate,
+        ),
       );
-
-      final filename = '${data['className']}_Veli_Toplantisi_Raporu.pdf';
-      if (isShare) {
-        await Printing.sharePdf(bytes: pdfBytes, filename: filename);
-      } else {
-        await Printing.layoutPdf(
-          onLayout: (_) => pdfBytes,
-          name: filename,
-        );
-      }
     } catch (e, stackTrace) {
       debugPrint('Veli toplantısı raporu hatası: $e\n$stackTrace');
+      _hataGoster('Rapor verisi okunamadı. Lütfen tekrar deneyin.');
     } finally {
       if (mounted) setState(() => _isActionLoading = false);
     }
@@ -226,27 +307,28 @@ class _ParticipationCumulativeReportsModalState
         startDate: '$currentYear-09-01',
         endDate: '${currentYear + 1}-01-31',
       );
-      if (data == null) return;
+      if (data == null) {
+        _veriYokUyarisi();
+        return;
+      }
 
       final profile = ref.read(teacherProfileProvider);
-      final pdfBytes = await ParticipationCumulativePdfGenerator.generateOfficialAdministrativePdf(
-        reportData: data,
-        teacherName: profile.fullName,
-        termName: '$currentYear-${currentYear + 1} Eğitim-Öğretim Yılı 1. Dönem Sonu',
-        schoolName: profile.schoolName,
+      await _pdfUret(
+        etiket: '1. Dönem raporu',
+        dosyaAdi: '${data['className']}_1_Donem_Katilim_Raporu.pdf',
+        isShare: isShare,
+        uretici: () => ParticipationCumulativePdfGenerator
+            .generateOfficialAdministrativePdf(
+          reportData: data,
+          teacherName: profile.fullName,
+          termName:
+              '$currentYear-${currentYear + 1} Eğitim-Öğretim Yılı 1. Dönem Sonu',
+          schoolName: profile.schoolName,
+        ),
       );
-
-      final filename = '${data['className']}_1_Donem_Katilim_Raporu.pdf';
-      if (isShare) {
-        await Printing.sharePdf(bytes: pdfBytes, filename: filename);
-      } else {
-        await Printing.layoutPdf(
-          onLayout: (_) => pdfBytes,
-          name: filename,
-        );
-      }
     } catch (e, stackTrace) {
       debugPrint('1. Dönem raporu hatası: $e\n$stackTrace');
+      _hataGoster('Rapor verisi okunamadı. Lütfen tekrar deneyin.');
     } finally {
       if (mounted) setState(() => _isActionLoading = false);
     }
@@ -262,27 +344,28 @@ class _ParticipationCumulativeReportsModalState
         startDate: '${currentYear + 1}-02-01',
         endDate: '${currentYear + 1}-06-30',
       );
-      if (data == null) return;
+      if (data == null) {
+        _veriYokUyarisi();
+        return;
+      }
 
       final profile = ref.read(teacherProfileProvider);
-      final pdfBytes = await ParticipationCumulativePdfGenerator.generateOfficialAdministrativePdf(
-        reportData: data,
-        teacherName: profile.fullName,
-        termName: '$currentYear-${currentYear + 1} Eğitim-Öğretim Yılı 2. Dönem Sonu',
-        schoolName: profile.schoolName,
+      await _pdfUret(
+        etiket: '2. Dönem raporu',
+        dosyaAdi: '${data['className']}_2_Donem_Katilim_Raporu.pdf',
+        isShare: isShare,
+        uretici: () => ParticipationCumulativePdfGenerator
+            .generateOfficialAdministrativePdf(
+          reportData: data,
+          teacherName: profile.fullName,
+          termName:
+              '$currentYear-${currentYear + 1} Eğitim-Öğretim Yılı 2. Dönem Sonu',
+          schoolName: profile.schoolName,
+        ),
       );
-
-      final filename = '${data['className']}_2_Donem_Katilim_Raporu.pdf';
-      if (isShare) {
-        await Printing.sharePdf(bytes: pdfBytes, filename: filename);
-      } else {
-        await Printing.layoutPdf(
-          onLayout: (_) => pdfBytes,
-          name: filename,
-        );
-      }
     } catch (e, stackTrace) {
       debugPrint('2. Dönem raporu hatası: $e\n$stackTrace');
+      _hataGoster('Rapor verisi okunamadı. Lütfen tekrar deneyin.');
     } finally {
       if (mounted) setState(() => _isActionLoading = false);
     }
@@ -295,27 +378,28 @@ class _ParticipationCumulativeReportsModalState
     try {
       final currentYear = DateTime.now().year;
       final data = await _fetchReportForRange();
-      if (data == null) return;
+      if (data == null) {
+        _veriYokUyarisi();
+        return;
+      }
 
       final profile = ref.read(teacherProfileProvider);
-      final pdfBytes = await ParticipationCumulativePdfGenerator.generateOfficialAdministrativePdf(
-        reportData: data,
-        teacherName: profile.fullName,
-        termName: '$currentYear-${currentYear + 1} Eğitim-Öğretim Yılı Genel Kümülatif Sonu',
-        schoolName: profile.schoolName,
+      await _pdfUret(
+        etiket: 'Yıl sonu raporu',
+        dosyaAdi: '${data['className']}_Yil_Sonu_Katilim_Raporu.pdf',
+        isShare: isShare,
+        uretici: () => ParticipationCumulativePdfGenerator
+            .generateOfficialAdministrativePdf(
+          reportData: data,
+          teacherName: profile.fullName,
+          termName:
+              '$currentYear-${currentYear + 1} Eğitim-Öğretim Yılı Genel Kümülatif Sonu',
+          schoolName: profile.schoolName,
+        ),
       );
-
-      final filename = '${data['className']}_Yil_Sonu_Katilim_Raporu.pdf';
-      if (isShare) {
-        await Printing.sharePdf(bytes: pdfBytes, filename: filename);
-      } else {
-        await Printing.layoutPdf(
-          onLayout: (_) => pdfBytes,
-          name: filename,
-        );
-      }
     } catch (e, stackTrace) {
       debugPrint('Yıl sonu raporu hatası: $e\n$stackTrace');
+      _hataGoster('Rapor verisi okunamadı. Lütfen tekrar deneyin.');
     } finally {
       if (mounted) setState(() => _isActionLoading = false);
     }
@@ -1222,17 +1306,20 @@ class _ParticipationCumulativeReportsModalState
                   child: OutlinedButton.icon(
                     onPressed: () async {
                       HapticFeedback.lightImpact();
-                      final pdfBytes =
-                          await ParticipationCumulativePdfGenerator.generateIndividualStudentCardPdf(
-                        studentData: student,
-                        className: className,
-                        subjectName: subjectName,
-                        teacherName: teacherName,
-                        schoolName: schoolName,
-                      );
-                      await Printing.sharePdf(
-                        bytes: pdfBytes,
-                        filename: '${sName}_Gelisim_Ozeti.pdf',
+                      // Korumasız çağrıydı: üretim takılırsa ekran
+                      // donuyor ve hiçbir mesaj çıkmıyordu.
+                      await _pdfUret(
+                        etiket: 'Gelişim özeti',
+                        dosyaAdi: '${sName}_Gelisim_Ozeti.pdf',
+                        isShare: true,
+                        uretici: () => ParticipationCumulativePdfGenerator
+                            .generateIndividualStudentCardPdf(
+                          studentData: student,
+                          className: className,
+                          subjectName: subjectName,
+                          teacherName: teacherName,
+                          schoolName: schoolName,
+                        ),
                       );
                     },
                     icon: const Icon(Icons.picture_as_pdf_rounded, size: 15, color: Color(0xFFEF4444)),

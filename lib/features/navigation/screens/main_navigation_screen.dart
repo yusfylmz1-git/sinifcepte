@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/share/incoming_share_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/app_drawer.dart';
 import '../../../shared/widgets/custom_app_bar.dart';
 import '../../../shared/widgets/custom_bottom_nav_bar.dart';
+import '../../classes/presentation/views/student_import_preview_view.dart';
 import '../../classes/screens/class_list_screen.dart';
 import '../../dashboard/screens/dashboard_screen.dart';
 import '../../outcomes/presentation/views/weekly_outcomes_view.dart';
@@ -22,6 +26,33 @@ class MainNavigationScreen extends ConsumerStatefulWidget {
 
 class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
   DateTime? _lastBackPressTime;
+
+  @override
+  void initState() {
+    super.initState();
+    final shares = IncomingShareService.instance;
+    unawaited(shares.attach());
+    shares.onNeedOpenPreview = _openSharedImport;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      shares.consumePendingIfUnhandled();
+    });
+  }
+
+  @override
+  void dispose() {
+    IncomingShareService.instance.onNeedOpenPreview = null;
+    super.dispose();
+  }
+
+  void _openSharedImport(String path) {
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => StudentImportPreviewView(initialFilePath: path),
+      ),
+    );
+  }
 
   static const List<Map<String, String>> _tabTitles = [
     {'title': 'SınıfCepte', 'subtitle': 'Genel Özet & İstatistik Paneli'},

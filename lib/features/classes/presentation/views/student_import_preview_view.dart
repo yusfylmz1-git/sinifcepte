@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/share/incoming_share_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../data/models/student_model.dart';
 import '../../../../shared/widgets/glass_card.dart';
@@ -12,6 +13,7 @@ import '../../data/services/pdf_student_parser.dart';
 import '../../data/services/student_file_importer.dart';
 import '../../../../data/models/class_model.dart';
 import '../../../auth_profile/providers/teacher_profile_provider.dart';
+import '../widgets/student_import_source_sheet.dart';
 
 /// SınıfCepte - Akıllı Öğrenci İçe Aktarma ve Önizleme Ekranı (PDF + Excel)
 /// Profesyonel (UI-UX MAX) Tasarım
@@ -24,6 +26,9 @@ class StudentImportPreviewView extends ConsumerStatefulWidget {
   final List<String> initialDistinctClasses;
   final bool autoPickPdf;
 
+  /// WhatsApp Paylaş / "SınıfCepte ile aç" ile gelen yerel dosya yolu.
+  final String? initialFilePath;
+
   const StudentImportPreviewView({
     super.key,
     this.initialClassId,
@@ -33,6 +38,7 @@ class StudentImportPreviewView extends ConsumerStatefulWidget {
     this.initialIsMultiClass = false,
     this.initialDistinctClasses = const [],
     this.autoPickPdf = false,
+    this.initialFilePath,
   });
 
   @override
@@ -65,6 +71,7 @@ class _StudentImportPreviewViewState extends ConsumerState<StudentImportPreviewV
   String? _bannerMessage;
   bool _bannerIsError = false;
   Timer? _bannerTimer;
+  StreamSubscription<String>? _shareSub;
 
   @override
   void initState() {
@@ -73,6 +80,13 @@ class _StudentImportPreviewViewState extends ConsumerState<StudentImportPreviewV
     if (widget.initialClassName != null && widget.initialClassName!.isNotEmpty) {
       _newClassNameController.text = widget.initialClassName!;
     }
+
+    final shares = IncomingShareService.instance;
+    shares.addPreviewListener();
+    _shareSub = shares.files.listen((path) {
+      if (mounted) unawaited(_parseFromPath(path));
+    });
+
     if (widget.initialParsedStudents != null && widget.initialParsedStudents!.isNotEmpty) {
       _processResult(
         true,
@@ -83,11 +97,14 @@ class _StudentImportPreviewViewState extends ConsumerState<StudentImportPreviewV
         isMultiClass: widget.initialIsMultiClass,
         distinctClasses: widget.initialDistinctClasses,
       );
-    } else if (widget.autoPickPdf) {
+    } else if (widget.initialFilePath != null && widget.initialFilePath!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _handleFilePick();
-        }
+        if (mounted) unawaited(_parseFromPath(widget.initialFilePath!));
+      });
+    } else if (widget.autoPickPdf) {
+      // Sistem seçicisini hemen açma: WhatsApp PDF'i orada görünmez.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_showSourceSheet());
       });
     }
   }
@@ -95,6 +112,8 @@ class _StudentImportPreviewViewState extends ConsumerState<StudentImportPreviewV
   @override
   void dispose() {
     _bannerTimer?.cancel();
+    _shareSub?.cancel();
+    IncomingShareService.instance.removePreviewListener();
     _newClassNameController.dispose();
     super.dispose();
   }
@@ -177,17 +196,48 @@ class _StudentImportPreviewViewState extends ConsumerState<StudentImportPreviewV
     try {
       final result =
           await StudentFileImporter.pickAndParse(_selectedClassId ?? 0);
-      _processResult(
-        result.success,
-        result.parsedStudents,
-        result.errorMessage,
-        isPdf: result.format != StudentFileFormat.excel,
-        detectedClassName: result.detectedClassName,
-        isMultiClass: result.isMultiClass,
-        distinctClasses: result.distinctClasses,
-      );
+      _applyImportResult(result);
     } finally {
       if (mounted) setState(() => _isImporting = false);
+    }
+  }
+
+  Future<void> _parseFromPath(String path) async {
+    setState(() => _isImporting = true);
+    try {
+      final result = await StudentFileImporter.parseFromPath(
+        path,
+        _selectedClassId ?? 0,
+      );
+      _applyImportResult(result);
+    } finally {
+      if (mounted) setState(() => _isImporting = false);
+    }
+  }
+
+  void _applyImportResult(StudentImportResult result) {
+    _processResult(
+      result.success,
+      result.parsedStudents,
+      result.errorMessage,
+      isPdf: result.format != StudentFileFormat.excel,
+      detectedClassName: result.detectedClassName,
+      isMultiClass: result.isMultiClass,
+      distinctClasses: result.distinctClasses,
+    );
+  }
+
+  Future<void> _showSourceSheet() async {
+    if (!mounted) return;
+    final choice = await StudentImportSourceSheet.show(context);
+    if (!mounted || choice == null) return;
+    switch (choice) {
+      case StudentImportSourceChoice.whatsapp:
+        await StudentImportSourceSheet.showWhatsAppSteps(context);
+        break;
+      case StudentImportSourceChoice.files:
+        await _handleFilePick();
+        break;
     }
   }
 
@@ -519,8 +569,8 @@ class _StudentImportPreviewViewState extends ConsumerState<StudentImportPreviewV
         actions: [
           IconButton(
             icon: const Icon(Icons.folder_open_rounded),
-            tooltip: 'Farklı Dosya Seç',
-            onPressed: _isImporting ? null : _handleFilePick,
+            tooltip: 'Listeyi yükle (WhatsApp veya dosya)',
+            onPressed: _isImporting ? null : _showSourceSheet,
           ),
         ],
         flexibleSpace: ClipRect(
@@ -569,36 +619,8 @@ class _StudentImportPreviewViewState extends ConsumerState<StudentImportPreviewV
                   _buildStudentList(isDark),
                 ] else
                   Padding(
-                    padding: const EdgeInsets.only(top: 60),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.picture_as_pdf_outlined, size: 64, color: isDark ? Colors.white30 : Colors.black26),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Henüz bir dosya seçilmedi',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.white70 : Colors.black54,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            onPressed: _isImporting ? null : _handleFilePick,
-                            icon: const Icon(Icons.upload_file_rounded),
-                            label: const Text('Dosya Seç (PDF veya Excel)'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    padding: const EdgeInsets.only(top: 36),
+                    child: _buildEmptyImportState(isDark),
                   ),
               ],
             ),
@@ -694,6 +716,76 @@ class _StudentImportPreviewViewState extends ConsumerState<StudentImportPreviewV
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildEmptyImportState(bool isDark) {
+    if (_isImporting) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 40),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    return Column(
+      children: [
+        Icon(
+          Icons.picture_as_pdf_outlined,
+          size: 56,
+          color: isDark ? Colors.white30 : Colors.black26,
+        ),
+        const SizedBox(height: 14),
+        Text(
+          'Sınıf listesini yükleyin',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: isDark ? Colors.white : Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Okulun WhatsApp\'tan attığı PDF Son dosyalar\'da görünmez. '
+          'PDF\'ye basıp Paylaş → SınıfCepte deyin.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 13.5,
+            height: 1.4,
+            color: isDark ? Colors.white70 : Colors.black54,
+          ),
+        ),
+        const SizedBox(height: 22),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _isImporting
+                ? null
+                : () => StudentImportSourceSheet.showWhatsAppSteps(context),
+            icon: const Icon(Icons.chat_rounded),
+            label: const Text('WhatsApp\'tan paylaş'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: StudentImportSourceSheet.whatsappGreen,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _isImporting ? null : _handleFilePick,
+            icon: const Icon(Icons.folder_open_rounded),
+            label: const Text('Dosyalardan seç (PDF veya Excel)'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: isDark ? Colors.white : AppColors.primary,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

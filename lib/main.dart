@@ -13,6 +13,7 @@ import 'core/firebase/firebase_bootstrap.dart';
 import 'core/services/notification_service.dart';
 import 'core/storage/prefs_service.dart';
 import 'core/utils/freeze_detector.dart';
+import 'core/share/incoming_share_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'features/auth/screens/welcome_screen.dart';
@@ -65,6 +66,12 @@ Future<void> main() async {
 
 /// İlk kareden sonra başlatılan, açılışı bloke etmeyen servisler.
 Future<void> _warmUpBackgroundServices() async {
+  try {
+    await IncomingShareService.instance.attach();
+  } catch (e, stackTrace) {
+    debugPrint('Paylaşım dinleyicisi başlatılamadı: $e\n$stackTrace');
+  }
+
   try {
     await FirebaseBootstrap.ensureInitialized();
     // Firebase hazir: tamponda bekleyen acilis hatalari simdi gonderilir.

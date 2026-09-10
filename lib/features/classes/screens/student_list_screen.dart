@@ -816,7 +816,7 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Tek tek öğrenci ekleyebilir veya Excel listesinden toplu yükleyebilirsiniz.',
+              'Tek tek öğrenci ekleyebilir, WhatsApp\'taki PDF\'yi paylaşabilir veya Excel / PDF yükleyebilirsiniz.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,

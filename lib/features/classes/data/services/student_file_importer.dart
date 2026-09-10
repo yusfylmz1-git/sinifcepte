@@ -13,10 +13,9 @@ import 'pdf_student_parser.dart';
 /// Excel de indirse aynı düğmeyi kullanır. Uzantıya göre doğru
 /// ayrıştırıcıya yönlendirilir.
 ///
-/// Öncesinde iki ayrı ayrıştırıcı vardı ve ekran yalnızca PDF'i
-/// çağırıyordu; `ExcelStudentParser` yazılmış ama hiçbir yerden
-/// kullanılmıyordu (ölü kod). Sonuç tipleri de birebir aynı olduğu hâlde
-/// ayrı sınıflardı, bu yüzden ortak bir akış kurulamıyordu.
+/// WhatsApp'tan gelen belgeler Android seçicisinde sık görünmez ve
+/// görünseler bile `path` boş gelir (content URI). Bu yüzden bayt
+/// okunur; uzantı yoksa dosya imzasından biçim anlaşılır.
 class StudentFileImporter {
   const StudentFileImporter._();
 
@@ -25,6 +24,10 @@ class StudentFileImporter {
 
   /// Kullanıcıya gösterilen biçim etiketi.
   static const String supportedLabel = 'PDF veya Excel';
+
+  /// WhatsApp/SAF dosyası okunamadığında gösterilen yol tarifi.
+  static const String shareFallbackHint =
+      'Dosya okunamadı. WhatsApp\'taki PDF\'ye basıp Paylaş → SınıfCepte deneyin.';
 
   /// Dosya seçtirir ve uzantısına göre ayrıştırır.
   ///
@@ -35,38 +38,41 @@ class StudentFileImporter {
         dialogTitle: 'Sınıf listesi dosyasını seçin (PDF veya Excel)',
         type: FileType.custom,
         allowedExtensions: supportedExtensions,
-        withData: false,
+        // WhatsApp / Google Drive content URI'lerinde path null olur;
+        // bayt yoksa "Dosya seçilmedi" sanılıyordu.
+        withData: true,
       );
 
-      if (picked == null ||
-          picked.files.isEmpty ||
-          picked.files.single.path == null) {
+      if (picked == null || picked.files.isEmpty) {
         return const StudentImportResult(
           success: false,
           errorMessage: 'Dosya seçilmedi',
         );
       }
 
-      final path = picked.files.single.path!;
-      final file = File(path);
-      if (!await file.exists()) {
+      final file = picked.files.single;
+      Uint8List? bytes = file.bytes;
+      final path = file.path;
+      if ((bytes == null || bytes.isEmpty) && path != null && path.isNotEmpty) {
+        final onDisk = File(path);
+        if (await onDisk.exists()) {
+          bytes = await onDisk.readAsBytes();
+        }
+      }
+
+      if (bytes == null || bytes.isEmpty) {
         return const StudentImportResult(
           success: false,
-          errorMessage: 'Seçilen dosya bulunamadı.',
+          errorMessage: shareFallbackHint,
         );
       }
 
-      final format = detectFormat(path);
-      if (format == null) {
-        return StudentImportResult(
-          success: false,
-          errorMessage:
-              'Desteklenmeyen dosya türü. $supportedLabel dosyası seçin.',
-        );
-      }
-
-      final bytes = await file.readAsBytes();
-      return parseBytes(bytes, targetClassId, format);
+      return parseNamedBytes(
+        bytes: bytes,
+        targetClassId: targetClassId,
+        name: file.name,
+        path: path,
+      );
     } catch (e, stackTrace) {
       debugPrint('Öğrenci dosyası içe aktarma hatası: $e\n$stackTrace');
       return StudentImportResult(
@@ -76,12 +82,93 @@ class StudentFileImporter {
     }
   }
 
-  /// Dosya adından biçimi belirler; tanınmazsa null.
+  /// WhatsApp paylaşımı veya kayıtlı yol: dosyayı okuyup ayrıştırır.
+  static Future<StudentImportResult> parseFromPath(
+    String path,
+    int targetClassId,
+  ) async {
+    try {
+      final file = File(path);
+      if (!await file.exists()) {
+        return const StudentImportResult(
+          success: false,
+          errorMessage: 'Paylaşılan dosya bulunamadı.',
+        );
+      }
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) {
+        return const StudentImportResult(
+          success: false,
+          errorMessage: shareFallbackHint,
+        );
+      }
+      return parseNamedBytes(
+        bytes: bytes,
+        targetClassId: targetClassId,
+        name: path,
+        path: path,
+      );
+    } catch (e, stackTrace) {
+      debugPrint('Paylaşılan öğrenci dosyası okunamadı: $e\n$stackTrace');
+      return StudentImportResult(
+        success: false,
+        errorMessage: 'Paylaşılan dosya okunamadı: $e',
+      );
+    }
+  }
+
+  /// Ad, yol veya dosya imzasından biçimi bulup ayrıştırır.
+  ///
+  /// WhatsApp content URI'lerinde uzantı olmaz; imza bakılır.
+  static StudentImportResult parseNamedBytes({
+    required Uint8List bytes,
+    required int targetClassId,
+    String name = '',
+    String? path,
+  }) {
+    final format = detectFormat(name) ??
+        (path != null && path.isNotEmpty ? detectFormat(path) : null) ??
+        detectFormatFromBytes(bytes);
+    if (format == null) {
+      return StudentImportResult(
+        success: false,
+        errorMessage:
+            'Desteklenmeyen dosya türü. $supportedLabel dosyası seçin.',
+      );
+    }
+    return parseBytes(bytes, targetClassId, format);
+  }
+
+  /// Dosya adından veya yoldan biçimi belirler; tanınmazsa null.
   static StudentFileFormat? detectFormat(String path) {
-    final lower = path.toLowerCase();
+    var lower = path.toLowerCase().trim();
+    if (lower.isEmpty) return null;
+    lower = lower.split('?').first.split('#').first;
     if (lower.endsWith('.pdf')) return StudentFileFormat.pdf;
     if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) {
       return StudentFileFormat.excel;
+    }
+    return null;
+  }
+
+  /// Uzantısız (WhatsApp / content URI) dosyalarda imzaya bakar.
+  static StudentFileFormat? detectFormatFromBytes(Uint8List bytes) {
+    if (bytes.length >= 5 &&
+        bytes[0] == 0x25 &&
+        bytes[1] == 0x50 &&
+        bytes[2] == 0x44 &&
+        bytes[3] == 0x46) {
+      return StudentFileFormat.pdf; // %PDF
+    }
+    if (bytes.length >= 8 &&
+        bytes[0] == 0xD0 &&
+        bytes[1] == 0xCF &&
+        bytes[2] == 0x11 &&
+        bytes[3] == 0xE0) {
+      return StudentFileFormat.excel; // OLE Compound (.xls)
+    }
+    if (bytes.length >= 2 && bytes[0] == 0x50 && bytes[1] == 0x4B) {
+      return StudentFileFormat.excel; // ZIP (.xlsx)
     }
     return null;
   }

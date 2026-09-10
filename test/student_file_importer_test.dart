@@ -68,6 +68,52 @@ void main() {
       expect(StudentFileImporter.supportedExtensions,
           containsAll(<String>['pdf', 'xlsx', 'xls']));
     });
+
+    test('WhatsApp dosya adı uzantıdan tanınır', () {
+      expect(
+        StudentFileImporter.detectFormat(
+          'WhatsApp Document 2026-09-10 at 10.15.32.pdf',
+        ),
+        StudentFileFormat.pdf,
+      );
+    });
+
+    test('Uzantısız content URI addan tanınmaz, imzadan tanınır', () {
+      expect(
+        StudentFileImporter.detectFormat(
+          'content://com.whatsapp.provider.media/item/12',
+        ),
+        isNull,
+      );
+
+      final pdfBytes = buildPdf(['1   101   AHMET YILMAZ   Erkek']);
+      expect(
+        StudentFileImporter.detectFormatFromBytes(pdfBytes),
+        StudentFileFormat.pdf,
+      );
+
+      final excelBytes = buildExcel([
+        ['Okul No', 'Adı', 'Soyadı'],
+        ['101', 'AHMET', 'YILMAZ'],
+      ]);
+      expect(
+        StudentFileImporter.detectFormatFromBytes(excelBytes),
+        StudentFileFormat.excel,
+      );
+    });
+
+    test('KRİTİK: path yoksa (WhatsApp SAF) bayttan okunur', () {
+      final bytes = buildPdf(['1   101   AHMET YILMAZ   Erkek']);
+      final result = StudentFileImporter.parseNamedBytes(
+        bytes: bytes,
+        targetClassId: 1,
+        name: 'document',
+        path: null,
+      );
+      expect(result.success, isTrue, reason: result.errorMessage);
+      expect(result.format, StudentFileFormat.pdf);
+      expect(result.parsedStudents, isNotEmpty);
+    });
   });
 
   group('PDF içe aktarma', () {

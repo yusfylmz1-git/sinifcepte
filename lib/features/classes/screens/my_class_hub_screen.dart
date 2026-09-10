@@ -867,7 +867,7 @@ class _MyClassHubScreenState extends ConsumerState<MyClassHubScreen> {
         _buildBentoTile(
           context: context,
           title: 'Toplu Öğrenci Yükle',
-          subtitle: 'PDF / Excel Aktarım',
+          subtitle: 'WhatsApp, PDF veya Excel',
           icon: Icons.upload_file_rounded,
           gradient: const [Color(0xFF10B981), Color(0xFF059669)],
           accent: const Color(0xFF10B981),

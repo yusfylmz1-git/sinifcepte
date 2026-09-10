@@ -449,8 +449,8 @@ class ClassListScreen extends ConsumerWidget {
                   ),
                   child: const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFFF512F)),
                 ),
-                title: const Text('PDF İle Sınıf Yükle', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('e-Okul listesini okuyup sınıfı ve öğrencileri otomatik oluşturur'),
+                title: const Text('PDF / Excel İle Sınıf Yükle', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('WhatsApp\'tan paylaşın veya e-Okul PDF / Excel seçin'),
                 onTap: () {
                   Navigator.pop(ctx);
                   Navigator.of(context).push(
@@ -545,7 +545,7 @@ class ClassListScreen extends ConsumerWidget {
                     ),
                     child: IconButton(
                       icon: const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFFF512F), size: 19),
-                      tooltip: 'PDF ile Sınıf Yükle',
+                      tooltip: 'WhatsApp, PDF veya Excel ile sınıf yükle',
                       onPressed: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -1185,7 +1185,7 @@ class ClassListScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'Manuel sınıf ekleyebilir veya e-Okul PDF / Excel dosyasından otomatik yükleyebilirsiniz.',
+              'Manuel sınıf ekleyebilir, WhatsApp\'taki PDF\'yi paylaşabilir veya e-Okul dosyasından yükleyebilirsiniz.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
