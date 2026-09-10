@@ -95,6 +95,17 @@ class StudentParticipationEvaluation {
   /// Artık öğrenci adına tek dokunuş bu sayacı ilerletir.
   final int speakingTurns;
 
+  /// Ogrenci devamsizlik takibinde mi?
+  ///
+  /// `participation_records` tablosunda SUTUN DEGIL: bilgi
+  /// `absence_followups`'tan geliyor ve oturum yuklenirken
+  /// isaretleniyor. Kalici yazilsaydi ogretmen takipten cikardiginda
+  /// eski oturumlar yanlis kalirdi.
+  ///
+  /// Iki sonucu var: kart soluk cizilir ve yeni oturumda bu ogrenciye
+  /// "tam puan" varsayilani VERILMEZ (bkz. repository).
+  final bool isAbsent;
+
   const StudentParticipationEvaluation({
     required this.studentId,
     required this.studentName,
@@ -109,6 +120,7 @@ class StudentParticipationEvaluation {
     this.customTags = const [],
     this.note,
     this.speakingTurns = 0,
+    this.isAbsent = false,
   });
 
   /// Hiç söz almadı mı? (Ekranda gri nokta ile gösterilir.)
@@ -188,6 +200,7 @@ class StudentParticipationEvaluation {
     List<String>? customTags,
     String? note,
     int? speakingTurns,
+    bool? isAbsent,
   }) {
     return StudentParticipationEvaluation(
       studentId: studentId ?? this.studentId,
@@ -201,6 +214,7 @@ class StudentParticipationEvaluation {
       customTags: customTags ?? this.customTags,
       note: note ?? this.note,
       speakingTurns: speakingTurns ?? this.speakingTurns,
+      isAbsent: isAbsent ?? this.isAbsent,
     );
   }
 
@@ -257,6 +271,9 @@ class StudentParticipationEvaluation {
       customTags: parsedTags,
       note: map['note'] as String?,
       speakingTurns: (map['speaking_turns'] as int?) ?? 0,
+      // Tabloda sutun yok; repository JOIN sonucuna bu anahtari
+      // ekliyor. Yoksa `false` kalir.
+      isAbsent: (map['is_absent'] as int?) == 1,
     );
   }
 }

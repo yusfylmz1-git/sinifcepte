@@ -221,7 +221,12 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
             const SizedBox(height: 12),
 
             // 1.1 SON DERSLER GEÇMİŞ TRENDİ (Mini Pill Çipler)
-            _buildRecentHistorySection(context, ref, isDark, currentEval.studentId),
+            _buildRecentHistorySection(
+              context,
+              ref,
+              isDark,
+              currentEval.studentId,
+            ),
             const SizedBox(height: 14),
 
             // 2. ÖDEV DURUMU SEÇİCİ
@@ -581,9 +586,26 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
     );
   }
 
-  /// Son Dersler Geçmiş Eğilimi Bölümü
-  Widget _buildRecentHistorySection(BuildContext context, WidgetRef ref, bool isDark, int studentId) {
-    final historyAsync = ref.watch(studentRecentHistoryProvider(studentId));
+  /// Son Dersler Geçmiş Eğilimi Bölümü.
+  ///
+  /// Yalnizca ACIK OLAN DERSIN kayitlari gosterilir. Ogretmen ayni
+  /// ogrenciye birden fazla derse girebiliyor; filtresiz sorgu
+  /// matematik ile fen kayitlarini ayni seride karistiriyordu ve
+  /// "gecen ders neydi" sorusu cevapsiz kaliyordu.
+  Widget _buildRecentHistorySection(
+    BuildContext context,
+    WidgetRef ref,
+    bool isDark,
+    int studentId,
+  ) {
+    final historyAsync = ref.watch(
+      studentRecentHistoryProvider(
+        StudentHistoryQuery(
+          studentId: studentId,
+          subjectName: widget.subjectName,
+        ),
+      ),
+    );
 
     return historyAsync.when(
       loading: () => const SizedBox.shrink(),
@@ -607,12 +629,40 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
                 children: [
                   const Icon(Icons.history_rounded, size: 14, color: Colors.grey),
                   const SizedBox(width: 4),
-                  Text(
-                    'Son Ders Eğilimi (Dokununca Detay)',
-                    style: AppFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white70 : Colors.black54,
+                  Expanded(
+                    child: Text(
+                      '${widget.subjectName} • Son Dersler',
+                      style: AppFonts.outfit(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white70 : Colors.black54,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  // Serit yalnizca son 4 dersi gosteriyor; donem boyu
+                  // gecmis buradan aciliyor.
+                  InkWell(
+                    onTap: () => _showFullHistoryModal(
+                      context: context,
+                      isDark: isDark,
+                      studentId: studentId,
+                    ),
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
+                      child: Text(
+                        'Tümünü Gör',
+                        style: AppFonts.outfit(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF6366F1),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -689,6 +739,193 @@ class _QuickStudentEvalDialogState extends ConsumerState<QuickStudentEvalDialog>
           ),
         );
       },
+    );
+  }
+
+  /// Donem boyu tam gecmis listesi.
+  ///
+  /// Serit yalnizca son 4 dersi gosteriyor. Veli gorusmesinde "gecen
+  /// ay nasildi" sorusuna cevap verebilmek icin tum donem gerekiyor;
+  /// ayni DERS suzgeci burada da gecerli.
+  void _showFullHistoryModal({
+    required BuildContext context,
+    required bool isDark,
+    required int studentId,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Consumer(
+          builder: (ctx, sheetRef, _) {
+            final tumuAsync = sheetRef.watch(
+              studentRecentHistoryProvider(
+                StudentHistoryQuery(
+                  studentId: studentId,
+                  subjectName: widget.subjectName,
+                  limit: null,
+                ),
+              ),
+            );
+
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.8,
+              ),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
+              ),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white24 : Colors.black12,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '${widget.evaluation.studentName} - ${widget.subjectName}',
+                    style: AppFonts.outfit(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Flexible(
+                    child: tumuAsync.when(
+                      loading: () => const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                      error: (e, _) => Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text('Geçmiş yüklenemedi: $e'),
+                      ),
+                      data: (tumu) {
+                        if (tumu.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Text(
+                              'Bu derste henüz kayıt yok.',
+                              style: AppFonts.outfit(
+                                fontSize: 13,
+                                color: isDark ? Colors.white54 : Colors.black54,
+                              ),
+                            ),
+                          );
+                        }
+
+                        return ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: tumu.length,
+                          separatorBuilder: (_, _) => Divider(
+                            height: 12,
+                            color: isDark ? Colors.white10 : Colors.black12,
+                          ),
+                          itemBuilder: (_, i) =>
+                              _buildFullHistoryRow(tumu[i], isDark),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Tam gecmis listesinin tek satiri.
+  Widget _buildFullHistoryRow(Map<String, dynamic> h, bool isDark) {
+    final date = h['date'] as String? ?? '';
+    final lessonHour = (h['lesson_hour'] as int?) ?? 0;
+    final topic = (h['topic_name'] as String?)?.trim() ?? '';
+    final hw = HomeworkStatus.fromCode(h['homework_status'] as String?);
+    final stars = (h['stars_count'] as int?) ?? 0;
+    final soz = (h['speaking_turns'] as int?) ?? 0;
+    final note = (h['note'] as String?)?.trim() ?? '';
+
+    final parsed = DateTime.tryParse(date);
+    final gun =
+        parsed != null ? AppDateFormatter.formatTurkishDate(parsed) : date;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 104,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  gun,
+                  style: AppFonts.outfit(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                ),
+                if (lessonHour > 0)
+                  Text(
+                    '$lessonHour. ders',
+                    style: AppFonts.outfit(
+                      fontSize: 10,
+                      color: isDark ? Colors.white38 : Colors.black45,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ödev: ${hw.label}  ·  Yıldız: $stars  ·  Söz: $soz',
+                  style: AppFonts.outfit(
+                    fontSize: 11.5,
+                    color: isDark ? Colors.white70 : const Color(0xFF334155),
+                  ),
+                ),
+                if (topic.isNotEmpty)
+                  Text(
+                    'Konu: $topic',
+                    style: AppFonts.outfit(
+                      fontSize: 10.5,
+                      color: isDark ? Colors.white38 : Colors.black45,
+                    ),
+                  ),
+                if (note.isNotEmpty)
+                  Text(
+                    'Not: $note',
+                    style: AppFonts.outfit(
+                      fontSize: 10.5,
+                      fontStyle: FontStyle.italic,
+                      color: isDark ? Colors.white54 : Colors.black54,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

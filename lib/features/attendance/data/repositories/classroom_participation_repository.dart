@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:sqflite/sqflite.dart';
 import '../../../../core/database/database_helper.dart';
 import '../../../schedule/models/schedule_settings.dart';
 import '../models/classroom_participation_model.dart';
@@ -32,10 +33,20 @@ class ClassroomParticipationRepository {
         whereArgs: [classId],
         limit: 1,
       );
+      String academicYear = '';
       if (classRows.isNotEmpty) {
         resolvedClassName = classRows.first['name'] as String? ?? resolvedClassName;
         resolvedSubject = classRows.first['subject'] as String? ?? resolvedSubject;
+        academicYear = classRows.first['academic_year'] as String? ?? '';
       }
+
+      // 1.5. Devamsizlik takibindeki ogrenciler.
+      //
+      // Bu ogrenciler izgarada SOLUK gorunur ve yeni oturumda onlara
+      // "tam puan" varsayilani VERILMEZ: derse gelmeyen ogrenci
+      // "odevini yapti, 3 yildiz" sayilirsa ortalamasi sisiyor ve
+      // veli toplantisi raporu yanlis cikiyordu.
+      final absentIds = await _absentStudentIds(db, classId, academicYear);
 
       // 2. Mevcut oturumu ara
       final sessionRows = await db.query(
@@ -80,22 +91,23 @@ class ClassroomParticipationRepository {
 
           if (existingRecordByStudentId.containsKey(sId)) {
             evaluations.add(StudentParticipationEvaluation.fromMap(
-              existingRecordByStudentId[sId]!,
+              {
+                ...existingRecordByStudentId[sId]!,
+                'is_absent': absentIds.contains(sId) ? 1 : 0,
+              },
               studentNameFallback: sName,
               studentNumberFallback: sNum,
               genderFallback: sGender,
             ));
           } else {
-            // Yeni eklenen öğrenci varsa varsayılan kayıt (3 Yıldız, Ödev Tam, Materyal Tam, Vaktinde)
-            evaluations.add(StudentParticipationEvaluation(
+            // Sonradan sinifa eklenen ogrenci: varsayilan tam puan.
+            // Devamsiz ogrenci bunun disinda (bkz. _varsayilanDeger).
+            evaluations.add(_varsayilanDeger(
               studentId: sId,
               studentName: sName,
               studentNumber: sNum,
               gender: sGender,
-              homeworkStatus: HomeworkStatus.done,
-              materialsStatus: MaterialsStatus.ready,
-              arrivalStatus: ArrivalStatus.onTime,
-              starsCount: 3,
+              isAbsent: absentIds.contains(sId),
             ));
           }
         }
@@ -112,15 +124,12 @@ class ClassroomParticipationRepository {
           final sName = '${s['first_name']} ${s['last_name'] ?? ''}'.trim();
           final sNum = (s['school_number'] as int?) ?? 0;
           final sGender = (s['gender'] as String?) ?? 'Erkek';
-          return StudentParticipationEvaluation(
+          return _varsayilanDeger(
             studentId: sId,
             studentName: sName,
             studentNumber: sNum,
             gender: sGender,
-            homeworkStatus: HomeworkStatus.done,
-            materialsStatus: MaterialsStatus.ready,
-            arrivalStatus: ArrivalStatus.onTime,
-            starsCount: 3,
+            isAbsent: absentIds.contains(sId),
           );
         }).toList();
 
@@ -137,6 +146,64 @@ class ClassroomParticipationRepository {
       debugPrint('ClassroomParticipationRepository.getOrCreateSession hatası: $e\n$stackTrace');
       rethrow;
     }
+  }
+
+  /// Devamsizlik takibindeki ogrencilerin kimlikleri.
+  ///
+  /// `absence_followups` tablosu bu modulun degil devamsizlik
+  /// modulunun; eski bir kurulumda henuz olusmamis olabilir. Sorgu
+  /// coktugunde katilim ekrani da acilmazdi, bu yuzden bos kume
+  /// donuluyor: devamsizlik bilgisi kaybolur ama ders islenebilir.
+  Future<Set<int>> _absentStudentIds(
+    DatabaseExecutor db,
+    int classId,
+    String academicYear,
+  ) async {
+    if (academicYear.trim().isEmpty) return const <int>{};
+    try {
+      final rows = await db.query(
+        'absence_followups',
+        columns: ['student_id'],
+        where: 'class_id = ? AND academic_year = ?',
+        whereArgs: [classId, academicYear],
+      );
+      return rows.map((r) => r['student_id'] as int).toSet();
+    } catch (e) {
+      debugPrint('_absentStudentIds: $e');
+      return const <int>{};
+    }
+  }
+
+  /// Isaretlenmemis ogrencinin baslangic degeri.
+  ///
+  /// Devamsiz OLMAYAN ogrenci tam puanla baslar: ogretmen yalnizca
+  /// ISTISNALARI isaretler (bkz. participation_redesign_test).
+  ///
+  /// Devamsiz ogrenci ise "bilinmiyor" ile baslar. Derse gelmeyene
+  /// tam puan yazilirsa hem ortalamasi sisiyor hem de veli toplantisi
+  /// raporunda "her sey harika" gorunuyordu. Derse gelirse ogretmen
+  /// yine elle isaretleyebilir.
+  StudentParticipationEvaluation _varsayilanDeger({
+    required int studentId,
+    required String studentName,
+    required int studentNumber,
+    required String gender,
+    required bool isAbsent,
+  }) {
+    return StudentParticipationEvaluation(
+      studentId: studentId,
+      studentName: studentName,
+      studentNumber: studentNumber,
+      gender: gender,
+      homeworkStatus:
+          isAbsent ? HomeworkStatus.unknown : HomeworkStatus.done,
+      materialsStatus:
+          isAbsent ? MaterialsStatus.unknown : MaterialsStatus.ready,
+      arrivalStatus:
+          isAbsent ? ArrivalStatus.unknown : ArrivalStatus.onTime,
+      starsCount: isAbsent ? 0 : 3,
+      isAbsent: isAbsent,
+    );
   }
 
   /// Oturumu ve tüm öğrenci değerlendirmelerini tek bir atomik transaction ile kaydeder
@@ -266,17 +333,45 @@ class ClassroomParticipationRepository {
   }
 
   /// Öğrencinin geçmiş derslerdeki katılım ve ödev kayıtlarını (son N ders) çeker
-  Future<List<Map<String, dynamic>>> getStudentRecentHistory(int studentId, {int limit = 4}) async {
+  /// Ogrencinin gecmis ders kayitlari.
+  ///
+  /// [subjectName] verilirse YALNIZCA o dersin kayitlari doner.
+  /// Ogretmen ayni ogrenciye birden fazla derse girebiliyor
+  /// (matematik + fen); filtresiz sorgu iki dersi ayni seride
+  /// karistiriyordu ve "gecen ders neydi" sorusu cevapsiz kaliyordu.
+  ///
+  /// [limit] `null` verilirse tum donem doner ("Tumunu Gor").
+  Future<List<Map<String, dynamic>>> getStudentRecentHistory(
+    int studentId, {
+    int? limit = 4,
+    String? subjectName,
+  }) async {
     try {
       final db = await _dbHelper.database;
-      final rows = await db.rawQuery('''
+
+      final kosullar = <String>['pr.student_id = ?'];
+      final argumanlar = <dynamic>[studentId];
+
+      final ders = subjectName?.trim() ?? '';
+      if (ders.isNotEmpty) {
+        kosullar.add('ps.subject_name = ?');
+        argumanlar.add(ders);
+      }
+
+      var sorgu = '''
         SELECT pr.*, ps.date, ps.lesson_hour, ps.subject_name, ps.topic_name
         FROM participation_records pr
         JOIN participation_sessions ps ON pr.session_id = ps.id
-        WHERE pr.student_id = ?
+        WHERE ${kosullar.join(' AND ')}
         ORDER BY ps.date DESC, ps.lesson_hour DESC
-        LIMIT ?
-      ''', [studentId, limit]);
+      ''';
+
+      if (limit != null) {
+        sorgu += ' LIMIT ?';
+        argumanlar.add(limit);
+      }
+
+      final rows = await db.rawQuery(sorgu, argumanlar);
 
       return rows;
     } catch (e, stackTrace) {

@@ -136,14 +136,25 @@ class CompactStudentParticipationGrid extends ConsumerWidget {
   ) {
     final isFemale = student.isFemale;
 
-    // Cinsiyet Temalı Renk Paletleri
-    final Color cardBg = isFemale
-        ? (isDark ? const Color(0xFF2A1522) : const Color(0xFFFFF1F4))
-        : (isDark ? const Color(0xFF132035) : const Color(0xFFF0F7FF));
+    // Devamsizlik takibindeki ogrenci SOLUK cizilir.
+    //
+    // Gizlenmiyor: o gun derse gelirse ogretmen yine degerlendirmeli.
+    // Ama bir bakista ayrilmali ki ogretmen "bu cocuk zaten devamsiz"
+    // diye bilsin. Puan varsayilani da verilmiyor (bkz. repository).
+    final bool devamsiz = student.isAbsent;
 
-    final Color cardBorder = isFemale
-        ? (isDark ? const Color(0xFF88254A) : const Color(0xFFFECDD3))
-        : (isDark ? const Color(0xFF1E3A6E) : const Color(0xFFBFDBFE));
+    // Cinsiyet Temalı Renk Paletleri
+    final Color cardBg = devamsiz
+        ? (isDark ? const Color(0xFF1A1A1D) : const Color(0xFFF6F6F7))
+        : isFemale
+            ? (isDark ? const Color(0xFF2A1522) : const Color(0xFFFFF1F4))
+            : (isDark ? const Color(0xFF132035) : const Color(0xFFF0F7FF));
+
+    final Color cardBorder = devamsiz
+        ? (isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7))
+        : isFemale
+            ? (isDark ? const Color(0xFF88254A) : const Color(0xFFFECDD3))
+            : (isDark ? const Color(0xFF1E3A6E) : const Color(0xFFBFDBFE));
 
     final Color avatarBg = isFemale
         ? const Color(0xFFFB7185)
@@ -241,7 +252,9 @@ class CompactStudentParticipationGrid extends ConsumerWidget {
                       style: AppFonts.outfit(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w800,
-                        color: numberColor,
+                        color: devamsiz
+                            ? (isDark ? Colors.white38 : const Color(0xFF9CA3AF))
+                            : numberColor,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -259,7 +272,9 @@ class CompactStudentParticipationGrid extends ConsumerWidget {
                   style: AppFonts.outfit(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    color: devamsiz
+                        ? (isDark ? Colors.white54 : const Color(0xFF6B7280))
+                        : (isDark ? Colors.white : const Color(0xFF0F172A)),
                     height: 1.1,
                   ),
                   maxLines: 1,
@@ -275,8 +290,37 @@ class CompactStudentParticipationGrid extends ConsumerWidget {
               _buildSpeakingTurns(student, isDark),
 
               // 4. Alt: Durum Rozetleri Satırı (Ödev, Kitap, Zamanlama, Yıldız)
-              _buildMiniStatusRow(student, isDark),
+              //
+              // Devamsiz ogrencide bunun yerine kucuk bir rozet: satir
+              // zaten "isaretlenmedi" noktalariyla dolu olurdu ve
+              // ogretmene bir sey anlatmazdi.
+              if (devamsiz)
+                _buildAbsentBadge(isDark)
+              else
+                _buildMiniStatusRow(student, isDark),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Devamsizlik rozeti.
+  Widget _buildAbsentBadge(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEF4444).withValues(alpha: isDark ? 0.18 : 0.10),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          'Devamsız',
+          style: AppFonts.outfit(
+            fontSize: 9,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFFEF4444),
           ),
         ),
       ),

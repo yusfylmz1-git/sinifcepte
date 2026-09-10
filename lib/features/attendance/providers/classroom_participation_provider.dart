@@ -83,14 +83,47 @@ final currentParticipationSessionProvider =
       return ClassroomParticipationNotifier(repo);
     });
 
-/// Tek bir öğrencinin geçmiş son ders katılım ve ödev kayıtlarını getiren FutureProvider
+/// Gecmis sorgusunun anahtari.
+///
+/// Ders adi da anahtarin parcasi: ogretmen ayni ogrenciye hem
+/// matematik hem fen dersine giriyorsa, matematik dersindeyken fen
+/// kayitlari gosterilmemeli.
+class StudentHistoryQuery {
+  final int studentId;
+  final String subjectName;
+
+  /// `null` = tum donem ("Tumunu Gor"), sayi = son N ders.
+  final int? limit;
+
+  const StudentHistoryQuery({
+    required this.studentId,
+    required this.subjectName,
+    this.limit = 4,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      other is StudentHistoryQuery &&
+      other.studentId == studentId &&
+      other.subjectName == subjectName &&
+      other.limit == limit;
+
+  @override
+  int get hashCode => Object.hash(studentId, subjectName, limit);
+}
+
+/// Ogrencinin gecmis ders kayitlari (yalnizca ilgili ders).
 final studentRecentHistoryProvider =
-    FutureProvider.family<List<Map<String, dynamic>>, int>((
+    FutureProvider.family<List<Map<String, dynamic>>, StudentHistoryQuery>((
       ref,
-      studentId,
+      query,
     ) async {
       final repo = ref.watch(classroomParticipationRepoProvider);
-      return await repo.getStudentRecentHistory(studentId, limit: 4);
+      return await repo.getStudentRecentHistory(
+        query.studentId,
+        limit: query.limit,
+        subjectName: query.subjectName,
+      );
     });
 
 class ClassroomParticipationNotifier

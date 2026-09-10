@@ -7,6 +7,7 @@ import '../../../../data/models/student_model.dart';
 import '../../../auth_profile/data/models/teacher_profile_model.dart';
 import '../../utils/classroom_documents_pdf_generator.dart';
 import '../../../../shared/screens/pdf_preview_screen.dart';
+import '../../../attendance/presentation/widgets/participation_cumulative_reports_modal.dart';
 
 /// SınıfCepte - Veli Toplantı Tutanağı ve İmza Sirküsü Düzenleme Modalı
 class ParentMeetingEditorModal extends StatefulWidget {
@@ -196,6 +197,79 @@ class _ParentMeetingEditorModalState extends State<ParentMeetingEditorModal> {
               ],
             ),
           ),
+          const SizedBox(height: 10),
+
+          // Ogrenci degerlendirme tablosuna kisayol.
+          //
+          // Tutanak resmi bir belge: gundem, kararlar ve BOS imza
+          // sirkusu tasir, ogrenci verisi TASIMAZ. Ogretmen "veli
+          // toplantisi evraki" deyince cogu zaman ogrencinin odev ve
+          // katilim tablosunu kastediyor; o belge (Veli Toplantisi
+          // Kilavuzu) Katilim Rapor Merkezi'nde duruyordu ve burada
+          // hicbir izi yoktu. Tutanagi basip "ogrenci bilgisi yok"
+          // sanmasin diye yol gosteriliyor.
+          InkWell(
+            onTap: () {
+              Navigator.of(context).pop();
+              ParticipationCumulativeReportsModal.show(
+                context,
+                initialClassId: widget.classModel.id,
+              );
+            },
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6366F1).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.insights_rounded,
+                    color: Color(0xFF6366F1),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Öğrenci değerlendirme tablosu da gerekiyor mu?',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: isDark
+                                ? Colors.white
+                                : AppColors.textPrimaryLight,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Ödev, araç-gereç ve katılım özetli '
+                          '"Veli Toplantısı Kılavuzu" için dokunun.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark ? Colors.white60 : Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Color(0xFF6366F1),
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
           const SizedBox(height: 18),
 
           // Önizleme & Yazdır Butonu
