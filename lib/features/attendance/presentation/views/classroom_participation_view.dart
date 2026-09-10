@@ -10,6 +10,7 @@ import '../../providers/classroom_participation_provider.dart';
 import '../../utils/participation_pdf_generator.dart';
 import '../widgets/compact_student_participation_grid.dart';
 import '../widgets/participation_batch_toolbar.dart';
+import 'class_lesson_history_view.dart';
 import '../widgets/random_student_picker_modal.dart';
 import '../widgets/participation_cumulative_reports_modal.dart';
 
@@ -208,6 +209,40 @@ class _ClassroomParticipationViewState
             // Bu raporlar eskiden ayrı bir "Analiz & Rapor" kartında
             // duruyordu; o kart bir iş değil çıktı türü tanımlıyordu.
             // Rapor artık verisini ürettiğiniz ekranın yanında.
+            // Islenen dersler (sinif katilim gecmisi).
+            //
+            // Uygulamanin sozu: "arti-eksi listesi tutmana gerek yok".
+            // O sozun karsiligi ogretmenin geriye donup hangi dersi
+            // isledigini ve o derste ne oldugunu gorebilmesi. Gecmis
+            // daha once yalnizca tek ogrenci seridinde ve donem sonu
+            // raporunda vardi; sinifin ders ders gecmisi hicbir yerde
+            // gorunmuyordu.
+            IconButton(
+              icon: const Icon(Icons.history_rounded,
+                  color: AppColors.primary),
+              tooltip: 'İşlenen dersler',
+              onPressed: () {
+                if (selectedClassId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Önce bir sınıf seçin.'),
+                    ),
+                  );
+                  return;
+                }
+                final secili = classes.where(
+                  (c) => c.id == selectedClassId,
+                );
+                ClassLessonHistoryView.open(
+                  context,
+                  classId: selectedClassId,
+                  className: secili.isNotEmpty
+                      ? secili.first.name
+                      : 'Sınıf',
+                  subjectName: session?.subjectName,
+                );
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.summarize_outlined,
                   color: AppColors.primary),

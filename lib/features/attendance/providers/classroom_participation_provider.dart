@@ -83,6 +83,18 @@ final currentParticipationSessionProvider =
       return ClassroomParticipationNotifier(repo);
     });
 
+/// Sinifin islenen dersleri (en yeniden eskiye).
+///
+/// Uygulamanin ogretmene verdigi soz: "arti-eksi listesi tutmana gerek
+/// yok". O sozun karsiligi bu ekran: ogretmen hangi dersleri isledigini
+/// ve her derste ne oldugunu tek yerde gorebilmeli. Depo metodu
+/// yazilmisti ama hicbir ekran cagirmiyordu.
+final classRecentSessionsProvider = FutureProvider.family<
+    List<ClassroomParticipationSession>, int>((ref, classId) async {
+  final repo = ref.watch(classroomParticipationRepoProvider);
+  return await repo.getClassRecentSessions(classId, limit: 200);
+});
+
 /// Gecmis sorgusunun anahtari.
 ///
 /// Ders adi da anahtarin parcasi: ogretmen ayni ogrenciye hem
@@ -154,6 +166,17 @@ class ClassroomParticipationNotifier
     String? className,
   }) async {
     state = const AsyncValue.loading();
+
+    // Yeni oturuma gecerken kirli bayragi TEMIZLENIR.
+    //
+    // Yalnizca `saveCurrentSession` temizliyordu: ogretmen bir derste
+    // isaretleme yapip kaydetmeden baska bir derse gecince bayrak
+    // `true` kaliyor ve yeni derste hicbir sey yapmadan cikmak istese
+    // bile "kaydedilmemis degerlendirme" uyarisi aliyordu. Cagiran
+    // taraf, kaydedilmemis degisiklik varsa gecisten ONCE sormali
+    // (bkz. ClassLessonHistoryView._openLesson).
+    _hasUnsavedChanges = false;
+
     try {
       final session = await _repo.getOrCreateSession(
         classId: classId,
