@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_fonts.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
+import '../../../classes/screens/my_class_hub_screen.dart';
 import '../../../clubs/presentation/screens/clubs_hub_screen.dart';
 import 'annual_plans_view.dart';
 import 'daily_plans_view.dart';
+import 'documents_hub_view.dart';
 import 'special_days_view.dart';
 import 'teacher_file_view.dart';
 
@@ -99,6 +101,39 @@ class OtherDocumentsView extends StatelessWidget {
               aciklama: 'EK-4 çizelgesi · yıllık plan, üye listesi, faaliyet raporu',
               ikon: Icons.groups_2_outlined,
               hedef: const ClubsHubScreen(),
+            ),
+            const SizedBox(height: 18),
+            // Kurul tutanakları ana ekranda ayrı bir kart kaplıyordu ama
+            // içinde YALNIZCA iki belge var (zümre + ŞÖK). İkisi de
+            // sınıfa bağlı değil; yeri burası.
+            _hazirKart(
+              context,
+              isDark,
+              ad: 'Kurul Tutanakları',
+              aciklama:
+                  'Zümre öğretmenler kurulu · şube öğretmenler kurulu (ŞÖK) · '
+                  'gündem hazır, kararı düzenleyip yazdırın',
+              ikon: Icons.groups_rounded,
+              hedef: const DocumentsHubView(),
+            ),
+            const SizedBox(height: 18),
+            // SINIFA BAĞLI EVRAKLAR BURAYA TAŞINMAZ, KISAYOL VERİLİR.
+            //
+            // Oturma planı, nöbetçi listesi, öğrenci listesi, veli
+            // rehberi gibi belgeler önce "hangi sınıf?" sorusunu
+            // gerektirir; buraya taşınsalardı her birine fazladan bir
+            // sınıf seçme adımı eklenirdi. Öğretmen "evrak" diye
+            // buraya baktığında onların nerede olduğunu görmeli —
+            // aramak zorunda kalmamalı.
+            _hazirKart(
+              context,
+              isDark,
+              ad: 'Sınıf Evrakları',
+              aciklama:
+                  'Oturma planı, nöbetçi listesi, öğrenci listesi, veli rehberi · '
+                  'önce sınıf seçilir, Sınıfım ekranında',
+              ikon: Icons.class_outlined,
+              hedef: const MyClassHubScreen(),
             ),
             if (planlanan.isNotEmpty) ...[
             const SizedBox(height: 18),

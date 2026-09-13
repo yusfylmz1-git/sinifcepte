@@ -21,6 +21,8 @@ void main() {
 
   const sinifim = 'lib/features/classes/screens/my_class_hub_screen.dart';
   const anaSayfa = 'lib/features/dashboard/screens/dashboard_screen.dart';
+  const digerEvraklar =
+      'lib/features/documents/presentation/views/other_documents_view.dart';
 
   group('Kopya girisler geri gelmedi', () {
     test('KRITIK: kurul tutanaklari Sinifim`da YOK', () {
@@ -49,20 +51,49 @@ void main() {
       expect(kod, contains('OtherDocumentsView'));
     });
 
-    test('KRITIK: "Evraklarim" -> "Kurullar" olarak adlandirildi', () {
-      // Icinde YALNIZCA iki kurul tutanagi var; "Evraklarim" adi
-      // uygulamadaki onlarca baska belgeyi de kapsiyormus gibi
-      // duruyordu.
+    test('KRITIK: kurul tutanaklari ana sayfada AYRI KART degil', () {
+      // Kart tam bir yer kapliyordu ama arkasinda YALNIZCA iki belge
+      // vardi (zumre + SOK). Ogretmen tutanak icin Kurullar'a, yillik
+      // plan icin Diger Evraklar'a, nobetci listesi icin Sinifim'a
+      // gidiyordu; ucu de evrak.
       final kod = oku(anaSayfa);
-      expect(kod, contains("'title': 'Kurullar'"));
+      expect(kod.contains("'title': 'Kurullar'"), isFalse,
+          reason: 'kurul tutanaklari Diger Evraklar icinde olmali');
       expect(kod.contains("'title': 'Evraklarım'"), isFalse);
     });
 
-    test('ana sayfada alti kart var', () {
-      // Kazanimlar, Katilim, Kurullar, Sinav, Rehberlik, Diger Evraklar
+    test('KRITIK: kurul tutanaklari Diger Evraklar icinde', () {
+      // Tek yerden acilir: sinifa BAGLI OLMAYAN evraklarin yani.
+      final kod = oku(digerEvraklar);
+      expect(kod, contains("ad: 'Kurul Tutanakları'"));
+      expect(kod, contains('DocumentsHubView'));
+    });
+
+    test('KRITIK: sinif evraklarina Diger Evraklar`dan kisayol var', () {
+      // Oturma plani, nobetci listesi gibi belgeler once "hangi
+      // sinif?" sorusunu gerektirdigi icin Sinifim'da KALIR; ama
+      // ogretmen "evrak" diye buraya baktiginda nerede olduklarini
+      // gormeli, aramak zorunda kalmamali.
+      final kod = oku(digerEvraklar);
+      expect(kod, contains("ad: 'Sınıf Evrakları'"));
+      expect(kod, contains('MyClassHubScreen'));
+    });
+
+    test('ana sayfada is bazli kartlar duruyor', () {
+      // Kart SAYISI kilitlenmez: kirilgan olcut, her duzen
+      // degisikliginde testi bozar. Onemli olan hangi ISLERIN
+      // ana sayfada durdugu.
       final kod = oku(anaSayfa);
-      final sayi = RegExp(r"'title': '").allMatches(kod).length;
-      expect(sayi, greaterThanOrEqualTo(6));
+      for (final baslik in [
+        'Kazanımlar',
+        'Ders İçi Katılım',
+        'Sınav İşlemleri',
+        'Rehberlik',
+        'Diğer Evraklar',
+      ]) {
+        expect(kod, contains("'title': '$baslik'"),
+            reason: '$baslik karti ana sayfada olmali');
+      }
     });
   });
 

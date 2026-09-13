@@ -10,7 +10,6 @@ import '../../attendance/presentation/views/classroom_participation_view.dart';
 import '../../attendance/providers/classroom_participation_provider.dart';
 import '../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../classes/providers/class_provider.dart';
-import '../../documents/presentation/views/documents_hub_view.dart';
 import '../../exam_operations/data/models/exam_model.dart';
 import '../../exam_operations/presentation/views/exam_operations_menu_view.dart';
 import '../../exam_operations/presentation/views/exam_tracking_view.dart';
@@ -659,17 +658,18 @@ class DashboardScreen extends ConsumerWidget {
         'accent': const Color(0xFF10B981),
         'target': const ClassroomParticipationView(),
       },
-      {
-        // "Evraklarim" adi genisti: icinde YALNIZCA iki kurul tutanagi
-        // var, oysa uygulamada onlarca baska belge uretiliyor. Ad
-        // icerigi anlatsin.
-        'title': 'Kurullar',
-        'subtitle': 'Zümre & ŞÖK Tutanağı',
-        'icon': Icons.groups_rounded,
-        'gradient': [const Color(0xFF0284C7), const Color(0xFF06B6D4)],
-        'accent': const Color(0xFF0EA5E9),
-        'target': const DocumentsHubView(),
-      },
+      // KURULLAR KARTI KALDIRILDI.
+      //
+      // Ana ekranda tam bir kart yeri kaplıyordu ama arkasında yalnızca
+      // İKİ belge vardı (zümre + ŞÖK tutanağı). Oysa uygulamada otuzdan
+      // fazla yerde evrak üretiliyor ve öğretmen hangisinin nerede
+      // olduğunu bulamıyordu: tutanak için Kurullar'a, yıllık plan için
+      // Diğer Evraklar'a, nöbetçi listesi için Sınıfım'a gidiyordu.
+      //
+      // Kurul tutanakları artık Diğer Evraklar'ın içinde. Ayrım şu:
+      // sınıftan BAĞIMSIZ evraklar (tutanak, plan, öğretmen dosyası,
+      // kulüp) orada toplanır; sınıfa BAĞLI olanlar (oturma planı,
+      // nöbetçi listesi) Sınıfım'da kalır ve oraya kısayol verilir.
       {
         'title': 'Sınav İşlemleri',
         'subtitle': 'Not & Değerlendirme',
