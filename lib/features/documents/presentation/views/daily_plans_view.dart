@@ -8,7 +8,6 @@ import '../../../../shared/screens/pdf_preview_screen.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../classes/providers/class_provider.dart';
 import '../../../auth_profile/providers/teacher_profile_provider.dart';
-import '../../../outcomes/data/models/curriculum_outcome_model.dart';
 import '../../utils/daily_plan_pdf_generator.dart';
 import '../../utils/plan_week_builder.dart';
 
@@ -243,14 +242,31 @@ class _DailyPlansViewState extends ConsumerState<DailyPlansView> {
       // 2. Her satır KENDİ ders haftası numarasıyla dönüştürülür.
       final List<Map<String, dynamic>> planListesi = [];
       for (final satir in dersSatirlari) {
-        planListesi.add(_donustur(satir, PlanWeekBuilder.dersHaftaNo(satir)));
+        // `ayrintili: true` günlük planın öğretme-öğrenme sürecini de
+        // üretir (dikkat çekme, güdüleme, etkinlikler, farklılaştırma).
+        planListesi.add(PlanWeekBuilder.haftaPlani(
+          satir: satir,
+          haftaNo: PlanWeekBuilder.dersHaftaNo(satir),
+          sinif: _seciliSinif,
+          dersKodu: _seciliDersKodu ?? '',
+          dersAdi: _seciliDersAdi,
+          takvimdenTarih: AppDateFormatter.getWeekDateRangeText,
+          ayrintili: true,
+        ));
       }
 
       // 3. Son ders haftası 35 ise yıl sonu değerlendirme haftası eklenir.
       if (planListesi.isNotEmpty) {
         final sonHafta = PlanWeekBuilder.dersHaftaNo(dersSatirlari.last);
         if (sonHafta == 35) {
-          planListesi.add(_varsayilanYilSonuHaftaPlani(36));
+          planListesi.add(PlanWeekBuilder.yilSonuHaftasi(
+            haftaNo: 36,
+            sinif: _seciliSinif,
+            dersKodu: _seciliDersKodu ?? '',
+            dersAdi: _seciliDersAdi ?? 'Ders',
+            takvimdenTarih: AppDateFormatter.getWeekDateRangeText,
+            ayrintili: true,
+          ));
         }
       }
 
@@ -271,357 +287,7 @@ class _DailyPlansViewState extends ConsumerState<DailyPlansView> {
     }
   }
 
-  Map<String, dynamic> _donustur(Map<String, dynamic> m, int haftaNo) {
-    final dersAdi = _seciliDersAdi ?? m['subject_name']?.toString() ?? 'Ders';
-    final rawUnitTitle = (m['unit_title'] ?? '').toString().trim();
-    final rawTopicTitle = (m['topic_title'] ?? '').toString().trim();
-    final rawDesc = (m['outcome_description'] ?? '').toString().trim();
 
-    final kazanimKodu = (m['outcome_code'] ?? '').toString().trim();
-    final outcomeParts = OutcomePart.listFromDbText(m['outcome_parts'] as String?);
-
-    // MEB resmi kazanımı veya ders konusu mevcut mu?
-    final bool hasRealContent = outcomeParts.isNotEmpty ||
-        (kazanimKodu.isNotEmpty && kazanimKodu != 'TATIL') ||
-        (rawDesc.isNotEmpty && !rawDesc.toLowerCase().contains('planlanmamış') && !rawDesc.toLowerCase().contains('kazanım belirtilmemiş'));
-
-    // Sadece ve sadece gerçek bir konu/kazanım yoksa zümre planlaması (OTP) sayılır
-    final bool isTrulyUnplanned = !hasRealContent &&
-        (rawUnitTitle.toLowerCase().contains('planlanmamış') ||
-         rawTopicTitle.toLowerCase().contains('planlanmamış') ||
-         rawDesc.toLowerCase().contains('planlanmamış') ||
-         rawUnitTitle.toLowerCase().contains('okul temelli') ||
-         rawTopicTitle.toLowerCase().contains('okul temelli'));
-
-    final String cleanUnit = rawUnitTitle
-        .replaceAll(RegExp(r'OKUL TEMELLİ PLANLAMA\*?\s*[-/]?\s*', caseSensitive: false), '')
-        .replaceAll(RegExp(r'Planlanmamış Hafta', caseSensitive: false), '')
-        .trim();
-    final String cleanTopic = rawTopicTitle
-        .replaceAll(RegExp(r'OKUL TEMELLİ PLANLAMA\*?\s*[-/]?\s*', caseSensitive: false), '')
-        .replaceAll(RegExp(r'Planlanmamış Hafta', caseSensitive: false), '')
-        .trim();
-
-    final String fullTema;
-    if (cleanUnit.isNotEmpty && cleanTopic.isNotEmpty) {
-      if (cleanUnit.toLowerCase() == cleanTopic.toLowerCase()) {
-        fullTema = cleanUnit;
-      } else {
-        fullTema = '$cleanUnit - $cleanTopic';
-      }
-    } else if (cleanTopic.isNotEmpty) {
-      fullTema = cleanTopic;
-    } else if (cleanUnit.isNotEmpty) {
-      fullTema = cleanUnit;
-    } else {
-      fullTema = haftaNo >= 35
-          ? 'Yıl Sonu Genel Değerlendirme ve Pekiştirme'
-          : 'Kazanım Pekiştirme ve Ara Değerlendirme';
-    }
-
-    final List<String> ciktilar = [];
-    final List<String> surecListesi = [];
-
-    if (outcomeParts.isNotEmpty) {
-      for (final part in outcomeParts) {
-        final pCode = part.code?.trim() ?? '';
-        final pText = part.text.trim();
-        if (pText.isNotEmpty) {
-          if (pCode.isNotEmpty && !pText.startsWith(pCode)) {
-            ciktilar.add('$pCode. $pText');
-          } else {
-            ciktilar.add(pText);
-          }
-        }
-        for (final step in part.steps) {
-          if (step.trim().isNotEmpty && !surecListesi.contains(step.trim())) {
-            surecListesi.add(step.trim());
-          }
-        }
-      }
-    } else if (rawDesc.isNotEmpty && !rawDesc.toLowerCase().contains('planlanmamış') && !rawDesc.toLowerCase().contains('kazanım belirtilmemiş')) {
-      ciktilar.add(rawDesc);
-    } else if (isTrulyUnplanned) {
-      ciktilar.add(
-        'MEB resmî çerçeve planı uyarınca; zümre öğretmenler kurulunca ders kapsamında kararlaştırılan kazanım pekiştirme, araştırma ve gözlem, proje çalışmaları ve telafi/pekiştirme uygulamaları yürütülür.',
-      );
-      surecListesi.add('a) Zümre öğretmenler kurulu kararları doğrultusunda belirlenen araştırma, gözlem ve proje hedefleri öğrencilerle paylaşılır.');
-      surecListesi.add('b) Önceki ünitelerde yer alan temel kavram ve beceri eksiklikleri tespit edilerek kavram pekiştirme etkinlikleri yürütülür.');
-      surecListesi.add('c) Çoklu ortam materyalleri, çalışma yaprakları ve etkileşimli tahta uygulamalarıyla pekiştirme çalışmaları tamamlanır.');
-    }
-
-    if (!isTrulyUnplanned && ciktilar.isEmpty) {
-      final stepRegex = RegExp(r'([a-z]\)\s*[^a-z\)]+)');
-      final stepMatches = stepRegex.allMatches(rawDesc);
-      if (stepMatches.isNotEmpty) {
-        for (final match in stepMatches) {
-          final s = match.group(1)?.trim();
-          if (s != null && s.isNotEmpty) surecListesi.add(s);
-        }
-        final mainText = rawDesc.replaceAll(stepRegex, '').trim().replaceAll(RegExp(r'\|\s*$'), '').trim();
-        if (kazanimKodu.isNotEmpty && !mainText.startsWith(kazanimKodu)) {
-          ciktilar.add('$kazanimKodu. $mainText');
-        } else {
-          ciktilar.add(mainText.isNotEmpty ? mainText : '$dersAdi $haftaNo. Hafta Öğrenme Çıktısı');
-        }
-      } else {
-        if (kazanimKodu.isNotEmpty && !rawDesc.startsWith(kazanimKodu)) {
-          ciktilar.add('$kazanimKodu. $rawDesc');
-        } else {
-          ciktilar.add(rawDesc.isNotEmpty ? rawDesc : '$dersAdi $haftaNo. Hafta Öğrenme Çıktısı');
-        }
-      }
-    }
-
-    // 2. Beceriler ve Değerler
-    final rawSkills = (m['maarif_skills'] ?? '').toString().trim();
-    final rawValues = (m['maarif_values'] ?? '').toString().trim();
-
-    String sdb = '';
-    String ob = '';
-    String abKb = '';
-
-    if (rawSkills.isNotEmpty) {
-      final sdbList = <String>[];
-      final obList = <String>[];
-      final otherList = <String>[];
-
-      final tokens = rawSkills.split(RegExp(r',\s*|\s+(?=(?:SDB|OB|AB|KB|FBAB)\d)'));
-      for (final t in tokens) {
-        final token = t.trim();
-        if (token.isEmpty) continue;
-        if (token.startsWith('SDB')) {
-          sdbList.add(token);
-        } else if (token.startsWith('OB')) {
-          obList.add(token);
-        } else {
-          otherList.add(token);
-        }
-      }
-
-      sdb = sdbList.join(', ');
-      ob = obList.join(', ');
-      abKb = otherList.join(', ');
-    }
-
-    if (sdb.isEmpty) {
-      sdb = 'SDB1.1. Kendini Tanıma (Öz Farkındalık), SDB1.2. Kendini Düzenleme (Öz Düzenleme), SDB2.1. İletişim, SDB2.2. İş Birliği';
-    }
-    if (ob.isEmpty) {
-      ob = 'OB1. Bilgi Okuryazarlığı, OB2. Dijital Okuryazarlık, OB4. Görsel Okuryazarlık';
-    }
-    if (abKb.isEmpty) {
-      abKb = 'Alan Becerileri ve Bilimsel Sorgulama, KB2.4. Çözümleme';
-    }
-
-    final String degerler = rawValues.isNotEmpty
-        ? rawValues
-        : 'D3. Çalışkanlık, D4. Dostluk, D14. Saygı, D16. Sorumluluk';
-
-    // 3. Öğretme-Öğrenme Etkinlikleri (Görsel 1 Şablonu)
-    final officialAct = (m['official_activity'] ?? '').toString().trim();
-    final maarifSummary = (m['maarif_summary'] ?? '').toString().trim();
-
-    // Dikkat Çekme
-    String dikkatCekme = '';
-    if (isTrulyUnplanned) {
-      dikkatCekme = 'Öğrencilere bu derste Zümre Öğretmenler Kurulunca belirlenen derinleştirme, araştırma ve kazanım pekiştirme etkinliklerinin yürütüleceği belirtilerek dikkatleri çekilir.';
-    } else if (officialAct.contains('?')) {
-      final qMatch = RegExp(r'([^.!?\n]*\?)').firstMatch(officialAct);
-      if (qMatch != null) {
-        dikkatCekme = qMatch.group(1)?.replaceAll(RegExp(r'^[^“"]*[“"]'), '').replaceAll(RegExp(r'[”"].*$'), '').trim() ?? '';
-      }
-    }
-    if (dikkatCekme.isEmpty || dikkatCekme.length < 5) {
-      if (dersAdi.toLowerCase().contains('bilişim')) {
-        dikkatCekme = 'Bilişim teknolojileri deyince aklınıza neler geliyor?';
-      } else {
-        dikkatCekme = '$fullTema kavramı günlük yaşamımızda nerede ve nasıl karşımıza çıkar?';
-      }
-    }
-
-    // Güdüleme
-    final guduleme = isTrulyUnplanned
-        ? 'Önceki haftalarda öğrenilen bilgi ve becerileri gerçek yaşam senaryolarında, araştırma ve projelerde uygulama fırsatı bulacakları vurgulanır.'
-        : 'Bu derste $fullTema konusuna ilişkin temel kavramları ve uygulama alanlarını açıklayabilecek duruma geleceksiniz.';
-
-    // Derse Geçiş
-    final derseGecis = isTrulyUnplanned
-        ? 'Dersin başında hazırbulunuşluk ve önceki konuların kısa bir tekrarı yapıldıktan sonra zümre kararıyla belirlenen çalışma basamaklarına geçilir.'
-        : 'Öğrencilerin dikkati çekildikten ve hazırbulunuşluk düzeyleri yoklandıktan sonra konunun işlenişine geçilir.';
-
-    // Etkinlikler (Ders Adımları)
-    final List<String> etkinlikAdimlari = [];
-    if (isTrulyUnplanned) {
-      etkinlikAdimlari.add('Dersin başında Zümre Öğretmenler Kurulu kararıyla belirlenen konu ve pekiştirme hedefleri öğrencilerle paylaşılır.');
-      etkinlikAdimlari.add('Önceki ünitelerde öğrenilen temel kavramlar soru-cevap ve kavram yoklama yöntemleriyle gözden geçirilir.');
-      etkinlikAdimlari.add('Öğrencilerin bireysel veya grup hâlinde yürütecekleri araştırma, proje ve inceleme görevleri dağıtılır.');
-      etkinlikAdimlari.add('Etkileşimli tahta, çalışma yaprakları ve MEB dijital içerikleri eşliğinde pekiştirme çalışmaları tamamlanır.');
-      etkinlikAdimlari.add('Çalışma sonunda elde edilen ürün veya kazanım çıktıları sınıf ortamında paylaşılarak akran geri bildirimi alınır.');
-    } else if (officialAct.isNotEmpty) {
-      final cumleler = officialAct
-          .replaceAll(RegExp(r'FARKLILAŞTIRMA.*$', caseSensitive: false), '')
-          .replaceAll(RegExp(r'ÖĞRETMEN YANSITMALARI.*$', caseSensitive: false), '')
-          .split(RegExp(r'(?<=[.!?])\s+'))
-          .map((s) => s.trim())
-          .where((s) => s.length > 15 && !s.contains('http') && !s.contains('karekod'))
-          .toList();
-      etkinlikAdimlari.addAll(cumleler.take(5));
-    }
-
-    if (!isTrulyUnplanned && etkinlikAdimlari.isEmpty) {
-      // "Öğrencilerle tanışılır" metni yalnızca 1. haftaya aittir.
-      // Resmî etkinlik alanı ders haftalarının %56'sında boş olduğu için
-      // eski kod bu cümleyi mart ayındaki haftalara da basıyordu.
-      etkinlikAdimlari.addAll(
-        PlanWeekBuilder.etkinlikAdimlari(
-          satir: m,
-          haftaNo: haftaNo,
-          temaBasligi: fullTema,
-          surecBilesenleri: surecListesi,
-        ),
-      );
-    }
-
-    // Bireysel ve Grupla Etkinlikler
-    const bireyselEtkinlikler = 'Açık uçlu sorular, doğru-yanlış, boşluk doldurma, eşleştirme soruları, MEB ders kitabı çalışma yaprakları.';
-    const gruplaEtkinlikler = 'İşbirlikli çalışma, beyin fırtınası, istasyon tekniği, akran öğrenmesi ve grup tartışmaları.';
-
-    // Özet
-    String ozet = isTrulyUnplanned
-        ? 'MEB TYMM yönergesi kapsamında zümre kararıyla planlanan etkinliklerin tamamlanması, öğrencilerin öğrenme eksikliklerinin giderilmesi ve kavramsal pekiştirme sağlanması hedeflenir.'
-        : (maarifSummary.isNotEmpty ? maarifSummary : '');
-    if (ozet.isNotEmpty && !isTrulyUnplanned) {
-      ozet += '\n\n';
-      ozet += 'Öğrencilerin bireysel farklılıkları göz ardı edilmemelidir. Öğrencilerin yeni kavramları önceki kavramların üzerine eklemeleri için fırsatlar verilmeli ve cesaretlendirilmelidir. Öğrenme-öğretme sürecinde öğrencilerin düşüncelerini sözlü olarak ifade etmelerine imkân tanınmalıdır.';
-    }
-
-    // 4. Farklılaştırma
-    final diffRaw = (m['differentiation'] ?? '').toString().trim();
-    final String genelFarklilastirma;
-    if (isTrulyUnplanned) {
-      genelFarklilastirma = 'MEB Maarif Modeli çerçevesinde; zümre kararıyla belirlenen okul temelli etkinliklerde öğrencilerin hazırbulunuşluk ve ilgi düzeylerine göre esnek çalışma grupları ve basamaklandırılmış görevler oluşturulur.';
-    } else if (diffRaw.isNotEmpty) {
-      genelFarklilastirma = diffRaw;
-    } else {
-      genelFarklilastirma = 'Öğrencilerin ilgi, ihtiyaç, hazırbulunuşluk düzeyleri ve öğrenme profillerine göre içerik, süreç ve ürün boyutlarında esnek öğretim uyarlamaları uygulanır.';
-    }
-
-    const zenginlestirme = 'İleri düzeydeki ve hızlı öğrenen öğrenciler için: Konuyu derinleştirici araştırma projeleri, üst düzey problem çözme senaryoları, dijital ürün geliştirme ve akran rehberliği görevleri planlanır.';
-    const destekleme = 'Öğrenme sürecinde ek zamana ve desteğe ihtiyacı olan öğrenciler için: Görsel ve somut materyaller (şemalar, resimli kartlar), basamaklandırılmış çalışma yaprakları, yönlendirici ipuçları ve birebir rehberlikle tekrar uygulamaları yürütülür.';
-
-    final tarihAraligi = PlanWeekBuilder.tarihAraligi(
-      m,
-      AppDateFormatter.getWeekDateRangeText,
-    );
-
-    return {
-      'meta': {
-        'ders': dersAdi,
-        'sinif': '$_seciliSinif. Sınıf',
-        'hafta': '$haftaNo. Hafta',
-        'tarih_araligi': tarihAraligi,
-        'ders_saati': PlanWeekBuilder.dersSaatiMetni(
-          _seciliSinif,
-          _seciliDersKodu ?? '',
-        ),
-        'tema_unite': fullTema,
-      },
-      'kazanimlar_ve_surec': {
-        'ogrenme_ciktilari': ciktilar.isNotEmpty ? ciktilar : ['$dersAdi $haftaNo. Hafta Öğrenme Çıktısı'],
-        'surec_bilesenleri': surecListesi,
-      },
-      'ozel_alanlar': {
-        'belirli_gun_ve_haftalar': isTrulyUnplanned
-            ? 'Kazanım Pekiştirme ve Zümre Çalışmaları'
-            : (m['specific_day_week']?.toString() ?? ''),
-        'alan_becerileri': abKb,
-        'kavramsal_beceriler': 'Kavramsal Çözümleme ve Bilgi Toplama',
-        'sosyal_duygusal_ogrenme_becerileri': sdb,
-        'okuryazarlik_becerileri': ob,
-        'degerler': degerler,
-        'disiplinler_arasi_iliskiler': 'Türkçe (anlama-ifade), Matematik (mantıksal akıl yürütme), Fen Bilimleri (bilimsel sorgulama)',
-      },
-      'ogretim_sureci': {
-        'dikkat_cekme': dikkatCekme,
-        'guduleme': guduleme,
-        'derse_gecis': derseGecis,
-        'etkinlikler': etkinlikAdimlari,
-        'bireysel_etkinlikler': bireyselEtkinlikler,
-        'grupla_etkinlikler': gruplaEtkinlikler,
-        'ozet': ozet,
-        'temel_kabuller': 'Öğrencilerin önceki sınıf ve konulara dair temel hazırbulunuşluk düzeyleri dikkate alınır.',
-        'on_degerlendirme_sureci': 'Dersin başında hazırbulunuşluğu ölçmek üzere soru-cevap ve kavram yoklama tartışması yürütülür.',
-        'kopru_kurma': 'Konu günlük hayat uygulamaları, güncel olaylar ve disiplinler arası bağlantılarla ilişkilendirilir.',
-        'ogrenme_ogretme_uygulamalari': etkinlikAdimlari.join('\n'),
-        'farklilastirma': {
-          'genel_aciklama': genelFarklilastirma,
-          'zenginlestirme': zenginlestirme,
-          'destekleme': destekleme,
-        },
-      },
-    };
-  }
-
-  Map<String, dynamic> _varsayilanYilSonuHaftaPlani(int haftaNo) {
-    final dersAdi = _seciliDersAdi ?? 'Ders';
-    const tarihAraligi = '14 - 18 Haziran 2027';
-    const tema = 'Yıl Sonu Değerlendirme, Telafi ve Genel Tekrar';
-
-    return {
-      'meta': {
-        'ders': dersAdi,
-        'sinif': '$_seciliSinif. Sınıf',
-        'hafta': '$haftaNo. Hafta',
-        'tarih_araligi': tarihAraligi,
-        'ders_saati': '2',
-        'tema_unite': tema,
-      },
-      'kazanimlar_ve_surec': {
-        'ogrenme_ciktilari': [
-          '$dersAdi dersinde yıl boyunca edinilen temel bilgi, beceri ve değerlerin genel değerlendirmesi ve pekiştirilmesi yapılır.',
-        ],
-        'surec_bilesenleri': [
-          'a) Öğrencilerin yıl boyunca oluşturduğu çalışma yaprakları, projeler ve ürün dosyaları incelenir.',
-          'b) Dönem sonu kazanım eksiklikleri tespit edilerek telafi ve kavram pekiştirme çalışmaları yürütülür.',
-          'c) Yaz tatili sürecinde öğrenilenlerin korunması ve verimli tatil geçirme rehberliği paylaşılır.',
-        ],
-      },
-      'ozel_alanlar': {
-        'belirli_gun_ve_haftalar': 'Eğitim-Öğretim Yılı Kapanışı',
-        'alan_becerileri': 'Alan Becerileri, Kavramsal Çözümleme ve Değerlendirme',
-        'kavramsal_beceriler': 'Eleştirel Düşünme, Karşılaştırma ve Özetleme',
-        'sosyal_duygusal_ogrenme_becerileri': 'SDB1.1. Kendini Tanıma, SDB1.2. Kendini Düzenleme, SDB2.2. İş Birliği',
-        'okuryazarlik_becerileri': 'OB1. Bilgi Okuryazarlığı, OB2. Dijital Okuryazarlık',
-        'degerler': 'D3. Çalışkanlık, D16. Sorumluluk, D4. Dostluk',
-        'disiplinler_arasi_iliskiler': 'Türkçe, Matematik, Fen Bilimleri, Sosyal Bilgiler',
-      },
-      'ogretim_sureci': {
-        'dikkat_cekme': 'Öğrencilerle öğretim yılı boyunca yapılan en ilgi çekici etkinlikler ve kazanımlar üzerine sohbet başlatılır.',
-        'guduleme': 'Yıl boyunca öğrenilen bilgilerin üst sınıflardaki derslere ve günlük hayata katkısı vurgulanır.',
-        'derse_gecis': 'Öğrencilerin ürün dosyaları ve etkinlik raporları incelenmek üzere masalara yerleştirilir.',
-        'etkinlikler': [
-          'Öğretim yılı boyunca işlenen ana ünite ve kavramlar kavram haritaları eşliğinde özetlenir.',
-          'Öğrencilerin hazırladığı proje, poster veya dijital çalışmalar sınıf sergisi şeklinde paylaşılır.',
-          'Akran değerlendirmesi ve öz değerlendirme formları doldurularak öğrenme süreçleri yansıtılır.',
-          'Kazanım eksikliği olan öğrenciler için soru-cevap ve ek alıştırmalarla telafi yapılır.',
-          'Yaz tatili için tavsiye kitap listeleri ve eğitici etkinlik önerileri paylaşılarak ders sonlandırılır.',
-        ],
-        'bireysel_etkinlikler': 'Öz değerlendirme formu doldurma, çalışma portfolyosu düzenleme, eksik kazanım soru çözümleri.',
-        'grupla_etkinlikler': 'Sınıf sergisi, akran geri bildirimi, grup değerlendirme çemberi ve bilgi yarışması.',
-        'ozet': 'Öğrencilerin yıl boyunca kaydettikleri bireysel ve akademik gelişim takdir edilerek motive edilir.',
-        'temel_kabuller': 'Öğretim yılı müfredatındaki temel kazanımların işlendiği kabul edilir.',
-        'on_degerlendirme_sureci': 'Yıl sonu genel hatırlatma ve kavram tarama soruları yöneltilir.',
-        'kopru_kurma': 'Öğrenilen bilgi ve becerilerin üst sınıflardaki derslerle bağlantısı kurulur.',
-        'ogrenme_ogretme_uygulamalari': 'Sınıf sergisi, ürün dosyası incelemesi ve genel tekrar uygulamaları yürütülür.',
-        'farklilastirma': {
-          'genel_aciklama': 'Tüm öğrencilerin yıl sonu gelişim düzeyine uygun esnek değerlendirme ve telafi etkinlikleri sunulur.',
-          'zenginlestirme': 'İleri düzeydeki öğrencilere tatil dönemi için ileri düzey araştırma ve proje fikirleri önerilir.',
-          'destekleme': 'Temel kavramlarda eksikliği olan öğrenciler için özet kılavuzlar ve pekiştirici çalışma yaprakları verilir.',
-        },
-      },
-    };
-  }
 
   Future<void> _tekHaftaPdfIndir(Map<String, dynamic> planData, int haftaNo) async {
     final teacher = ref.read(teacherProfileProvider);
