@@ -136,6 +136,56 @@ void main() {
     });
   });
 
+  group('Belirli gun ve haftalar', () {
+    test('KRITIK: ogretmen TARIHI yaziyor, adi degil', () {
+      // "23 nisan" diyor; verideki ad "Ulusal Egemenlik ve Cocuk
+      // Bayrami". Ikisi de ayni ekrana gitmeli.
+      expect(coz('23 nisan').ekran, CepteEkran.belirliGunler);
+      expect(coz('29 ekim').ekran, CepteEkran.belirliGunler);
+      expect(coz('19 mayıs').ekran, CepteEkran.belirliGunler);
+    });
+
+    test('Gun adiyla da bulunur', () {
+      expect(coz('cumhuriyet bayramı panosu').ekran, CepteEkran.belirliGunler);
+      expect(coz('öğretmenler günü').ekran, CepteEkran.belirliGunler);
+      expect(coz('atatürk haftası').ekran, CepteEkran.belirliGunler);
+    });
+
+    test('Hafta adlari da taniniyor', () {
+      expect(coz('orman haftası').ekran, CepteEkran.belirliGunler);
+      expect(coz('kızılay haftası').ekran, CepteEkran.belirliGunler);
+      expect(coz('engelliler haftası').ekran, CepteEkran.belirliGunler);
+    });
+  });
+
+  group('Sosyal kulupler', () {
+    test('Kulup adiyla bulunur', () {
+      expect(coz('satranç kulübü').ekran, CepteEkran.sosyalKulupler);
+      expect(coz('tiyatro kulübü').ekran, CepteEkran.sosyalKulupler);
+      expect(coz('çevre kulübü').ekran, CepteEkran.sosyalKulupler);
+    });
+
+    test('KRITIK: "kizilay haftasi" ile "kizilay kulubu" ayrilir', () {
+      // Ayni kelime iki ayri ekrana ait: hafta belirli gunlerde,
+      // kulup EK-4 cizelgesinde. Karistirilirsa ogretmen yanlis
+      // belgeye goturulur.
+      expect(coz('kızılay haftası').ekran, CepteEkran.belirliGunler);
+      expect(coz('kızılay kulübü').ekran, CepteEkran.sosyalKulupler);
+    });
+
+    test('KRITIK: cevre ve yesilay da ayrilir', () {
+      expect(coz('çevre koruma haftası').ekran, CepteEkran.belirliGunler);
+      expect(coz('çevre kulübü').ekran, CepteEkran.sosyalKulupler);
+      expect(coz('yeşilay haftası').ekran, CepteEkran.belirliGunler);
+      expect(coz('yeşilay kulübü').ekran, CepteEkran.sosyalKulupler);
+    });
+
+    test('Sade "kulup" da ekrana goturur', () {
+      expect(coz('kulüp işlemleri').ekran, CepteEkran.sosyalKulupler);
+      expect(coz('ek-4 çizelgesi').ekran, CepteEkran.sosyalKulupler);
+    });
+  });
+
   group('Kazanim sorusu', () {
     test('KRITIK: hafta sorusu kazanim niyeti uretir', () {
       final n = coz('5. sınıf türkçe 3. hafta ne işleyeceğim');

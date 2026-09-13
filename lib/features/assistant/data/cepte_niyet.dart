@@ -161,8 +161,48 @@ class CepteCozumleyici {
     CepteEkran.rehberlik: ['rehberlik', 'bep', 'ozel egitim'],
     CepteEkran.digerEvraklar: ['diger evrak', 'evraklar', 'belge'],
     CepteEkran.ogretmenDosyasi: ['ogretmen dosyasi', 'ozluk'],
-    CepteEkran.belirliGunler: ['belirli gun', 'pano', 'belirli hafta'],
-    CepteEkran.sosyalKulupler: ['kulup', 'sosyal kulup', 'ek-4'],
+    // BELİRLİ GÜN VE HAFTALAR — MEB çizelgesindeki 61 maddeden
+    // okulda pano/tören çalışması yapılanlar (`etkinlikli`) ve en sık
+    // aranan tarihler.
+    //
+    // Öğretmen ADI değil TARİHİ yazıyor: "23 nisan" der, "Ulusal
+    // Egemenlik ve Çocuk Bayramı" demez. İkisi de tanınmalı.
+    CepteEkran.belirliGunler: [
+      'belirli gun', 'belirli hafta', 'pano',
+      // tarihler
+      '23 nisan', '29 ekim', '19 mayis', '10 kasim', '24 kasim',
+      '18 mart', '12 mart', '30 agustos', '8 mart', '3 aralik',
+      // adlar
+      'ulusal egemenlik', 'cocuk bayrami', 'cumhuriyet bayrami',
+      'ataturk haftasi', 'ogretmenler gunu', 'genclik ve spor',
+      'zafer bayrami', 'canakkale', 'sehitler gunu', 'istiklal marsi',
+      'kizilay haftasi', 'orman haftasi', 'yesilay haftasi',
+      'ilkogretim haftasi', 'engelliler haftasi', 'cevre koruma haftasi',
+      'trafik ve ilkyardim', 'bilim ve teknoloji haftasi',
+      'tutum yatirim', 'enerji tasarrufu', 'cocuk haklari gunu',
+      'kutuphaneler haftasi', 'insan haklari ve demokrasi haftasi',
+      'kadinlar gunu', 'anneler gunu', 'babalar gunu',
+      'yerli mali', 'girisimcilik haftasi',
+    ],
+    // SOSYAL KULÜPLER — EK-4 çizelgesindeki 52 kulüp.
+    //
+    // "Kızılay Haftası" belirli gün, "Kızılay ve Kan Bağışı Kulübü"
+    // kulüptür. Ayrım "kulüp" kelimesiyle yapılır ve en uzun eşleşme
+    // kazandığı için `kizilay kulubu` (14) > `kizilay haftasi` (15)
+    // yerine doğru olan seçilir: iki anahtar da tam yazıldığında
+    // kendi ekranına gider.
+    CepteEkran.sosyalKulupler: [
+      'kulup', 'sosyal kulup', 'ek-4', 'ek 4',
+      'kizilay kulubu', 'cevre kulubu', 'cevre koruma kulubu',
+      'satranc kulubu', 'tiyatro kulubu', 'izcilik kulubu',
+      'spor kulubu', 'muzik kulubu', 'yesilay kulubu',
+      'kultur ve edebiyat kulubu', 'bilisim kulubu',
+      'halk oyunlari kulubu', 'zeka oyunlari kulubu',
+      'kutuphanecilik kulubu', 'munazara kulubu',
+      'fotografcilik kulubu', 'havacilik kulubu', 'denizcilik kulubu',
+      'girisimcilik kulubu', 'degerler kulubu', 'saglik kulubu',
+      'trafik guvenligi kulubu', 'sosyal medya kulubu',
+    ],
     CepteEkran.kurulTutanaklari: [
       'zumre',
       'sok',
