@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../academic_calendar/data/models/academic_calendar_event_model.dart';
 import '../../academic_calendar/providers/academic_calendar_provider.dart';
 import '../../academic_calendar/screens/academic_calendar_screen.dart';
+import '../../assistant/presentation/views/cepte_sohbet_view.dart';
 import '../../documents/presentation/views/other_documents_view.dart';
 import '../../attendance/presentation/views/classroom_participation_view.dart';
 import '../../attendance/providers/classroom_participation_provider.dart';
@@ -670,6 +671,21 @@ class DashboardScreen extends ConsumerWidget {
       // sınıftan BAĞIMSIZ evraklar (tutanak, plan, öğretmen dosyası,
       // kulüp) orada toplanır; sınıfa BAĞLI olanlar (oturma planı,
       // nöbetçi listesi) Sınıfım'da kalır ve oraya kısayol verilir.
+      {
+        // Uygulamada 32 ekran var ve öğretmen "ne nerede bulmak
+        // gerçekten zor" diyordu. Cepte yeni bir iş yapmaz; var olanı
+        // konuşarak bulunur kılar: "5. sınıf türkçe yıllık plan" deyince
+        // belgeyi hazırlar, "oturma planı" deyince ekrana götürür.
+        //
+        // Kurullar kartından boşalan yere geldi. Kazanımlar alt menüde
+        // zaten duruyor; onu buraya almak çift gösterim olurdu.
+        'title': 'Cepte',
+        'subtitle': 'Sor, bul, hazırla',
+        'icon': Icons.auto_awesome_rounded,
+        'gradient': [const Color(0xFF0284C7), const Color(0xFF06B6D4)],
+        'accent': const Color(0xFF0EA5E9),
+        'target': const CepteSohbetView(),
+      },
       {
         'title': 'Sınav İşlemleri',
         'subtitle': 'Not & Değerlendirme',

@@ -87,6 +87,7 @@ void main() {
       for (final baslik in [
         'Kazanımlar',
         'Ders İçi Katılım',
+        'Cepte',
         'Sınav İşlemleri',
         'Rehberlik',
         'Diğer Evraklar',
