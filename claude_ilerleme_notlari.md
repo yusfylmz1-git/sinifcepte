@@ -312,6 +312,40 @@ Desene üç dal eklendi. On kod biçiminin tamamı regresyon testinden
 geçiyor; madde harfleri (`a)`, `b)`) kod sanılmıyor. **249 kayıt** kazanım
 kodunu geri kazandı.
 
+### 14. Cepte — konuşarak kullanılan menü
+
+Rakip bir uygulamada asistan görülünce eklendi. Ekran görüntülerine
+bakınca o asistanın büyük ihtimalle **dil modeli değil**, niyet eşlemesi
+olduğu anlaşıldı: sabit özellik listesi + sohbet kutusu. Yaptığı şey yeni
+özellik üretmek değil, **var olanı bulunur kılmak**.
+
+Uygulamada 32 ekran var ve öğretmen "ne nerede bulmak gerçekten zor"
+diyordu. Asıl kayıp görünürlüktü.
+
+**Neden model değil kural:** Cihazda çalışan küçük model APK'yı 89 MB'dan
+400-650 MB'a çıkarır, düşük telefonda 3-10 sn yanıt verir ve Türkçe
+eğitim jargonunda **kazanım uydurabilir**. Bu uygulamanın çıktısı teftişe
+gidiyor. Kural tabanlı eşleme ya doğru anlar ya "anlamadım" der.
+
+| Yazılan | Olan |
+|---|---|
+| `5. sınıf türkçe yıllık plan` | 36 haftalık plan → PDF önizleme |
+| `oturma planı` | Sınıfım ekranına götürür |
+| `5. sınıf türkçe 3. hafta` | O haftanın kazanımlarını yazar |
+| `yıllık plan hazırla` | "hangi sınıf ve hangi ders?" |
+| `bugün hava güzel` | "anlayamadım" + örnekler |
+
+**Üç katman:** niyet çözümleyici (22 test) → belge servisi (10 test) →
+sohbet ekranı (9 sözleşme testi). İlk ikisi saf Dart, UI'dan bağımsız;
+veritabanı çağrıları dışarıdan enjekte edildiği için testler sqflite
+kurmuyor.
+
+**Tahmin etmeme kuralı üç yerde:** eksik bilgide üretim yok; lisede üç
+okul türü varsa seçilmez, sorulur; veri yoksa gerekçe yazılır.
+
+Bunun ön koşulu olarak plan üretimi ekran durumundan koparıldı
+(bkz. `685c75e`) — o refactor 572 satır kopya kodu da temizledi.
+
 ## Doğrulama
 
 ```
@@ -319,7 +353,11 @@ flutter analyze lib/features/documents/ test/plan_week_builder_test.dart
   -> No issues found!
 
 flutter test
-  -> All tests passed! (1260 test; öncesi 1236, yeni 24)
+  -> All tests passed! (1317 test; oturum başında 1236)
+     +24 müfredat/plan düzeltmeleri
+     +2  menü düzeni
+     +14 plan üretiminin ekrandan koparılması
+     +41 Cepte (22 niyet + 10 servis + 9 sözleşme)
 
 python scripts/maarif/test_pipeline.py
   -> 85 test, 2 hata (İKİSİ DE ÖNCEDEN BOZUK:
