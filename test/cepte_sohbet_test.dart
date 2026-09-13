@@ -100,7 +100,9 @@ void main() {
       // HIC verilmemis: cihazda yazi okunmuyordu. Renkler elle
       // verilmeli ve isDark'a gore degismeli.
       final kod = oku(sohbet);
-      expect(kod.contains('ActionChip'), isFalse,
+      // Cagri biciminde aranir: aciklama yorumunda gecen ad
+      // eslesmemeli, yoksa test kendi belgelendirmesini yakalar.
+      expect(kod.contains('ActionChip('), isFalse,
           reason: 'tema cipi light modda okunmuyor');
       expect(kod, contains('Widget _oneriCipi(String metin, bool isDark)'));
     });
