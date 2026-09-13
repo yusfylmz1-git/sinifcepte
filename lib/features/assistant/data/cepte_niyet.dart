@@ -336,7 +336,18 @@ class CepteCozumleyici {
   }
 
   /// Anahtarlardan biri metinde geçiyor mu?
+  ///
+  /// ## Boşluk toleransı
+  /// Öğretmen telefonda bitişik yazıyor: "23nisan", "dersprogramim".
+  /// Cihazda ölçüldü — "23nisan" hiç tanınmıyordu ve Cepte haklı olarak
+  /// "anlayamadım" diyordu. Boşluk yazım tercihidir, niyet aynıdır;
+  /// bu yüzden iki taraf da boşluksuz hâliyle karşılaştırılır.
+  ///
+  /// Kelime sınırı gerektiren kısa kodlar (`din`, `fen`) bu toleransın
+  /// DIŞINDA: onlarda boşluk silmek "aydin" içinde "din" bulunmasına
+  /// yol açardı.
   static bool _gecer(String katlanmis, List<String> anahtarlar) {
+    final bosluksuzMetin = katlanmis.replaceAll(' ', '');
     for (final ham in anahtarlar) {
       final a = trFold(ham);
       if (a.isEmpty) continue;
@@ -344,6 +355,8 @@ class CepteCozumleyici {
         final desen = RegExp('(^|[^a-z0-9])${RegExp.escape(a)}([^a-z0-9]|\$)');
         if (desen.hasMatch(katlanmis)) return true;
       } else if (katlanmis.contains(a)) {
+        return true;
+      } else if (a.contains(' ') && bosluksuzMetin.contains(a.replaceAll(' ', ''))) {
         return true;
       }
     }

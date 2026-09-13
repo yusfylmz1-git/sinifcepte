@@ -158,6 +158,28 @@ void main() {
     });
   });
 
+  group('Bitisik yazim', () {
+    test('KRITIK: "23nisan" da taniniyor', () {
+      // Cihazda olculdu: ogretmen telefonda bitisik yaziyor ve
+      // "23nisan" hic taninmiyordu. Bosluk yazim tercihidir.
+      expect(coz('23nisan').ekran, CepteEkran.belirliGunler);
+      expect(coz('29ekim').ekran, CepteEkran.belirliGunler);
+      expect(coz('19mayis').ekran, CepteEkran.belirliGunler);
+    });
+
+    test('Ekran adlari da bitisik yazilabilir', () {
+      expect(coz('dersprogramim').ekran, CepteEkran.dersProgrami);
+      expect(coz('oturmaplani').ekran, CepteEkran.oturmaPlani);
+    });
+
+    test('KRITIK: bosluk toleransi kelime siniri kuralini BOZMAZ', () {
+      // "aydin" icinde "din" hala eslesmemeli; bosluk silme kisa
+      // kodlara uygulanmaz.
+      expect(coz('aydın öğretmenin planı').dersKodu, isNot('DIN'));
+      expect(coz('telefon numarası').dersKodu, isNull);
+    });
+  });
+
   group('Sosyal kulupler', () {
     test('Kulup adiyla bulunur', () {
       expect(coz('satranç kulübü').ekran, CepteEkran.sosyalKulupler);
