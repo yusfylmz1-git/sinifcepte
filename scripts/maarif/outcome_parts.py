@@ -30,7 +30,36 @@ import re
 # Sondaki noktayı ZORUNLU tutmak MARP/BEO gibi kodları görünmez yapıyordu;
 # o kayıtlar tek blok kalıp haftalara bölünemiyordu.
 _CODE = re.compile(
+    # Sayısal önek: 'MAT.11.1.1.', 'BTY.5.1.1.', 'MARP11.1.1', '5.1.2.'
     r"(?:[A-ZÇĞİÖŞÜ]{2,6}\.?)?\d{1,2}(?:\.\d{1,2}){2,}\.?"
+    # Tek harfli önek: 'T.D.5.3.' (yeni Maarif) ve 'T.4.3.1.' (eski).
+    #
+    # İki ayrı kusuru birden kapatır:
+    #  - Türkçe'nin Maarif kodlarında önekten sonra RAKAM değil beceri
+    #    harfi gelir (D=dinleme, O=okuma, K=konuşma, Y=yazma). Yalnızca
+    #    sayısal desen arandığı için bu kodların HİÇBİRİ görülmüyordu;
+    #    `outcomeParts` tek bloğa düşüyor ve PDF haftanın tüm
+    #    kazanımlarını tek paragraf hâlinde basıyordu.
+    #  - Üstteki sayısal dal en az İKİ harflik önek istiyor, bu yüzden
+    #    'T.4.3.1.' de kapsam dışıydı: kalan '4.3.1.' parçasının
+    #    önündeki karakter '.' olduğu için konum süzgecine takılıp
+    #    eleniyordu (bkz. find_code_positions).
+    r"|[A-ZÇĞİÖŞÜ]{1,4}\.(?:[A-ZÇĞİÖŞÜ]{1,2}|\d{1,2})\.\d{1,2}(?:\.\d{1,2})*\.?"
+    # Küçük harfli önek: 'Mü.3.A.4.' (Müzik), 'Mü.8.B.2.'
+    #
+    # MEB müzik planlarında önek küçük harf taşır ('Mü'). Yalnızca büyük
+    # harf arandığı için 140 kayıtta kazanım kodu görünmüyordu.
+    r"|M[üÜuU]\.\d{1,2}\.[A-ZÇĞİÖŞÜ]\.\d{1,2}\.?"
+    # Önek ile sınıf bitişik + ortada harf: 'ENG5.7.L1.' (İngilizce)
+    #
+    # İlkokul/ortaokul İngilizce planlarında kod 'ENG5.7.L1' biçiminde:
+    # önekten sonra sınıf bitişik, son segment harfle başlıyor. 22 kayıt.
+    r"|[A-ZÇĞİÖŞÜ]{1,4}\d{1,2}\.\d{1,2}\.[A-ZÇĞİÖŞÜ]{1,2}\d{0,2}\.?"
+    # İki segmentli kod: 'TDE2.2.' (Edebiyat), '1.1.' (İnkılap Tarihi)
+    #
+    # Üstteki sayısal dal en az ÜÇ segment istiyor ({2,} tekrar); bu
+    # yüzden iki segmentli eski kodlar görünmüyordu. 99 kayıt.
+    r"|(?:[A-ZÇĞİÖŞÜ]{2,4})?\d{1,2}\.\d{1,2}\.(?=\s|$)"
 )
 
 # Süreç bileşeni maddesi: 'a)' 'b)' 'ç)' — Türkçe harfler dâhil.

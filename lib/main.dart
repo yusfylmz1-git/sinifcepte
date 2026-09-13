@@ -16,6 +16,7 @@ import 'core/utils/freeze_detector.dart';
 import 'core/share/incoming_share_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
+import 'core/database/database_helper.dart';
 import 'features/auth/screens/welcome_screen.dart';
 
 Future<void> main() async {
@@ -99,6 +100,13 @@ Future<void> _warmUpBackgroundServices() async {
     await RemoteManifestService.instance.initialize();
   } catch (e, stackTrace) {
     debugPrint('Uzak yapılandırma başlatma hatası: $e\n$stackTrace');
+  }
+
+  // Resmî MEB Maarif kazanım paketini kontrol et ve gerekirse SQLite'a tohumla
+  try {
+    await DatabaseHelper.instance.seedCurriculumOutcomesFromAssets();
+  } catch (e, stackTrace) {
+    debugPrint('Müfredat tohumlama hatası: $e\n$stackTrace');
   }
 }
 

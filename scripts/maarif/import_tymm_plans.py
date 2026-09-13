@@ -84,8 +84,23 @@ COURSE_NAMES = {
     "ilkokul-turkce-dersi": "Türkçe",
     "ilkokul-turkce-dersi-ada-yayinlari-ders-kitabi-yillik-plani": "Türkçe",
     "ingilizce-dersi": "İngilizce",
-    "insan-haklarivatandaslik-ve-demokrasi-dersi":
-        "İnsan Hakları, Yurttaşlık ve Demokrasi",
+    # MEB BU ADLA YANLIŞ DOSYAYI YAYIMLAMIŞ.
+    #
+    # `insan-haklarivatandaslik-ve-demokrasi-dersi.zip` içindeki Excel'in
+    # adı "İNSAN HAKLARI, VATANDAŞLIK VE DEMOKRASİ (4. SINIF)" ama
+    # içeriği baştan sona Beden Eğitimi ve Oyun: sayfalar 1-4. sınıf,
+    # kazanımlar BEO.1.1.1…, temalar "HAREKET EDİYORUM", ders saati 5.
+    #
+    # Dosya adına güvenilince 140 kayıt "İnsan Hakları" adıyla ikinci kez
+    # yazılıyordu: BEDEN_OYUN ile birebir aynı 140 kayıt (%100 eşleşme
+    # ölçüldü). Öğretmen "İnsan Hakları" seçince beden eğitimi planı
+    # alıyordu.
+    #
+    # Ders GERÇEK içeriğine eşlenir; böylece BEDEN_OYUN ile aynı kovaya
+    # düşüp tekilleşir. MEB gerçek İnsan Hakları çerçeve planını
+    # yayımladığında bu satır geri alınır. İçerik UYDURULMAZ: plan
+    # yoksa ders pakette görünmez.
+    "insan-haklarivatandaslik-ve-demokrasi-dersi": "Beden Eğitimi ve Oyun",
     "ortaokul-matematik-dersi": "Matematik",
     "ortaokul-teknoloji-ve-tasarim-dersi": "Teknoloji ve Tasarım",
     "ortaokul-turkce-dersi": "Türkçe",
@@ -537,8 +552,10 @@ def locate_header(rows: list[tuple]) -> tuple[int, dict[str, int], str]:
         ("month", ("ay", "month", "monat")),
         ("unit", ("unite/tema", "unite", "tema", "theme and content frame",
                   "theme", "unterrichtseinheiten", "thema")),
-        ("topic", ("konu (icerik cercevesi)", "konu", "content frame",
-                   "sub-theme", "inhaltsrahmen", "lektion")),
+        ("text", ("metin",)),
+        ("topic", ("konu (icerik cercevesi)", "konu", "icerik cercevesi",
+                   "content frame", "sub-theme", "sub-themes", "unterthemen",
+                   "inhaltsrahmen", "lektion")),
         # "learning skills and learning outcomes": Ingilizce planlarinda
         # baslik boyle yaziliyor ve "learning outcomes" ile BASLAMIYOR.
         # Eslesme baslangic uzerinden yapildigi icin 4., 7. ve 8. sinif
@@ -709,72 +726,139 @@ def read_sheet(worksheet, sheet_name: str, course_slug: str,
             return ""
         return flatten(row[index])
 
-    records: list[dict] = []
-    seen: set[int] = set()
-    # Birleşik hücrelerde değer yalnızca ilk satırda yazar; sonraki
-    # haftalara taşınır. Bir kazanım çoğu planda 2-4 hafta sürer ve
-    # ara satırlar boş bırakılır; taşımazsak o haftalar tamamen düşer
-    # (hitabet 11'de 40 haftanın yalnızca 10'u okunuyordu).
-    last_unit = ""
-    last_topic = ""
-    last_outcome = ""
-    last_values = ""
-    last_skills = ""
+    # Bir haftanın içeriği birden fazla satıra yayılmış olabilir (Türkçe'de
+    # metin alt satırda, yabancı dilde alt kazanımlar ardışık satırlarda gelir).
+    # Hafta numarası içeren satırla yeni hafta başlar; numarasız ara satırlar
+    # o haftanın devamı olarak toplanır.
+    week_blocks: list[tuple[int, list[tuple]]] = []
+    current_week_num: int | None = None
+    current_rows: list[tuple] = []
+    otp_inferred = False
 
     for row in rows[header_index + 1:]:
         if not any(row):
             continue
         week = parse_week(cell(row, "week"), date_index)
-        if week is None or week in seen:
+        if week is not None:
+            otp_inferred = False
+        elif current_week_num is not None:
+            # MEB Excel planlarında (örn. BTY ve Fen) MEB bazı haftalarda
+            # 'OKUL TEMELLİ PLANLAMA*' başlığı atıp hafta hücresini boş bırakmakta,
+            # alt satırda ise o haftanın ders konusunu ve kazanımını vermektedir.
+            # Bu durum bir sonraki haftanın başlangıcıdır.
+            r_str = " ".join(str(c) for c in row if c is not None).lower()
+            if "okul temelli" in r_str and not otp_inferred:
+                if current_week_num + 1 <= TOTAL_WEEKS:
+                    week = current_week_num + 1
+                    otp_inferred = True
+
+        if week is not None:
+            if current_week_num is not None:
+                week_blocks.append((current_week_num, current_rows))
+            current_week_num = week
+            current_rows = [row]
+        elif current_week_num is not None:
+            current_rows.append(row)
+    if current_week_num is not None and current_rows:
+        week_blocks.append((current_week_num, current_rows))
+
+    records: list[dict] = []
+    seen: set[int] = set()
+    last_unit = ""
+    last_topic = ""
+    last_outcome = ""
+    last_values = ""
+    last_skills = ""
+    last_diff = ""
+
+    for week, w_rows in week_blocks:
+        if week in seen:
             continue
         seen.add(week)
 
-        unit = cell(row, "unit") or last_unit
-        topic = cell(row, "topic") or last_topic
-        last_unit, last_topic = unit or last_unit, topic or last_topic
+        units: list[str] = []
+        texts: list[str] = []
+        topics: list[str] = []
+        outcomes: list[str] = []
+        processes: list[str] = []
+        values_list: list[str] = []
+        skills_list: list[str] = []
+        diff_list: list[str] = []
 
-        own_outcome = cell(row, "outcome")
-        # Taşıma yalnızca KISA kazanım metinleri için yapılır.
-        #
-        # Bazı çerçeve planlarda (Arapça) ünitenin TÜM kazanımları ünitenin
-        # ilk haftasına tek hücrede yazılır (~1900 karakter). Bunu sonraki
-        # haftalara kopyalamak hem kartı okunmaz hâle getiriyor hem de aynı
-        # dev metni 5 hafta boyunca tekrar ediyordu. Bu durumda metin
-        # yalnızca kendi haftasında kalır; diğer haftalar süreç bileşeni
-        # veya ünite/konu başlığıyla temsil edilir.
-        # Turkce plani: kazanimlar dort beceri sutununda. Beceri adi
-        # basa yazilir ki hangi kazanimin hangi beceriye ait oldugu
-        # belli olsun.
-        if not own_outcome:
-            parcalar = []
-            for alan, etiket in _BECERI_ALANLARI.items():
-                metin = cell(row, alan)
-                if metin:
-                    parcalar.append(f"{etiket}: {metin}")
-            if parcalar:
-                # Ayirici ile birlestirilir: metin uzunsa
-                # _spread_long_outcomes bunlari haftalara dagitir,
-                # kisaysa ayirici temizlenir (asagida).
-                own_outcome = BECERI_AYIRICI.join(parcalar)
+        for r in w_rows:
+            u = cell(r, "unit")
+            if u and u not in units:
+                units.append(u)
 
-        outcome = own_outcome or (
-            last_outcome if len(last_outcome) <= MAX_CARRIED_OUTCOME else ""
-        )
-        if own_outcome:
-            last_outcome = own_outcome
-        process = cell(row, "process")
-        # Haftayı birbirinden ayıran asıl alan süreç bileşenidir; kazanım
-        # kodu birkaç hafta aynı kalabilir.
+            t = cell(r, "text")
+            if t and t not in texts:
+                texts.append(t)
+
+            top = cell(r, "topic")
+            if top and top not in topics and top not in texts:
+                topics.append(top)
+
+            own_outcome = cell(r, "outcome")
+            if not own_outcome:
+                parcalar = []
+                for alan, etiket in _BECERI_ALANLARI.items():
+                    m = cell(r, alan)
+                    if m:
+                        parcalar.append(f"{etiket}: {m}")
+                if parcalar:
+                    own_outcome = " ".join(parcalar)
+            if own_outcome and own_outcome not in outcomes:
+                outcomes.append(own_outcome)
+
+            pr = cell(r, "process")
+            if pr and pr not in processes:
+                processes.append(pr)
+
+            v = cell(r, "values")
+            if v and v not in values_list:
+                values_list.append(v)
+
+            sel = cell(r, "sel")
+            lit = cell(r, "literacy")
+            sk = ", ".join(p for p in (sel, lit) if p)
+            if sk and sk not in skills_list:
+                skills_list.append(sk)
+
+            df = cell(r, "diff")
+            if df and df not in diff_list:
+                diff_list.append(df)
+
+        unit = " / ".join(units) if units else last_unit
+        last_unit = unit or last_unit
+
+        topic_parts = []
+        if texts:
+            topic_parts.append(" / ".join(texts))
+        if topics:
+            topic_parts.append(" - ".join(topics))
+        if topic_parts:
+            topic = " - ".join(topic_parts)
+            last_topic = " / ".join(texts) if texts else topic
+        else:
+            topic = f"{last_topic} (Devamı)" if last_topic else unit
+
+        if outcomes:
+            outcome = " ".join(outcomes)
+            last_outcome = outcome
+        else:
+            outcome = last_outcome
+
+        process = " ".join(processes)
         description = " ".join(p for p in (outcome, process) if p).strip()
         if not description:
-            continue
+            description = f"{unit} - {topic} çalışmaları gerçekleştirilir."
 
-        values = cell(row, "values") or last_values
-        literacy = cell(row, "literacy")
-        sel = cell(row, "sel")
-        skills = ", ".join(p for p in (sel, literacy) if p) or last_skills
+        values = ", ".join(values_list) or last_values
+        skills = ", ".join(skills_list) or last_skills
+        diff = " ".join(diff_list) or last_diff
         last_values = values or last_values
         last_skills = skills or last_skills
+        last_diff = diff or last_diff
 
         records.append({
             "gradeLevel": grade,
@@ -787,17 +871,7 @@ def read_sheet(worksheet, sheet_name: str, course_slug: str,
             "outcomeCode": extract_code(outcome),
             "maarifValues": values or None,
             "maarifSkills": skills or None,
-            "differentiation": cell(row, "diff") or None,
-            # Kaynak IKI bilgi tasir:
-            #   portal : hangi MEB sitesinden indi (tymm / dogm)
-            #   duzen  : Maarif programi mi eski program mi
-            #
-            # Duzen Excel sutun basligindan OLCULUR, tahmin edilmez:
-            #   'maarif' -> "OGRENME CIKTILARI VE SUREC BILESENLERI"
-            #   'legacy' -> "KAZANIM" + "KAZANIM ACIKLAMASI"
-            #
-            # Ikisi ayri tutulur cunku DOGM planlari da Maarif duzeninde
-            # olabiliyor; onlara "TYMM" demek yaniltici olur.
+            "differentiation": diff or None,
             "sourcePortal": portal,
             "sourceProgram": "maarif" if duzen == "maarif" else "legacy",
             "source": portal if duzen == "maarif" else "legacy",

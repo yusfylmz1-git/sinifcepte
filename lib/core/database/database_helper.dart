@@ -1636,8 +1636,20 @@ class DatabaseHelper {
   /// | Sürüm | Ne değişti |
   /// |---|---|
   /// | 1 | İlk paket |
-  /// | 2 | MEB Eylül 2026 ilkokul/ortaokul planları + kaynak alanları |
-  static const int kazanimPaketSurumu = 2;
+  /// | 3 | MEB TYMM Türkçe ve dil dersleri eksiksiz aktarımı |
+  /// | 4 | MEB TYMM 2026-2027 takvim hizalaması ve BTY/Fen OTP hafta onarımı |
+  /// | 5 | MEB TYMM eksiksiz plan entegrasyonu ve Planlanmamış Hafta/OTP temizliği |
+  /// | 6 | teaching_week_number geriye dönük doldurma (plan üretimi bu sütuna bağlandı) |
+  ///
+  /// ## 6'ya neden çıkıldı
+  /// `teaching_week_number` sütunu tabloya ALTER TABLE ile sonradan
+  /// eklenmişti; ALTER ile eklenen sütun MEVCUT satırlarda NULL kalır.
+  /// Tohumlama `count >= 1000 && !paketEski` ise atlandığı için, güncelleme
+  /// alan cihazlarda sütun boş kalıyordu. Plan üretimi (PlanWeekBuilder)
+  /// tatil süzgecini bu sütuna bağlayınca tüm satırlar elendi ve ekran
+  /// "plan bulunamadı" dedi — cihazda bire bir gözlendi. Sürümü artırmak
+  /// yeniden tohumlamayı tetikler ve sütunu doldurur.
+  static const int kazanimPaketSurumu = 8;
 
   static const String _kKazanimPaketKey = 'curriculum_asset_version';
 

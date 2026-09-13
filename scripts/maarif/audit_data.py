@@ -37,6 +37,32 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from build_curriculum import is_unplanned  # noqa: E402
 from outcome_parts import outcome_codes  # noqa: E402
+from turkish_text import fold  # noqa: E402
+
+# MEB'in kazanım kodu kısaltmaları ders adıyla aynı harfle başlamaz.
+# Bunlar hata DEĞİLDİR; tanınmazsa gerçek ad/içerik uyuşmazlığı
+# (İnsan Hakları dersinde BEO.* kodu gibi) gürültüde kaybolur.
+# Anahtar: kod öneki (fold edilmiş), değer: ders adında geçmesi
+# beklenen kök.
+KNOWN_PREFIXES = {
+    "eng": "ingilizce",
+    "de": "almanca",
+    "marp": "arapca",
+    "arp": "arapca",
+    "ita": "inkilap",
+    "tde": "edebiyat",
+    "beo": "beden",
+    "bty": "bilisim",
+    "gs": "gorsel",
+    "hb": "hayat",
+    "muz": "muzik",
+    "tdb": "temel dini",
+    "kkt": "kuran",
+    "sb": "sosyal",
+    "fb": "fen",
+    "mat": "matematik",
+    "dkab": "din",
+}
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 DATA = os.path.join(REPO_ROOT, "assets", "data", "official_maarif_kazanimlar.json")
@@ -124,7 +150,45 @@ class GroupReport:
             found.append(f"içerik %{self.coverage * 100:.0f}")
         if self.real_count and self.uniqueness < 0.35:
             found.append(f"tekrar (benzersiz %{self.uniqueness * 100:.0f})")
+        if self.name_mismatch:
+            found.append(f"AD/İÇERİK UYUŞMAZ: {self.name_mismatch}")
         return found
+
+    @property
+    def name_mismatch(self) -> str:
+        """Ders adı ile kazanım kodu öneki birbirini tutuyor mu?
+
+        MEB `insan-haklarivatandaslik-ve-demokrasi-dersi.zip` içinde
+        Beden Eğitimi ve Oyun planını yayımlamıştı; dosya adına güvenen
+        boru hattı 140 kaydı yanlış ders adıyla pakete yazdı ve öğretmen
+        "İnsan Hakları" seçince beden eğitimi planı aldı. Hiçbir denetim
+        bunu görmüyordu.
+
+        Kod öneki ile ders adının baş harfleri tamamen ayrışıyorsa
+        bildirilir. Kısaltma farkları (GORSEL→GS, HAYAT→HB, MUZIK→MÜZ)
+        normaldir; bu yüzden yalnızca İLK HARF uyuşmazlığı işaretlenir.
+        """
+        prefixes = collections.Counter()
+        for record in self.records:
+            text = (record.get("outcomeDescription") or "").strip()
+            match = re.match(r"^([A-ZÇĞİÖŞÜ]{2,6})[.\d]", text)
+            if match:
+                prefixes[match.group(1)] += 1
+        if not prefixes:
+            return ""
+        prefix = prefixes.most_common(1)[0][0]
+        code = str(self.subject or "")
+        if not code or not prefix:
+            return ""
+        if fold(code)[:1] == fold(prefix)[:1]:
+            return ""
+        # MEB'in kendi kısaltmaları ders adıyla aynı harfle başlamaz;
+        # bunlar hata DEĞİLDİR ve gerçek uyuşmazlığı gürültüde
+        # boğmamaları için tanınır.
+        known = KNOWN_PREFIXES.get(fold(prefix))
+        if known and known in fold(code):
+            return ""
+        return f"{code} dersinde {prefix}.* kodu"
 
     def status(self) -> str:
         problems = self.problems()

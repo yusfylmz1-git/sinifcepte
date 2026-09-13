@@ -89,18 +89,54 @@ _ONLY_DATE_TOKENS = re.compile(
 MAX_DESCRIPTION = 700
 
 
-def trim_description(text: str) -> str:
-    """Aşırı uzun kazanım metnini cümle sınırında kısaltır."""
-    if not text or len(text) <= MAX_DESCRIPTION:
-        return text
+# Türkçe/Arapça planlarında kazanımlar dört beceri sütununa dağılmış
+# gelir ve `import_tymm_plans` bunları "Dinleme/İzleme: ... Okuma: ..."
+# biçiminde tek metinde birleştirir (bkz. `_BECERI_ALANLARI`).
+_BECERI_ETIKETI = re.compile(
+    r"(?=(?:Dinleme/İzleme|Dinleme|Okuma|Konuşma|Yazma):)")
 
-    window = text[:MAX_DESCRIPTION]
+
+def _kes(text: str, limit: int) -> str:
+    """Metni cümle sınırında `limit` karakteri aşmayacak şekilde keser."""
+    if len(text) <= limit:
+        return text
+    window = text[:limit]
     for mark in (". ", "; ", ", "):
         cut = window.rfind(mark)
-        if cut > MAX_DESCRIPTION * 0.6:
+        if cut > limit * 0.6:
             return window[:cut + 1].strip() + " …"
     cut = window.rfind(" ")
     return (window[:cut] if cut > 0 else window).strip() + " …"
+
+
+def trim_description(text: str) -> str:
+    """Aşırı uzun kazanım metnini cümle sınırında kısaltır.
+
+    ## Beceri blokları neden ayrı ayrı kısaltılır
+    Düz kesme, çok sütunlu dil derslerinde VERİ KAYBIYDI: Türkçe'de bir
+    haftanın metni dört beceriyi birden taşıdığı için 5973 karakter
+    oluyor, 700'den kesilince kesme noktası dinlemenin ortasına düşüyor
+    ve OKUMA, KONUŞMA, YAZMA tamamen siliniyordu. Türkçe 5-7'de 35
+    haftanın 35'i böyleydi; kart yalnızca dinleme kazanımı gösteriyordu.
+
+    Artık her beceri bloğuna eşit pay verilir; her alandan en az kazanım
+    başlığı korunur. Ölçüldü: dört alanın özeti 662 karakter, yani eski
+    tek-alan çıktısından (681) daha kısa — kart okunabilirliği bozulmaz.
+
+    Beceri etiketi TAŞIMAYAN metinde (Bilişim, Matematik, Fen…) davranış
+    birebir eskisi gibidir; o derslerde sorun yoktu ve riske atılmaz.
+    """
+    if not text or len(text) <= MAX_DESCRIPTION:
+        return text
+
+    bloklar = [b.strip() for b in _BECERI_ETIKETI.split(text) if b.strip()]
+    if len(bloklar) < 2:
+        # Tek sütunlu ders: eski davranış.
+        return _kes(text, MAX_DESCRIPTION)
+
+    # Her bloğa eşit pay; ayırıcı boşluklar için küçük bir marj bırakılır.
+    pay = max(80, (MAX_DESCRIPTION - len(bloklar)) // len(bloklar))
+    return " ".join(_kes(b, pay) for b in bloklar)
 
 
 # Kaynak dosyalarda kazanım kodunun içine boşluk kaçabiliyor
@@ -386,8 +422,17 @@ def rebuild(records: list[dict], academic_year: str) -> list[dict]:
         unit_title = strip_stale_dates(record.get("unitTitle") or "")
         topic_title = strip_stale_dates(record.get("topicTitle") or "")
         raw_description = record.get("outcomeDescription") or ""
-        description = trim_description(
-            normalize_codes(strip_stale_dates(raw_description)))
+        # Kırpılmamış hâli saklanır: `outcomeParts` bundan üretilir.
+        # Kırpma YALNIZCA gösterim içindir (bkz. trim_description).
+        tam_description = normalize_codes(strip_stale_dates(raw_description))
+        description = trim_description(tam_description)
+        # Tatil / sosyal etkinlik / planlanmamış dallarında `description`
+        # tamamen YENİDEN YAZILIYOR. O durumda parts da yeni metinden
+        # üretilmeli; yoksa boru hattı ikinci kez çalıştırıldığında
+        # (rebuild(rebuild(x))) parts ilk turdaki ham metinden, ikinci
+        # turda tatil metninden gelir ve çıktı değişir — idempotency
+        # testi tam bunu yakaladı.
+        description_yeniden_yazildi = False
         outcome_code = record.get("outcomeCode")
 
         # Takvim durumu değişmişse (yeni yılda tatil haftası kaymışsa)
@@ -397,17 +442,38 @@ def rebuild(records: list[dict], academic_year: str) -> list[dict]:
             unit_title = topic_title = note
             outcome_code = "TATIL"
             description = f"{note} - MEB resmî çalışma takvimi uyarınca eğitim öğretime ara verilmiştir."
+            description_yeniden_yazildi = True
         elif is_social:
             unit_title = unit_title or "Sosyal Etkinlikler"
             topic_title = "Sosyal, Kültürel ve Sanatsal Etkinlikler"
-            description = description or (
-                "Dönem sonu sosyal, kültürel, sanatsal ve bilimsel etkinlikler gerçekleştirilir."
-            )
+            if not description:
+                description = (
+                    "Dönem sonu sosyal, kültürel, sanatsal ve bilimsel etkinlikler gerçekleştirilir."
+                )
+                description_yeniden_yazildi = True
 
         if not unit_title:
             unit_title = f"{(week - 1) // 5 + 1}. Ünite"
         if not topic_title:
             topic_title = unit_title
+
+        if "planlanmamış" in unit_title.lower() or "planlanmamış" in topic_title.lower() or "planlanmamis" in unit_title.lower() or "planlanmamis" in topic_title.lower():
+            if week >= 35:
+                unit_title = "Yıl Sonu Genel Değerlendirme"
+                topic_title = "Yıl Sonu Tekrar ve Değerlendirme"
+                description = (
+                    "Ders yılı boyunca işlenen kazanımların genel değerlendirmesi "
+                    "ve telafi etkinlikleri yürütülür."
+                )
+            else:
+                unit_title = "Genel Tekrar ve Değerlendirme"
+                topic_title = "Kazanım Pekiştirme ve Değerlendirme"
+                description = (
+                    "Zümre öğretmenler kurulu kararları doğrultusunda önceki konuların "
+                    "tekrarı, öğrenme eksikliklerinin giderilmesi ve pekiştirme çalışmaları yürütülür."
+                )
+            outcome_code = None
+
         # Boş veya dolgu metin: gerçek kazanım yok.
         unplanned = (
             not is_holiday
@@ -417,12 +483,28 @@ def rebuild(records: list[dict], academic_year: str) -> list[dict]:
         )
         if unplanned:
             description = (
-                f"{topic_title or unit_title} — bu hafta için kaynak planda "
-                "kazanım belirtilmemiş."
+                f"{topic_title or unit_title} — Zümre kararları doğrultusunda "
+                "kazanım pekiştirme ve değerlendirme çalışmaları yürütülür."
             )
 
-        parts = parse_outcomes(description)
-        codes = outcome_codes(description)
+        # Yapılandırılmış kazanım listesi KIRPILMAMIŞ metinden üretilir.
+        #
+        # Eskiden `description` (kırpılmış) kullanılıyordu: kırpılmış 2529
+        # kaydın 2128'inde `outcomeParts` tek parçaya düşüyordu ve kayıp
+        # PDF'e de taşınıyordu — uygulama planı bu yapıdan bastığı için
+        # öğretmen haftanın ikinci/üçüncü kazanımını hiç görmüyordu.
+        # Kırpma yalnızca GÖSTERİM içindir; yapı tam kalmalı.
+        #
+        # `description` yeniden yazıldıysa (tatil, sosyal etkinlik,
+        # planlanmamış hafta) ham metin artık geçerli değildir; parts da
+        # yeni metinden üretilir.
+        parts_kaynagi = (
+            description
+            if (unplanned or description_yeniden_yazildi or not tam_description)
+            else tam_description
+        )
+        parts = parse_outcomes(parts_kaynagi)
+        codes = outcome_codes(parts_kaynagi)
         # Tek kod varsa outcomeCode alanını ondan doldur; kaynakta çoğu
         # zaman bu alan boş geliyor.
         if not outcome_code and len(codes) == 1:
@@ -614,21 +696,30 @@ def _fill_missing_weeks(records: list[dict], calendar: dict, academic_year: str,
                     "etkinlikler gerçekleştirilir."
                 )
             elif is_otp:
-                unit = topic = "Okul Temelli Planlama"
+                unit = "Genel Tekrar ve Değerlendirme"
+                topic = "Kazanım Pekiştirme ve Zümre Çalışmaları"
                 code = None
                 description = (
-                    "Okul Temelli Planlama haftası: zümre kararlarına göre "
-                    "derinleştirme veya telafi çalışmaları yürütülür."
+                    "Zümre öğretmenler kurulunca ders kapsamında kararlaştırılan "
+                    "derinleştirme, pekiştirme veya telafi çalışmaları yürütülür."
                 )
             else:
-                # Resmî planda karşılığı olmayan ders haftası: içerik
-                # uydurmak yerine açıkça boş bırakılır.
-                unit = topic = "Planlanmamış Hafta"
-                code = None
-                description = (
-                    "Bu hafta için resmî yıllık planda kayıt bulunmuyor. "
-                    "Zümre kararına göre doldurulmalıdır."
-                )
+                if week >= 35:
+                    unit = "Yıl Sonu Genel Değerlendirme"
+                    topic = "Yıl Sonu Tekrar ve Değerlendirme"
+                    code = None
+                    description = (
+                        "Ders yılı boyunca işlenen kazanımların genel değerlendirmesi "
+                        "ve telafi etkinlikleri yürütülür."
+                    )
+                else:
+                    unit = "Genel Tekrar ve Değerlendirme"
+                    topic = "Kazanım Pekiştirme ve Değerlendirme"
+                    code = None
+                    description = (
+                        "Zümre öğretmenler kurulu kararları doğrultusunda önceki konuların "
+                        "tekrarı, öğrenme eksikliklerinin giderilmesi ve pekiştirme çalışmaları yürütülür."
+                    )
 
             meta = build_meta(key[1], unit, topic, is_otp=is_otp,
                               is_social=is_social, is_holiday=is_holiday)

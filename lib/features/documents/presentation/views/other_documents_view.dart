@@ -4,6 +4,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_fonts.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../clubs/presentation/screens/clubs_hub_screen.dart';
+import 'annual_plans_view.dart';
+import 'daily_plans_view.dart';
 import 'special_days_view.dart';
 import 'teacher_file_view.dart';
 
@@ -57,6 +59,28 @@ class OtherDocumentsView extends StatelessWidget {
                   '13 resmî evrak',
               ikon: Icons.badge_outlined,
               hedef: const TeacherFileView(),
+            ),
+            const SizedBox(height: 18),
+            _hazirKart(
+              context,
+              isDark,
+              ad: 'Yıllık Planlar',
+              aciklama:
+                  'Ünitelendirilmiş yıllık ders planı taslağı · MEB TYMM uyumlu, '
+                  'A4 yatay PDF çıktısı · zümre onayı gerekir',
+              ikon: Icons.calendar_month_rounded,
+              hedef: const AnnualPlansView(),
+            ),
+            const SizedBox(height: 18),
+            _hazirKart(
+              context,
+              isDark,
+              ad: 'Günlük Planlar',
+              aciklama:
+                  'TYMM ders işleniş planı taslağı · Seviye, sınıf ve branş '
+                  'bazlı PDF çıktısı · zümre onayı gerekir',
+              ikon: Icons.menu_book_rounded,
+              hedef: const DailyPlansView(),
             ),
             const SizedBox(height: 18),
             _hazirKart(

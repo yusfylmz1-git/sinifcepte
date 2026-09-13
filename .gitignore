@@ -70,3 +70,14 @@ data_sources/
 # Cloud Functions bagimliliklari
 functions/node_modules/
 functions/.firebase/
+
+# Mufredat plan uretim ciktilari (uygulama tarafindan okunmaz, 61 MB)
+cikti_json/
+scratch/
+
+# Deneme amacli plan ureticiler. Boru hattinin parcasi DEGILLER:
+# generate_weekly_plans.py Gemini API cagiriyor (7300 hafta = fatura),
+# generate_all_curriculum_plans.py sablon JSON yaziyor. Uygulama
+# ikisini de okumuyor; kaynak daima yillik_guncelle.py hattidir.
+scripts/maarif/generate_weekly_plans.py
+scripts/maarif/generate_all_curriculum_plans.py

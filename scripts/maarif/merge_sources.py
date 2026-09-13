@@ -36,6 +36,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -149,11 +150,77 @@ def main() -> int:
         (r.get("gradeLevel"), _kok(r.get("subjectName")))
         for r in list(tymm) + list(dogm)
     }
+    # İÇERİK de kontrol edilir, yalnızca ders ADI değil.
+    #
+    # Ad süzgeci tek başına GERİ BESLEME DÖNGÜSÜ üretiyordu: MEB
+    # `insan-haklarivatandaslik-ve-demokrasi-dersi.zip` içinde Beden
+    # Eğitimi ve Oyun planını yayımlamış. Dosya gerçek içeriğine
+    # eşlenince resmî kaynakta artık "İnsan Hakları" ADI yok; süzgeç
+    # bu dersi "resmî planı olmayan" sanıp ESKİ PAKETTEN geri taşıdı.
+    # Kendi çıktımız girdiye dönüştüğü için sahte ders üç yeniden
+    # üretimde de silinmedi (ölçüm: 156 kayıt, kazanımları BEO.*).
+    #
+    # Artık kazanım kodu önekine de bakılır: aynı önek resmî kaynakta
+    # varsa o içerik zaten doğru derste duruyor demektir, taşınmaz.
+    def _onek(record: dict) -> str:
+        text = (record.get("outcomeDescription") or "").strip()
+        match = re.match(r"^([A-ZÇĞİÖŞÜ]{2,6})[.\d]", text)
+        return match.group(1) if match else ""
+
+    resmi_onek = {
+        (r.get("gradeLevel"), _onek(r))
+        for r in list(tymm) + list(dogm)
+        if _onek(r)
+    }
+    # TATİL/OTP KARTI TEK BAŞINA DERS YARATMAZ.
+    #
+    # Önek süzgeci bir dersi elediğinde o dersin tatil ve OTP kayıtları
+    # geride kalıyordu: kazanım kodu taşımadıkları için süzgeçten
+    # geçiyorlar, `build_curriculum` onları grup sayıp
+    # `_fill_missing_weeks` ile 39 haftaya tamamlıyordu. Sonuç: içi
+    # "Zümre öğretmenler kurulu kararları doğrultusunda…" dolgu metniyle
+    # dolu SAHTE bir ders (ölçüm: İnsan Hakları 156 kayıt, %83'ü
+    # placeholder). Öğretmen listede görüyor ama planın içi boş.
+    #
+    # ÖLÇÜT KOD DEĞİL, PLACEHOLDER ORANIDIR.
+    #
+    # "Kazanım kodu taşımayan grubu atla" demek 1. sınıf Türkçe, Kur'an,
+    # Görsel Sanatlar gibi GERÇEK dersleri de silerdi: MEB'in eski
+    # biçimindeki kodları (`T.D.1.2`, `G.3.1.1`, `Mü.3.A.4`) kaba bir
+    # önek taraması görmüyor. Ölçüldü: bu derslerin placeholder oranı
+    # 0/39 iken sahte İnsan Hakları dersinde 33/39.
+    #
+    # Bu yüzden ayırt edici ölçüt placeholder/tatil oranıdır: grubun
+    # ders haftalarının yarıdan çoğu dolgu ise o ders gerçek plan
+    # taşımıyor demektir ve taşınmaz.
+    grup_kayitlari: dict[tuple, list[dict]] = {}
+    for record in shipped:
+        key = (record.get("gradeLevel"), _kok(record.get("subjectName")))
+        grup_kayitlari.setdefault(key, []).append(record)
+
+    gercek_iceriik: dict[tuple, bool] = {}
+    for key, items in grup_kayitlari.items():
+        dersler = [
+            r for r in items
+            if not (r.get("isHolidayWeek") or r.get("isOtpWeek")
+                    or r.get("isSocialEventWeek"))
+        ]
+        if not dersler:
+            gercek_iceriik[key] = False
+            continue
+        dolgu = sum(1 for r in dersler if r.get("isPlaceholder"))
+        gercek_iceriik[key] = dolgu <= len(dersler) / 2
+
     plansiz = [
         r for r in shipped
         if (r.get("gradeLevel"),
             (r.get("subjectName") or "").casefold()) not in resmi_kapsam
         and (r.get("gradeLevel"), _kok(r.get("subjectName"))) not in resmi_kok
+        and (not _onek(r)
+             or (r.get("gradeLevel"), _onek(r)) not in resmi_onek)
+        # Grubun tamamı kodsuz (yalnızca tatil/OTP/dolgu) ise taşınmaz.
+        and gercek_iceriik.get(
+            (r.get("gradeLevel"), _kok(r.get("subjectName"))), False)
     ]
     print(f"Resmi plani olmayan : {add(plansiz, overwrite=False)}")
     # Seçmeli planlar TAHMİNÎ dağılımdır ve resmî planı olan bir
