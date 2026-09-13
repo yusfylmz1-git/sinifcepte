@@ -405,15 +405,45 @@ class _CepteSohbetViewState extends ConsumerState<CepteSohbetView> {
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  for (final s in m.secenekler)
-                    ActionChip(
-                      label: Text(s, style: const TextStyle(fontSize: 12)),
-                      onPressed: () => _gonder(s),
-                    ),
+                  for (final s in m.secenekler) _oneriCipi(s, isDark),
                 ],
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Öneri çipi.
+  ///
+  /// `ActionChip` KULLANILMIYOR: uygulamanın `chipTheme` tanımı light
+  /// temada `Colors.white.withValues(alpha: 0.06)` zemin veriyor ve
+  /// etiket rengi hiç verilmemiş. Beyaz zeminde çip de yazı da
+  /// görünmüyordu (cihazda ölçüldü). Renkler burada elle veriliyor —
+  /// aynı yaklaşım `class_report_card_comments_modal` içinde de var.
+  Widget _oneriCipi(String metin, bool isDark) {
+    return InkWell(
+      onTap: () => _gonder(metin),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+        decoration: BoxDecoration(
+          color: isDark
+              ? AppColors.primary.withValues(alpha: 0.18)
+              : AppColors.primary.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: isDark ? 0.45 : 0.28),
+          ),
+        ),
+        child: Text(
+          metin,
+          style: AppFonts.outfit(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.white : AppColors.primary,
+          ),
         ),
       ),
     );

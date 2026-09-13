@@ -93,6 +93,27 @@ void main() {
     });
   });
 
+  group('Light mod', () {
+    test('KRITIK: oneri cipleri temaya birakilmaz', () {
+      // `ActionChip` kullanilinca uygulamanin `chipTheme` tanimi light
+      // temada `Colors.grey.shade100` zemin veriyor ve etiket rengi
+      // HIC verilmemis: cihazda yazi okunmuyordu. Renkler elle
+      // verilmeli ve isDark'a gore degismeli.
+      final kod = oku(sohbet);
+      expect(kod.contains('ActionChip'), isFalse,
+          reason: 'tema cipi light modda okunmuyor');
+      expect(kod, contains('Widget _oneriCipi(String metin, bool isDark)'));
+    });
+
+    test('Cip rengi isDark`a gore degisiyor', () {
+      final kod = oku(sohbet);
+      final cip = kod.substring(kod.indexOf('Widget _oneriCipi'));
+      final govde = cip.substring(0, cip.indexOf('\n  Widget _girdiAlani'));
+      expect(govde, contains('isDark'));
+      expect(govde, contains('color:'));
+    });
+  });
+
   group('Ana sayfa karti', () {
     test('KRITIK: Cepte karti ana sayfada', () {
       final kod = oku(anaSayfa);
