@@ -1,24 +1,22 @@
 package com.sinifcepte.sinifcepte
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
-import android.provider.OpenableColumns
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import java.io.File
-import java.io.FileOutputStream
 
-/// WhatsApp / Dosyalar paylaşımını Flutter'a iletir.
+/// WhatsApp paylaşımı ve Belgeler klasörü seçicisi.
 ///
-/// Okul sınıf listesini WhatsApp'tan atar; belge Android seçicisinde
-/// görünmez. Öğretmen PDF'ye basıp Paylaş → SınıfCepte deyince burası
-/// content URI'yi önbelleğe kopyalar.
+/// Okul sınıf listesini WhatsApp'tan atar; Android "Son dosyalar"
+/// bu PDF'i göstermez. Paylaşım ya da WhatsApp Belgeler klasörü gerekir.
 class MainActivity : FlutterActivity() {
     private val channelName = "sinifcepte/incoming_share"
     private var channel: MethodChannel? = null
     private var pendingPath: String? = null
+    private var pickResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -28,12 +26,24 @@ class MainActivity : FlutterActivity() {
         )
         channel = methodChannel
         methodChannel.setMethodCallHandler { call, result ->
-            if (call.method == "takePending") {
-                val path = pendingPath
-                pendingPath = null
-                result.success(path)
-            } else {
-                result.notImplemented()
+            when (call.method) {
+                "takePending" -> {
+                    val path = pendingPath
+                    pendingPath = null
+                    result.success(path)
+                }
+                "listRecentDocuments" -> result.success(WhatsAppDocuments.listAll(this))
+                "hasWhatsAppFolderGrant" ->
+                    result.success(WhatsAppDocuments.hasTreeGrant(this))
+                "pickInWhatsAppFolder" -> {
+                    pickResult = result
+                    startActivityForResult(WhatsAppDocuments.openDocumentIntent(), REQ_PICK_DOC)
+                }
+                "grantWhatsAppFolder" -> {
+                    pickResult = result
+                    startActivityForResult(WhatsAppDocuments.openTreeIntent(), REQ_PICK_TREE)
+                }
+                else -> result.notImplemented()
             }
         }
         pendingPath?.let { deliver(it) }
@@ -50,6 +60,36 @@ class MainActivity : FlutterActivity() {
         captureShare(intent)
     }
 
+    @Deprecated("startActivityForResult, FlutterActivity uyumu için")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQ_PICK_DOC && requestCode != REQ_PICK_TREE) return
+
+        val pending = pickResult
+        pickResult = null
+
+        if (resultCode != Activity.RESULT_OK) {
+            pending?.success(null)
+            return
+        }
+
+        if (requestCode == REQ_PICK_TREE) {
+            val uri = data?.data
+            if (uri != null) WhatsAppDocuments.persistTree(this, uri)
+            pending?.success(WhatsAppDocuments.listAll(this))
+            return
+        }
+
+        val uri = data?.data
+        if (uri == null) {
+            pending?.success(null)
+            return
+        }
+        val name = WhatsAppDocuments.queryDisplayName(this, uri) ?: "sinif_listesi"
+        val path = WhatsAppDocuments.copyUriToCache(this, uri, name)
+        pending?.success(path)
+    }
+
     private fun captureShare(intent: Intent?) {
         if (intent == null) return
         val uri: Uri? = when (intent.action) {
@@ -58,7 +98,8 @@ class MainActivity : FlutterActivity() {
             else -> null
         }
         if (uri == null) return
-        val path = copyToCache(uri) ?: return
+        val name = WhatsAppDocuments.queryDisplayName(this, uri) ?: "sinif_listesi"
+        val path = WhatsAppDocuments.copyUriToCache(this, uri, name) ?: return
         pendingPath = path
         deliver(path)
     }
@@ -76,35 +117,8 @@ class MainActivity : FlutterActivity() {
         channel?.invokeMethod("onSharedFile", path)
     }
 
-    private fun copyToCache(uri: Uri): String? {
-        return try {
-            val rawName = queryDisplayName(uri) ?: "sinif_listesi"
-            val safe = rawName.replace(Regex("[^A-Za-z0-9._-]"), "_")
-            val dest = File(cacheDir, "incoming_share_$safe")
-            contentResolver.openInputStream(uri)?.use { input ->
-                FileOutputStream(dest).use { output -> input.copyTo(output) }
-            } ?: return null
-            if (dest.length() == 0L) return null
-            dest.absolutePath
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private fun queryDisplayName(uri: Uri): String? {
-        val cursor = contentResolver.query(
-            uri,
-            arrayOf(OpenableColumns.DISPLAY_NAME),
-            null,
-            null,
-            null,
-        )
-        cursor?.use {
-            if (it.moveToFirst()) {
-                val idx = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                if (idx >= 0) return it.getString(idx)
-            }
-        }
-        return uri.lastPathSegment
+    companion object {
+        private const val REQ_PICK_DOC = 7711
+        private const val REQ_PICK_TREE = 7712
     }
 }

@@ -29,8 +29,8 @@ class StudentImportSourceSheet {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Okulun WhatsApp\'tan attığı PDF, telefonun Son dosyalar '
-              'listesinde genellikle çıkmaz. En kolayı paylaşmaktır.',
+              'Android "Son dosyalar" WhatsApp PDF\'ini göstermez. '
+              'Ya paylaşın ya da WhatsApp Belgeler klasörünü açın.',
               style: TextStyle(
                 fontSize: 13.5,
                 height: 1.4,
@@ -55,9 +55,9 @@ class StudentImportSourceSheet {
             _SourceOption(
               icon: Icons.folder_open_rounded,
               iconColor: AppColors.primary,
-              title: 'Dosyalardan seç',
+              title: 'WhatsApp klasöründen seç',
               subtitle:
-                  'Son dosyalarda yoksa sol üst menüden WhatsApp → Belgeler.',
+                  'Son sekmesine değil; WhatsApp Documents klasörünü açar.',
               recommended: false,
               isDark: isDark,
               onTap: () => Navigator.pop(

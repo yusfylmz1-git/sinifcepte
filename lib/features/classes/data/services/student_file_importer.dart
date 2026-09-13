@@ -36,10 +36,10 @@ class StudentFileImporter {
     try {
       final picked = await FilePicker.platform.pickFiles(
         dialogTitle: 'Sınıf listesi dosyasını seçin (PDF veya Excel)',
-        type: FileType.custom,
-        allowedExtensions: supportedExtensions,
-        // WhatsApp / Google Drive content URI'lerinde path null olur;
-        // bayt yoksa "Dosya seçilmedi" sanılıyordu.
+        // Uzantı filtresi Samsung/Xiaomi seçicisinde WhatsApp belgelerini
+        // gizler. Drive yedek yolu olduğu için tüm dosyalar açılır, biçim
+        // içerikten anlaşılır.
+        type: FileType.any,
         withData: true,
       );
 

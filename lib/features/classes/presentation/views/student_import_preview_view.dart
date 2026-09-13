@@ -10,9 +10,11 @@ import '../../../../core/utils/input_sanitizer.dart';
 import '../../providers/class_provider.dart';
 import '../../providers/student_provider.dart';
 import '../../data/services/pdf_student_parser.dart';
+import '../../data/services/recent_student_documents.dart';
 import '../../data/services/student_file_importer.dart';
 import '../../../../data/models/class_model.dart';
 import '../../../auth_profile/providers/teacher_profile_provider.dart';
+import '../widgets/student_document_browser_sheet.dart';
 import '../widgets/student_import_source_sheet.dart';
 
 /// SınıfCepte - Akıllı Öğrenci İçe Aktarma ve Önizleme Ekranı (PDF + Excel)
@@ -187,10 +189,8 @@ class _StudentImportPreviewViewState extends ConsumerState<StudentImportPreviewV
     }
   }
 
-  /// Dosya seçtirir ve içe aktarır.
-  ///
-  /// Tek seçici hem PDF hem Excel kabul eder; biçim uzantıdan anlaşılır.
-  /// Öğretmen e-Okul'dan hangi biçimde indirdiyse onu kullanabilir.
+  /// Sistem "Son dosyalar" seçicisi. WhatsApp PDF'i burada olmaz;
+  /// yalnızca Drive / indirme için yedek yoldur.
   Future<void> _handleFilePick() async {
     setState(() => _isImporting = true);
     try {
@@ -199,6 +199,52 @@ class _StudentImportPreviewViewState extends ConsumerState<StudentImportPreviewV
       _applyImportResult(result);
     } finally {
       if (mounted) setState(() => _isImporting = false);
+    }
+  }
+
+  /// WhatsApp Belgeler listesi / klasörü. Son sekmesine düşmez.
+  Future<void> _handleBrowseFiles() async {
+    final docs = await RecentStudentDocuments.list();
+    if (!mounted) return;
+    final hasGrant = await RecentStudentDocuments.hasFolderGrant();
+    if (!mounted) return;
+
+    final choice = await StudentDocumentBrowserSheet.show(
+      context,
+      documents: docs,
+      hasFolderGrant: hasGrant,
+    );
+    if (!mounted || choice == null) return;
+
+    switch (choice.action) {
+      case StudentDocumentBrowseAction.pickPath:
+        final path = choice.path;
+        if (path != null && path.isNotEmpty) await _parseFromPath(path);
+        break;
+      case StudentDocumentBrowseAction.openWhatsAppFolder:
+        await StudentDocumentBrowserSheet.showFolderHint(context);
+        if (!mounted) return;
+        final path = await RecentStudentDocuments.pickInWhatsAppFolder();
+        if (path != null && path.isNotEmpty) await _parseFromPath(path);
+        break;
+      case StudentDocumentBrowseAction.grantFolder:
+        final listed = await RecentStudentDocuments.grantWhatsAppFolder();
+        if (!mounted) return;
+        if (listed != null && listed.isNotEmpty) {
+          await _handleBrowseFiles();
+        } else if (listed != null) {
+          _showModernSnackBar(
+            'Klasör bağlandı ama PDF görünmedi. WhatsApp klasörünü açın.',
+            isError: true,
+          );
+        }
+        break;
+      case StudentDocumentBrowseAction.shareFromWhatsApp:
+        await StudentImportSourceSheet.showWhatsAppSteps(context);
+        break;
+      case StudentDocumentBrowseAction.systemPicker:
+        await _handleFilePick();
+        break;
     }
   }
 
@@ -236,7 +282,7 @@ class _StudentImportPreviewViewState extends ConsumerState<StudentImportPreviewV
         await StudentImportSourceSheet.showWhatsAppSteps(context);
         break;
       case StudentImportSourceChoice.files:
-        await _handleFilePick();
+        await _handleBrowseFiles();
         break;
     }
   }
@@ -569,7 +615,7 @@ class _StudentImportPreviewViewState extends ConsumerState<StudentImportPreviewV
         actions: [
           IconButton(
             icon: const Icon(Icons.folder_open_rounded),
-            tooltip: 'Listeyi yükle (WhatsApp veya dosya)',
+            tooltip: 'WhatsApp belgelerinden yükle',
             onPressed: _isImporting ? null : _showSourceSheet,
           ),
         ],
@@ -745,8 +791,8 @@ class _StudentImportPreviewViewState extends ConsumerState<StudentImportPreviewV
         ),
         const SizedBox(height: 8),
         Text(
-          'Okulun WhatsApp\'tan attığı PDF Son dosyalar\'da görünmez. '
-          'PDF\'ye basıp Paylaş → SınıfCepte deyin.',
+          'Son dosyalarda aramayın — WhatsApp o listeye yazmaz. '
+          'Paylaşın veya WhatsApp klasörünü açın.',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 13.5,
@@ -775,9 +821,9 @@ class _StudentImportPreviewViewState extends ConsumerState<StudentImportPreviewV
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: _isImporting ? null : _handleFilePick,
+            onPressed: _isImporting ? null : _handleBrowseFiles,
             icon: const Icon(Icons.folder_open_rounded),
-            label: const Text('Dosyalardan seç (PDF veya Excel)'),
+            label: const Text('WhatsApp klasöründen seç'),
             style: OutlinedButton.styleFrom(
               foregroundColor: isDark ? Colors.white : AppColors.primary,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),

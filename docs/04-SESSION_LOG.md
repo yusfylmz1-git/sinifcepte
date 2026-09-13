@@ -6,6 +6,19 @@ Bu doküman, **her geliştirme ve sohbet oturumunun başında ve sonunda** günc
 
 ## 🟢 SON DURUM ÖZETİ (Aktif Oturum Durumu)
 
+- **Tarih**: 11 Eylül 2026
+- **Oturum Konusu**: Grok — Google offline giriş netleştirme + WhatsApp sınıf listesi PDF yükleme
+- **Ayrıntılı not**: `grok_ilerleme_notlari.md` → başlık **Grok güncelleme yaptı**
+- **Tamamlanan Aşamalar**:
+  1. ✅ Öğretmen Google ile bir kez girdiyse çıkış yapmadan internetsiz açılışta girer (kod doğrulandı, auth’a dokunulmadı).
+  2. ✅ WhatsApp Paylaş → SınıfCepte (sınıf listesi PDF/Excel doğrudan içe aktarma).
+  3. ✅ “Son dosyalar” yolu bırakıldı; WhatsApp Documents klasör seçici + uygulama içi belge listesi.
+- **Sıradaki Adım**: Değişikliğin telefonda görünmesi için uygulamayı yeniden derleyip yüklemek. BEP tasarımı bu oturumda koda geçirilmedi.
+
+---
+
+## 🟢 ÖNCEKİ ÖZET (15 Ağustos 2026)
+
 - **Tarih**: 15 Ağustos 2026
 - **Oturum Konusu**: Sınav İşlemleri Modülü (Quiz/Sözlü, Proje/Performans MEB Rubric, MEB/ÖSYM & Okul Sınav Takibi)
 - **Tamamlanan Aşamalar**:
