@@ -85,14 +85,34 @@ class _SchoolAdminPanelViewState extends ConsumerState<SchoolAdminPanelView>
           ],
         ),
       ),
+      // Yetkinin KAPSAMI claim'den okunur, yerel profilden değil.
+      //
+      // `firestore.rules` içindeki `isSchoolAdminOf(schoolId)`
+      // `request.auth.token.schoolId` ile karar veriyor. Yerel profil
+      // bir tercih dosyasıdır ve okul değişikliğinden sonra claim ile
+      // ayrışabilir; ayrıştığında panel, sunucunun reddedeceği bir
+      // okulun kayıtlarını istemeye çalışır ve kullanıcı sebebini
+      // anlamaz. Claim boşsa (eski oturum, token henüz yenilenmemiş)
+      // profile düşülür.
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildTeachersTab(isDark, teacher.schoolId ?? ''),
-          _buildReportsTab(isDark, teacher.schoolId ?? ''),
+          _buildTeachersTab(isDark, _yetkiliOkulId(roleState, teacher.schoolId)),
+          _buildReportsTab(isDark, _yetkiliOkulId(roleState, teacher.schoolId)),
         ],
       ),
     );
+  }
+
+  /// Yöneticiliğin geçerli olduğu okul kimliği.
+  ///
+  /// Öncelik custom claim'dedir: yetkiyi veren de kapsamı belirleyen de
+  /// sunucudur. Claim henüz gelmemişse (token bir saate kadar eski
+  /// kalabiliyor) yerel profil kullanılır; bu durumda sunucu yine son
+  /// sözü söyler ve yetkisiz istek reddedilir.
+  String _yetkiliOkulId(UserRoleState roleState, String? profilOkulId) {
+    if (roleState.adminSchoolId.isNotEmpty) return roleState.adminSchoolId;
+    return profilOkulId ?? '';
   }
 
   Widget _buildNoAccess(bool isDark) {
