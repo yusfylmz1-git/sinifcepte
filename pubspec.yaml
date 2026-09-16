@@ -69,6 +69,28 @@ dependencies:
   # imzalama yok — bu yuzden ayri paket gerekiyor.
   ed25519_edwards: ^0.3.2
 
+  # Imzalama anahtarinin guvenli saklanmasi.
+  #
+  # Ed25519 ozel anahtari Android Keystore / iOS Keychain icinde durur;
+  # `shared_preferences` bu is icin YANLIS yer olurdu (duz metin,
+  # yedeklemelere dahil). Idareciye ayrica yedek disa aktarma sunulur:
+  # telefon degisiminde anahtar kaybolursa yeni yapilandirma
+  # yayimlanamaz ve tahtalara yeni dogrulama anahtari dagitmak gerekir.
+  #
+  # Surum 10.x'te TUTULUYOR: `file_picker` 10.3.8 (bilincli olarak
+  # sabitlenmis) `win32 ^5.9.0` istiyor, `secure_storage >=11.0.0` ise
+  # daha yenisini. `file_picker` 24 dosyada kullaniliyor; onu oynatmak
+  # genis risk. 10.3.4 ayni platform listesini destekliyor (android,
+  # ios, macos, linux, web, windows) — yetenek kaybi yok.
+  flutter_secure_storage: ^10.3.4
+
+  # Tahtadaki dinamik QR'i okumak icin kamera.
+  #
+  # DIKKAT: Windows desteklemiyor (android, ios, macos, web). Masaustu
+  # ve kamerasiz/izinsiz cihazlarda ogretmen okul+tahta kodunu elle
+  # girer, telefon 6 haneyi yine uretir — akis kesilmez.
+  mobile_scanner: ^7.4.2
+
   # Firebase (proje: sinifcepte)
   firebase_core: ^3.15.2
   firebase_auth: ^5.7.0
