@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../board_config/presentation/tahta_yonetimi_screen.dart';
 import '../../data/repositories/school_admin_repository.dart';
 import '../../providers/teacher_profile_provider.dart';
 import '../../providers/user_role_provider.dart';
@@ -71,6 +72,21 @@ class _SchoolAdminPanelViewState extends ConsumerState<SchoolAdminPanelView>
             ),
           ],
         ),
+        // Tahta Yönetimi ayrı bir ekran (sekme değil): nöbetçi takvimi
+        // ve duyuru formu geniş alan istiyor. Giriş noktası buraya
+        // konuldu çünkü idareci zaten bu paneldedir; ayrı bir gezinme
+        // noktası aramak zorunda kalmasın.
+        actions: [
+          IconButton(
+            tooltip: 'Tahta Yönetimi',
+            icon: const Icon(Icons.desktop_windows_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const TahtaYonetimiScreen(),
+              ),
+            ),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: AppColors.primary,
