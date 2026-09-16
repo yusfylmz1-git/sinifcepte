@@ -533,5 +533,64 @@ service cloud.firestore {
       // anlamsızlaştırabilirdi. (Yönetici güncellemesi yukarıda.)
       allow delete: if false;
     }
+
+    // --- Okul panosu (tahta modülü) ---
+    //
+    // Etkileşimli tahtalarda gösterilecek okul geneli içerik: nöbetçi
+    // listesi ve idare duyuruları. Sınıf duyurularından AYRI bir yol,
+    // çünkü ölçek farklı: `class_rooms/{cls_{uid}_{id}}` sahipliği
+    // doküman kimliğindeki öğretmen uid'sinden türüyor (`cloud_ids.dart`),
+    // okul panosunun ise sahibi bir öğretmen değil, okulun yöneticisi.
+    //
+    // Mevcut şema DEĞİŞTİRİLMEDİ, yeni yol açıldı: `cloud_ids.dart:26-29`
+    // kimlik deseninin geri dönüşünün zor olduğunu uyarıyor.
+    //
+    // Doküman kimliği kanonik okul kimliğidir (`meb_*` / `man_*`), yani
+    // yetki tek karşılaştırmayla denetlenir — ekstra okuma yok.
+    match /school_boards/{schoolId} {
+      // Okuma: o okula bağlı her öğretmen. Pano zaten tahtada herkese
+      // açık gösteriliyor; kısıtlamak anlamsız olurdu. Yine de oturum
+      // şartı var, çünkü kayıtsız kimsenin okul listesini taraması
+      // gerekmiyor.
+      allow read: if request.auth != null;
+
+      // Yazma: YALNIZCA o okulun onaylı yöneticisi. Claim tabanlı
+      // (`isSchoolAdminOf`), yani başvuru kaydını "approved" yapmak
+      // yetki vermez — claim'i Admin SDK yazar.
+      allow create, update: if isSchoolAdminOf(schoolId)
+        && request.resource.data.schoolId == schoolId;
+
+      // Silme yok: pano geçmişi denetim izidir. Yönetici içeriği
+      // güncelleyerek boşaltabilir, ama kaydı yok edemez.
+      allow delete: if isSuper();
+
+      // Nöbetçi listesi.
+      //
+      // Tarih bazlı dokümanlar (`2026-09-16`). Nöbetçi bilgisi
+      // öğretmen adı içerir; öğrenci verisi ASLA girmez.
+      match /duty/{tarih} {
+        allow read: if request.auth != null;
+        allow write: if isSchoolAdminOf(schoolId);
+      }
+
+      // İdare duyuruları.
+      //
+      // Sınıf duyurularıyla karıştırılmamalı: bunlar okul geneli ve
+      // veliye değil tahtaya gider.
+      match /notices/{noticeId} {
+        allow read: if request.auth != null;
+
+        allow create, update: if isSchoolAdminOf(schoolId)
+          && request.resource.data.baslik is string
+          && request.resource.data.baslik.size() > 0
+          && request.resource.data.baslik.size() <= 100
+          && request.resource.data.metin is string
+          && request.resource.data.metin.size() <= 2000;
+
+        // Süresi geçen duyuru silinebilir — denetim izi değil, gösterim
+        // verisi.
+        allow delete: if isSchoolAdminOf(schoolId);
+      }
+    }
   }
 }

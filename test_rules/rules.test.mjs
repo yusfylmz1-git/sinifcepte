@@ -1974,3 +1974,267 @@ describe('Brans ogretmeni duyuru yayimlayabilir', () => {
     );
   });
 });
+
+describe('Okul panosu (school_boards) — tahta modülü', () => {
+  const OKUL_A = 'meb_16_111';
+  const OKUL_B = 'meb_34_222';
+  const ADMIN_A_UID = 'panoAdminA';
+  const ADMIN_B_UID = 'panoAdminB';
+
+  // Onaylı okul yöneticisi. Claim'leri yalnızca Admin SDK betiği yazar
+  // (scripts/admin/approve_school_admin.mjs), bu yüzden testte de
+  // claim olarak veriliyor — Firestore'daki başvuru kaydı değil.
+  const panoAdminA = () =>
+    testEnv
+      .authenticatedContext(ADMIN_A_UID, {
+        schoolAdminStatus: 'approved',
+        schoolId: OKUL_A,
+      })
+      .firestore();
+
+  const panoAdminB = () =>
+    testEnv
+      .authenticatedContext(ADMIN_B_UID, {
+        schoolAdminStatus: 'approved',
+        schoolId: OKUL_B,
+      })
+      .firestore();
+
+  // Başvurusu onaylanmamış öğretmen: kayıt 'pending' olsa bile yetkisi yok.
+  const bekleyenAdmin = () =>
+    testEnv
+      .authenticatedContext('panoBekleyen', {
+        schoolAdminStatus: 'pending',
+        schoolId: OKUL_A,
+      })
+      .firestore();
+
+  const NOBETCI = { kat: '1. Kat', ad: 'A. Yılmaz' };
+  const DUYURU_PANO = { baslik: 'Veli toplantısı', metin: 'Cuma 15:00' };
+
+  before(async () => {
+    await testEnv.clearFirestore();
+    await seed(async (db) => {
+      await setDoc(doc(db, 'school_boards', OKUL_A), {
+        schoolId: OKUL_A,
+        okulAdi: 'A Ortaokulu',
+      });
+      await setDoc(doc(db, 'school_boards', OKUL_B), {
+        schoolId: OKUL_B,
+        okulAdi: 'B Ortaokulu',
+      });
+      await setDoc(doc(db, 'school_boards', OKUL_A, 'duty', '2026-09-16'), NOBETCI);
+      await setDoc(doc(db, 'school_boards', OKUL_A, 'notices', 'n1'), DUYURU_PANO);
+    });
+  });
+
+  // --- Okuma ---
+
+  it('oturum açmış öğretmen panoyu okuyabilir', async () => {
+    // Pano tahtada herkese açık gösteriliyor; kısıtlamak anlamsız.
+    await assertSucceeds(getDoc(doc(teacherDb(), 'school_boards', OKUL_A)));
+  });
+
+  it('nöbetçi listesi okunabilir', async () => {
+    await assertSucceeds(
+      getDoc(doc(teacherDb(), 'school_boards', OKUL_A, 'duty', '2026-09-16')),
+    );
+  });
+
+  it('idare duyurusu okunabilir', async () => {
+    await assertSucceeds(
+      getDoc(doc(teacherDb(), 'school_boards', OKUL_A, 'notices', 'n1')),
+    );
+  });
+
+  it('KRİTİK: oturumsuz erişim reddedilir', async () => {
+    // Kayıtsız kimsenin okul listesini taraması gerekmiyor.
+    const anonim = testEnv.unauthenticatedContext().firestore();
+    await assertFails(getDoc(doc(anonim, 'school_boards', OKUL_A)));
+  });
+
+  // --- Yazma: okul kapsamı ---
+
+  it('yönetici KENDİ okulunun panosunu güncelleyebilir', async () => {
+    await assertSucceeds(
+      updateDoc(doc(panoAdminA(), 'school_boards', OKUL_A), {
+        schoolId: OKUL_A,
+        okulAdi: 'A Ortaokulu (güncel)',
+      }),
+    );
+  });
+
+  it('KRİTİK: yönetici BAŞKA okulun panosunu güncelleyemez', async () => {
+    // Kuralların en önemli sınırı. Claim'deki schoolId ile doküman
+    // kimliği eşleşmediği için reddedilmeli.
+    await assertFails(
+      updateDoc(doc(panoAdminA(), 'school_boards', OKUL_B), {
+        schoolId: OKUL_B,
+        okulAdi: 'Ele geçirildi',
+      }),
+    );
+  });
+
+  it('KRİTİK: schoolId alanı doküman kimliğinden farklı olamaz', async () => {
+    // Aksi halde A okulunun yöneticisi kendi yolunda B okuluna ait
+    // veri tutabilir ve tahta yanlış okulun panosunu gösterebilirdi.
+    await assertFails(
+      updateDoc(doc(panoAdminA(), 'school_boards', OKUL_A), {
+        schoolId: OKUL_B,
+      }),
+    );
+  });
+
+  it('KRİTİK: onaylanmamış başvuru sahibi yazamaz', async () => {
+    await assertFails(
+      updateDoc(doc(bekleyenAdmin(), 'school_boards', OKUL_A), {
+        schoolId: OKUL_A,
+        okulAdi: 'Yetkisiz',
+      }),
+    );
+  });
+
+  it('KRİTİK: sıradan öğretmen yazamaz', async () => {
+    await assertFails(
+      updateDoc(doc(teacherDb(), 'school_boards', OKUL_A), {
+        schoolId: OKUL_A,
+        okulAdi: 'Yetkisiz',
+      }),
+    );
+  });
+
+  it('KRİTİK: veli yazamaz', async () => {
+    await assertFails(
+      updateDoc(doc(parentDb(), 'school_boards', OKUL_A), {
+        schoolId: OKUL_A,
+        okulAdi: 'Yetkisiz',
+      }),
+    );
+  });
+
+  it('KRİTİK: pano kaydı yönetici tarafından silinemez', async () => {
+    // Pano geçmişi denetim izi; yönetici içeriği boşaltabilir ama
+    // kaydı yok edemez.
+    await assertFails(deleteDoc(doc(panoAdminA(), 'school_boards', OKUL_A)));
+  });
+
+  // --- Nöbetçi listesi ---
+
+  it('yönetici nöbetçi yazabilir', async () => {
+    await assertSucceeds(
+      setDoc(
+        doc(panoAdminA(), 'school_boards', OKUL_A, 'duty', '2026-09-17'),
+        { kat: '2. Kat', ad: 'B. Demir' },
+      ),
+    );
+  });
+
+  it('KRİTİK: başka okulun yöneticisi nöbetçi yazamaz', async () => {
+    await assertFails(
+      setDoc(
+        doc(panoAdminB(), 'school_boards', OKUL_A, 'duty', '2026-09-18'),
+        { kat: '1. Kat', ad: 'Davetsiz' },
+      ),
+    );
+  });
+
+  it('KRİTİK: sıradan öğretmen nöbetçi yazamaz', async () => {
+    await assertFails(
+      setDoc(
+        doc(teacherDb(), 'school_boards', OKUL_A, 'duty', '2026-09-19'),
+        NOBETCI,
+      ),
+    );
+  });
+
+  it('yönetici nöbetçi kaydını silebilir', async () => {
+    await assertSucceeds(
+      deleteDoc(doc(panoAdminA(), 'school_boards', OKUL_A, 'duty', '2026-09-16')),
+    );
+  });
+
+  // --- İdare duyuruları ---
+
+  it('yönetici duyuru yayımlayabilir', async () => {
+    await assertSucceeds(
+      setDoc(
+        doc(panoAdminA(), 'school_boards', OKUL_A, 'notices', 'n2'),
+        DUYURU_PANO,
+      ),
+    );
+  });
+
+  it('KRİTİK: başka okulun yöneticisi duyuru yayımlayamaz', async () => {
+    await assertFails(
+      setDoc(
+        doc(panoAdminB(), 'school_boards', OKUL_A, 'notices', 'n3'),
+        DUYURU_PANO,
+      ),
+    );
+  });
+
+  it('KRİTİK: boş başlık reddedilir', async () => {
+    await assertFails(
+      setDoc(doc(panoAdminA(), 'school_boards', OKUL_A, 'notices', 'n4'), {
+        baslik: '',
+        metin: 'Metin var ama başlık yok',
+      }),
+    );
+  });
+
+  it('KRİTİK: 100 karakterden uzun başlık reddedilir', async () => {
+    // Firestore 1 MiB doküman sınırı ve tahta ekranında taşma koruması.
+    await assertFails(
+      setDoc(doc(panoAdminA(), 'school_boards', OKUL_A, 'notices', 'n5'), {
+        baslik: 'x'.repeat(101),
+        metin: 'Metin',
+      }),
+    );
+  });
+
+  it('100 karakterlik başlık kabul edilir (sınırın tam üstü)', async () => {
+    await assertSucceeds(
+      setDoc(doc(panoAdminA(), 'school_boards', OKUL_A, 'notices', 'n6'), {
+        baslik: 'x'.repeat(100),
+        metin: 'Metin',
+      }),
+    );
+  });
+
+  it('KRİTİK: 2000 karakterden uzun metin reddedilir', async () => {
+    await assertFails(
+      setDoc(doc(panoAdminA(), 'school_boards', OKUL_A, 'notices', 'n7'), {
+        baslik: 'Başlık',
+        metin: 'x'.repeat(2001),
+      }),
+    );
+  });
+
+  it('KRİTİK: başlık dize değilse reddedilir', async () => {
+    await assertFails(
+      setDoc(doc(panoAdminA(), 'school_boards', OKUL_A, 'notices', 'n8'), {
+        baslik: 12345,
+        metin: 'Metin',
+      }),
+    );
+  });
+
+  it('yönetici süresi geçen duyuruyu silebilir', async () => {
+    await assertSucceeds(
+      deleteDoc(doc(panoAdminA(), 'school_boards', OKUL_A, 'notices', 'n1')),
+    );
+  });
+
+  it('KRİTİK: sıradan öğretmen duyuru silemez', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(
+        doc(ctx.firestore(), 'school_boards', OKUL_A, 'notices', 'n9'),
+        DUYURU_PANO,
+      );
+    });
+
+    await assertFails(
+      deleteDoc(doc(teacherDb(), 'school_boards', OKUL_A, 'notices', 'n9')),
+    );
+  });
+});

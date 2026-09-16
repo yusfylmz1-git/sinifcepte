@@ -19,10 +19,25 @@ class AuthClaims {
   /// Okul yöneticiliği başvurusunun durumu.
   final SchoolAdminStatus schoolAdminStatus;
 
+  /// Yöneticiliğin geçerli olduğu okul (`request.auth.token.schoolId`).
+  ///
+  /// Sunucu bu alanı onay sırasında yazıyor
+  /// (`scripts/admin/approve_school_admin.mjs`) ve `firestore.rules`
+  /// içindeki `isSchoolAdminOf(schoolId)` yetkiyi bununla sınırlıyor —
+  /// bir okulun yöneticisi başka okulun kaydına dokunamaz.
+  ///
+  /// İstemci tarafı bu alanı **okumuyordu**: yönetici hangi okulu
+  /// yönettiğini yerel profildeki `schoolName`'den tahmin ediyordu.
+  /// Profil yerel bir tercih olduğu için yetkinin kapsamıyla aynı
+  /// olduğu garanti değildi; okul değişikliğinden sonra ikisi
+  /// ayrışabiliyordu. Yetkinin kapsamı yetkiyle aynı yerden okunmalı.
+  final String schoolId;
+
   const AuthClaims({
     this.role = '',
     this.adminRole = '',
     this.schoolAdminStatus = SchoolAdminStatus.none,
+    this.schoolId = '',
   });
 
   bool get isSuperAdmin => adminRole == 'super';
@@ -31,11 +46,23 @@ class AuthClaims {
   /// Admin portalına erişebilen herkes (süper admin veya moderatör).
   bool get isPortalAdmin => isSuperAdmin || isModerator;
 
+  /// Bu kullanıcı verilen okulun onaylı yöneticisi mi?
+  ///
+  /// `firestore.rules` içindeki `isSchoolAdminOf` ile **aynı mantık**:
+  /// onay durumu + okul eşleşmesi. İstemcide önden kontrol etmek,
+  /// kullanıcıya reddedilecek bir işlemi hiç göstermemeyi sağlar;
+  /// gerçek koruma yine sunucudadır.
+  bool isSchoolAdminOf(String okulId) =>
+      schoolAdminStatus == SchoolAdminStatus.approved &&
+      schoolId.isNotEmpty &&
+      schoolId == okulId;
+
   factory AuthClaims.fromTokenClaims(Map<String, dynamic> claims) {
     return AuthClaims(
       role: claims['role'] as String? ?? '',
       adminRole: claims['adminRole'] as String? ?? '',
       schoolAdminStatus: _parseAdminStatus(claims['schoolAdminStatus']),
+      schoolId: claims['schoolId'] as String? ?? '',
     );
   }
 

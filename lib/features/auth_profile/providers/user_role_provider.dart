@@ -35,11 +35,21 @@ class UserRoleState {
   /// Süper admin (uygulama sahibi). Yalnızca custom claim ile verilir.
   final bool isSuperAdmin;
 
+  /// Yöneticiliğin geçerli olduğu okul kimliği (custom claim).
+  ///
+  /// Yetkinin KAPSAMI buradan okunur, yerel profilden değil: profil bir
+  /// tercih dosyasıdır, `firestore.rules` ise `request.auth.token.schoolId`
+  /// ile karar verir. İkisi ayrışabilir (örneğin okul değişikliğinden
+  /// sonra), ve ayrıştığında yerel profile güvenen kod kullanıcıya
+  /// sunucunun reddedeceği bir işlemi gösterir.
+  final String adminSchoolId;
+
   const UserRoleState({
     required this.role,
     this.isInitialized = false,
     this.adminStatus = SchoolAdminStatus.none,
     this.isSuperAdmin = false,
+    this.adminSchoolId = '',
   });
 
   bool get isTeacher => role == UserRole.teacher;
@@ -49,6 +59,14 @@ class UserRoleState {
   /// Yönetici paneli yalnızca onaylanmış öğretmenlere açılır.
   bool get isSchoolAdmin =>
       role == UserRole.teacher && adminStatus == SchoolAdminStatus.approved;
+
+  /// Bu kullanıcı verilen okulun onaylı yöneticisi mi?
+  ///
+  /// `firestore.rules` içindeki `isSchoolAdminOf` ile aynı mantık. Okul
+  /// panosuna yazma düğmesini göstermeden önce buna bakılır; gerçek
+  /// koruma yine sunucudadır.
+  bool isSchoolAdminOf(String okulId) =>
+      isSchoolAdmin && adminSchoolId.isNotEmpty && adminSchoolId == okulId;
 
   /// Başvuru butonunun gösterilip gösterilmeyeceği.
   bool get canApplyForSchoolAdmin =>
@@ -61,12 +79,14 @@ class UserRoleState {
     bool? isInitialized,
     SchoolAdminStatus? adminStatus,
     bool? isSuperAdmin,
+    String? adminSchoolId,
   }) {
     return UserRoleState(
       role: role ?? this.role,
       isInitialized: isInitialized ?? this.isInitialized,
       adminStatus: adminStatus ?? this.adminStatus,
       isSuperAdmin: isSuperAdmin ?? this.isSuperAdmin,
+      adminSchoolId: adminSchoolId ?? this.adminSchoolId,
     );
   }
 }
@@ -129,6 +149,10 @@ class UserRoleNotifier extends StateNotifier<UserRoleState> {
     state = state.copyWith(
       adminStatus: SchoolAdminStatus.none,
       isSuperAdmin: false,
+      // Okul kapsamı da sıfırlanmalı: çıkış yapan yöneticinin okulu
+      // bellekte kalırsa, aynı cihazda giren ikinci öğretmen bir an
+      // için o okulun yönetim düğmelerini görebilirdi.
+      adminSchoolId: '',
     );
   }
 
@@ -147,6 +171,7 @@ class UserRoleNotifier extends StateNotifier<UserRoleState> {
       state = state.copyWith(
         adminStatus: claims.schoolAdminStatus,
         isSuperAdmin: claims.isSuperAdmin,
+        adminSchoolId: claims.schoolId,
       );
     } catch (e, stackTrace) {
       debugPrint('Rol claim tazeleme hatası: $e\n$stackTrace');
