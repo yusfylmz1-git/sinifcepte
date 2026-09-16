@@ -54,6 +54,22 @@ Future<void> main() async {
     databaseFactory = databaseFactoryFfi;
   }
 
+  // Son hesabın veritabanını İLK KAREDEN ÖNCE aç.
+  //
+  // Hesabın dosyası eskiden ancak Firebase oturumu doğrulandıktan sonra
+  // açılıyordu; o çağrı ağ yavaşken 10 saniyeye kadar bekliyor. Bu arada
+  // veritabanına dokunan ilk iş (aşağıdaki kazanım tohumlaması) ortak
+  // dosyayı açıyor ve öğretmenin kaydettiği ders programı yanlış dosyaya
+  // gidiyordu.
+  //
+  // Son hesap kimliği yerel depoda durur; ağ gerektirmez, bu yüzden
+  // açılışı geciktirmez. Kimlik yoksa hiçbir şey yapmaz.
+  try {
+    await DatabaseHelper.instance.openLastKnownAccount();
+  } catch (e) {
+    debugPrint('Son hesabın veritabanı açılamadı: $e');
+  }
+
   // Pencereyi hemen aç. Aşağıdaki servisler ilk kare için gerekli değil;
   // sırayla beklenince açılış bunların toplamı kadar gecikiyordu (Firebase
   // tek başına ağ yokken 10 sn zaman aşımına kadar bekliyor).

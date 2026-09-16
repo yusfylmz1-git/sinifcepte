@@ -24,10 +24,61 @@ class DatabaseHelper {
   static Database? _database;
   static String? _openUid;
 
+  /// Süren `openForUid` çağrısı. Eşzamanlı çağrılar buna katılır.
+  ///
+  /// İki çağrı üst üste gelirse ikincisi, birincisi dosyayı açmadan
+  /// `_database`'i null görüp aynı işi tekrar başlatıyordu; arada
+  /// `database` getter'ı da devreye girince hangi dosyanın açık kaldığı
+  /// çağrı sırasına kalıyordu.
+  static Future<void>? _opening;
+
   DatabaseHelper._init();
 
+  /// Açık veritabanı bağlantısı.
+  ///
+  /// ## Neden uid'e bakar
+  /// Bu getter eskiden `_database` boşsa **koşulsuz** olarak ortak
+  /// `AppConfig.dbName` dosyasını açıyordu. Hesabın kendi dosyası
+  /// (`openForUid`) ise açılışta Firebase oturumu hazır olduktan sonra
+  /// açılıyor ve `FirebaseBootstrap.ensureInitialized()` ağ yavaşken 10
+  /// saniyeye kadar bekliyor.
+  ///
+  /// Sonuç bir yarıştı: o 10 saniye içinde veritabanına dokunan ilk iş
+  /// (açılışta arka planda çalışan kazanım tohumlaması) ortak dosyayı
+  /// açıyor ve o dosya açık kalıyordu. Öğretmenin o sırada kaydettiği
+  /// ders programı ortak dosyaya yazılıyor, sonraki açılışta hesabın
+  /// kendi dosyası okununca "eski program" geri geliyor, bir sonraki
+  /// açılışta yine ortak dosya açık kalınca "program kendiliğinden
+  /// değişti" görünüyordu.
+  ///
+  /// Kullanıcı bildirimi (15 Eylül 2026):
+  /// > "ilk açtım ders programını kaydettim. programı kapatıp açtığımda
+  /// > eski kaydettiğim ders programı geldi. sonra kapadım aradan zaman
+  /// > geçti bi baktım yine ders programı değişmiş yenisi gelmiş."
+  ///
+  /// Artık uid biliniyorsa **her zaman** o hesabın dosyası açılır.
+  /// Kimlik hiç yoksa (ilk kurulum, henüz rol bile seçilmemiş) ortak
+  /// dosyaya düşülür; bu yalnızca veri yazılmadan önceki durumdur.
   Future<Database> get database async {
+    // Süren bir açma varsa onu bekle: yarısında araya girip başka dosya
+    // açmak, düzeltilmek istenen hatanın ta kendisiydi.
+    final opening = _opening;
+    if (opening != null) await opening;
+
     if (_database != null) return _database!;
+
+    // Testler dosya adını doğrudan belirler; uid aramaya gerek yok.
+    if ((AppConfig.testDbNameOverride ?? '').isNotEmpty) {
+      _database = await _initDB(AppConfig.dbName);
+      return _database!;
+    }
+
+    final uid = await lastKnownUid();
+    if (uid.isNotEmpty) {
+      await openForUid(uid);
+      return _database!;
+    }
+
     _database = await _initDB(AppConfig.dbName);
     return _database!;
   }
@@ -51,7 +102,23 @@ class DatabaseHelper {
   /// karışıyor ve kullanıcı "öğrencilerim kayboldu, başka sınıflar geldi"
   /// durumuyla karşılaşıyordu. Artık göç tek seferlik olarak işaretlenir.
   Future<void> openForUid(String uid) async {
+    // Süren bir açma varsa önce o bitsin; yoksa iki çağrı aynı anda
+    // farklı dosya açabilir.
+    final opening = _opening;
+    if (opening != null) await opening;
+
     if (_openUid == uid && _database != null) return;
+
+    final future = _openForUid(uid);
+    _opening = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_opening, future)) _opening = null;
+    }
+  }
+
+  Future<void> _openForUid(String uid) async {
     if (_database != null) {
       await _database!.close();
       _database = null;
@@ -69,6 +136,24 @@ class DatabaseHelper {
 
     _database = await _initDB(targetName);
     await _rememberUid(uid);
+  }
+
+  /// Son bilinen hesabın veritabanını açılışta, Firebase beklenmeden açar.
+  ///
+  /// `lastKnownUid()` SharedPreferences'ta durur ve ağ gerektirmez; bu
+  /// yüzden oturum doğrulanmadan önce doğru dosyayı açabiliriz. Böylece
+  /// açılışta veritabanına dokunan ilk iş ortak dosyayı açamaz.
+  ///
+  /// Giriş akışı ve [SchoolBindGate] yine `openForUid` çağırır: kimlik
+  /// orada kesinleşir, farklıysa doğru dosyaya geçilir.
+  Future<void> openLastKnownAccount() async {
+    try {
+      final uid = await lastKnownUid();
+      if (uid.isEmpty) return;
+      await openForUid(uid);
+    } catch (e, stackTrace) {
+      debugPrint('Son hesabın veritabanı açılamadı: $e\n$stackTrace');
+    }
   }
 
   /// Eski tek-veritabanı düzeninden göç. Yalnızca bir kez çalışır.
@@ -2526,6 +2611,9 @@ class DatabaseHelper {
       debugPrint('closeConnection hatası: $e');
     }
     _database = null;
+    // Hangi hesabın dosyasının açık olduğu bilgisi de düşmeli; aksi
+    // halde sonraki `openForUid` "zaten açık" sanıp hiç açmıyor.
+    _openUid = null;
   }
 
   @visibleForTesting
@@ -2536,6 +2624,8 @@ class DatabaseHelper {
       await _database?.close();
     } catch (_) {}
     _database = null;
+    _openUid = null;
+    _opening = null;
 
     try {
       final dbPath = await getDatabasesPath();

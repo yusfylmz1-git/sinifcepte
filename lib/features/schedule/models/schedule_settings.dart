@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/database/database_helper.dart';
 import '../../../core/storage/prefs_service.dart';
 
 /// SınıfCepte - Ders Programı Ayarları Modeli ve Kalıcı Depolama Yöneticisi
@@ -92,17 +93,50 @@ class ScheduleSettings {
   static const _kLunchDuration = 'sched_lunch_dur';
   static const _kLunchAfter = 'sched_lunch_after';
 
+  /// Saat ayarlarını hesaba bağlar.
+  ///
+  /// Dersler hesap başına ayrı veritabanı dosyasında tutulurken saat
+  /// ayarları SABİT anahtarlarda duruyordu: aynı cihazda ikinci bir
+  /// hesapla girildiğinde birinci hesabın ders saatleri, öğle arası ve
+  /// günlük ders sayısı devralınıyordu. Program hesaba özelse saatleri
+  /// de öyle olmalı.
+  ///
+  /// Kimlik yoksa (masaüstü yerel modu, henüz giriş yapılmamış) eski
+  /// sabit anahtar kullanılır — o kurulumlarda mevcut ayarlar olduğu
+  /// gibi okunmaya devam eder.
+  static String _key(String base, String uid) =>
+      uid.isEmpty ? base : '${base}__$uid';
+
+  static Future<String> _activeUid() async {
+    try {
+      return await DatabaseHelper.lastKnownUid();
+    } catch (_) {
+      return '';
+    }
+  }
+
   static Future<ScheduleSettings> load() async {
     try {
       final prefs = await PrefsService.instance();
-      final hour = prefs?.getInt(_kFirstLessonHour) ?? 8;
-      final min = prefs?.getInt(_kFirstLessonMin) ?? 30;
-      final lessonDur = prefs?.getInt(_kLessonDuration) ?? 40;
-      final breakDur = prefs?.getInt(_kBreakDuration) ?? 10;
-      final dailyCount = prefs?.getInt(_kDailyLessonCount) ?? 8;
-      final hasLunch = prefs?.getBool(_kHasLunchBreak) ?? true;
-      final lunchDur = prefs?.getInt(_kLunchDuration) ?? 45;
-      final lunchAfter = prefs?.getInt(_kLunchAfter) ?? 4;
+      final uid = await _activeUid();
+
+      /// Hesabın kendi kaydı yoksa eski sabit anahtardan okur.
+      ///
+      /// Bu geri düşüş olmadan, güncellemeden önce ayar yapmış her
+      /// öğretmenin saatleri bir kereliğine varsayılana dönerdi.
+      int? okuInt(String base) =>
+          prefs?.getInt(_key(base, uid)) ?? prefs?.getInt(base);
+      bool? okuBool(String base) =>
+          prefs?.getBool(_key(base, uid)) ?? prefs?.getBool(base);
+
+      final hour = okuInt(_kFirstLessonHour) ?? 8;
+      final min = okuInt(_kFirstLessonMin) ?? 30;
+      final lessonDur = okuInt(_kLessonDuration) ?? 40;
+      final breakDur = okuInt(_kBreakDuration) ?? 10;
+      final dailyCount = okuInt(_kDailyLessonCount) ?? 8;
+      final hasLunch = okuBool(_kHasLunchBreak) ?? true;
+      final lunchDur = okuInt(_kLunchDuration) ?? 45;
+      final lunchAfter = okuInt(_kLunchAfter) ?? 4;
 
       return ScheduleSettings(
         firstLessonTime: TimeOfDay(hour: hour, minute: min),
@@ -126,14 +160,15 @@ class ScheduleSettings {
     try {
       final prefs = await PrefsService.instance();
       if (prefs == null) return;
-      await prefs.setInt(_kFirstLessonHour, firstLessonTime.hour);
-      await prefs.setInt(_kFirstLessonMin, firstLessonTime.minute);
-      await prefs.setInt(_kLessonDuration, lessonDuration);
-      await prefs.setInt(_kBreakDuration, breakDuration);
-      await prefs.setInt(_kDailyLessonCount, dailyLessonCount);
-      await prefs.setBool(_kHasLunchBreak, hasLunchBreak);
-      await prefs.setInt(_kLunchDuration, lunchBreakDuration);
-      await prefs.setInt(_kLunchAfter, lunchBreakAfterLesson);
+      final uid = await _activeUid();
+      await prefs.setInt(_key(_kFirstLessonHour, uid), firstLessonTime.hour);
+      await prefs.setInt(_key(_kFirstLessonMin, uid), firstLessonTime.minute);
+      await prefs.setInt(_key(_kLessonDuration, uid), lessonDuration);
+      await prefs.setInt(_key(_kBreakDuration, uid), breakDuration);
+      await prefs.setInt(_key(_kDailyLessonCount, uid), dailyLessonCount);
+      await prefs.setBool(_key(_kHasLunchBreak, uid), hasLunchBreak);
+      await prefs.setInt(_key(_kLunchDuration, uid), lunchBreakDuration);
+      await prefs.setInt(_key(_kLunchAfter, uid), lunchBreakAfterLesson);
     } catch (e, stackTrace) {
       debugPrint('---------------- HATA DETAYI (ScheduleSettings.save) ----------------');
       debugPrint('Hata Mesajı : $e');
