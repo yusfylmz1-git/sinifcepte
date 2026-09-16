@@ -61,6 +61,13 @@ dependencies:
   http: ^1.2.2
   qr_flutter: ^4.1.0
   crypto: ^3.0.6
+  # Tahta yapilandirmasinin imzalanmasi (Ed25519, RFC 8032).
+  #
+  # Idarenin telefonu `okul_config.json`'i imzalar, tahtada yalnizca
+  # dogrulama anahtari durur: flash bellek kopyalansa bile gecerli
+  # yapilandirma uretilemez. `crypto` yalniz ozet (hash) veriyor,
+  # imzalama yok — bu yuzden ayri paket gerekiyor.
+  ed25519_edwards: ^0.3.2
 
   # Firebase (proje: sinifcepte)
   firebase_core: ^3.15.2
