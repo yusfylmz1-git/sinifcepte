@@ -58,7 +58,34 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
   final _nobetciAdCtrl = TextEditingController();
   final _nobetciKatCtrl = TextEditingController();
   final _ogretmenAdCtrl = TextEditingController();
-  DateTime _nobetciTarihi = DateTime.now();
+
+  /// Tahtanın beklediği gün adları — `ekran.py::_GUNLER` ile aynı sıra
+  /// ve aynı yazım (aksansız, küçük harf).
+  ///
+  /// Kullanıcıya `_gunEtiketleri` gösterilir, dosyaya bu değerler
+  /// yazılır. Aksanlı yazım da tahtada eşleşiyor ama kanonik biçimi
+  /// göndermek, sahada tek bir belirsizlik bırakmıyor.
+  static const _gunler = [
+    'pazartesi',
+    'sali',
+    'carsamba',
+    'persembe',
+    'cuma',
+    'cumartesi',
+    'pazar',
+  ];
+
+  static const _gunEtiketleri = [
+    'Pazartesi',
+    'Salı',
+    'Çarşamba',
+    'Perşembe',
+    'Cuma',
+    'Cumartesi',
+    'Pazar',
+  ];
+
+  String _nobetciGunu = _gunler.first;
 
   List<PanoOgretmeni> _ogretmenListesi = const [];
 
@@ -582,21 +609,30 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
     return _kart(
       isDark,
       baslik: '🧑‍🏫 Nöbetçi Öğretmen',
-      aciklama: 'Tahtada teneffüste görünür.',
+      aciklama: 'Tahtada teneffüste görünür. Liste haftalık tekrar eder — '
+          'her ay yeniden girmeniz gerekmez.',
       cocuklar: [
-        Row(
+        // Gün seçimi, tarih seçimi DEĞİL.
+        //
+        // Tarih bazlı yapıda nöbet listesi her ay yenilenmek zorundaydı
+        // ve yeni dosyayı her tahtaya elden götürmek gerekiyordu —
+        // 20 tahtalı bir okulda bu yapılmaz. Haftalık döngü bir kez
+        // girilir, kendini tekrar eder.
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
           children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _isliyor ? null : _tarihSec,
-                icon: const Icon(Icons.calendar_today_rounded, size: 16),
+            for (var i = 0; i < _gunler.length; i++)
+              ChoiceChip(
                 label: Text(
-                  '${_nobetciTarihi.day}.${_nobetciTarihi.month}.'
-                  '${_nobetciTarihi.year}',
-                  style: AppFonts.outfit(fontSize: 12.5),
+                  _gunEtiketleri[i],
+                  style: AppFonts.outfit(fontSize: 12),
                 ),
+                selected: _nobetciGunu == _gunler[i],
+                onSelected: _isliyor
+                    ? null
+                    : (_) => setState(() => _nobetciGunu = _gunler[i]),
               ),
-            ),
           ],
         ),
         const SizedBox(height: 10),
@@ -626,19 +662,6 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
     );
   }
 
-  Future<void> _tarihSec() async {
-    final simdi = DateTime.now();
-    final secilen = await showDatePicker(
-      context: context,
-      initialDate: _nobetciTarihi,
-      firstDate: DateTime(simdi.year - 1),
-      lastDate: DateTime(simdi.year + 2),
-    );
-    if (secilen != null && mounted) {
-      setState(() => _nobetciTarihi = secilen);
-    }
-  }
-
   Future<void> _nobetciKaydet(String okulId) async {
     final ad = _nobetciAdCtrl.text.trim();
     if (ad.isEmpty) {
@@ -655,7 +678,7 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
     final basarili = await _panoDeposu.setDuty(
       schoolId: okulId,
       nobetci: NobetciKaydi(
-        tarih: _isoTarih(_nobetciTarihi),
+        gun: _nobetciGunu,
         kat: _nobetciKatCtrl.text.trim(),
         ad: ad,
       ),
@@ -981,7 +1004,4 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
     );
   }
 
-  static String _isoTarih(DateTime t) =>
-      '${t.year}-${t.month.toString().padLeft(2, '0')}-'
-      '${t.day.toString().padLeft(2, '0')}';
 }

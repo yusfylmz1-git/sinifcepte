@@ -2009,7 +2009,8 @@ describe('Okul panosu (school_boards) — tahta modülü', () => {
       })
       .firestore();
 
-  const NOBETCI = { kat: '1. Kat', ad: 'A. Yılmaz' };
+  // Haftalık döngü: `gun`, tarih değil (bkz. okul_config_model.dart).
+  const NOBETCI = { gun: 'pazartesi', kat: '1. Kat', ad: 'A. Yılmaz' };
   const DUYURU_PANO = { baslik: 'Veli toplantısı', metin: 'Cuma 15:00' };
 
   before(async () => {
@@ -2023,7 +2024,7 @@ describe('Okul panosu (school_boards) — tahta modülü', () => {
         schoolId: OKUL_B,
         okulAdi: 'B Ortaokulu',
       });
-      await setDoc(doc(db, 'school_boards', OKUL_A, 'duty', '2026-09-16'), NOBETCI);
+      await setDoc(doc(db, 'school_boards', OKUL_A, 'duty', 'pazartesi_1-_Kat'), NOBETCI);
       await setDoc(doc(db, 'school_boards', OKUL_A, 'notices', 'n1'), DUYURU_PANO);
     });
   });
@@ -2037,7 +2038,7 @@ describe('Okul panosu (school_boards) — tahta modülü', () => {
 
   it('nöbetçi listesi okunabilir', async () => {
     await assertSucceeds(
-      getDoc(doc(teacherDb(), 'school_boards', OKUL_A, 'duty', '2026-09-16')),
+      getDoc(doc(teacherDb(), 'school_boards', OKUL_A, 'duty', 'pazartesi_1-_Kat')),
     );
   });
 
@@ -2123,7 +2124,7 @@ describe('Okul panosu (school_boards) — tahta modülü', () => {
   it('yönetici nöbetçi yazabilir', async () => {
     await assertSucceeds(
       setDoc(
-        doc(panoAdminA(), 'school_boards', OKUL_A, 'duty', '2026-09-17'),
+        doc(panoAdminA(), 'school_boards', OKUL_A, 'duty', 'sali_1-_Kat'),
         { kat: '2. Kat', ad: 'B. Demir' },
       ),
     );
@@ -2132,7 +2133,7 @@ describe('Okul panosu (school_boards) — tahta modülü', () => {
   it('KRİTİK: başka okulun yöneticisi nöbetçi yazamaz', async () => {
     await assertFails(
       setDoc(
-        doc(panoAdminB(), 'school_boards', OKUL_A, 'duty', '2026-09-18'),
+        doc(panoAdminB(), 'school_boards', OKUL_A, 'duty', 'carsamba_1-_Kat'),
         { kat: '1. Kat', ad: 'Davetsiz' },
       ),
     );
@@ -2141,7 +2142,7 @@ describe('Okul panosu (school_boards) — tahta modülü', () => {
   it('KRİTİK: sıradan öğretmen nöbetçi yazamaz', async () => {
     await assertFails(
       setDoc(
-        doc(teacherDb(), 'school_boards', OKUL_A, 'duty', '2026-09-19'),
+        doc(teacherDb(), 'school_boards', OKUL_A, 'duty', 'persembe_1-_Kat'),
         NOBETCI,
       ),
     );
@@ -2149,7 +2150,7 @@ describe('Okul panosu (school_boards) — tahta modülü', () => {
 
   it('yönetici nöbetçi kaydını silebilir', async () => {
     await assertSucceeds(
-      deleteDoc(doc(panoAdminA(), 'school_boards', OKUL_A, 'duty', '2026-09-16')),
+      deleteDoc(doc(panoAdminA(), 'school_boards', OKUL_A, 'duty', 'pazartesi_1-_Kat')),
     );
   });
 

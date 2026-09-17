@@ -39,7 +39,7 @@ void main() {
         ),
       ],
       nobetciler: const [
-        NobetciKaydi(tarih: '2026-09-16', kat: '1. Kat', ad: 'A. Yılmaz'),
+        NobetciKaydi(gun: 'carsamba', kat: '1. Kat', ad: 'A. Yılmaz'),
       ],
       duyurular: const [
         PanoDuyurusu(id: 'd1', baslik: 'Veli toplantısı', metin: 'Cuma 15:00'),
@@ -274,7 +274,34 @@ void main() {
       final nobetciler = ornekConfig().toJson()['nobetciler'] as List<Object?>;
       final ilk = nobetciler.first as Map<String, Object?>;
 
-      expect(ilk.keys, containsAll(<String>['tarih', 'kat', 'ad']));
+      // Python `Nobetci` `gun` okuyor, `tarih` DEĞİL.
+      //
+      // Bu test bir dönem `tarih` bekliyordu ve **yanlış tarafa
+      // kilitlenmişti**: geçiyordu ama üretilen dosyada nöbetçi
+      // listesi tahtada tamamen boş kalıyordu — imza geçerli, dosya
+      // yükleniyor, liste görünmüyor, hata mesajı yok.
+      expect(ilk.keys, containsAll(<String>['gun', 'kat', 'ad']));
+      expect(ilk.containsKey('tarih'), isFalse,
+          reason: 'tarih alanı tahta tarafında okunmuyor');
+    });
+
+    test('KRİTİK: nöbetçi günü tahtanın tanıdığı biçimde', () {
+      final nobetciler = ornekConfig().toJson()['nobetciler'] as List<Object?>;
+      final ilk = nobetciler.first as Map<String, Object?>;
+
+      // `ekran.py::_GUNLER` — aksansız, küçük harf.
+      expect(
+        const [
+          'pazartesi',
+          'sali',
+          'carsamba',
+          'persembe',
+          'cuma',
+          'cumartesi',
+          'pazar',
+        ],
+        contains(ilk['gun']),
+      );
     });
 
     test('KRİTİK: duyuru alan adları', () {

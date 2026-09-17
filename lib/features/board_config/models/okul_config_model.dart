@@ -11,24 +11,39 @@ library;
 
 import '../../schedule/models/schedule_settings.dart';
 
-/// Nöbetçi öğretmen kaydı.
+/// Nöbetçi öğretmen kaydı — **haftalık döngü**, tarih bazlı değil.
 ///
 /// Rakip ürünlerin hiçbirinde bulunmayan tek özellik bu; panonun
 /// ayırt edici parçası.
+///
+/// ## Neden tarih değil gün
+///
+/// İlk tasarım ISO tarih (`2026-09-16`) kullanıyordu. Nöbet listesi
+/// aylık değişiyor ve tarih bazlı yapıda her ay yeni yapılandırma
+/// üretip **her tahtaya elden götürmek** gerekiyordu — 20 tahtalı bir
+/// okulda bu yapılmaz. Haftalık döngü bir kez girilir, kendini tekrar
+/// eder.
+///
+/// Tahta tarafı (`cekirdek/yapilandirma.py::Nobetci`) `gun` okuyor.
+/// Bu alan `tarih` kaldığı sürece nöbetçiler tahtada **sessizce boş**
+/// kalıyordu: imza geçerli, dosya yükleniyor, liste görünmüyordu.
 class NobetciKaydi {
-  /// ISO tarih (`2026-09-16`).
-  final String tarih;
+  /// Gün adı: `pazartesi`..`pazar`.
+  ///
+  /// Tahta tarafı büyük/küçük harf ve Türkçe aksanı kendisi katlıyor
+  /// (`ekran.py::_gun_esles`), yani "Salı" da "SALI" da eşleşir.
+  final String gun;
   final String kat;
   final String ad;
 
   const NobetciKaydi({
-    required this.tarih,
+    required this.gun,
     required this.kat,
     required this.ad,
   });
 
   Map<String, Object?> toJson() => {
-        'tarih': tarih,
+        'gun': gun,
         'kat': kat,
         'ad': ad,
       };

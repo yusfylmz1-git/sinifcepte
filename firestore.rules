@@ -566,9 +566,14 @@ service cloud.firestore {
 
       // Nöbetçi listesi.
       //
-      // Tarih bazlı dokümanlar (`2026-09-16`). Nöbetçi bilgisi
-      // öğretmen adı içerir; öğrenci verisi ASLA girmez.
-      match /duty/{tarih} {
+      // Doküman kimliği gün+kat (`pazartesi_1-_Kat`) — **haftalık
+      // döngü**, tarih değil. Tarih bazlı yapıda liste her ay
+      // yenilenmek ve yeni dosya her tahtaya elden götürülmek
+      // zorundaydı.
+      //
+      // Nöbetçi bilgisi öğretmen adı içerir; öğrenci verisi ASLA
+      // girmez.
+      match /duty/{dutyId} {
         allow read: if request.auth != null;
         allow write: if isSchoolAdminOf(schoolId);
       }

@@ -12,7 +12,7 @@ import 'package:sinifcepte/features/board_config/models/okul_config_model.dart';
 /// kanıtlanıyor (24 test).
 ///
 /// Buradaki asıl değer: **yol şeması kuralla birebir aynı olmalı.**
-/// Kural `school_boards/{schoolId}/duty/{tarih}` bekliyor; kod farklı
+/// Kural `school_boards/{schoolId}/duty/{dutyId}` bekliyor; kod farklı
 /// bir yol üretirse yazma sessizce reddedilir ve sebebi görünmez.
 void main() {
   const okulId = 'meb_16_123456';
@@ -25,13 +25,58 @@ void main() {
       );
     });
 
-    test('KRİTİK: nöbetçi yolu tarih kimlikli', () {
-      // Tarih kimlik olduğu için aynı güne ikinci yazma eskiyi
-      // değiştirir, kuyruk oluşmaz.
+    test('KRİTİK: nöbetçi yolu gün+kat kimlikli', () {
+      // Kimlik gün+kat olduğu için aynı güne aynı kata ikinci yazma
+      // eskiyi değiştirir, kuyruk oluşmaz.
       expect(
-        SchoolBoardRepository.dutyPath(okulId, '2026-09-16'),
-        'school_boards/meb_16_123456/duty/2026-09-16',
+        SchoolBoardRepository.dutyPath(
+          okulId,
+          SchoolBoardRepository.dutyId('pazartesi', '1. Kat'),
+        ),
+        // Kattaki nokta da temizleniyor: Firestore doküman kimliğinde
+        // "." ve ".." özel anlam taşıyor.
+        'school_boards/meb_16_123456/duty/pazartesi_1-_Kat',
       );
+    });
+
+    test('KRİTİK: aynı gün farklı kat AYRI kimlik', () {
+      // Kimlik yalnızca gün olsaydı ikinci kat birinciyi sessizce
+      // silerdi ve idareci sebebini anlamazdı.
+      expect(
+        SchoolBoardRepository.dutyId('pazartesi', '1. Kat'),
+        isNot(SchoolBoardRepository.dutyId('pazartesi', '2. Kat')),
+      );
+    });
+
+    test('aynı gün aynı kat AYNI kimlik — kuyruk oluşmaz', () {
+      expect(
+        SchoolBoardRepository.dutyId('pazartesi', '1. Kat'),
+        SchoolBoardRepository.dutyId('pazartesi', '1. Kat'),
+      );
+    });
+
+    test('KRİTİK: kattaki yol ayırıcı temizleniyor', () {
+      // Kat serbest metin. "A/B Blok" yazılsa doküman yolu bir
+      // seviye daha derinleşir ve Firestore geçersiz yol hatası
+      // verir — idareci "kaydedilmedi" der, sebebi görünmez.
+      final kimlik = SchoolBoardRepository.dutyId('pazartesi', 'A/B Blok');
+      expect(kimlik.contains('/'), isFalse);
+    });
+
+    test('kat boşsa kimlik yalnızca gün', () {
+      expect(SchoolBoardRepository.dutyId('cuma', ''), 'cuma');
+      expect(SchoolBoardRepository.dutyId('cuma', '   '), 'cuma');
+    });
+
+    test('KRİTİK: kimlikte Firestore yasaklı karakterleri yok', () {
+      // Firestore doküman kimliğinde `/` `.` `..` `#` `[` `]` `*`
+      // sorun çıkarır.
+      final kimlik =
+          SchoolBoardRepository.dutyId('sali', 'B.1#[Kat]/Üst');
+      for (final yasakli in ['/', '.', '#', '[', ']']) {
+        expect(kimlik.contains(yasakli), isFalse,
+            reason: '"$yasakli" temizlenmedi: $kimlik');
+      }
     });
 
     test('KRİTİK: duyuru yolu', () {
@@ -100,7 +145,7 @@ void main() {
       final sonuc = await repo.setDuty(
         schoolId: '',
         nobetci: const NobetciKaydi(
-          tarih: '2026-09-16',
+          gun: 'pazartesi',
           kat: '1. Kat',
           ad: 'A. Yılmaz',
         ),
@@ -108,10 +153,10 @@ void main() {
       expect(sonuc, isFalse);
     });
 
-    test('tarihsiz nöbetçi yazılmaz', () async {
+    test('günsüz nöbetçi yazılmaz', () async {
       final sonuc = await repo.setDuty(
         schoolId: okulId,
-        nobetci: const NobetciKaydi(tarih: '', kat: '1. Kat', ad: 'A. Yılmaz'),
+        nobetci: const NobetciKaydi(gun: '', kat: '1. Kat', ad: 'A. Yılmaz'),
       );
       expect(sonuc, isFalse);
     });
@@ -168,11 +213,7 @@ void main() {
     test('okul kimliği boşsa okuma boş liste döner', () async {
       expect(await repo.readNotices(schoolId: ''), isEmpty);
       expect(
-        await repo.readDuties(
-          schoolId: '',
-          baslangicTarihi: '2026-09-01',
-          bitisTarihi: '2026-09-30',
-        ),
+        await repo.readDuties(schoolId: ''),
         isEmpty,
       );
     });

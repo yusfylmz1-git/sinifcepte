@@ -85,21 +85,37 @@ class SchoolBoardRepository {
 
   // --- Nöbetçi listesi ---
 
+  /// Nöbetçi kaydının doküman kimliği: `gun` + `kat`.
+  ///
+  /// Kat da kimliğe giriyor çünkü büyük okullarda aynı güne her kata
+  /// bir nöbetçi yazılıyor. Yalnızca gün kullanılsaydı ikinci kat
+  /// birinciyi **sessizce silerdi**.
+  ///
+  /// Kat serbest metin olduğu için `/` gibi yol ayırıcıları temizleniyor;
+  /// aksi halde geçersiz doküman yolu oluşur.
+  static String dutyId(String gun, String kat) {
+    final temizKat = kat
+        .trim()
+        .replaceAll(RegExp(r'[/\\.#\[\]]'), '-')
+        .replaceAll(RegExp(r'\s+'), '_');
+    return temizKat.isEmpty ? gun : '${gun}_$temizKat';
+  }
+
   /// Bir günün nöbetçisini yazar.
   ///
-  /// Doküman kimliği tarihtir: aynı güne ikinci kez yazmak eski kaydı
+  /// Kimlik gün+kat: aynı güne aynı kata ikinci kez yazmak eski kaydı
   /// değiştirir, kuyruk oluşmaz. Bu hem maliyet hem de "hangisi
   /// geçerli" belirsizliğini önler.
   Future<bool> setDuty({
     required String schoolId,
     required NobetciKaydi nobetci,
   }) async {
-    if (schoolId.isEmpty || nobetci.tarih.isEmpty) return false;
+    if (schoolId.isEmpty || nobetci.gun.isEmpty) return false;
 
     return _client.setDoc(
-      dutyPath(schoolId, nobetci.tarih),
+      dutyPath(schoolId, dutyId(nobetci.gun, nobetci.kat)),
       {
-        'tarih': nobetci.tarih,
+        'gun': nobetci.gun,
         'kat': nobetci.kat,
         'ad': nobetci.ad,
         'updatedAt': DateTime.now().toIso8601String(),
@@ -107,9 +123,9 @@ class SchoolBoardRepository {
     );
   }
 
-  /// Birden fazla günün nöbetçisini tek turda yazar.
+  /// Haftanın tamamını tek turda yazar.
   ///
-  /// İdareci genellikle haftalık/aylık girer; tek tek yazmak hem yavaş
+  /// İdareci nöbet listesini haftalık girer; tek tek yazmak hem yavaş
   /// hem de bütçe freni açısından savurgan olurdu (`commitBatch`
   /// yazma sayısını toplu sayar).
   Future<bool> setDutyBatch({
@@ -122,9 +138,9 @@ class SchoolBoardRepository {
     final now = DateTime.now().toIso8601String();
 
     for (final n in nobetciler) {
-      if (n.tarih.isEmpty) continue;
-      writes[dutyPath(schoolId, n.tarih)] = {
-        'tarih': n.tarih,
+      if (n.gun.isEmpty) continue;
+      writes[dutyPath(schoolId, dutyId(n.gun, n.kat))] = {
+        'gun': n.gun,
         'kat': n.kat,
         'ad': n.ad,
         'updatedAt': now,
@@ -137,18 +153,21 @@ class SchoolBoardRepository {
 
   Future<bool> deleteDuty({
     required String schoolId,
-    required String tarih,
+    required String gun,
+    String kat = '',
   }) =>
-      _client.deleteDoc(dutyPath(schoolId, tarih));
+      _client.deleteDoc(dutyPath(schoolId, dutyId(gun, kat)));
 
-  /// Belirli bir tarih aralığının nöbetçilerini okur.
+  /// Haftalık nöbet listesinin tamamını okur.
   ///
-  /// Tarih kimlik olduğu için sorgu yerine kimlik aralığı kullanılıyor
-  /// (`FieldPath.documentId` yerine `tarih` alanı): indeks gerektirmez.
+  /// ## Neden tarih aralığı sorgusu değil
+  ///
+  /// Nöbet **haftalık döngü**: en fazla yedi gün × kat sayısı kadar
+  /// doküman var. Tarih aralığı sorgusu hem gereksiz (aralık diye bir
+  /// şey yok) hem de pahalıydı. Koleksiyonun tamamını okumak burada
+  /// hem daha ucuz hem indeks gerektirmiyor.
   Future<List<NobetciKaydi>> readDuties({
     required String schoolId,
-    required String baslangicTarihi,
-    required String bitisTarihi,
     int limit = 40,
   }) async {
     // Girdi denetimi ağ çağrısından ÖNCE.
@@ -168,8 +187,6 @@ class SchoolBoardRepository {
           .collection(_kok)
           .doc(schoolId)
           .collection('duty')
-          .where('tarih', isGreaterThanOrEqualTo: baslangicTarihi)
-          .where('tarih', isLessThanOrEqualTo: bitisTarihi)
           .limit(limit)
           .get()
           .timeout(const Duration(seconds: 8));
@@ -179,7 +196,10 @@ class SchoolBoardRepository {
       return snap.docs.map((d) {
         final v = d.data();
         return NobetciKaydi(
-          tarih: (v['tarih'] as String?) ?? d.id,
+          // Eski kayıtlar `tarih` taşıyabilir; kimlikten türetmek
+          // yanlış olurdu (kimlik artık gun_kat). Alan yoksa boş
+          // kalıyor ve tahta tarafı onu süzüyor.
+          gun: (v['gun'] as String?) ?? '',
           kat: (v['kat'] as String?) ?? '',
           ad: (v['ad'] as String?) ?? '',
         );
