@@ -18,7 +18,16 @@ void main() {
     });
 
     test('Senkron sonrası damga okunur ve güvenlik payı geriye alınır', () async {
-      final now = DateTime(2026, 8, 18, 12, 0);
+      // Tarih GÖRELİ olmalı, sabit değil.
+      //
+      // Burada `DateTime(2026, 8, 18, 12, 0)` yazıyordu ve test 17 Eylül
+      // 2026'da kendiliğinden kırıldı: `_maxStaleness` 30 gün ve o tarih
+      // tam 30 günü aştı, `lastSyncOf` null döndü. Kod değişmemişti,
+      // yalnızca takvim ilerlemişti.
+      //
+      // Sabit tarih kullanan test, yazıldığı günden bir süre sonra
+      // patlayan bir zaman bombasıdır.
+      final now = DateTime.now().subtract(const Duration(days: 1));
       await DeltaSyncTracker.instance.markSynced('ann_cls_1', at: now);
 
       final last = await DeltaSyncTracker.instance.lastSyncOf('ann_cls_1');
@@ -48,7 +57,9 @@ void main() {
     });
 
     test('Farklı akışlar birbirini etkilemez', () async {
-      final t = DateTime(2026, 8, 18, 9, 0);
+      // Göreli tarih: sabit tarih 30 günlük tazelik sınırını aşınca
+      // test kendiliğinden kırılıyordu (bkz. yukarıdaki not).
+      final t = DateTime.now().subtract(const Duration(days: 1));
       await DeltaSyncTracker.instance.markSynced('ann_cls_1', at: t);
 
       expect(await DeltaSyncTracker.instance.lastSyncOf('ann_cls_1'), isNotNull);

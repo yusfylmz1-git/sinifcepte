@@ -10,6 +10,7 @@ import '../../schedule/models/schedule_settings.dart';
 import '../data/okul_config_service.dart';
 import '../data/school_board_repository.dart';
 import '../data/tahta_anahtar_deposu.dart';
+import '../data/tahta_ogretmen_deposu.dart';
 import '../models/okul_config_model.dart';
 
 /// Tahta Yönetimi — idarecinin etkileşimli tahtaları yapılandırdığı ekran.
@@ -44,6 +45,7 @@ class TahtaYonetimiScreen extends ConsumerStatefulWidget {
 class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
   final _anahtarDeposu = TahtaAnahtarDeposu();
   final _panoDeposu = SchoolBoardRepository();
+  final _ogretmenDeposu = TahtaOgretmenDeposu();
 
   bool _yukleniyor = true;
   bool _anahtarVar = false;
@@ -585,6 +587,21 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
       // reddedilirdi.
       final surum = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
+      // Öğretmen listesi ŞART: boş giderse tahtada hiç kimse TOTP veya
+      // PIN ile kilidi açamaz. Bir süre tam bu hata vardı — liste
+      // modelde tanımlıydı ama hiçbir yerden doldurulmuyordu.
+      final ogretmenListesi = await _ogretmenDeposu.oku();
+      if (ogretmenListesi.isEmpty) {
+        if (!mounted) return;
+        setState(() => _isliyor = false);
+        _mesaj(
+          'Önce en az bir öğretmen ekleyin. Listesi boş bir dosyayla '
+          'tahtada kimse kilidi açamaz.',
+          hata: true,
+        );
+        return;
+      }
+
       final config = OkulConfigModel(
         surum: surum,
         okulId: okulId,
@@ -595,6 +612,7 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
         gecerlilikBitis: DateTime(DateTime.now().year + 1, 8, 31)
             .toIso8601String(),
         zil: zil,
+        ogretmenler: ogretmenListesi,
       );
 
       final sonuc = await OkulConfigService.uret(
