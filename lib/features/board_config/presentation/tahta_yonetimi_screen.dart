@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
@@ -56,7 +57,10 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
   final _duyuruMetinCtrl = TextEditingController();
   final _nobetciAdCtrl = TextEditingController();
   final _nobetciKatCtrl = TextEditingController();
+  final _ogretmenAdCtrl = TextEditingController();
   DateTime _nobetciTarihi = DateTime.now();
+
+  List<PanoOgretmeni> _ogretmenListesi = const [];
 
   bool _isliyor = false;
 
@@ -72,16 +76,19 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
     _duyuruMetinCtrl.dispose();
     _nobetciAdCtrl.dispose();
     _nobetciKatCtrl.dispose();
+    _ogretmenAdCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _durumYukle() async {
     final varMi = await _anahtarDeposu.anahtarVarMi();
     final tarih = await _anahtarDeposu.uretimTarihi();
+    final liste = await _ogretmenDeposu.oku();
     if (!mounted) return;
     setState(() {
       _anahtarVar = varMi;
       _anahtarTarihi = tarih;
+      _ogretmenListesi = liste;
       _yukleniyor = false;
     });
   }
@@ -131,6 +138,8 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
                 _caydiriciUyarisi(isDark),
                 const SizedBox(height: 16),
                 _anahtarBolumu(isDark, ogretmen.schoolName),
+                const SizedBox(height: 16),
+                _ogretmenBolumu(isDark, okulId),
                 const SizedBox(height: 16),
                 _nobetciBolumu(isDark, okulId),
                 const SizedBox(height: 16),
@@ -344,7 +353,230 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
         'götürmeniz gerekiyor.');
   }
 
-  // --- 2. Nöbetçi ---
+  // --- 2. Öğretmenler ---
+
+  /// Tahtayı açabilecek öğretmenler.
+  ///
+  /// Liste boşsa `okul_config` üretilse bile tahtada kimse kilidi
+  /// açamaz — bu yüzden bölüm nöbetçi ve duyurudan önce geliyor.
+  Widget _ogretmenBolumu(bool isDark, String okulId) {
+    return _kart(
+      isDark,
+      baslik: '👤 Tahtayı Açabilecek Öğretmenler',
+      aciklama: 'Her öğretmen için bir kod üretilir. Öğretmen kendi '
+          'telefonunda QR\'ı okutup kaydeder.',
+      cocuklar: [
+        if (_ogretmenListesi.isEmpty)
+          _bilgiSatiri(
+            Icons.warning_amber_rounded,
+            'Henüz öğretmen yok',
+            'Listesi boş dosyayla tahtada kimse açamaz',
+            Colors.orange,
+          )
+        else
+          ..._ogretmenListesi.map((o) => _ogretmenSatiri(isDark, o, okulId)),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _ogretmenAdCtrl,
+          maxLength: 60,
+          decoration: _girdi('Öğretmen adı', 'A. Yılmaz'),
+          style: AppFonts.outfit(fontSize: 13),
+        ),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: _isliyor ? null : () => _ogretmenEkle(okulId),
+            icon: const Icon(Icons.person_add_alt_rounded, size: 18),
+            label: Text('Öğretmen Ekle',
+                style: AppFonts.outfit(fontSize: 13)),
+          ),
+        ),
+        if (_ogretmenListesi.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Öğretmen ekledikten veya çıkardıktan sonra kurulum '
+            'dosyasını yeniden üretip tahtalara götürmeniz gerekir.',
+            style: AppFonts.outfit(
+              fontSize: 10.5,
+              color: Colors.grey,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _ogretmenSatiri(bool isDark, PanoOgretmeni o, String okulId) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(o.ad,
+                    style: AppFonts.outfit(
+                        fontSize: 12.5, fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                Text('Kod: ${o.kod}',
+                    style: AppFonts.outfit(
+                        fontSize: 10.5, color: Colors.grey)),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Kurulum QR\'ı',
+            icon: const Icon(Icons.qr_code_2_rounded, size: 20),
+            onPressed:
+                _isliyor ? null : () => _kurulumQrGoster(o, okulId),
+          ),
+          IconButton(
+            tooltip: 'Çıkar',
+            icon: const Icon(Icons.delete_outline_rounded,
+                size: 20, color: Colors.redAccent),
+            onPressed: _isliyor ? null : () => _ogretmenCikar(o),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _ogretmenEkle(String okulId) async {
+    final ad = _ogretmenAdCtrl.text.trim();
+    if (ad.isEmpty) {
+      _mesaj('Öğretmen adı boş olamaz.', hata: true);
+      return;
+    }
+
+    setState(() => _isliyor = true);
+    final kayit = await _ogretmenDeposu.ekle(ad: ad);
+    if (!mounted) return;
+    setState(() => _isliyor = false);
+
+    if (kayit == null) {
+      _mesaj('Eklenemedi. Aynı kod zaten kayıtlı olabilir.', hata: true);
+      return;
+    }
+
+    _ogretmenAdCtrl.clear();
+    await _ogretmenleriYukle();
+    if (!mounted) return;
+
+    // Ekledikten sonra QR'ı hemen göster: idareci öğretmeni karşısında
+    // bulmuşken okutması en pratik an.
+    await _kurulumQrGoster(kayit, okulId);
+  }
+
+  Future<void> _ogretmenCikar(PanoOgretmeni o) async {
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('${o.ad} çıkarılsın mı?',
+            style: AppFonts.outfit(fontWeight: FontWeight.bold)),
+        content: Text(
+          'Bu öğretmen yeni kurulum dosyasında yer almaz. Ama '
+          'tahtalardaki MEVCUT dosya hâlâ geçerli: yeni dosyayı '
+          'tahtalara götürene kadar açmaya devam edebilir.',
+          style: AppFonts.outfit(fontSize: 12.5, height: 1.45),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Çıkar'),
+          ),
+        ],
+      ),
+    );
+
+    if (onay != true) return;
+
+    setState(() => _isliyor = true);
+    await _ogretmenDeposu.sil(o.kod);
+    if (!mounted) return;
+    setState(() => _isliyor = false);
+    await _ogretmenleriYukle();
+    if (!mounted) return;
+    _mesaj('${o.ad} çıkarıldı. Kurulum dosyasını yeniden üretin.');
+  }
+
+  /// Öğretmenin telefonuna okutulacak QR.
+  ///
+  /// Secret bu QR ile gidiyor; ekran görüntüsü alınıp paylaşılmaması
+  /// gerektiği açıkça yazılıyor.
+  Future<void> _kurulumQrGoster(PanoOgretmeni o, String okulId) async {
+    if (okulId.isEmpty) {
+      _mesaj('Okul bilgisi okunamadı.', hata: true);
+      return;
+    }
+
+    final yuk = TahtaOgretmenDeposu.kurulumQrYuku(
+      okulId: okulId,
+      ogretmen: o,
+    );
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(o.ad,
+            style: AppFonts.outfit(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              color: Colors.white,
+              child: QrImageView(
+                data: yuk,
+                version: QrVersions.auto,
+                size: 220,
+                backgroundColor: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Öğretmen SınıfCepte > Profil > Tahta Kilidi ekranından '
+              'bu kodu okutmalı.',
+              textAlign: TextAlign.center,
+              style: AppFonts.outfit(fontSize: 12, height: 1.4),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Bu QR öğretmenin açma yetkisini taşır. Ekran görüntüsü '
+              'alıp paylaşmayın.',
+              textAlign: TextAlign.center,
+              style: AppFonts.outfit(
+                fontSize: 10.5,
+                color: Colors.redAccent,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Kapat'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _ogretmenleriYukle() async {
+    final liste = await _ogretmenDeposu.oku();
+    if (!mounted) return;
+    setState(() => _ogretmenListesi = liste);
+  }
+
+  // --- 3. Nöbetçi ---
 
   Widget _nobetciBolumu(bool isDark, String okulId) {
     return _kart(

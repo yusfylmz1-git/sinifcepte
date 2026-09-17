@@ -9,6 +9,7 @@ import '../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../auth_profile/presentation/views/school_admin_panel_view.dart';
 import '../../auth_profile/presentation/views/school_admin_request_view.dart';
 import '../../auth_profile/providers/user_role_provider.dart';
+import '../../board_config/presentation/tahta_kilidi_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../parent_portal/presentation/widgets/help_support_modal.dart';
 
@@ -337,6 +338,65 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              const SizedBox(height: 12),
+
+              // Tahta Kilidi Kartı
+              //
+              // Öğretmen tarafı: idarecinin gösterdiği kurulum QR'ı bir
+              // kez okutulur, sonra her derste tahtadaki QR okutularak
+              // (veya kamerasız cihazda doğrudan) 6 haneli kod üretilir.
+              //
+              // Okul yöneticiliği kartından ayrı: bu kart her öğretmene
+              // görünür, yöneticilik isteğe bağlı bir ek yetkidir.
+              GlassCard(
+                padding: EdgeInsets.zero,
+                child: ListTile(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const TahtaKilidiScreen(),
+                      ),
+                    );
+                  },
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.desktop_windows_outlined,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  title: Text(
+                    'Tahta Kilidi',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: isDark
+                          ? AppColors.textPrimaryDark
+                          : AppColors.textPrimaryLight,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Etkileşimli tahtayı telefonunuzla açın',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark
+                          ? AppColors.textSecondaryDark
+                          : AppColors.textSecondaryLight,
+                    ),
+                  ),
+                  trailing: Icon(
+                    Icons.chevron_right_rounded,
+                    color: isDark
+                        ? AppColors.textSecondaryDark
+                        : AppColors.textSecondaryLight,
+                  ),
+                ),
+              ),
+
               const SizedBox(height: 12),
 
               // Okul Yöneticiliği Kartı
