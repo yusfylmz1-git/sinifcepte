@@ -249,4 +249,52 @@ void main() {
     expect(rfcSecret, isNotEmpty);
     expect(rfcSecretBase32.length, 32);
   });
+
+  group('Secret üretimi (idareci öğretmen eklerken)', () {
+    test('üretilen secret kod üretebiliyor', () {
+      // Üretim → çözme → kod turu kapanmalı; base32 kodlaması bozuksa
+      // idareci öğretmen ekler ama öğretmen hiç kod üretemez.
+      final secret = TahtaTotp.secretUret();
+      final kod = TahtaTotp.kodUret(secret, an: an(1111111109));
+
+      expect(kod.length, 6);
+      expect(RegExp(r'^\d{6}$').hasMatch(kod), isTrue);
+    });
+
+    test('dolgusuz base32 üretir', () {
+      // Python tarafı dolgusuzu kabul ediyor; '=' eklemek gereksiz
+      // uzunluk ve elle girişte karışıklık demek.
+      expect(TahtaTotp.secretUret(), isNot(contains('=')));
+    });
+
+    test('yalnızca base32 alfabesi', () {
+      final secret = TahtaTotp.secretUret();
+      expect(RegExp(r'^[A-Z2-7]+$').hasMatch(secret), isTrue);
+    });
+
+    test('20 bayt için 32 karakter (RFC 4226 önerisi)', () {
+      // 20 bayt = 160 bit; base32'de 5 bit/karakter → 32 karakter.
+      expect(TahtaTotp.secretUret().length, 32);
+    });
+
+    test('KRİTİK: her çağrı farklı secret üretir', () {
+      // Tahmin edilebilir veya tekrar eden secret, bir öğretmenin
+      // başkasının adına kilit açması demekti.
+      final kume = <String>{};
+      for (var i = 0; i < 200; i++) {
+        kume.add(TahtaTotp.secretUret());
+      }
+      expect(kume.length, 200);
+    });
+
+    test('KRİTİK: iki secret birbirinin kodunu kabul etmez', () {
+      final a = TahtaTotp.secretUret();
+      final b = TahtaTotp.secretUret();
+
+      final kodA = TahtaTotp.kodUret(a, an: an(1111111109));
+      final kodB = TahtaTotp.kodUret(b, an: an(1111111109));
+
+      expect(kodA, isNot(kodB));
+    });
+  });
 }

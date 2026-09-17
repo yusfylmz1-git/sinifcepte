@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
@@ -113,6 +114,44 @@ class TahtaTotp {
 
     final bolen = _onunKuvveti(hane);
     return (parca % bolen).toString().padLeft(hane, '0');
+  }
+
+  /// Yeni TOTP secret'i üretir (base32, dolgusuz).
+  ///
+  /// İdareci bir öğretmen eklediğinde çağrılır; üretilen secret hem
+  /// `okul_config`'e (tahta doğrulayacak) hem QR ile öğretmenin
+  /// telefonuna (kod üretecek) gider.
+  ///
+  /// 20 bayt = 160 bit, RFC 4226'nın önerdiği uzunluk.
+  /// `Random.secure()` işletim sisteminin entropi kaynağını kullanır:
+  /// tahmin edilebilir secret, başkasının adına kilit açmak demekti.
+  ///
+  /// Python karşılığı: `cekirdek/totp.py::secret_uret`.
+  static String secretUret({int baytSayisi = 20}) {
+    const alfabe = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    final rastgele = Random.secure();
+
+    // Base32: her 5 bit bir karakter. Dolgu (=) eklenmiyor; çözücü
+    // tarafı zaten dolgusuzu kabul ediyor.
+    final baytlar = List<int>.generate(baytSayisi, (_) => rastgele.nextInt(256));
+
+    var bitTamponu = 0;
+    var bitSayisi = 0;
+    final cikti = StringBuffer();
+
+    for (final bayt in baytlar) {
+      bitTamponu = (bitTamponu << 8) | bayt;
+      bitSayisi += 8;
+      while (bitSayisi >= 5) {
+        bitSayisi -= 5;
+        cikti.write(alfabe[(bitTamponu >> bitSayisi) & 0x1F]);
+      }
+    }
+    if (bitSayisi > 0) {
+      cikti.write(alfabe[(bitTamponu << (5 - bitSayisi)) & 0x1F]);
+    }
+
+    return cikti.toString();
   }
 
   /// Kodun geçerli kalacağı saniye sayısı.
