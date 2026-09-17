@@ -479,22 +479,29 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
     }
 
     setState(() => _isliyor = true);
-    final kayit = await _ogretmenDeposu.ekle(ad: ad);
+    final sonuc = await _ogretmenDeposu.ekle(ad: ad);
     if (!mounted) return;
-    setState(() => _isliyor = false);
 
-    if (kayit == null) {
-      _mesaj('Eklenemedi. Aynı kod zaten kayıtlı olabilir.', hata: true);
+    // Liste doğrudan sonuçtan geliyor; `_ogretmenleriYukle()`
+    // çağırmıyoruz. O çağrı güvenli depoya ÜÇÜNCÜ turu yapıyordu ve
+    // yavaş Keystore'lu cihazlarda toplam süre ANR eşiğini (5 sn)
+    // aşıp "uygulama yanıt vermiyor" veriyordu.
+    setState(() {
+      _isliyor = false;
+      _ogretmenListesi = sonuc.liste;
+    });
+
+    if (!sonuc.basarili) {
+      // Sebebi depo söylüyor; arayüz artık tahmin etmiyor.
+      _mesaj(sonuc.hata ?? 'Öğretmen eklenemedi.', hata: true);
       return;
     }
 
     _ogretmenAdCtrl.clear();
-    await _ogretmenleriYukle();
-    if (!mounted) return;
 
     // Ekledikten sonra QR'ı hemen göster: idareci öğretmeni karşısında
     // bulmuşken okutması en pratik an.
-    await _kurulumQrGoster(kayit, okulId);
+    await _kurulumQrGoster(sonuc.kayit!, okulId);
   }
 
   Future<void> _ogretmenCikar(PanoOgretmeni o) async {

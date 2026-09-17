@@ -31,6 +31,38 @@ import '../utils/tahta_totp.dart';
 /// Yalnızca `okul_config` dosyasına (imzalı, flash bellekle) ve QR
 /// yoluyla öğretmenin telefonuna. Firestore'a yazılmıyor: secret'ın
 /// bulutta durması için hiçbir sebep yok ve KVKK yüzeyini büyütürdü.
+/// Öğretmen ekleme sonucu: yeni kayıt + güncel liste.
+///
+/// Listeyi birlikte döndürmek, çağıranın ekledikten sonra depoyu
+/// yeniden okumasını gereksiz kılıyor. Sebebi maliyet değil
+/// **donma**: her güvenli depo turu yavaş Keystore'lu cihazlarda
+/// ~340 ms ve üç tur ANR eşiğini aşıyordu.
+class OgretmenEklemeSonucu {
+  const OgretmenEklemeSonucu({
+    this.kayit,
+    this.liste = const [],
+    this.hata,
+  });
+
+  /// Eklenen öğretmen. Başarısızsa null.
+  ///
+  /// Secret'ı taşır; çağıran taraf QR göstermek için kullanır.
+  final PanoOgretmeni? kayit;
+
+  /// Ekleme sonrası güncel liste. Başarısız olsa bile mevcut listeyi
+  /// taşır, böylece arayüz elindeki veriyi kaybetmez.
+  final List<PanoOgretmeni> liste;
+
+  /// Kullanıcıya gösterilecek sebep. Başarılıysa null.
+  ///
+  /// Eskiden `ekle()` yalnızca null dönüyordu ve arayüz "Aynı kod
+  /// zaten kayıtlı olabilir" diye **tahmin** yazıyordu — oysa sebep
+  /// depoya yazamamak da olabilirdi.
+  final String? hata;
+
+  bool get basarili => kayit != null;
+}
+
 class TahtaOgretmenDeposu {
   TahtaOgretmenDeposu({FlutterSecureStorage? depo})
       : _depo = depo ??
@@ -80,14 +112,31 @@ class TahtaOgretmenDeposu {
   /// öğretmenin secret'ını kazara değiştirmek, onun telefonundaki kaydı
   /// geçersiz kılar ve öğretmen sebebini anlamaz.
   ///
-  /// Dönen kayıt secret'ı taşır; çağıran taraf QR göstermek için
-  /// kullanır.
-  Future<PanoOgretmeni?> ekle({
+  /// Dönen sonuç hem yeni kaydı hem **güncel listeyi** taşır.
+  ///
+  /// ## Neden liste de dönüyor
+  ///
+  /// Çağıran taraf eskiden ekledikten sonra `oku()` çağırıp listeyi
+  /// yeniliyordu. Bu, tek bir ekleme için **üç Keystore turu** demekti
+  /// (oku + yaz + tekrar oku). Yavaş Keystore'lu cihazlarda her tur
+  /// ~340 ms sürüyor ve üçü birlikte ANR eşiğini (5 sn) aşıyordu:
+  /// "SınıfCepte yanıt vermiyor".
+  ///
+  /// Ölçüm (Redmi/MediaTek, MIUI):
+  ///   Slow Binder: BpBinder transact took 339 ms,
+  ///     interface=android.system.keystore2.IKeystoreSecurityLevel
+  ///   keystore2: Error::Km(HARDWARE_TYPE_UNAVAILABLE)
+  ///
+  /// Güncel liste zaten elimizde olduğu için üçüncü tur tamamen
+  /// gereksizdi.
+  Future<OgretmenEklemeSonucu> ekle({
     required String ad,
     String? kod,
   }) async {
     final temizAd = ad.trim();
-    if (temizAd.isEmpty) return null;
+    if (temizAd.isEmpty) {
+      return const OgretmenEklemeSonucu(hata: 'Öğretmen adı boş olamaz.');
+    }
 
     final mevcut = await oku();
     final yeniKod = (kod?.trim().isNotEmpty ?? false)
@@ -96,7 +145,10 @@ class TahtaOgretmenDeposu {
 
     if (mevcut.any((o) => o.kod.toUpperCase() == yeniKod)) {
       debugPrint('Öğretmen kodu zaten var: $yeniKod');
-      return null;
+      return OgretmenEklemeSonucu(
+        liste: mevcut,
+        hata: '$yeniKod kodu zaten kayıtlı.',
+      );
     }
 
     final kayit = PanoOgretmeni(
@@ -105,8 +157,15 @@ class TahtaOgretmenDeposu {
       totpSecret: _secretUret(),
     );
 
-    final basarili = await _yaz([...mevcut, kayit]);
-    return basarili ? kayit : null;
+    final yeniListe = [...mevcut, kayit];
+    if (!await _yaz(yeniListe)) {
+      return OgretmenEklemeSonucu(
+        liste: mevcut,
+        hata: 'Kaydedilemedi. Cihaz güvenli deposuna yazılamadı.',
+      );
+    }
+
+    return OgretmenEklemeSonucu(kayit: kayit, liste: yeniListe);
   }
 
   /// Öğretmeni siler.

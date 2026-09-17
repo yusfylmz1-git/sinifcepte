@@ -21,6 +21,21 @@ class _BellekDepo extends FlutterSecureStorage {
   final Map<String, String> _veri = {};
   bool hataVer = false;
 
+  /// Platform kanalına kaç kez gidildi.
+  ///
+  /// Gerçek cihazda her tur Keystore'a iniyor ve yavaş Keystore'lu
+  /// telefonlarda ~340 ms sürüyor (ölçüldü: Redmi/MediaTek,
+  /// `Slow Binder: BpBinder transact took 339 ms`). Sayı önemli:
+  /// üç tur ANR eşiğini (5 sn) aşıp "uygulama yanıt vermiyor"
+  /// veriyordu.
+  int okumaSayisi = 0;
+  int yazmaSayisi = 0;
+
+  void sayaclariSifirla() {
+    okumaSayisi = 0;
+    yazmaSayisi = 0;
+  }
+
   @override
   Future<String?> read({
     required String key,
@@ -31,6 +46,7 @@ class _BellekDepo extends FlutterSecureStorage {
     AppleOptions? mOptions,
     WindowsOptions? wOptions,
   }) async {
+    okumaSayisi++;
     if (hataVer) throw Exception('depo erişilemiyor');
     return _veri[key];
   }
@@ -46,6 +62,7 @@ class _BellekDepo extends FlutterSecureStorage {
     AppleOptions? mOptions,
     WindowsOptions? wOptions,
   }) async {
+    yazmaSayisi++;
     if (hataVer) throw Exception('depo erişilemiyor');
     if (value == null) {
       _veri.remove(key);
@@ -83,7 +100,7 @@ void main() {
 
   group('Öğretmen ekleme', () {
     test('ilk öğretmen eklenir ve secret üretilir', () async {
-      final kayit = await ogretmenler.ekle(ad: 'A. Yılmaz');
+      final kayit = (await ogretmenler.ekle(ad: 'A. Yılmaz')).kayit;
 
       expect(kayit, isNotNull);
       expect(kayit!.ad, 'A. Yılmaz');
@@ -94,7 +111,7 @@ void main() {
     test('KRİTİK: üretilen secret gerçekten kod üretebiliyor', () async {
       // Secret bozuksa idareci öğretmeni ekler, öğretmen QR'ı okutur
       // ama hiç kod üretemez — sahada teşhisi zor.
-      final kayit = await ogretmenler.ekle(ad: 'B. Demir');
+      final kayit = (await ogretmenler.ekle(ad: 'B. Demir')).kayit;
 
       final kod = TahtaTotp.kodUret(
         kayit!.totpSecret,
@@ -104,14 +121,18 @@ void main() {
       expect(kod.length, 6);
     });
 
-    test('boş ad reddedilir', () async {
-      expect(await ogretmenler.ekle(ad: '   '), isNull);
+    test('boş ad reddedilir ve sebebini söyler', () async {
+      final sonuc = await ogretmenler.ekle(ad: '   ');
+      expect(sonuc.basarili, isFalse);
+      expect(sonuc.kayit, isNull);
+      // Arayüz artık sebebi tahmin etmiyor, depo söylüyor.
+      expect(sonuc.hata, isNotNull);
       expect(await ogretmenler.oku(), isEmpty);
     });
 
     test('KRİTİK: her öğretmen farklı secret alır', () async {
-      final a = await ogretmenler.ekle(ad: 'A. Yılmaz');
-      final b = await ogretmenler.ekle(ad: 'B. Demir');
+      final a = (await ogretmenler.ekle(ad: 'A. Yılmaz')).kayit;
+      final b = (await ogretmenler.ekle(ad: 'B. Demir')).kayit;
 
       expect(a!.totpSecret, isNot(b!.totpSecret));
     });
@@ -120,21 +141,21 @@ void main() {
       // Mevcut öğretmenin secret'ını kazara değiştirmek, onun
       // telefonundaki kaydı geçersiz kılar ve sebebi anlaşılmaz.
       await ogretmenler.ekle(ad: 'A. Yılmaz', kod: 'OGR001');
-      final ikinci = await ogretmenler.ekle(ad: 'Başkası', kod: 'OGR001');
+      final ikinci = (await ogretmenler.ekle(ad: 'Başkası', kod: 'OGR001')).kayit;
 
       expect(ikinci, isNull);
       expect((await ogretmenler.oku()).length, 1);
     });
 
     test('elle verilen kod büyük harfe çevrilir', () async {
-      final kayit = await ogretmenler.ekle(ad: 'A. Yılmaz', kod: 'ogr001');
+      final kayit = (await ogretmenler.ekle(ad: 'A. Yılmaz', kod: 'ogr001')).kayit;
       expect(kayit!.kod, 'OGR001');
     });
   });
 
   group('Kod türetme — tahta klavyesinde Türkçe düzen olmayabilir', () {
     test('KRİTİK: Türkçe harfler ASCII\'ye iner', () async {
-      final kayit = await ogretmenler.ekle(ad: 'Şükrü Çağlayan');
+      final kayit = (await ogretmenler.ekle(ad: 'Şükrü Çağlayan')).kayit;
 
       // Ş→S, ü→U, ç→C, ğ→G olmalı; kod tahtada elle giriliyor.
       expect(RegExp(r'^[A-Z0-9]+$').hasMatch(kayit!.kod), isTrue);
@@ -144,28 +165,28 @@ void main() {
     test('İ harfi tuzağı', () async {
       // Türkçe'de 'İ'.toLowerCase() bozuk sonuç verir; trFold bunu
       // doğru ele alıyor.
-      final kayit = await ogretmenler.ekle(ad: 'İbrahim Işık');
+      final kayit = (await ogretmenler.ekle(ad: 'İbrahim Işık')).kayit;
 
       expect(RegExp(r'^[A-Z0-9]+$').hasMatch(kayit!.kod), isTrue);
       expect(kayit.kod, startsWith('IBRAHIM'));
     });
 
     test('noktalama atılır', () async {
-      final kayit = await ogretmenler.ekle(ad: 'A. Yılmaz-Demir');
+      final kayit = (await ogretmenler.ekle(ad: 'A. Yılmaz-Demir')).kayit;
       expect(RegExp(r'^[A-Z0-9]+$').hasMatch(kayit!.kod), isTrue);
     });
 
     test('kod 10 karakterle sınırlı', () async {
-      final kayit = await ogretmenler.ekle(
+      final kayit = (await ogretmenler.ekle(
         ad: 'Abdurrahman Muhammedoglu Uzunisimli',
-      );
+      )).kayit;
       // Sayı eklenirse biraz uzayabilir ama makul kalmalı.
       expect(kayit!.kod.length, lessThanOrEqualTo(12));
     });
 
     test('KRİTİK: aynı isimde iki öğretmen çakışmaz', () async {
-      final a = await ogretmenler.ekle(ad: 'Ali Veli');
-      final b = await ogretmenler.ekle(ad: 'Ali Veli');
+      final a = (await ogretmenler.ekle(ad: 'Ali Veli')).kayit;
+      final b = (await ogretmenler.ekle(ad: 'Ali Veli')).kayit;
 
       expect(b, isNotNull);
       expect(b!.kod, isNot(a!.kod));
@@ -175,7 +196,7 @@ void main() {
 
   group('Silme ve yenileme', () {
     test('öğretmen silinir', () async {
-      final kayit = await ogretmenler.ekle(ad: 'A. Yılmaz');
+      final kayit = (await ogretmenler.ekle(ad: 'A. Yılmaz')).kayit;
 
       expect(await ogretmenler.sil(kayit!.kod), isTrue);
       expect(await ogretmenler.oku(), isEmpty);
@@ -191,7 +212,7 @@ void main() {
     });
 
     test('secret yenilenince değişir, kod ve ad korunur', () async {
-      final eski = await ogretmenler.ekle(ad: 'A. Yılmaz', kod: 'OGR001');
+      final eski = (await ogretmenler.ekle(ad: 'A. Yılmaz', kod: 'OGR001')).kayit;
 
       final yeni = await ogretmenler.secretYenile('OGR001');
 
@@ -251,7 +272,68 @@ void main() {
       depo.hataVer = true;
 
       expect(await ogretmenler.oku(), isEmpty);
-      expect(await ogretmenler.ekle(ad: 'A. Yılmaz'), isNull);
+
+      final sonuc = await ogretmenler.ekle(ad: 'A. Yılmaz');
+      expect(sonuc.basarili, isFalse);
+      // Depo yazamadığında sebep "aynı kod var" DEĞİL. Arayüz eskiden
+      // bunu tahmin ediyordu ve idareci yanlış yere bakıyordu.
+      expect(sonuc.hata, contains('yazılamadı'));
+    });
+  });
+
+  group('Güvenli depo turu sayısı — ANR koruması', () {
+    late _BellekDepo depo;
+    late TahtaOgretmenDeposu ogretmenler;
+
+    setUp(() {
+      depo = _BellekDepo();
+      ogretmenler = TahtaOgretmenDeposu(depo: depo);
+    });
+
+    test('KRİTİK: ekleme en fazla bir okuma + bir yazma yapıyor', () async {
+      depo.sayaclariSifirla();
+      final sonuc = await ogretmenler.ekle(ad: 'A. Yılmaz');
+
+      expect(sonuc.basarili, isTrue);
+
+      // Gerçek cihazda her tur Keystore'a iniyor (~340 ms ölçüldü).
+      // Arayüz eskiden ekledikten sonra listeyi YENİDEN okuyordu ve
+      // toplam üç tur ANR eşiğini aşıyordu:
+      //   ANR in com.sinifcepte.sinifcepte
+      //   Reason: Input dispatching timed out (Waited 5000ms)
+      //
+      // Bu yüzden `ekle()` güncel listeyi kendisi döndürüyor;
+      // çağıranın üçüncü tura ihtiyacı yok.
+      expect(depo.okumaSayisi, 1, reason: 'fazladan okuma turu var');
+      expect(depo.yazmaSayisi, 1, reason: 'fazladan yazma turu var');
+    });
+
+    test('KRİTİK: dönen liste eklenen kaydı içeriyor', () async {
+      // Bu, üçüncü turu gereksiz kılan şey. Liste dönmezse çağıran
+      // taraf depoyu yeniden okumak zorunda kalır ve ANR geri gelir.
+      final sonuc = await ogretmenler.ekle(ad: 'A. Yılmaz');
+
+      expect(sonuc.liste, hasLength(1));
+      expect(sonuc.liste.first.kod, sonuc.kayit!.kod);
+      expect(sonuc.liste.first.totpSecret, sonuc.kayit!.totpSecret);
+    });
+
+    test('dönen liste önceki kayıtları da taşıyor', () async {
+      await ogretmenler.ekle(ad: 'A. Yılmaz');
+      final sonuc = await ogretmenler.ekle(ad: 'B. Demir');
+
+      expect(sonuc.liste, hasLength(2));
+    });
+
+    test('başarısız eklemede liste kaybolmuyor', () async {
+      await ogretmenler.ekle(ad: 'A. Yılmaz', kod: 'OGR001');
+
+      // Aynı kod: eklenmez ama arayüz elindeki listeyi kaybetmemeli.
+      final sonuc = await ogretmenler.ekle(ad: 'Başkası', kod: 'OGR001');
+
+      expect(sonuc.basarili, isFalse);
+      expect(sonuc.liste, hasLength(1));
+      expect(sonuc.liste.first.ad, 'A. Yılmaz');
     });
   });
 

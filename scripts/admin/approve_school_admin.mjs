@@ -60,11 +60,20 @@ try {
   process.exit(1);
 }
 
-const app = admin.default.initializeApp({
-  credential: admin.default.credential.applicationDefault(),
-});
-const auth = admin.default.auth(app);
-const db = admin.default.firestore(app);
+// `firebase-admin` v12+ ESM altında `credential` ara katmanını
+// kaldırdı: `applicationDefault` doğrudan modülün üstünde duruyor.
+// Eski `admin.credential.applicationDefault()` yolu burada
+// `undefined` okuyup çöküyordu.
+//
+// Alt modüller de ayrı içe aktarılıyor; `admin.auth()` / `admin.firestore()`
+// çağrı biçimi modüler API'de yok.
+const { initializeApp, applicationDefault } = admin.default ?? admin;
+const { getAuth } = await import('firebase-admin/auth');
+const { getFirestore } = await import('firebase-admin/firestore');
+
+const app = initializeApp({ credential: applicationDefault() });
+const auth = getAuth(app);
+const db = getFirestore(app);
 
 const REQUESTS = 'school_admin_requests';
 
