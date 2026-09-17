@@ -70,7 +70,16 @@ class _SchoolAdminRequestViewState
       });
     } catch (e, stackTrace) {
       debugPrint('Başvuru okuma hatası: $e\n$stackTrace');
-      if (mounted) setState(() => _loading = false);
+      if (!mounted) return;
+      // Okuma başarısızsa mevcut başvuru bilinmiyor. Sessizce forma
+      // düşmek, başvurusu zaten kayıtlı olan öğretmene "hiç
+      // başvurmamışsın" demek olur ve ikinci gönderim kural
+      // tarafından reddedilir (create izni var, update yok).
+      setState(() {
+        _loading = false;
+        _error = 'Başvuru durumu okunamadı. Bağlantınızı kontrol edip '
+            'ekranı yeniden açın.';
+      });
     }
   }
 
@@ -111,8 +120,13 @@ class _SchoolAdminRequestViewState
       if (!ok) {
         setState(() {
           _submitting = false;
-          _error =
-              'Başvuru gönderilemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.';
+          // "İnternet bağlantınızı kontrol edin" demiyoruz: bu mesaj
+          // bir dönem buradaydı ve gerçek sebep bulut istemcisinin
+          // hazır olmaması olduğu hâlde öğretmeni modemine
+          // yönlendiriyordu. Sebep tek değil, o yüzden mesaj da
+          // tek sebep göstermiyor.
+          _error = 'Başvuru gönderilemedi. Bağlantınızı kontrol edin; '
+              'sorun sürerse uygulamayı yeniden başlatıp deneyin.';
         });
         return;
       }

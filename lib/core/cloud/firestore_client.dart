@@ -73,12 +73,40 @@ class FirestoreClient {
 
   FirebaseFirestore? get db => _db;
 
+  /// Firestore'u hazırlar ve hazır olup olmadığını döndürür.
+  ///
+  /// ## Neden her giriş noktası bunu çağırmak zorunda
+  ///
+  /// `isReady` yalnızca **durumu okur**, yapılandırmayı tetiklemez.
+  /// `getDoc`/`setDoc` bir dönem doğrudan `isReady`'ye bakıyordu ve
+  /// `ensureConfigured()` yalnızca sorgu (`where`) kullanan metotlara
+  /// eklenmişti — çünkü orada `db` null olunca kod **çöküyordu**, yani
+  /// eksiklik hemen görünüyordu.
+  ///
+  /// `getDoc`/`setDoc` ise sessizce `null`/`false` dönüyordu. Sonuç:
+  /// uygulama açılışında başka bir kod yapılandırmayı tetiklemediyse
+  /// **her tek doküman okuma/yazma başarısız oluyor** ve kullanıcı
+  /// "internet bağlantınızı kontrol edin" görüyordu — interneti
+  /// çalışırken.
+  ///
+  /// Sahada görülen hâli: okul yöneticiliği başvurusu hiç
+  /// gönderilemiyordu ve mevcut başvuru da okunamadığı için ekran
+  /// sürekli boş form gösteriyordu.
+  Future<bool> _hazirla() async {
+    if (isReady) return true;
+    await ensureConfigured();
+    return isReady;
+  }
+
   /// Tek doküman okur.
   ///
   /// Deterministik doküman kimliği kullanıldığında bu, sorgu (`where`)
   /// yerine tercih edilmelidir: indeks gerektirmez ve tek okuma sayılır.
   Future<Map<String, dynamic>?> getDoc(String path) async {
-    if (!isReady) return null;
+    if (!await _hazirla()) {
+      debugPrint('Firestore getDoc atlandı ($path): bulut hazır değil');
+      return null;
+    }
     try {
       final snap = await _db!.doc(path).get().timeout(_networkTimeout);
       await FirestoreBudgetGuard.instance.recordRead();
@@ -96,10 +124,16 @@ class FirestoreClient {
     Map<String, dynamic> data, {
     bool merge = true,
   }) async {
-    if (!isReady) return false;
+    if (!await _hazirla()) {
+      debugPrint('Firestore setDoc atlandı ($path): bulut hazır değil');
+      return false;
+    }
 
     // Bütçe freni: kaçak bir döngü faturayı patlatmadan burada durur.
-    if (!await FirestoreBudgetGuard.instance.allowWrite()) return false;
+    if (!await FirestoreBudgetGuard.instance.allowWrite()) {
+      debugPrint('Firestore setDoc atlandı ($path): günlük yazma sınırı');
+      return false;
+    }
 
     try {
       await _db!
@@ -118,8 +152,14 @@ class FirestoreClient {
   /// Silme ($0,02/100K) okumadan üç kat ucuzdur; kullanılmayan veriyi
   /// tutmak yerine silmek hem maliyeti hem KVKK yüzeyini azaltır.
   Future<bool> deleteDoc(String path) async {
-    if (!isReady) return false;
-    if (!await FirestoreBudgetGuard.instance.allowWrite()) return false;
+    if (!await _hazirla()) {
+      debugPrint('Firestore deleteDoc atlandı ($path): bulut hazır değil');
+      return false;
+    }
+    if (!await FirestoreBudgetGuard.instance.allowWrite()) {
+      debugPrint('Firestore deleteDoc atlandı ($path): günlük yazma sınırı');
+      return false;
+    }
 
     try {
       await _db!.doc(path).delete().timeout(_networkTimeout);
@@ -135,10 +175,15 @@ class FirestoreClient {
   /// [writes] içindeki `null` değer o yolun silineceği anlamına gelir.
   /// Firestore batch sınırı 500 işlemdir; daha fazlası parçalara bölünür.
   Future<bool> commitBatch(Map<String, Map<String, dynamic>?> writes) async {
-    if (!isReady || writes.isEmpty) return false;
+    if (writes.isEmpty) return false;
+    if (!await _hazirla()) {
+      debugPrint('Firestore commitBatch atlandı: bulut hazır değil');
+      return false;
+    }
 
     // Batch, işlem sayısı kadar yazma sayılır.
     if (!await FirestoreBudgetGuard.instance.allowWrite(count: writes.length)) {
+      debugPrint('Firestore commitBatch atlandı: günlük yazma sınırı');
       return false;
     }
 
