@@ -54,7 +54,10 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
 
   bool _yukleniyor = true;
   bool _anahtarVar = false;
-  DateTime? _anahtarTarihi;
+
+  /// Müdür yedeği aldı mı? Anahtar otomatik üretiliyor; müdürün tek
+  /// gerçek görevi bu.
+  bool _yedekAlindi = false;
 
   // Pano içeriği
   final _duyuruBaslikCtrl = TextEditingController();
@@ -115,13 +118,21 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
   }
 
   Future<void> _durumYukle() async {
+    // Anahtar OTOMATİK hazırlanıyor.
+    //
+    // Kullanıcı kararı (18 Eylül 2026): *"anahtar oluşturma ve yedek
+    // alma teknik işler, müdür neden var olduğunu anlayamaz."*
+    // `anahtarHazirla()` varsa dokunmuyor, yoksa üretiyor — yani
+    // müdürün "Anahtar Oluştur" düğmesine basması gerekmiyor.
+    await _anahtarDeposu.anahtarHazirla();
+
     final varMi = await _anahtarDeposu.anahtarVarMi();
-    final tarih = await _anahtarDeposu.uretimTarihi();
+    final yedek = await _anahtarDeposu.yedekAlindiMi();
     final liste = await _ogretmenDeposu.oku();
     if (!mounted) return;
     setState(() {
       _anahtarVar = varMi;
-      _anahtarTarihi = tarih;
+      _yedekAlindi = yedek;
       _ogretmenListesi = liste;
       _yukleniyor = false;
     });
@@ -243,91 +254,130 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
     );
   }
 
-  // --- 1. Anahtar ---
+  // --- 1. Güvenlik yedeği ---
 
+  /// Anahtar bölümü — **teknik dil yok, otomatik**.
+  ///
+  /// ## Neden değişti
+  ///
+  /// Kullanıcı itirazı (18 Eylül 2026): *"anahtar oluşturma ve yedek
+  /// alma işlemleri teknik işler; bu işleri müdür neden var olduğunu
+  /// anlayamaz. Bunu otomatikleştiremez miyiz?"*
+  ///
+  /// Haklıydı. "İmzalama anahtarı" bir kriptografi terimi ve müdürün
+  /// onu bilmesi gerekmiyor. Eskiden ekran müdüre bir düğme gösterip
+  /// "Anahtar Oluştur" diyordu; müdür ne olduğunu bilmeden basıyordu
+  /// ve basmazsa kurulum dosyası üretilemiyordu.
+  ///
+  /// Artık anahtar **ekran açılırken kendiliğinden** hazırlanıyor
+  /// (`_durumYukle`). Müdür yalnızca şunu görüyor: yedeğini almış mı,
+  /// almamış mı.
+  ///
+  /// ## Yedek neden hâlâ müdürün işi
+  ///
+  /// Anahtar kaybolursa geri dönüşü yok: yeni yapılandırma
+  /// yayımlanamaz ve her tahtaya elden gitmek gerekir. Bunu
+  /// otomatikleştirmenin tek yolu anahtarı buluta yazmak olurdu — o
+  /// da "özel anahtar cihazdan çıkmaz" kararını bozar.
+  ///
+  /// Yani yedek bir seçim değil, **tek gerçek görev**. Ekran da onu
+  /// tek iş olarak sunuyor.
   Widget _anahtarBolumu(bool isDark, String okulAdi) {
-    return _kart(
-      isDark,
-      baslik: '🔑 İmzalama Anahtarı',
-      aciklama: _anahtarVar
-          ? 'Tahtaya gönderdiğiniz dosyalar bu anahtarla imzalanır.'
-          : 'Yapılandırma üretmek için önce anahtar oluşturulmalı.',
-      cocuklar: [
-        if (_anahtarVar) ...[
+    if (!_anahtarVar) {
+      // Otomatik hazırlanıyor; müdürün yapacağı bir şey yok.
+      return _kart(
+        isDark,
+        baslik: '🛡️ Güvenlik',
+        aciklama: 'Tahta güvenliği hazırlanıyor…',
+        cocuklar: const [
+          Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        ],
+      );
+    }
+
+    if (_yedekAlindi) {
+      return _kart(
+        isDark,
+        baslik: '🛡️ Güvenlik',
+        aciklama: 'Tahtalara gönderdiğiniz dosyalar bu telefonla '
+            'imzalanıyor. Yedeğinizi aldınız.',
+        cocuklar: [
           _bilgiSatiri(
-            Icons.check_circle_outline_rounded,
-            'Anahtar hazır',
-            _anahtarTarihi == null
-                ? ''
-                : '${_anahtarTarihi!.day}.${_anahtarTarihi!.month}.'
-                    '${_anahtarTarihi!.year} tarihinde oluşturuldu',
-            Colors.green,
+            Icons.verified_user_outlined,
+            'Yedek alındı',
+            'Telefonunuz değişirse yedekten geri yükleyebilirsiniz',
+            const Color(0xFF10B981),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed:
-                      _isliyor ? null : () => _yedegiGoster(okulAdi),
-                  icon: const Icon(Icons.shield_outlined, size: 17),
-                  label: Text('Yedeğini Al',
-                      style: AppFonts.outfit(fontSize: 12.5)),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _isliyor ? null : _anahtariDegistir,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.redAccent,
-                  ),
-                  icon: const Icon(Icons.autorenew_rounded, size: 17),
-                  label: Text('Yenile',
-                      style: AppFonts.outfit(fontSize: 12.5)),
+                  onPressed: _isliyor ? null : () => _yedegiGoster(okulAdi),
+                  icon: const Icon(Icons.visibility_outlined, size: 17),
+                  label: Text('Yedeği Tekrar Göster',
+                      style: AppFonts.outfit(fontSize: 12)),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Anahtarı kaybederseniz yeni yapılandırma yayımlayamazsınız '
-            've her tahtaya elden yeni anahtar kurmanız gerekir. '
-            'Yedeğini güvenli bir yere kaydedin.',
-            style: AppFonts.outfit(
-              fontSize: 10.5,
-              color: Colors.grey,
-              height: 1.4,
-            ),
+        ],
+      );
+    }
+
+    // Yedek alınmamış: TEK iş bu ve vurgulu duruyor.
+    return _kart(
+      isDark,
+      baslik: '🛡️ Güvenlik Yedeği',
+      aciklama: 'Tahtalara gönderdiğiniz dosyalar bu telefonla '
+          'imzalanıyor. Telefonunuz değişirse bu yedek olmadan '
+          'tahtaları yeniden kurmanız gerekir.',
+      cocuklar: [
+        Container(
+          padding: const EdgeInsets.all(11),
+          decoration: BoxDecoration(
+            color: Colors.orange.withValues(alpha: isDark ? 0.14 : 0.10),
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
           ),
-        ] else
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _isliyor ? null : _anahtarOlustur,
-              icon: const Icon(Icons.key_rounded, size: 18),
-              label: Text('Anahtar Oluştur',
-                  style: AppFonts.outfit(fontSize: 13)),
-            ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.warning_amber_rounded,
+                  size: 18, color: Colors.orange),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  'Yedeğinizi henüz almadınız. Bir dakikanızı alır ve '
+                  'bir kez yapılır.',
+                  style: AppFonts.outfit(fontSize: 11.5, height: 1.4),
+                ),
+              ),
+            ],
           ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: _isliyor ? null : () => _yedegiGoster(okulAdi),
+            icon: const Icon(Icons.shield_outlined, size: 18),
+            label: Text('Yedeğimi Al',
+                style: AppFonts.outfit(fontSize: 13)),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: _isliyor ? null : _anahtariDegistir,
+            style: TextButton.styleFrom(foregroundColor: Colors.grey),
+            child: Text('Güvenliği sıfırla',
+                style: AppFonts.outfit(fontSize: 11)),
+          ),
+        ),
       ],
     );
-  }
-
-  Future<void> _anahtarOlustur() async {
-    setState(() => _isliyor = true);
-    final anahtar = await _anahtarDeposu.anahtarHazirla();
-    if (!mounted) return;
-    setState(() => _isliyor = false);
-
-    if (anahtar == null) {
-      _mesaj('Anahtar oluşturulamadı. Cihaz güvenli deposuna '
-          'erişilemiyor olabilir.', hata: true);
-      return;
-    }
-    await _durumYukle();
-    if (!mounted) return;
-    _mesaj('Anahtar oluşturuldu. Şimdi yedeğini almanız önerilir.');
   }
 
   /// Anahtar yedeğini gösterir.
@@ -384,11 +434,15 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
                 child: FilledButton.icon(
                   onPressed: () async {
                     await Clipboard.setData(ClipboardData(text: anahtar));
+                    // Yedek ancak KOPYALAMA gerçekleşince alınmış
+                    // sayılıyor; diyaloğu açmak yedek almak değil.
+                    await _anahtarDeposu.yedekAlindiIsaretle();
                     if (!ctx.mounted) return;
                     Navigator.pop(ctx);
-                    _mesaj('Anahtar panoya kopyalandı '
-                        '(${anahtar.length} karakter). Güvenli bir yere '
-                        'kaydedin.');
+                    _mesaj('Yedeğiniz panoya kopyalandı '
+                        '(${anahtar.length} karakter). Not uygulamasına '
+                        'veya parola yöneticinize kaydedin.');
+                    await _durumYukle();
                   },
                   icon: const Icon(Icons.copy_rounded, size: 17),
                   label: Text('Anahtarı Kopyala',
@@ -417,9 +471,11 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
           TextButton(
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: metin));
+              await _anahtarDeposu.yedekAlindiIsaretle();
               if (!ctx.mounted) return;
               Navigator.pop(ctx);
               _mesaj('Açıklamalı yedek panoya kopyalandı.');
+              await _durumYukle();
             },
             child: const Text('Tam metni kopyala'),
           ),

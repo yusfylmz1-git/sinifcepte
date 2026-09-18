@@ -62,6 +62,20 @@ class TahtaAnahtarDeposu {
   /// bilgisi gösterilir.
   static const String _tarihAdi = 'tahta_imzalama_anahtari_tarih_v1';
 
+  /// Yedeğin alındığı an.
+  ///
+  /// ## Neden saklanıyor
+  ///
+  /// Anahtar artık **otomatik** üretiliyor (kullanıcı kararı,
+  /// 18 Eylül 2026: *"anahtar oluşturma teknik iş, müdür neden var
+  /// olduğunu anlayamaz"*). Müdürün tek gerçek görevi yedeği almak;
+  /// anahtar kaybolursa geri dönüşü yok.
+  ///
+  /// Bu yüzden "yedek alındı mı" ayrıca tutuluyor: alınmadıysa ekran
+  /// uyarı gösteriyor, alındıysa sessizleşiyor. Aksi hâlde müdür
+  /// uyarıyı her açılışta görür ve gürültüye dönüşür.
+  static const String _yedekAdi = 'tahta_yedek_alindi_v1';
+
   /// Kayıtlı anahtar var mı?
   Future<bool> anahtarVarMi() async {
     try {
@@ -146,6 +160,34 @@ class TahtaAnahtarDeposu {
     } catch (e, stackTrace) {
       debugPrint('uretimTarihi hatası: $e\n$stackTrace');
       return null;
+    }
+  }
+
+  /// Müdür yedeği aldı mı?
+  Future<bool> yedekAlindiMi() async {
+    try {
+      final ham = await _depo.read(key: _yedekAdi);
+      return ham != null && ham.isNotEmpty;
+    } catch (e, stackTrace) {
+      debugPrint('yedekAlindiMi hatası: $e\n$stackTrace');
+      // Okunamıyorsa "alınmadı" sayılıyor: uyarıyı fazladan
+      // göstermek, alınmamış bir yedeği alınmış sanmaktan iyi.
+      return false;
+    }
+  }
+
+  /// Yedeğin alındığını işaretler.
+  ///
+  /// Çağıran taraf bunu yalnızca **kopyalama gerçekleştiğinde**
+  /// çağırmalı; diyaloğu açmak yedek almak değil.
+  Future<void> yedekAlindiIsaretle() async {
+    try {
+      await _depo.write(
+        key: _yedekAdi,
+        value: DateTime.now().toIso8601String(),
+      );
+    } catch (e, stackTrace) {
+      debugPrint('yedekAlindiIsaretle hatası: $e\n$stackTrace');
     }
   }
 
