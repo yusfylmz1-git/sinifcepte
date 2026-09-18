@@ -13,6 +13,7 @@ import '../data/school_board_repository.dart';
 import '../data/tahta_anahtar_deposu.dart';
 import '../data/tahta_ogretmen_deposu.dart';
 import '../models/okul_config_model.dart';
+import 'widgets/secret_satiri.dart';
 
 /// Tahta Yönetimi — idarecinin etkileşimli tahtaları yapılandırdığı ekran.
 ///
@@ -561,38 +562,76 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
       builder: (ctx) => AlertDialog(
         title: Text(o.ad,
             style: AppFonts.outfit(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              color: Colors.white,
-              child: QrImageView(
-                data: yuk,
-                version: QrVersions.auto,
-                size: 220,
-                backgroundColor: Colors.white,
+        // `content` sabit genişlikte bir kutuya konuyor.
+        //
+        // ## Neden: bu ekran ANR veriyordu
+        //
+        // `AlertDialog` içeriğinin **iç boyutunu** (intrinsic) sorar.
+        // `QrImageView` ise içeride `LayoutBuilder` kullanıyor ve
+        // `LayoutBuilder` iç boyut döndüremiyor:
+        //
+        //   LayoutBuilder does not support returning intrinsic
+        //   dimensions.
+        //
+        // Debug'da assert atıp çöküyor; **release'de assert kapalı
+        // olduğu için** yerleşim döngüsüne giriyor ve ana iş
+        // parçacığı bloke kalıyordu:
+        //
+        //   ANR in com.sinifcepte.sinifcepte
+        //   main ... pthread_cond_wait  (CPU %9 — hesap değil, bekleme)
+        //
+        // Sabit genişlik iç boyut sorgusunu gereksiz kılıyor; QR da
+        // `SizedBox` ile kendi ölçüsüne sabitleniyor.
+        content: SizedBox(
+          width: 260,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                color: Colors.white,
+                child: SizedBox(
+                  width: 220,
+                  height: 220,
+                  child: QrImageView(
+                    data: yuk,
+                    version: QrVersions.auto,
+                    size: 220,
+                    backgroundColor: Colors.white,
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Öğretmen SınıfCepte > Profil > Tahta Kilidi ekranından '
-              'bu kodu okutmalı.',
-              textAlign: TextAlign.center,
-              style: AppFonts.outfit(fontSize: 12, height: 1.4),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Bu QR öğretmenin açma yetkisini taşır. Ekran görüntüsü '
-              'alıp paylaşmayın.',
-              textAlign: TextAlign.center,
-              style: AppFonts.outfit(
-                fontSize: 10.5,
-                color: Colors.redAccent,
-                height: 1.4,
+              const SizedBox(height: 12),
+              Text(
+                'Öğretmen SınıfCepte > Profil > Tahta Kilidi ekranından '
+                'bu kodu okutmalı.',
+                textAlign: TextAlign.center,
+                style: AppFonts.outfit(fontSize: 12, height: 1.4),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                'Bu QR öğretmenin açma yetkisini taşır. Ekran görüntüsü '
+                'alıp paylaşmayın.',
+                textAlign: TextAlign.center,
+                style: AppFonts.outfit(
+                  fontSize: 10.5,
+                  color: Colors.redAccent,
+                  height: 1.4,
+                ),
+              ),
+              const Divider(height: 20),
+              // Secret metni — **gizli başlıyor**.
+              //
+              // İki gerçek ihtiyaç var: (1) öğretmenin telefonu
+              // kamerasızsa kodu elle girmek, (2) idarecinin yedek
+              // alması. Ama sır ekranda sürekli açık dursa yukarıdaki
+              // "ekran görüntüsü almayın" uyarısıyla çelişirdi.
+              //
+              // Bu yüzden dokunmadan görünmüyor: kaza eseri omuz üstü
+              // okunmuyor, gerektiğinde bir dokunuşla açılıyor.
+              SecretSatiri(secret: o.totpSecret),
+            ],
+          ),
         ),
         actions: [
           TextButton(
