@@ -2238,4 +2238,260 @@ describe('Okul panosu (school_boards) — tahta modülü', () => {
       deleteDoc(doc(teacherDb(), 'school_boards', OKUL_A, 'notices', 'n9')),
     );
   });
+
+  // --- Tahta yetkisi: öğretmen ister, yönetici onaylar ---
+  //
+  // Bu blok, 40 öğretmenin tek tek müdürün yanına gelmesini ortadan
+  // kaldıran akışı koruyor. En kritik kural: öğretmen kendi kaydını
+  // oluşturabiliyor ama `onayli` YAZAMIYOR.
+  describe('Tahta yetkisi (teachers alt koleksiyonu)', () => {
+    const SECRET = '45O6OJ5SJJTVLOD552RNFLCPONZ2U6EO';
+
+    const istek = (uid, durum = 'bekliyor') => ({
+      teacherUid: uid,
+      ad: 'Ahmet Öğretmen',
+      kod: 'AOGRETMEN',
+      totpSecret: SECRET,
+      durum,
+      istekZamani: '2026-09-18T14:00:00+03:00',
+      onayZamani: '',
+      onaylayanUid: '',
+    });
+
+    it('öğretmen kendi isteğini gönderebilir', async () => {
+      await assertSucceeds(
+        setDoc(
+          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          istek(TEACHER_UID),
+        ),
+      );
+    });
+
+    it('KRİTİK: öğretmen kendini ONAYLAYAMAZ', async () => {
+      // Bu şart olmadan öğretmen `durum: 'onayli'` yazıp kendini
+      // yetkilendirir ve tahtaları açabilir. Yetki yükseltme.
+      await assertFails(
+        setDoc(
+          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          istek(TEACHER_UID, 'onayli'),
+        ),
+      );
+    });
+
+    it('KRİTİK: öğretmen BAŞKASI adına istek gönderemez', async () => {
+      await assertFails(
+        setDoc(
+          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', 'baskaUid'),
+          istek('baskaUid'),
+        ),
+      );
+    });
+
+    it('KRİTİK: doküman kimliği ile teacherUid uyuşmazsa reddedilir', async () => {
+      // Kimlik kendi uid'si ama içerik başkasını gösteriyor.
+      await assertFails(
+        setDoc(
+          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          istek('baskaUid'),
+        ),
+      );
+    });
+
+    it('kısa secret ile istek gönderilemez', async () => {
+      await assertFails(
+        setDoc(
+          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          { ...istek(TEACHER_UID), totpSecret: 'KISA' },
+        ),
+      );
+    });
+
+    it('boş adla istek gönderilemez', async () => {
+      await assertFails(
+        setDoc(
+          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          { ...istek(TEACHER_UID), ad: '' },
+        ),
+      );
+    });
+
+    it('öğretmen KENDİ kaydını okuyabilir', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(
+          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          istek(TEACHER_UID),
+        );
+      });
+
+      await assertSucceeds(
+        getDoc(
+          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+        ),
+      );
+    });
+
+    it('KRİTİK: öğretmen BAŞKASININ secret\'ını okuyamaz', async () => {
+      // Secret, o öğretmenin tahtayı açma yetkisidir. Başkasının
+      // secret'ını okuyan kişi onun adına kilidi açabilir.
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(
+          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', 'digerUid'),
+          istek('digerUid'),
+        );
+      });
+
+      await assertFails(
+        getDoc(
+          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', 'digerUid'),
+        ),
+      );
+    });
+
+    it('yönetici okulunun TÜM kayıtlarını okuyabilir', async () => {
+      // Okumak zorunda: tahtaya götürülecek okul_config dosyasını
+      // bu secret'larla üretiyor.
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(
+          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', 'digerUid'),
+          istek('digerUid'),
+        );
+      });
+
+      await assertSucceeds(
+        getDoc(
+          doc(panoAdminA(), 'school_boards', OKUL_A, 'teachers', 'digerUid'),
+        ),
+      );
+    });
+
+    it('KRİTİK: BAŞKA okulun yöneticisi okuyamaz', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(
+          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          istek(TEACHER_UID),
+        );
+      });
+
+      await assertFails(
+        getDoc(
+          doc(panoAdminB(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+        ),
+      );
+    });
+
+    it('yönetici isteği onaylayabilir', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(
+          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          istek(TEACHER_UID),
+        );
+      });
+
+      await assertSucceeds(
+        updateDoc(
+          doc(panoAdminA(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          { durum: 'onayli', onaylayanUid: ADMIN_A_UID },
+        ),
+      );
+    });
+
+    it('KRİTİK: başka okulun yöneticisi onaylayamaz', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(
+          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          istek(TEACHER_UID),
+        );
+      });
+
+      await assertFails(
+        updateDoc(
+          doc(panoAdminB(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          { durum: 'onayli' },
+        ),
+      );
+    });
+
+    it('KRİTİK: onaylanmamış yönetici onaylayamaz', async () => {
+      // Başvuru kaydı 'pending' olsa bile claim yetki vermiyor.
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(
+          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          istek(TEACHER_UID),
+        );
+      });
+
+      await assertFails(
+        updateDoc(
+          doc(bekleyenAdmin(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          { durum: 'onayli' },
+        ),
+      );
+    });
+
+    it('yönetici öğretmeni listeden çıkarabilir', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(
+          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          istek(TEACHER_UID, 'onayli'),
+        );
+      });
+
+      await assertSucceeds(
+        deleteDoc(
+          doc(panoAdminA(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+        ),
+      );
+    });
+
+    it('KRİTİK: öğretmen kendi kaydını silemez', async () => {
+      // Silebilse yeni bir secret'la yeniden kayıt olup onay
+      // beklemeden yetki alabilirdi (yeni kayıt 'bekliyor' olurdu
+      // ama eski onaylı kaydı da yok etmiş olurdu — karışıklık).
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(
+          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          istek(TEACHER_UID, 'onayli'),
+        );
+      });
+
+      await assertFails(
+        deleteDoc(
+          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+        ),
+      );
+    });
+
+    it('KRİTİK: öğretmen onaylı kaydını değiştiremez', async () => {
+      // Değiştirebilse secret'ını yenileyip tahtadaki eski dosyayla
+      // uyumu bozardı — ya da durumu geri 'onayli' yazardı.
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(
+          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          istek(TEACHER_UID, 'onayli'),
+        );
+      });
+
+      await assertFails(
+        updateDoc(
+          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          { totpSecret: 'YENIYENIYENIYENIYENI' },
+        ),
+      );
+    });
+
+    it('veli hiçbir kaydı göremez', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(
+          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          istek(TEACHER_UID),
+        );
+      });
+
+      await assertFails(
+        getDoc(
+          doc(parentDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+        ),
+      );
+    });
+  });
 });

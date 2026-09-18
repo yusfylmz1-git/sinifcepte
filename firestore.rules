@@ -596,6 +596,63 @@ service cloud.firestore {
         // verisi.
         allow delete: if isSchoolAdminOf(schoolId);
       }
+
+      // Tahta açma yetkisi olan öğretmenler.
+      //
+      // ## Neden bu koleksiyon var
+      //
+      // Önceki akışta idareci her öğretmeni tek tek ekliyor, QR
+      // üretiyor, öğretmen o QR'ı okutuyordu. 40 öğretmenli okulda
+      // bu saatler sürüyor ve telefon değiştiren/uygulamayı silen
+      // öğretmen için tekrar gerekiyor.
+      //
+      // Artık öğretmen kendi isteğini gönderiyor, yönetici onaylıyor.
+      //
+      // ## Neden okuma kısıtlı (üstteki pano kuralından FARKLI)
+      //
+      // `school_boards/{schoolId}` okumaya oturumlu herkese açık —
+      // pano içeriği (nöbetçi, duyuru) zaten tahtada herkese
+      // gösteriliyor. Ama bu koleksiyon **TOTP secret'ı** taşıyor:
+      // secret, o öğretmenin tahtayı açma yetkisidir.
+      //
+      // Firestore kuralları alt yollara miras geçmez, yani üstteki
+      // açık okuma buraya uygulanmıyor. Yine de açıkça yazılıyor:
+      // öğretmen KENDİ kaydını, yönetici okulunun TÜMÜNÜ okur.
+      // Yönetici okumak zorunda — tahtaya götürülecek `okul_config`
+      // dosyasını bu secret'larla üretiyor.
+      //
+      // ## Neden `durum == 'bekliyor'` şartı
+      //
+      // Bu şart olmadan öğretmen kendi kaydını `onayli` yazıp kendini
+      // yetkilendirir. Yetki yükseltme koruması: onayı yalnızca
+      // yönetici verebilir (`update`).
+      //
+      // `school_teachers` kaydının ONAYSIZ oluştuğu ölçüldü (bkz.
+      // o bloktaki not): Google hesabı olan herkes bir kurum kodunu
+      // seçip o okulun öğretmeni olabiliyor. Bu yüzden tahta yetkisi
+      // okul seçimine değil, **yönetici onayına** bağlı.
+      match /teachers/{teacherUid} {
+        allow read: if request.auth != null
+          && (request.auth.uid == teacherUid || isSchoolAdminOf(schoolId));
+
+        // İstek gönderme: yalnızca kendi adına, yalnızca "bekliyor".
+        allow create: if request.auth != null
+          && request.auth.uid == teacherUid
+          && request.resource.data.teacherUid == request.auth.uid
+          && request.resource.data.durum == 'bekliyor'
+          && request.resource.data.totpSecret is string
+          && request.resource.data.totpSecret.size() >= 16
+          && request.resource.data.totpSecret.size() <= 64
+          && request.resource.data.ad is string
+          && request.resource.data.ad.size() > 0
+          && request.resource.data.ad.size() <= 80;
+
+        // Onay, ret ve çıkarma: yalnızca o okulun onaylı yöneticisi.
+        //
+        // Öğretmen kendi kaydını güncelleyemiyor: güncelleyebilse
+        // `durum`u `onayli` yapardı.
+        allow update, delete: if isSchoolAdminOf(schoolId);
+      }
     }
   }
 }
