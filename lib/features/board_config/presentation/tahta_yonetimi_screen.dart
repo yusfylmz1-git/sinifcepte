@@ -12,7 +12,9 @@ import '../data/okul_config_service.dart';
 import '../data/school_board_repository.dart';
 import '../data/tahta_anahtar_deposu.dart';
 import '../data/tahta_ogretmen_deposu.dart';
+import '../data/tahta_yetki_deposu.dart';
 import '../models/okul_config_model.dart';
+import '../utils/ogretmen_birlestirme.dart';
 import 'widgets/secret_satiri.dart';
 
 /// Tahta Yönetimi — idarecinin etkileşimli tahtaları yapılandırdığı ekran.
@@ -48,6 +50,7 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
   final _anahtarDeposu = TahtaAnahtarDeposu();
   final _panoDeposu = SchoolBoardRepository();
   final _ogretmenDeposu = TahtaOgretmenDeposu();
+  final _yetkiDeposu = TahtaYetkiDeposu();
 
   bool _yukleniyor = true;
   bool _anahtarVar = false;
@@ -90,6 +93,9 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
 
   List<PanoOgretmeni> _ogretmenListesi = const [];
 
+  /// Buluttaki yetki kayıtları: bekleyen istekler ve onaylılar.
+  List<TahtaYetkiKaydi> _yetkiKayitlari = const [];
+
   bool _isliyor = false;
 
   @override
@@ -119,7 +125,29 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
       _ogretmenListesi = liste;
       _yukleniyor = false;
     });
+
+    // Bulut kayıtları ayrı yükleniyor: ağ yoksa ekran yine açılıyor
+    // ve cihazdaki liste görünüyor. Bekleme sırası ters olsaydı
+    // çevrimdışı idareci ekranı hiç açamazdı.
+    await _yetkileriYukle();
   }
+
+  Future<void> _yetkileriYukle() async {
+    final rol = ref.read(userRoleProvider);
+    final profil = ref.read(teacherProfileProvider);
+    final okulId = _okulId(rol, profil.schoolId);
+    if (okulId.isEmpty) return;
+
+    final kayitlar = await _yetkiDeposu.okulunKayitlari(schoolId: okulId);
+    if (!mounted) return;
+    setState(() => _yetkiKayitlari = kayitlar);
+  }
+
+  List<TahtaYetkiKaydi> get _bekleyenler =>
+      _yetkiKayitlari.where((k) => k.bekliyor).toList();
+
+  List<TahtaYetkiKaydi> get _onaylilar =>
+      _yetkiKayitlari.where((k) => k.onayli).toList();
 
   /// Yöneticiliğin geçerli olduğu okul kimliği.
   ///
@@ -388,13 +416,50 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
   /// Liste boşsa `okul_config` üretilse bile tahtada kimse kilidi
   /// açamaz — bu yüzden bölüm nöbetçi ve duyurudan önce geliyor.
   Widget _ogretmenBolumu(bool isDark, String okulId) {
+    final bekleyen = _bekleyenler;
+    final onayli = _onaylilar;
+    final hicKimseYok = _ogretmenListesi.isEmpty && onayli.isEmpty;
+
     return _kart(
       isDark,
       baslik: '👤 Tahtayı Açabilecek Öğretmenler',
-      aciklama: 'Her öğretmen için bir kod üretilir. Öğretmen kendi '
-          'telefonunda QR\'ı okutup kaydeder.',
+      aciklama: 'Öğretmenler uygulamadan yetki ister, siz onaylarsınız. '
+          'Telefonu olmayan öğretmeni elle de ekleyebilirsiniz.',
       cocuklar: [
-        if (_ogretmenListesi.isEmpty)
+        // Bekleyen istekler EN ÜSTTE: idarecinin yapması gereken iş bu.
+        if (bekleyen.isNotEmpty) ...[
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${bekleyen.length} istek onay bekliyor',
+                  style: AppFonts.outfit(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.orange,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...bekleyen.map((k) => _bekleyenSatiri(isDark, k, okulId)),
+          const Divider(height: 22),
+        ],
+
+        // Buluttan onaylı öğretmenler.
+        if (onayli.isNotEmpty) ...[
+          ...onayli.map((k) => _onayliSatiri(isDark, k, okulId)),
+          if (_ogretmenListesi.isNotEmpty) const Divider(height: 22),
+        ],
+
+        if (hicKimseYok)
           _bilgiSatiri(
             Icons.warning_amber_rounded,
             'Henüz öğretmen yok',
@@ -433,6 +498,183 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
         ],
       ],
     );
+  }
+
+  /// Onay bekleyen istek satırı.
+  Widget _bekleyenSatiri(bool isDark, TahtaYetkiKaydi k, String okulId) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(k.ad,
+                    style: AppFonts.outfit(
+                        fontSize: 12.5, fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                Text('Kod: ${k.kod} · istek gönderildi',
+                    style: AppFonts.outfit(
+                        fontSize: 10.5, color: Colors.grey)),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Onayla',
+            icon: const Icon(Icons.check_circle_outline_rounded,
+                size: 21, color: Color(0xFF10B981)),
+            onPressed: _isliyor ? null : () => _yetkiOnayla(k, okulId),
+          ),
+          IconButton(
+            tooltip: 'Reddet',
+            icon: const Icon(Icons.cancel_outlined,
+                size: 20, color: Colors.redAccent),
+            onPressed: _isliyor ? null : () => _yetkiReddet(k, okulId),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Onaylanmış (buluttan gelen) öğretmen satırı.
+  Widget _onayliSatiri(bool isDark, TahtaYetkiKaydi k, String okulId) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          const Icon(Icons.verified_outlined,
+              size: 17, color: Color(0xFF10B981)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(k.ad,
+                    style: AppFonts.outfit(
+                        fontSize: 12.5, fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                Text('Kod: ${k.kod}',
+                    style: AppFonts.outfit(
+                        fontSize: 10.5, color: Colors.grey)),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Listeden çıkar',
+            icon: const Icon(Icons.person_remove_outlined,
+                size: 19, color: Colors.redAccent),
+            onPressed: _isliyor ? null : () => _yetkiCikar(k, okulId),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _yetkiOnayla(TahtaYetkiKaydi k, String okulId) async {
+    setState(() => _isliyor = true);
+    final basarili = await _yetkiDeposu.onayla(
+      schoolId: okulId,
+      teacherUid: k.teacherUid,
+      onaylayanUid: ref.read(teacherProfileProvider).id,
+    );
+    if (!mounted) return;
+    setState(() => _isliyor = false);
+
+    if (basarili) {
+      await _yetkileriYukle();
+      if (!mounted) return;
+      _mesaj('${k.ad} onaylandı. Kurulum dosyasını yeniden üretin.');
+    } else {
+      _mesaj('Onaylanamadı. Bağlantınızı kontrol edin.', hata: true);
+    }
+  }
+
+  Future<void> _yetkiReddet(TahtaYetkiKaydi k, String okulId) async {
+    setState(() => _isliyor = true);
+    final basarili = await _yetkiDeposu.reddet(
+      schoolId: okulId,
+      teacherUid: k.teacherUid,
+      onaylayanUid: ref.read(teacherProfileProvider).id,
+    );
+    if (!mounted) return;
+    setState(() => _isliyor = false);
+
+    if (basarili) {
+      await _yetkileriYukle();
+      if (!mounted) return;
+      _mesaj('${k.ad} reddedildi.');
+    } else {
+      _mesaj('İşlem yapılamadı. Bağlantınızı kontrol edin.', hata: true);
+    }
+  }
+
+  /// Onaylı öğretmeni listeden çıkarır (tayin, ayrılma).
+  ///
+  /// Onay penceresi **kabul edilmiş riski açıkça söylüyor**: tahta ağa
+  /// çıkmadığı için silme anında tahtaya ulaşamıyoruz. Bunu gizlemek,
+  /// idareciye "yetkisi kapandı" sanmasına yol açardı.
+  Future<void> _yetkiCikar(TahtaYetkiKaydi k, String okulId) async {
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('${k.ad} çıkarılsın mı?',
+            style: AppFonts.outfit(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Telefonu kod üretmeyi bırakacak.',
+              style: AppFonts.outfit(fontSize: 12.5, height: 1.45),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '⚠️ Tahtalardaki mevcut dosya onu tanımaya devam eder. '
+              'Yetkisinin tamamen kapanması için yeni kurulum dosyasını '
+              'tahtalara götürmeniz gerekir.',
+              style: AppFonts.outfit(
+                fontSize: 11.5,
+                height: 1.45,
+                color: Colors.orange,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Çıkar'),
+          ),
+        ],
+      ),
+    );
+
+    if (onay != true) return;
+
+    setState(() => _isliyor = true);
+    final basarili = await _yetkiDeposu.cikar(
+      schoolId: okulId,
+      teacherUid: k.teacherUid,
+    );
+    if (!mounted) return;
+    setState(() => _isliyor = false);
+
+    if (basarili) {
+      await _yetkileriYukle();
+      if (!mounted) return;
+      _mesaj('${k.ad} çıkarıldı. Kurulum dosyasını yeniden üretip '
+          'tahtalara götürün.');
+    } else {
+      _mesaj('Çıkarılamadı. Bağlantınızı kontrol edin.', hata: true);
+    }
   }
 
   Widget _ogretmenSatiri(bool isDark, PanoOgretmeni o, String okulId) {
@@ -891,13 +1133,25 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
       // Öğretmen listesi ŞART: boş giderse tahtada hiç kimse TOTP veya
       // PIN ile kilidi açamaz. Bir süre tam bu hata vardı — liste
       // modelde tanımlıydı ama hiçbir yerden doldurulmuyordu.
-      final ogretmenListesi = await _ogretmenDeposu.oku();
+      //
+      // İki kaynak birleştiriliyor:
+      //   1. Cihazdaki liste (elle eklenenler, çevrimdışı yol)
+      //   2. Buluttaki ONAYLI kayıtlar (öğretmenin kendi isteği)
+      //
+      // Bekleyen ve reddedilen kayıtlar dosyaya GİRMEZ — yetkiyi
+      // yalnızca onay veriyor.
+      final ogretmenListesi = ogretmenleriBirlestir(
+        cihaz: await _ogretmenDeposu.oku(),
+        bulut: _onaylilar,
+      );
+
       if (ogretmenListesi.isEmpty) {
         if (!mounted) return;
         setState(() => _isliyor = false);
         _mesaj(
-          'Önce en az bir öğretmen ekleyin. Listesi boş bir dosyayla '
-          'tahtada kimse kilidi açamaz.',
+          'Önce en az bir öğretmen ekleyin veya bekleyen isteği '
+          'onaylayın. Listesi boş bir dosyayla tahtada kimse kilidi '
+          'açamaz.',
           hata: true,
         );
         return;
