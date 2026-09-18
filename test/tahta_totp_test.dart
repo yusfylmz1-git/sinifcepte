@@ -195,7 +195,9 @@ void main() {
       expect(TahtaTotp.qrAyristir('SC1:okul:tahta:nonce'), isNull);
     });
 
-    test('fazla alan reddedilir', () {
+    test('SC1\'e fazla alan reddedilir', () {
+      // `SC1` tam 5 alan. Fazlası bozuk bir QR demek; sessizce kabul
+      // etmek yanlış veriyle çalışmak olurdu.
       expect(TahtaTotp.qrAyristir('SC1:okul:tahta:nonce:100:fazla'), isNull);
     });
 
@@ -214,6 +216,103 @@ void main() {
     test('tamamen alakasız metin reddedilir', () {
       expect(TahtaTotp.qrAyristir('https://ornek.com'), isNull);
       expect(TahtaTotp.qrAyristir(''), isNull);
+    });
+  });
+
+  group('SC2 — yerel ağdan açma', () {
+    // `SC2` tahtanın yerel sunucusu çalışırken yazılıyor: sonuna IP ve
+    // port ekleniyor, telefon oraya doğrudan istek gönderiyor ve
+    // öğretmen 6 hane yazmıyor (kullanıcı isteği, 18 Eylül 2026).
+    //
+    // İlk dört alan `SC1` ile AYNI — biçim geriye uyumlu.
+
+    test('KRİTİK: IP ve port okunuyor', () {
+      final yuk = TahtaTotp.qrAyristir(
+        'SC2:meb_775214:tahta_8B:a1b2:29218:192.168.1.50:8443',
+      );
+
+      expect(yuk, isNotNull);
+      expect(yuk!.okulId, 'meb_775214');
+      expect(yuk.tahtaId, 'tahta_8B');
+      expect(yuk.ip, '192.168.1.50');
+      expect(yuk.port, 8443);
+      expect(yuk.agdanAcilabilir, isTrue);
+    });
+
+    test('KRİTİK: açma adresi doğru kuruluyor', () {
+      // Telefon bu adrese POST gönderecek; yanlışsa tahta hiç
+      // açılmaz ve sebebi görünmez.
+      final yuk = TahtaTotp.qrAyristir(
+        'SC2:okul:tahta:n:100:10.0.0.7:8443',
+      );
+
+      expect(yuk!.acmaAdresi, 'http://10.0.0.7:8443/ac');
+    });
+
+    test('SC1 ağdan açılamaz ama geçerli kalıyor', () {
+      // Eski tahta veya ağ yok: 6 hane yolu çalışmaya devam etmeli.
+      final yuk = TahtaTotp.qrAyristir('SC1:okul:tahta:n:100');
+
+      expect(yuk, isNotNull);
+      expect(yuk!.agdanAcilabilir, isFalse);
+      expect(yuk.ip, isEmpty);
+      expect(yuk.port, isNull);
+    });
+
+    test('KRİTİK: bozuk IP QR\'ı geçersiz KILMIYOR', () {
+      // Ağ yolu kullanılamaz ama 6 hane yolu çalışmalı. `null`
+      // dönseydi öğretmen "bu QR tahtaya ait değil" görür ve
+      // sınıfta mahsur kalırdı.
+      final yuk = TahtaTotp.qrAyristir(
+        'SC2:okul:tahta:n:100:bu-ip-degil:8443',
+      );
+
+      expect(yuk, isNotNull, reason: 'QR geçerli kalmalı');
+      expect(yuk!.agdanAcilabilir, isFalse);
+      expect(yuk.okulId, 'okul');
+    });
+
+    test('bozuk port da aynı şekilde ele alınıyor', () {
+      for (final port in ['abc', '0', '-1', '70000', '']) {
+        final yuk = TahtaTotp.qrAyristir(
+          'SC2:okul:tahta:n:100:192.168.1.5:$port',
+        );
+        expect(yuk, isNotNull, reason: 'port=$port');
+        expect(yuk!.agdanAcilabilir, isFalse, reason: 'port=$port');
+      }
+    });
+
+    test('IP aralık dışı sayı içeriyorsa reddediliyor', () {
+      final yuk = TahtaTotp.qrAyristir(
+        'SC2:okul:tahta:n:100:999.1.1.1:8443',
+      );
+      expect(yuk!.agdanAcilabilir, isFalse);
+    });
+
+    test('SC2 eksik alanla reddediliyor', () {
+      // 7 alan şart; 6 alanlı bir SC2 bozuk demektir.
+      expect(
+        TahtaTotp.qrAyristir('SC2:okul:tahta:n:100:192.168.1.5'),
+        isNull,
+      );
+    });
+
+    test('SC2 fazla alanla reddediliyor', () {
+      expect(
+        TahtaTotp.qrAyristir('SC2:okul:tahta:n:100:192.168.1.5:8443:x'),
+        isNull,
+      );
+    });
+
+    test('okul eşleşmesi SC2 için de çalışıyor', () {
+      // Ağdan açma, okul kontrolünü ATLAMAMALI: başka okulun
+      // tahtasına istek göndermek anlamsız.
+      final yuk = TahtaTotp.qrAyristir(
+        'SC2:meb_775214:tahta:n:100:192.168.1.5:8443',
+      );
+
+      expect(yuk!.ayniOkul('meb_775214'), isTrue);
+      expect(yuk.ayniOkul('meb_123456'), isFalse);
     });
   });
 

@@ -165,27 +165,79 @@ class TahtaTotp {
 
   /// Tahtanın gösterdiği QR yükünü ayrıştırır.
   ///
-  /// Biçim: `SC1:{okulId}:{tahtaId}:{nonce}:{unixDakika}`
+  /// İki biçim destekleniyor:
+  ///
+  /// ```text
+  /// SC1:{okulId}:{tahtaId}:{nonce}:{unixDakika}
+  /// SC2:{okulId}:{tahtaId}:{nonce}:{unixDakika}:{ip}:{port}
+  /// ```
+  ///
+  /// `SC2` tahtanın **yerel ağ sunucusu** çalışırken yazılıyor: telefon
+  /// IP'ye doğrudan istek gönderip kilidi açabiliyor, öğretmen 6 hane
+  /// yazmıyor (kullanıcı isteği, 18 Eylül 2026).
+  ///
+  /// İlk dört alan ikisinde de aynı — eski telefonlar `SC2`'yi
+  /// okuyamaz ama yeni telefonlar `SC1`'i okuyabilir, yani biçim
+  /// ileriye doğru güvenli.
   ///
   /// Geçersizse `null` döner — çağıran taraf kullanıcıya "bu QR
   /// SınıfCepte tahtasına ait değil" demelidir. Sessizce çökmek, yanlış
   /// QR tarayan öğretmene hiçbir şey anlatmaz.
   static TahtaQrYuku? qrAyristir(String ham) {
     final parcalar = ham.trim().split(':');
-    if (parcalar.length != 5) return null;
-    if (parcalar[0] != 'SC1') return null;
+    if (parcalar.length < 5) return null;
+
+    final onek = parcalar[0];
+    if (onek != 'SC1' && onek != 'SC2') return null;
+
+    // Alan sayısı öneke uymalı: `SC1`'e fazladan alan eklenmiş bir
+    // QR bozuk demektir, sessizce kabul edilmemeli.
+    if (onek == 'SC1' && parcalar.length != 5) return null;
+    if (onek == 'SC2' && parcalar.length != 7) return null;
 
     final dakika = int.tryParse(parcalar[4]);
     if (dakika == null) return null;
 
     if (parcalar[1].isEmpty || parcalar[2].isEmpty) return null;
 
+    String ip = '';
+    int? port;
+    if (onek == 'SC2') {
+      ip = parcalar[5].trim();
+      port = int.tryParse(parcalar[6]);
+
+      // IP veya port bozuksa ağ yolu kullanılamaz ama QR'ın geri
+      // kalanı geçerli: 6 hane yolu çalışsın diye `null` DÖNMÜYORUZ.
+      if (!_ipGecerliMi(ip) || port == null || port <= 0 || port > 65535) {
+        ip = '';
+        port = null;
+      }
+    }
+
     return TahtaQrYuku(
       okulId: parcalar[1],
       tahtaId: parcalar[2],
       nonce: parcalar[3],
       unixDakika: dakika,
+      ip: ip,
+      port: port,
     );
+  }
+
+  /// Kaba IPv4 denetimi.
+  ///
+  /// Tam doğrulama gerekmiyor: değer yalnızca bir HTTP isteğinde
+  /// kullanılıyor ve yanlışsa istek başarısız olup 6 hane yoluna
+  /// düşülüyor. Amaç, açıkça saçma değerleri (boş, harf içeren)
+  /// elemek.
+  static bool _ipGecerliMi(String ip) {
+    final parcalar = ip.split('.');
+    if (parcalar.length != 4) return false;
+    for (final p in parcalar) {
+      final sayi = int.tryParse(p);
+      if (sayi == null || sayi < 0 || sayi > 255) return false;
+    }
+    return true;
   }
 
   static int _onunKuvveti(int kuvvet) {
@@ -204,12 +256,33 @@ class TahtaQrYuku {
   final String nonce;
   final int unixDakika;
 
+  /// Tahtanın yerel ağ adresi — `SC2` biçiminde gelir, yoksa boş.
+  ///
+  /// Doluysa telefon kilidi doğrudan açabilir; öğretmen 6 hane
+  /// yazmaz. Boşsa (eski tahta, ağ yok, port dolu) 6 hane yolu
+  /// kullanılır.
+  final String ip;
+
+  /// Tahtanın dinlediği port; `ip` boşsa `null`.
+  final int? port;
+
   const TahtaQrYuku({
     required this.okulId,
     required this.tahtaId,
     required this.nonce,
     required this.unixDakika,
+    this.ip = '',
+    this.port,
   });
+
+  /// Tahta ağdan açılabilir mi?
+  ///
+  /// Bu bir **kolaylık**, şart değil: `false` olduğunda 6 hane yolu
+  /// çalışmaya devam ediyor.
+  bool get agdanAcilabilir => ip.isNotEmpty && port != null;
+
+  /// Açma isteğinin gideceği adres.
+  String get acmaAdresi => 'http://$ip:$port/ac';
 
   /// Öğretmenin okulu tahtanın okuluyla aynı mı?
   ///
@@ -220,5 +293,6 @@ class TahtaQrYuku {
 
   @override
   String toString() =>
-      'TahtaQrYuku(okul: $okulId, tahta: $tahtaId, dakika: $unixDakika)';
+      'TahtaQrYuku(okul: $okulId, tahta: $tahtaId, dakika: $unixDakika'
+      '${agdanAcilabilir ? ", ag: $ip:$port" : ""})';
 }

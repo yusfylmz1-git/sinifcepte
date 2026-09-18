@@ -9,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 import '../../auth_profile/providers/teacher_profile_provider.dart';
 import '../data/ogretmen_tahta_deposu.dart';
+import '../data/tahta_ag_acici.dart';
 import '../data/tahta_ogretmen_deposu.dart';
 import '../data/tahta_yetki_deposu.dart';
 import '../utils/tahta_totp.dart';
@@ -52,6 +53,12 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
   /// Buluttaki yetki kaydı (istek gönderildiyse).
   TahtaYetkiKaydi? _yetkiKaydi;
   bool _yetkiIsliyor = false;
+
+  /// Ağdan açma denemesi sürüyor mu?
+  ///
+  /// Ekranda "tahtaya gönderiliyor" göstermek için: öğretmen 4
+  /// saniyelik zaman aşımı boyunca ne olduğunu bilmeli.
+  bool _agDeniyor = false;
 
   /// Üretilen kod ve geri sayım.
   String? _kod;
@@ -387,8 +394,33 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
       ),
       child: Column(
         children: [
-          Text('Tahtaya bu kodu girin',
-              style: AppFonts.outfit(fontSize: 12, color: Colors.grey)),
+          // Ağdan açma sürüyorsa öğretmen ne olduğunu bilmeli:
+          // 4 saniyelik zaman aşımı boyunca boş ekran, "çalışmadı mı"
+          // sorusunu doğururdu.
+          if (_agDeniyor) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Tahtaya gönderiliyor…',
+                  style: AppFonts.outfit(fontSize: 12),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
+          Text(
+            _agDeniyor
+                ? 'Açılmazsa bu kodu elle girin'
+                : 'Tahtaya bu kodu girin',
+            style: AppFonts.outfit(fontSize: 12, color: Colors.grey),
+          ),
           const SizedBox(height: 8),
           Text(
             // Okunurluk için 3+3: tahtada elle giriliyor.
@@ -540,7 +572,42 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
       return;
     }
 
+    // Kod HER HÂLÜKÂRDA üretiliyor.
+    //
+    // Ağ denemesi başarısız olursa öğretmen ekrandaki kodu elle
+    // girecek. Önce ağı deneyip sonra kod üretmek, başarısızlıkta
+    // ekranı boş bırakır ve öğretmen sınıfta beklerdi.
     _kodUret(k.totpSecret);
+
+    // Tahta ağdan açılabiliyorsa dene — öğretmen hiçbir şey yazmasın.
+    //
+    // `SC2` QR'ı tahtanın IP'sini taşıyor. `SC1` (eski tahta, ağ yok,
+    // port dolu) durumunda `agdanAcilabilir` false ve doğrudan 6 hane
+    // yolu kalıyor.
+    if (!yuk.agdanAcilabilir || _kod == null) return;
+
+    await _agdanAc(yuk, _kod!);
+  }
+
+  /// Tahtayı ağdan açmayı dener.
+  ///
+  /// ## Neden başarısızlık sessiz değil
+  ///
+  /// Üç durum farklı mesaj alıyor: açıldı / tahta reddetti /
+  /// ulaşılamadı. "Ulaşılamadı" durumunda "kodunuz yanlış" demek
+  /// yanlış yönlendirme olurdu — öğretmen kodu tekrar üretmeye
+  /// çalışırdı, oysa sorun ağda.
+  Future<void> _agdanAc(TahtaQrYuku yuk, String kod) async {
+    setState(() => _agDeniyor = true);
+
+    final acici = TahtaAgAcici();
+    final sonuc = await acici.ac(adres: yuk.acmaAdresi, kod: kod);
+    acici.kapat();
+
+    if (!mounted) return;
+    setState(() => _agDeniyor = false);
+
+    _mesaj(sonuc.kullaniciMesaji, hata: !sonuc.acildi);
   }
 
   Future<void> _kaydiSil() async {
