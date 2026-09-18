@@ -287,12 +287,50 @@ service cloud.firestore {
 
     // Okul yöneticiliği başvuruları. Öğretmen kendi başvurusunu görür ve
     // oluşturur; kararı yalnızca süper admin verir.
+    //
+    // ## Okul yöneticisi neden okuyabiliyor
+    //
+    // Panelin "Öğretmen Onayı" sekmesi `pendingRequestsForSchool()`
+    // çağırıyor ve bu bir **sorgu** (`where school_id == ...`).
+    // Firestore'da sorgu ancak tüm olası sonuçlar kurala uyuyorsa
+    // çalışıyor; `resource.data.teacherUid == request.auth.uid`
+    // koşulu sorguya çevrilemediği için sorgu **baştan**
+    // reddediliyordu.
+    //
+    // Cihazda ölçüldü (18 Eylül 2026):
+    //   Listen for Query(school_admin_requests where
+    //     school_id==meb_775214 and status==pending) failed:
+    //     PERMISSION_DENIED
+    //
+    // Yani o sekme hiç çalışmamış: "bekleyen başvuru yok" mesajı boş
+    // listeden değil, izin reddinden geliyordu ve sebebi görünmüyordu
+    // (`pendingRequestsForSchool` hatayı yutup boş liste döndürüyor).
+    //
+    // `isSchoolAdminOf(resource.data.school_id)` sorguya çevrilebilir:
+    // claim'deki okul ile dokümandaki okul karşılaştırılıyor.
+    //
+    // NOT: Bu, yöneticiliğe karar verme yetkisi DEĞİL — karar hâlâ
+    // yalnızca süper adminde (`allow update, delete: if isSuper()`).
+    // Okul yöneticisi kendi okulunun başvurularını yalnızca görüyor.
+    //
+    // ## Alan adları snake_case (ÖLÇÜLDÜ)
+    //
+    // `SchoolAdminRequestModel.toMap()` snake_case yazıyor:
+    // `school_id`, `teacher_uid`. Kural bir dönem `resource.data.teacherUid`
+    // okuyordu — **o alan hiç yok**, yani öğretmen kendi başvurusunu da
+    // okuyamıyordu. Dün yaşanan "başvuru gönderilemedi" sorununun ikinci
+    // yarısı buydu.
+    //
+    // `create` koşulu da aynı sebeple çalışmıyordu; artık gerçek alan
+    // adına bakıyor.
     match /school_admin_requests/{id} {
       allow read: if isAdmin()
-        || (request.auth != null && resource.data.teacherUid == request.auth.uid);
+        || isSchoolAdminOf(resource.data.school_id)
+        || (request.auth != null
+            && resource.data.teacher_uid == request.auth.uid);
 
       allow create: if request.auth != null
-        && request.resource.data.teacherUid == request.auth.uid
+        && request.resource.data.teacher_uid == request.auth.uid
         && request.resource.data.status == 'pending';
 
       // Başvuran kendi kararını yazamaz — yetki yükseltmeyi engeller.

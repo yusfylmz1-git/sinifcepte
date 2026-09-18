@@ -303,8 +303,8 @@ describe('4. Okul yöneticisi başvuruları — yetki yükseltme koruması', () 
     await testEnv.clearFirestore();
     await seed(async (db) => {
       await setDoc(doc(db, 'school_admin_requests', REQ_ID), {
-        teacherUid: TEACHER_UID,
-        schoolId: 'meb_16_123',
+        teacher_uid: TEACHER_UID,
+        school_id: 'meb_16_123',
         status: 'pending',
       });
     });
@@ -325,8 +325,8 @@ describe('4. Okul yöneticisi başvuruları — yetki yükseltme koruması', () 
   it('öğretmen beklemede durumuyla başvuru oluşturabilir', async () => {
     await assertSucceeds(
       setDoc(doc(teacherDb(), 'school_admin_requests', 'req_yeni'), {
-        teacherUid: TEACHER_UID,
-        schoolId: 'meb_16_123',
+        teacher_uid: TEACHER_UID,
+        school_id: 'meb_16_123',
         status: 'pending',
       }),
     );
@@ -335,8 +335,8 @@ describe('4. Okul yöneticisi başvuruları — yetki yükseltme koruması', () 
   it('KRİTİK: öğretmen kendini doğrudan onaylayamaz', async () => {
     await assertFails(
       setDoc(doc(teacherDb(), 'school_admin_requests', 'req_hile'), {
-        teacherUid: TEACHER_UID,
-        schoolId: 'meb_16_123',
+        teacher_uid: TEACHER_UID,
+        school_id: 'meb_16_123',
         status: 'approved', // yetki yükseltme denemesi
       }),
     );
@@ -356,6 +356,120 @@ describe('4. Okul yöneticisi başvuruları — yetki yükseltme koruması', () 
         status: 'approved',
       }),
     );
+  });
+
+  // Panelin "Öğretmen Onayı" sekmesi bir SORGU çalıştırıyor
+  // (`pendingRequestsForSchool`). Firestore'da sorgu ancak tüm olası
+  // sonuçlar kurala uyuyorsa çalışıyor.
+  //
+  // Bu blok olmadan kusur fark edilmedi: sekme hiç çalışmıyordu ama
+  // "bekleyen başvuru yok" yazdığı için boş liste sanılıyordu.
+  // Gerçek sebep cihazda ölçüldü (18 Eylül 2026):
+  //
+  //   Listen for Query(school_admin_requests where
+  //     school_id==meb_775214 and status==pending) failed:
+  //     PERMISSION_DENIED
+  describe('Panel sorgusu — okul yöneticisi bekleyenleri listeler', () => {
+    const OKUL = 'meb_16_123';
+
+    const okulAdmini = () =>
+      testEnv
+        .authenticatedContext('okulAdmini16', {
+          schoolAdminStatus: 'approved',
+          schoolId: OKUL,
+        })
+        .firestore();
+
+    const baskaOkulAdmini = () =>
+      testEnv
+        .authenticatedContext('okulAdmini34', {
+          schoolAdminStatus: 'approved',
+          schoolId: 'meb_34_999',
+        })
+        .firestore();
+
+    before(async () => {
+      await testEnv.clearFirestore();
+      await seed(async (db) => {
+        await setDoc(doc(db, 'school_admin_requests', 'req_a'), {
+          teacher_uid: TEACHER_UID,
+          school_id: OKUL,
+          status: 'pending',
+        });
+        await setDoc(doc(db, 'school_admin_requests', 'req_b'), {
+          teacher_uid: 'baskaOgretmen',
+          school_id: 'meb_34_999',
+          status: 'pending',
+        });
+      });
+    });
+
+    it('KRİTİK: okul yöneticisi kendi okulunun sorgusunu çalıştırabilir', async () => {
+      await assertSucceeds(
+        getDocs(
+          query(
+            collection(okulAdmini(), 'school_admin_requests'),
+            where('school_id', '==', OKUL),
+            where('status', '==', 'pending'),
+          ),
+        ),
+      );
+    });
+
+    it('KRİTİK: başka okulun yöneticisi bu sorguyu çalıştıramaz', async () => {
+      await assertFails(
+        getDocs(
+          query(
+            collection(baskaOkulAdmini(), 'school_admin_requests'),
+            where('school_id', '==', OKUL),
+            where('status', '==', 'pending'),
+          ),
+        ),
+      );
+    });
+
+    it('KRİTİK: sıradan öğretmen okul sorgusunu çalıştıramaz', async () => {
+      // Öğretmen yalnızca KENDİ kaydını okuyabiliyor; okul geneli
+      // sorgu tüm sonuçları kapsayamadığı için reddedilmeli.
+      await assertFails(
+        getDocs(
+          query(
+            collection(teacherDb(), 'school_admin_requests'),
+            where('school_id', '==', OKUL),
+            where('status', '==', 'pending'),
+          ),
+        ),
+      );
+    });
+
+    it('KRİTİK: öğretmen kendi kaydını GERÇEK alan adlarıyla okur', async () => {
+      // Kural bir dönem `resource.data.teacherUid` okuyordu ama model
+      // `teacher_uid` yazıyor (snake_case). O alan hiç olmadığı için
+      // öğretmen kendi başvurusunu bile okuyamıyordu.
+      //
+      // Testler de camelCase veri yazdığı için kusuru kaçırdı —
+      // kendi uydurdukları biçimle geçiyorlardı.
+      await assertSucceeds(
+        getDoc(doc(teacherDb(), 'school_admin_requests', 'req_a')),
+      );
+    });
+
+    it('okul yöneticisi başka okulun kaydını göremez', async () => {
+      await assertFails(
+        getDoc(doc(okulAdmini(), 'school_admin_requests', 'req_b')),
+      );
+    });
+
+    it('KRİTİK: okul yöneticisi yöneticiliğe karar VEREMEZ', async () => {
+      // Okuma yetkisi karar yetkisi değil: onay hâlâ yalnızca süper
+      // adminde. Aksi hâlde bir okul yöneticisi kendi okuluna ikinci
+      // bir yönetici atayabilirdi.
+      await assertFails(
+        updateDoc(doc(okulAdmini(), 'school_admin_requests', 'req_a'), {
+          status: 'approved',
+        }),
+      );
+    });
   });
 });
 
