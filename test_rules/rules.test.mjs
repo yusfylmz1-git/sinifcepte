@@ -2608,4 +2608,108 @@ describe('Okul panosu (school_boards) — tahta modülü', () => {
       );
     });
   });
+
+  // Imzalama anahtarinin bulut yedegi.
+  //
+  // Kullanici karari (18 Eylul 2026): *"bence yedegi direkt buluta
+  // yedeklesin."* Mudurun metin yedegi almasi bekleniyordu ama sahada
+  // olmuyor; anahtar kaybi geri donusu olmayan bir zarar.
+  //
+  // KABUL EDILEN RISK: ozel anahtar bulutta DUZ duruyor (parolasiz
+  // yedek secildi). Firebase hesabi ele gecerse saldirgan tum
+  // okullarin tahtalarina gecerli dosya uretebilir.
+  //
+  // Bu blok o riskin SINIRINI kilitliyor: anahtari yalnizca o okulun
+  // onayli yoneticisi gorebilir. Ogretmen, veli ve baska okulun
+  // yoneticisi goremez.
+  describe('Anahtar bulut yedegi (gizli alt koleksiyonu)', () => {
+    const ANAHTAR = { anahtar: 'A'.repeat(88), yedeklenmeZamani: '2026-09-18' };
+
+    before(async () => {
+      await testEnv.clearFirestore();
+      await seed(async (db) => {
+        await setDoc(
+          doc(db, 'school_boards', OKUL_A, 'gizli', 'imzalama_anahtari'),
+          ANAHTAR,
+        );
+      });
+    });
+
+    it('yonetici kendi okulunun anahtarini okuyabilir', async () => {
+      await assertSucceeds(
+        getDoc(
+          doc(panoAdminA(), 'school_boards', OKUL_A, 'gizli', 'imzalama_anahtari'),
+        ),
+      );
+    });
+
+    it('yonetici anahtar yazabilir', async () => {
+      await assertSucceeds(
+        setDoc(
+          doc(panoAdminA(), 'school_boards', OKUL_A, 'gizli', 'imzalama_anahtari'),
+          ANAHTAR,
+        ),
+      );
+    });
+
+    it('KRITIK: siradan ogretmen anahtari OKUYAMAZ', async () => {
+      // `school_boards/{schoolId}` okumaya herkese acik (pano icerigi).
+      // Anahtar oraya yazilsaydi okuldaki her ogretmen okurdu.
+      await assertFails(
+        getDoc(
+          doc(teacherDb(), 'school_boards', OKUL_A, 'gizli', 'imzalama_anahtari'),
+        ),
+      );
+    });
+
+    it('KRITIK: baska okulun yoneticisi okuyamaz', async () => {
+      await assertFails(
+        getDoc(
+          doc(panoAdminB(), 'school_boards', OKUL_A, 'gizli', 'imzalama_anahtari'),
+        ),
+      );
+    });
+
+    it('KRITIK: veli okuyamaz', async () => {
+      await assertFails(
+        getDoc(
+          doc(parentDb(), 'school_boards', OKUL_A, 'gizli', 'imzalama_anahtari'),
+        ),
+      );
+    });
+
+    it('KRITIK: ogretmen anahtar YAZAMAZ', async () => {
+      // Yazabilse kendi anahtarini koyup tum tahtalara gecerli dosya
+      // uretebilirdi.
+      await assertFails(
+        setDoc(
+          doc(teacherDb(), 'school_boards', OKUL_A, 'gizli', 'imzalama_anahtari'),
+          ANAHTAR,
+        ),
+      );
+    });
+
+    it('yonetici anahtari silebilir (yenileme icin)', async () => {
+      await assertSucceeds(
+        deleteDoc(
+          doc(panoAdminA(), 'school_boards', OKUL_A, 'gizli', 'imzalama_anahtari'),
+        ),
+      );
+    });
+
+    it('KRITIK: ogretmen silemez', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(
+          doc(ctx.firestore(), 'school_boards', OKUL_A, 'gizli', 'imzalama_anahtari'),
+          ANAHTAR,
+        );
+      });
+
+      await assertFails(
+        deleteDoc(
+          doc(teacherDb(), 'school_boards', OKUL_A, 'gizli', 'imzalama_anahtari'),
+        ),
+      );
+    });
+  });
 });

@@ -10,6 +10,7 @@ import '../../auth_profile/providers/user_role_provider.dart';
 import '../../schedule/models/schedule_settings.dart';
 import '../data/okul_config_service.dart';
 import '../data/school_board_repository.dart';
+import '../data/tahta_anahtar_bulut_yedegi.dart';
 import '../data/tahta_anahtar_deposu.dart';
 import '../data/tahta_ogretmen_deposu.dart';
 import '../data/tahta_yetki_deposu.dart';
@@ -48,6 +49,7 @@ class TahtaYonetimiScreen extends ConsumerStatefulWidget {
 
 class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
   final _anahtarDeposu = TahtaAnahtarDeposu();
+  final _bulutYedegi = TahtaAnahtarBulutYedegi();
   final _panoDeposu = SchoolBoardRepository();
   final _ogretmenDeposu = TahtaOgretmenDeposu();
   final _yetkiDeposu = TahtaYetkiDeposu();
@@ -117,14 +119,69 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
     super.dispose();
   }
 
+  /// Anahtarı hazırlar — **sıra kritik**.
+  ///
+  /// 1. Cihazda varsa dokunma (en hızlı ve doğru yol)
+  /// 2. Yoksa **buluttan** geri yükle (telefon değişmiş olabilir)
+  /// 3. O da yoksa yeni üret ve buluta yedekle
+  ///
+  /// ## Neden bulut önce, üretim sonra
+  ///
+  /// Sıra ters olsaydı telefon değiştiren müdüre **yeni** bir anahtar
+  /// üretilirdi ve o anahtar tahtalardakiyle uyuşmazdı: tüm tahtalar
+  /// "imza geçersiz" derdi ve hepsine elden gitmek gerekirdi.
+  ///
+  /// Yani bu sıra, bulut yedeğinin varlık sebebi.
+  ///
+  /// ## Sessiz çalışıyor
+  ///
+  /// Müdür hiçbir şey görmüyor — kullanıcı kararı (18 Eylül 2026):
+  /// *"anahtar oluşturma teknik iş, müdür neden var olduğunu
+  /// anlayamaz"* ve *"yedeği direkt buluta yedeklesin."*
+  Future<void> _anahtariHazirla() async {
+    final rol = ref.read(userRoleProvider);
+    final profil = ref.read(teacherProfileProvider);
+    final okulId = _okulId(rol, profil.schoolId);
+
+    if (await _anahtarDeposu.anahtarVarMi()) return;
+
+    // Cihazda yok: bulut yedeğine bak.
+    if (okulId.isNotEmpty) {
+      final bulut = await _bulutYedegi.oku(schoolId: okulId);
+      if (bulut != null) {
+        final geldi = await _anahtarDeposu.yedektenGeriYukle(bulut);
+        if (geldi) {
+          debugPrint('Anahtar bulut yedeğinden geri yüklendi');
+          return;
+        }
+        // Yedek bozuksa yeni üretmek zorundayız; ama eski tahtalar
+        // artık uyuşmayacak. Bunu günlüğe yazıyoruz ki sahada
+        // "neden imza geçersiz" sorusunun cevabı bulunsun.
+        debugPrint(
+          'Bulut yedeği geri yüklenemedi — YENİ anahtar üretilecek. '
+          'Mevcut tahtalar yeni dosyayı reddedecek.',
+        );
+      }
+    }
+
+    // Ne cihazda ne bulutta: yeni üret.
+    final anahtar = await _anahtarDeposu.anahtarHazirla();
+    if (anahtar == null || okulId.isEmpty) return;
+
+    final b64 = await _anahtarDeposu.anahtarBase64Oku();
+    if (b64 == null) return;
+
+    // Yedekleme başarısız olsa bile anahtar cihazda çalışıyor:
+    // bu bir kolaylık katmanı, çalışma şartı değil.
+    final yedeklendi =
+        await _bulutYedegi.yedekle(schoolId: okulId, base64Anahtar: b64);
+    if (yedeklendi) {
+      await _anahtarDeposu.yedekAlindiIsaretle();
+    }
+  }
+
   Future<void> _durumYukle() async {
-    // Anahtar OTOMATİK hazırlanıyor.
-    //
-    // Kullanıcı kararı (18 Eylül 2026): *"anahtar oluşturma ve yedek
-    // alma teknik işler, müdür neden var olduğunu anlayamaz."*
-    // `anahtarHazirla()` varsa dokunmuyor, yoksa üretiyor — yani
-    // müdürün "Anahtar Oluştur" düğmesine basması gerekmiyor.
-    await _anahtarDeposu.anahtarHazirla();
+    await _anahtariHazirla();
 
     final varMi = await _anahtarDeposu.anahtarVarMi();
     final yedek = await _anahtarDeposu.yedekAlindiMi();
@@ -521,6 +578,30 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
 
     setState(() => _isliyor = true);
     final yeni = await _anahtarDeposu.anahtariDegistir();
+
+    if (yeni != null) {
+      // Eski bulut yedeği SİLİNMELİ.
+      //
+      // Kalırsa `_anahtariHazirla` onu geri yükler ve yeni anahtarı
+      // eziyor: tahtalara yeni dosya götürülmüş olsa bile telefon
+      // eski anahtarla imzalamaya döner ve hiçbir şey çalışmaz.
+      final rol = ref.read(userRoleProvider);
+      final profil = ref.read(teacherProfileProvider);
+      final okulId = _okulId(rol, profil.schoolId);
+
+      if (okulId.isNotEmpty) {
+        await _bulutYedegi.sil(schoolId: okulId);
+
+        final b64 = await _anahtarDeposu.anahtarBase64Oku();
+        if (b64 != null) {
+          await _bulutYedegi.yedekle(
+            schoolId: okulId,
+            base64Anahtar: b64,
+          );
+        }
+      }
+    }
+
     if (!mounted) return;
     setState(() => _isliyor = false);
 
@@ -530,7 +611,7 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
     }
     await _durumYukle();
     if (!mounted) return;
-    _mesaj('Anahtar yenilendi. Tüm tahtalara yeni yapılandırma '
+    _mesaj('Güvenlik sıfırlandı. Tüm tahtalara yeni kurulum dosyası '
         'götürmeniz gerekiyor.');
   }
 

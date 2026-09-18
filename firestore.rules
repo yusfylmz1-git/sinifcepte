@@ -669,6 +669,39 @@ service cloud.firestore {
       // o bloktaki not): Google hesabı olan herkes bir kurum kodunu
       // seçip o okulun öğretmeni olabiliyor. Bu yüzden tahta yetkisi
       // okul seçimine değil, **yönetici onayına** bağlı.
+      // İmzalama anahtarının bulut yedeği.
+      //
+      // ## Neden var (kullanıcı kararı, 18 Eylül 2026)
+      //
+      // Anahtar kaybolursa geri dönüşü yok: yeni yapılandırma
+      // yayımlanamaz ve her tahtaya elden gitmek gerekir. Müdürün
+      // metin yedeği alması bekleniyordu ama sahada bu **olmuyor** —
+      // kullanıcı: *"bence yedeği direkt buluta yedeklesin."*
+      //
+      // ## Kabul edilen risk
+      //
+      // Özel anahtar artık bulutta DÜZ duruyor (kullanıcı parolasız
+      // yedeği seçti). Yani Firebase hesabı ele geçirilirse saldırgan
+      // **tüm okulların** tahtalarına geçerli dosya üretebilir.
+      //
+      // Bu bilerek kabul edildi. Gerekçe: kilit zaten "caydırıcı
+      // katman" ve panelin kaynak düğmesiyle atlanıyor (MEB
+      // şartnamesi md. 1.11.3); anahtar kaybı ise gerçek ve sık bir
+      // zarar.
+      //
+      // ## Neden AYRI alt koleksiyon
+      //
+      // `school_boards/{schoolId}` okumaya oturumlu **herkese** açık
+      // (pano içeriği tahtada zaten görünüyor). Anahtar oraya
+      // yazılsaydı okuldaki her öğretmen okuyabilirdi.
+      //
+      // Burada okuma da yazma da yalnızca o okulun onaylı
+      // yöneticisinde. Öğretmen, veli ve başka okulun yöneticisi
+      // hiçbir şey göremiyor.
+      match /gizli/{belge} {
+        allow read, write: if isSchoolAdminOf(schoolId);
+      }
+
       match /teachers/{teacherUid} {
         allow read: if request.auth != null
           && (request.auth.uid == teacherUid || isSchoolAdminOf(schoolId));
