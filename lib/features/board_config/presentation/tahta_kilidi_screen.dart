@@ -2,11 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
+import '../../../core/utils/turkish_text.dart';
+import '../../auth_profile/providers/teacher_profile_provider.dart';
 import '../data/ogretmen_tahta_deposu.dart';
+import '../data/tahta_yetki_deposu.dart';
 import '../utils/tahta_totp.dart';
 
 /// Öğretmenin tahta kilidini açtığı ekran.
@@ -30,19 +34,24 @@ import '../utils/tahta_totp.dart';
 /// reddedilebilir. Bu durumda öğretmen tahtada yazan okul kodunu elle
 /// girer; kod üretimi aynı şekilde çalışır. Kamera bir kolaylık, şart
 /// değil.
-class TahtaKilidiScreen extends StatefulWidget {
+class TahtaKilidiScreen extends ConsumerStatefulWidget {
   const TahtaKilidiScreen({super.key});
 
   @override
-  State<TahtaKilidiScreen> createState() => _TahtaKilidiScreenState();
+  ConsumerState<TahtaKilidiScreen> createState() => _TahtaKilidiScreenState();
 }
 
-class _TahtaKilidiScreenState extends State<TahtaKilidiScreen> {
+class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
   final _depo = OgretmenTahtaDeposu();
+  final _yetkiDeposu = TahtaYetkiDeposu();
   final _okulKoduCtrl = TextEditingController();
 
   bool _yukleniyor = true;
   OgretmenTahtaKaydi? _kayit;
+
+  /// Buluttaki yetki kaydı (istek gönderildiyse).
+  TahtaYetkiKaydi? _yetkiKaydi;
+  bool _yetkiIsliyor = false;
 
   /// Üretilen kod ve geri sayım.
   String? _kod;
@@ -69,6 +78,102 @@ class _TahtaKilidiScreenState extends State<TahtaKilidiScreen> {
       _kayit = kayit;
       _yukleniyor = false;
     });
+
+    // Cihazda kayıt yoksa buluttaki yetki durumunu soruyoruz:
+    // öğretmen istek göndermiş ve onay bekliyor olabilir.
+    if (kayit == null) await _yetkiDurumunuYukle();
+  }
+
+  /// Buluttaki yetki kaydını okur ve onaylıysa cihaza indirir.
+  ///
+  /// ## Neden onaylıysa cihaza iniyor
+  ///
+  /// Kod üretimi çevrimdışı çalışmak zorunda: öğretmenin sınıfta
+  /// interneti olmayabilir (hafızadaki varsayım). Secret bir kez
+  /// güvenli depoya yazılınca sonrası ağsız çalışıyor.
+  Future<void> _yetkiDurumunuYukle() async {
+    final profil = ref.read(teacherProfileProvider);
+    final okulId = profil.schoolId ?? '';
+    if (okulId.isEmpty || profil.id.isEmpty) return;
+
+    final yetki = await _yetkiDeposu.kendiKaydiniOku(
+      schoolId: okulId,
+      teacherUid: profil.id,
+    );
+    if (!mounted) return;
+
+    setState(() => _yetkiKaydi = yetki);
+
+    // Onaylandıysa secret'ı cihaza indir — öğretmen bir şey yapmasın.
+    //
+    // Kayıt, QR yolunun kullandığı `SCT1:` biçimine çevrilip aynı
+    // ayrıştırıcıya veriliyor. İkinci bir kayıt yolu açmak, iki yolun
+    // ayrışması riskini doğururdu: bu depoda zaten `tarih`/`gun`
+    // ayrışması yaşandı.
+    if (yetki != null && yetki.onayli && yetki.totpSecret.isNotEmpty) {
+      final guvenliAd = yetki.ad.replaceAll(':', ' ').trim();
+      final kayit = await _depo.qrIleKaydet(
+        'SCT1:$okulId:${yetki.kod}:$guvenliAd:${yetki.totpSecret}',
+      );
+      if (!mounted) return;
+      if (kayit != null) setState(() => _kayit = kayit);
+    }
+  }
+
+  /// Öğretmen tahta yetkisi ister.
+  ///
+  /// Secret **bu telefonda** üretiliyor ve isteğe ekleniyor. Yönetici
+  /// onayladığında secret zaten orada; onay anında ikinci bir üretim
+  /// turu gerekmiyor.
+  Future<void> _yetkiIste() async {
+    final profil = ref.read(teacherProfileProvider);
+    final okulId = profil.schoolId ?? '';
+
+    if (okulId.isEmpty) {
+      _mesaj('Önce profilinizden okulunuzu seçmelisiniz.', hata: true);
+      return;
+    }
+    if (profil.id.isEmpty) {
+      _mesaj('Önce Google ile giriş yapmanız gerekiyor.', hata: true);
+      return;
+    }
+
+    setState(() => _yetkiIsliyor = true);
+
+    final sonuc = await _yetkiDeposu.istekGonder(
+      schoolId: okulId,
+      teacherUid: profil.id,
+      ad: profil.fullName,
+      kod: _kodTuret(profil.fullName),
+      totpSecret: TahtaTotp.secretUret(),
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _yetkiIsliyor = false;
+      if (sonuc.kayit != null) _yetkiKaydi = sonuc.kayit;
+    });
+
+    if (sonuc.basarili) {
+      _mesaj('İsteğiniz okul yöneticisine iletildi.');
+    } else {
+      _mesaj(sonuc.hata ?? 'İstek gönderilemedi.', hata: true);
+    }
+  }
+
+  /// Addan tahtada elle girilebilen kısa kod türetir.
+  ///
+  /// Türkçe harfler ASCII'ye iniyor: kod tahtanın klavyesinde
+  /// yazılıyor ve orada Türkçe düzen olmayabilir. Aynı mantık
+  /// `TahtaOgretmenDeposu._kodUret` içinde de var; burada yalnızca
+  /// istek gönderirken kullanılıyor ve yönetici gerekirse
+  /// değiştirebiliyor.
+  static String _kodTuret(String ad) {
+    final temel = trFold(ad)
+        .toUpperCase()
+        .replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    if (temel.isEmpty) return 'OGRETMEN';
+    return temel.length > 10 ? temel.substring(0, 10) : temel;
   }
 
   @override
@@ -92,7 +197,11 @@ class _TahtaKilidiScreenState extends State<TahtaKilidiScreen> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                if (_kayit == null)
+                if (_kayit == null && _yetkiKaydi != null)
+                  // İstek gönderilmiş: durumu göster, kurulum formunu
+                  // tekrar sunma.
+                  _yetkiDurumKarti(isDark)
+                else if (_kayit == null)
                   _kurulumBolumu(isDark)
                 else ...[
                   _kimlikKarti(isDark),
@@ -111,20 +220,101 @@ class _TahtaKilidiScreenState extends State<TahtaKilidiScreen> {
 
   // --- Kurulum ---
 
+  /// Beklemede olan isteği gösteren kart.
+  ///
+  /// Öğretmen isteği gönderdikten sonra ne olduğunu bilmeli; sessiz
+  /// bir ekran "gönderildi mi, unutuldu mu" sorusu doğuruyordu.
+  Widget _yetkiDurumKarti(bool isDark) {
+    final yetki = _yetkiKaydi!;
+
+    if (yetki.durum == YetkiDurumu.reddedildi) {
+      return _kart(
+        isDark,
+        baslik: '⛔ İstek reddedildi',
+        aciklama: 'Okul yöneticisi tahta yetkisi isteğinizi onaylamadı. '
+            'Gerekçeyi öğrenmek için yöneticinizle görüşün.',
+        cocuklar: [
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _yetkiIsliyor ? null : _yetkiIste,
+              icon: const Icon(Icons.refresh_rounded, size: 17),
+              label: Text('Tekrar iste',
+                  style: AppFonts.outfit(fontSize: 12.5)),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return _kart(
+      isDark,
+      baslik: '⏳ Onay bekleniyor',
+      aciklama: 'İsteğiniz okul yöneticisine iletildi. Onaylandığında '
+          'bu ekran kendiliğinden açma koduna geçer.',
+      cocuklar: [
+        _bilgiSatiri(Icons.badge_outlined, 'Öğretmen kodu', yetki.kod),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _yetkiIsliyor ? null : _yetkiDurumunuYukle,
+            icon: const Icon(Icons.refresh_rounded, size: 17),
+            label: Text('Durumu yenile',
+                style: AppFonts.outfit(fontSize: 12.5)),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _kurulumBolumu(bool isDark) {
     return _kart(
       isDark,
       baslik: '📲 Kurulum',
-      aciklama: 'Okul yöneticisi size bir QR gösterecek. Onu okutunca '
-          'bu telefon tahtayı açabilir hâle gelir. Bir kez yapılır.',
+      aciklama: 'Tahtaları açabilmek için okul yöneticinizin onayı '
+          'gerekiyor. Onay verildiğinde bu ekran açma koduna geçer.',
       cocuklar: [
+        // Yeni yol ÖNCE: öğretmenin müdürün odasına gitmesi gerekmiyor.
+        //
+        // Eski akışta 40 öğretmen tek tek gelip QR okutuyordu; sahada
+        // saatler sürüyordu. Artık istek uzaktan gönderiliyor.
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
+            onPressed: _yetkiIsliyor ? null : _yetkiIste,
+            icon: _yetkiIsliyor
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.how_to_reg_rounded, size: 18),
+            label: Text('Tahta yetkisi iste',
+                style: AppFonts.outfit(fontSize: 13)),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Okulunuz profilinizden okunuyor. Yöneticiniz isteği '
+          'onayladığında başka bir şey yapmanız gerekmez.',
+          style: AppFonts.outfit(
+              fontSize: 10.5, color: Colors.grey, height: 1.4),
+        ),
+        const Divider(height: 24),
+        // Eski yol KALIYOR: yöneticisi olmayan okul, çevrimdışı
+        // kurulum ve yüz yüze kayıt için gerekli.
+        Text(
+          'Yöneticiniz size QR gösterdiyse',
+          style: AppFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
             onPressed: () => _qrOkut(kurulumMu: true),
             icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
             label: Text('Kurulum QR\'ını Okut',
-                style: AppFonts.outfit(fontSize: 13)),
+                style: AppFonts.outfit(fontSize: 12.5)),
           ),
         ),
         const SizedBox(height: 10),
