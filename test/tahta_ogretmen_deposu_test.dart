@@ -153,13 +153,96 @@ void main() {
     });
   });
 
+  group('Kod kuralı — ad baş harfi + soyad', () {
+    // Bu grup kullanıcı itirazından doğdu (18 Eylül 2026):
+    // *"neden YUSUFYILMA olarak kaldı, mantıklı bir kod
+    // üretilemez mi?"*
+    //
+    // İlk sürüm tüm adı birleştirip 10 karaktere kesiyordu:
+    //   Yusuf YILMAZ → YUSUFYILMAZ → YUSUFYILMA  (ortadan kopuk)
+    //
+    // Baş harf + soyad okulun günlük dilinde de böyle: "Y. Yılmaz".
+
+    test('KRİTİK: tam ad verilince kelime ortasından KESİLMİYOR', () {
+      expect(TahtaOgretmenDeposu.kodTuret('Yusuf YILMAZ'), 'YYILMAZ');
+    });
+
+    test('kısaltmalı ad da aynı sonucu veriyor', () {
+      // Bu zaten çalışıyordu; kural değişikliği bozmamalı.
+      expect(TahtaOgretmenDeposu.kodTuret('A. Yılmaz'), 'AYILMAZ');
+    });
+
+    test('orta ad baş harfe inmiyor, atlanıyor', () {
+      // "ANCAGLAYAN" kodu uzatır ve tahtada yazmayı zorlaştırır.
+      expect(
+        TahtaOgretmenDeposu.kodTuret('Ayşe Nur Çağlayan'),
+        'ACAGLAYAN',
+      );
+    });
+
+    test('tek kelime olduğu gibi kalıyor', () {
+      expect(TahtaOgretmenDeposu.kodTuret('Madonna'), 'MADONNA');
+    });
+
+    test('uzun soyad 12 karakterde sınırlanıyor', () {
+      final kod = TahtaOgretmenDeposu.kodTuret('Ali Abdurrahmanoglulari');
+      expect(kod.length, lessThanOrEqualTo(12));
+      expect(kod, startsWith('AABDURRAHMA'));
+    });
+
+    test('KRİTİK: Türkçe harfler ASCII\'ye iniyor', () {
+      // Tahtanın klavyesinde Türkçe düzen olmayabilir.
+      expect(TahtaOgretmenDeposu.kodTuret('Şükrü Çağlayan'), 'SCAGLAYAN');
+      expect(TahtaOgretmenDeposu.kodTuret('İbrahim Işık'), 'IISIK');
+      expect(TahtaOgretmenDeposu.kodTuret('Ömer Güngör'), 'OGUNGOR');
+    });
+
+    test('boş ad OGR veriyor', () {
+      expect(TahtaOgretmenDeposu.kodTuret(''), 'OGR');
+      expect(TahtaOgretmenDeposu.kodTuret('   '), 'OGR');
+      expect(TahtaOgretmenDeposu.kodTuret('...'), 'OGR');
+    });
+
+    test('kod yalnızca A-Z0-9 içeriyor', () {
+      for (final ad in [
+        'Yusuf YILMAZ',
+        'A. Yılmaz-Demir',
+        'Şükrü Çağlayan',
+        'İbrahim Işık',
+        "Ayşe'nin Oğlu",
+      ]) {
+        final kod = TahtaOgretmenDeposu.kodTuret(ad);
+        expect(
+          RegExp(r'^[A-Z0-9]+$').hasMatch(kod),
+          isTrue,
+          reason: '$ad → $kod',
+        );
+      }
+    });
+
+    test('KRİTİK: aynı soyadlı iki öğretmen çakışmıyor', () async {
+      // Kardeş, eş — gerçek bir durum.
+      final a = (await ogretmenler.ekle(ad: 'Ali YILMAZ')).kayit;
+      final b = (await ogretmenler.ekle(ad: 'Ayşe YILMAZ')).kayit;
+
+      expect(a!.kod, 'AYILMAZ');
+      expect(b!.kod, isNot('AYILMAZ'));
+      expect(b.kod, 'AYILMAZ2');
+    });
+  });
+
   group('Kod türetme — tahta klavyesinde Türkçe düzen olmayabilir', () {
     test('KRİTİK: Türkçe harfler ASCII\'ye iner', () async {
       final kayit = (await ogretmenler.ekle(ad: 'Şükrü Çağlayan')).kayit;
 
-      // Ş→S, ü→U, ç→C, ğ→G olmalı; kod tahtada elle giriliyor.
+      // Ş→S, ç→C, ğ→G olmalı; kod tahtada elle giriliyor.
+      //
+      // Kural ad baş harfi + soyad: "Şükrü Çağlayan" → "SCAGLAYAN".
+      // Bu test bir dönem `contains('SUKRU')` bekliyordu — o, tüm adı
+      // birleştiren eski kuraldı ve `YUSUFYILMA` gibi ortadan kopuk
+      // kodlar üretiyordu.
       expect(RegExp(r'^[A-Z0-9]+$').hasMatch(kayit!.kod), isTrue);
-      expect(kayit.kod, contains('SUKRU'));
+      expect(kayit.kod, 'SCAGLAYAN');
     });
 
     test('İ harfi tuzağı', () async {
@@ -167,8 +250,9 @@ void main() {
       // doğru ele alıyor.
       final kayit = (await ogretmenler.ekle(ad: 'İbrahim Işık')).kayit;
 
+      // 'İ' ve 'ı' ikisi de ASCII'ye inmeli: "İbrahim Işık" → "IISIK".
       expect(RegExp(r'^[A-Z0-9]+$').hasMatch(kayit!.kod), isTrue);
-      expect(kayit.kod, startsWith('IBRAHIM'));
+      expect(kayit.kod, 'IISIK');
     });
 
     test('noktalama atılır', () async {

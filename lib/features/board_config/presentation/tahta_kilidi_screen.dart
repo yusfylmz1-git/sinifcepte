@@ -7,9 +7,9 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
-import '../../../core/utils/turkish_text.dart';
 import '../../auth_profile/providers/teacher_profile_provider.dart';
 import '../data/ogretmen_tahta_deposu.dart';
+import '../data/tahta_ogretmen_deposu.dart';
 import '../data/tahta_yetki_deposu.dart';
 import '../utils/tahta_totp.dart';
 
@@ -144,7 +144,11 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
       schoolId: okulId,
       teacherUid: profil.id,
       ad: profil.fullName,
-      kod: _kodTuret(profil.fullName),
+      // Kod kuralı TEK YERDE: `TahtaOgretmenDeposu.kodTuret`.
+      // Buraya kopyalanmış bir sürüm vardı ve iki kural
+      // ayrışabilirdi — bu projede `tarih`/`gun` ayrışması
+      // tam olarak böyle oluştu.
+      kod: TahtaOgretmenDeposu.kodTuret(profil.fullName),
       totpSecret: TahtaTotp.secretUret(),
     );
 
@@ -159,21 +163,6 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
     } else {
       _mesaj(sonuc.hata ?? 'İstek gönderilemedi.', hata: true);
     }
-  }
-
-  /// Addan tahtada elle girilebilen kısa kod türetir.
-  ///
-  /// Türkçe harfler ASCII'ye iniyor: kod tahtanın klavyesinde
-  /// yazılıyor ve orada Türkçe düzen olmayabilir. Aynı mantık
-  /// `TahtaOgretmenDeposu._kodUret` içinde de var; burada yalnızca
-  /// istek gönderirken kullanılıyor ve yönetici gerekirse
-  /// değiştirebiliyor.
-  static String _kodTuret(String ad) {
-    final temel = trFold(ad)
-        .toUpperCase()
-        .replaceAll(RegExp(r'[^A-Z0-9]'), '');
-    if (temel.isEmpty) return 'OGRETMEN';
-    return temel.length > 10 ? temel.substring(0, 10) : temel;
   }
 
   @override

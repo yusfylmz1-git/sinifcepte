@@ -248,21 +248,36 @@ class TahtaOgretmenDeposu {
     }
   }
 
-  /// Addan öğretmen kodu türetir (`A. Yılmaz` → `AYILMAZ`).
+  /// Addan öğretmen kodu türetir: **ad baş harfi + soyad**.
   ///
-  /// Türkçe harfler ASCII'ye iniyor: kod tahtada elle girilebiliyor ve
-  /// tahtanın klavyesinde Türkçe düzen olmayabilir. `trFold` projede
-  /// zaten bu iş için var.
+  ///     Yusuf YILMAZ          → YYILMAZ
+  ///     Ayşe Nur Çağlayan     → ACAGLAYAN
+  ///     A. Yılmaz             → AYILMAZ
+  ///     Abdurrahman Uzunisim  → AUZUNISIM
+  ///
+  /// ## Neden bu kural
+  ///
+  /// İlk sürüm tüm adı birleştirip 10 karaktere kesiyordu. Sonuç
+  /// kelimenin ortasından kopuyordu: `Yusuf YILMAZ` → `YUSUFYILMA`.
+  /// Kullanıcı haklı olarak sordu: *"neden YUSUFYILMA olarak kaldı,
+  /// mantıklı bir kod üretilemez mi?"* (18 Eylül 2026)
+  ///
+  /// Baş harf + soyad okulun günlük dilinde de böyle: "Y. Yılmaz".
+  /// Kısa kalıyor, kesilmiyor ve tahtada elle yazmak kolay.
+  ///
+  /// Türkçe harfler ASCII'ye iniyor: tahtanın klavyesinde Türkçe düzen
+  /// olmayabilir. `trFold` projede zaten bu iş için var.
+  ///
+  /// ## Sınır neden 12
+  ///
+  /// Soyadlar uzun olabiliyor (`ABDURRAHMANOGLU`). 10 karakter
+  /// soyadın kendisini kesiyordu; 12 çoğu soyadı tam bırakıyor ve
+  /// tahtada yazmak hâlâ makul.
   static String _kodUret(String ad, List<PanoOgretmeni> mevcut) {
-    final temel = trFold(ad)
-        .toUpperCase()
-        .replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    final kisa = kodTuret(ad);
 
-    final kisa = temel.isEmpty
-        ? 'OGR'
-        : (temel.length > 10 ? temel.substring(0, 10) : temel);
-
-    // Çakışma varsa sayı ekle.
+    // Çakışma varsa sayı ekle. Aynı soyadlı iki öğretmen (kardeş,
+    // eş) gerçek bir durum.
     var aday = kisa;
     var sayac = 2;
     while (mevcut.any((o) => o.kod.toUpperCase() == aday)) {
@@ -271,6 +286,36 @@ class TahtaOgretmenDeposu {
     }
     return aday;
   }
+
+  /// Addan kod türetir — öğretmen tarafı da aynı kuralı kullanıyor.
+  ///
+  /// `static` ve açık: `tahta_kilidi_screen` kendi kopyasını
+  /// yazıyordu ve iki kural ayrışabilirdi. Bu projede `tarih`/`gun`
+  /// ayrışması tam olarak böyle oluştu.
+  static String kodTuret(String ad) {
+    final parcalar = trFold(ad)
+        .toUpperCase()
+        .replaceAll(RegExp(r'[^A-Z0-9 ]'), ' ')
+        .split(' ')
+        .where((p) => p.isNotEmpty)
+        .toList();
+
+    if (parcalar.isEmpty) return 'OGR';
+
+    // Tek kelime: olduğu gibi (kısaltılarak).
+    if (parcalar.length == 1) return _sinirla(parcalar.first);
+
+    // Baş harf(ler) + soyad. Ortadaki adlar da baş harfe iniyor:
+    // "Ayşe Nur Çağlayan" → "ANCAGLAYAN" yerine "ACAGLAYAN" —
+    // ikinci baş harf kodu uzatıyor ve tahtada yazmayı zorlaştırıyor.
+    final soyad = parcalar.last;
+    final basHarf = parcalar.first[0];
+
+    return _sinirla('$basHarf$soyad');
+  }
+
+  static String _sinirla(String kod) =>
+      kod.length > 12 ? kod.substring(0, 12) : kod;
 
   static String _secretUret() => TahtaTotp.secretUret();
 }
