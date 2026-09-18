@@ -149,6 +149,28 @@ class TahtaAnahtarDeposu {
     }
   }
 
+  /// Anahtarın base64 gösterimi — **yalnızca anahtar**, açıklama yok.
+  ///
+  /// ## Neden ayrı metot
+  ///
+  /// Yedek metni 20 satırlık açıklama içeriyor ve idareci anahtarı
+  /// onun içinden **elle seçmeye** çalışıyordu. Sahada bu yaşandı
+  /// (18 Eylül 2026): seçim bir karakter kaydı, base64'teki `/`
+  /// düştü ve 88 karakterlik anahtar 87 karaktere indi.
+  ///
+  /// Sonuç sessiz değil ama teşhisi zor: anahtar hiç çözülemiyor
+  /// (`Invalid base64-encoded string`) ve idareci "yedeğim bozuk mu,
+  /// uygulama mı hatalı" diye kalıyor. `/` ve `+` base64'te sık
+  /// geçtiği için tekrar etmesi kaçınılmazdı.
+  ///
+  /// Arayüz artık anahtarı kendi kutusunda gösteriyor ve tek dokunuşla
+  /// kopyalatıyor.
+  Future<String?> anahtarBase64Oku() async {
+    final anahtar = await ozelAnahtarOku();
+    if (anahtar == null) return null;
+    return TahtaImza.anahtarBase64(anahtar);
+  }
+
   /// İdarecinin kendi saklayacağı yedek metni.
   ///
   /// Anahtar kaybolursa geri dönüşü olmadığı için idareciye bu metni
@@ -186,6 +208,28 @@ WhatsApp'a göndermeyin.
 ANAHTAR (base64):
 ${TahtaImza.anahtarBase64(anahtar)}
 ''';
+  }
+
+  /// Geri yüklemenin neden başarısız olduğunu söyleyen sonuç.
+  ///
+  /// Eskiden yalnızca `bool` dönüyordu ve arayüz sebebi tahmin
+  /// etmek zorundaydı. Sahada en sık görülen sebep **eksik karakter**
+  /// (18 Eylül 2026: idareci anahtarı elle seçince base64'teki `/`
+  /// düştü); "yedek geçersiz" demek o durumda yardımcı olmuyor,
+  /// "88 karakter olmalı, 87 var" oluyor.
+  static String? geriYuklemeSebebi(String base64Anahtar) {
+    final temiz = base64Anahtar.trim();
+    if (temiz.isEmpty) return 'Anahtar boş.';
+
+    // 64 bayt → 88 karakter (86 veri + '=='). Base64 uzunluğu 4'ün
+    // katı olmak zorunda; elle kopyalamada tek karakter düşmesi tam
+    // olarak burada yakalanıyor.
+    if (temiz.length != 88) {
+      return 'Anahtar 88 karakter olmalı, ${temiz.length} karakter '
+          'girildi. Eksik veya fazla karakter var — yedeği elle '
+          'seçmek yerine "Anahtarı Kopyala" düğmesini kullanın.';
+    }
+    return null;
   }
 
   /// Yedekten anahtarı geri yükler.

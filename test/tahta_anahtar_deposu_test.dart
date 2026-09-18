@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -306,6 +307,84 @@ void main() {
 
     test('anahtar yokken silme hata vermez', () async {
       expect(await anahtarDeposu.sil(), isTrue);
+    });
+  });
+
+  group('Anahtar kopyalama — eksik karakter tuzağı', () {
+    // Bu grup sahada yaşanan bir olaydan doğdu (18 Eylül 2026).
+    //
+    // İdareci anahtarı yedek metninin içinden ELLE seçip kopyaladı;
+    // seçim bir karakter kaydı, base64'teki `/` düştü ve 88 karakterlik
+    // anahtar 87 karaktere indi. Sonuç: anahtar hiç çözülemiyor ve
+    // "yedeğim bozuk mu, uygulama mı hatalı" belirsizliği.
+    //
+    // `/` ve `+` base64'te sık geçtiği için tekrar etmesi kaçınılmazdı.
+
+    test('KRİTİK: 88 karakterlik geçerli anahtar kabul ediliyor', () {
+      // 64 bayt → 86 veri karakteri + '==' = 88.
+      final gecerli = base64Encode(Uint8List(64));
+      expect(gecerli.length, 88);
+      expect(TahtaAnahtarDeposu.geriYuklemeSebebi(gecerli), isNull);
+    });
+
+    test('KRİTİK: 87 karakter reddediliyor ve SAYIYI söylüyor', () {
+      // Sahada olan tam bu: bir karakter eksik.
+      final eksik = 'dp78bmjdGvadxviJ1H9fcvspCRI5YUKNgWOr9jk27gPAmZFh'
+          'Mprqu9i8pdjK+BSMjscHv5qDnsJ9gDSYy0lnA==';
+      expect(eksik.length, 87);
+
+      final sebep = TahtaAnahtarDeposu.geriYuklemeSebebi(eksik);
+      expect(sebep, isNotNull);
+      // "Yedek geçersiz" demek yardımcı olmuyor; sayı söylenmeli.
+      expect(sebep, contains('87'));
+      expect(sebep, contains('88'));
+    });
+
+    test('mesaj kopyala düğmesine yönlendiriyor', () {
+      // Sebebi bilmek yetmez; ne yapılacağı da söylenmeli.
+      final sebep = TahtaAnahtarDeposu.geriYuklemeSebebi('kisa');
+      expect(sebep, contains('Kopyala'));
+    });
+
+    test('boş anahtar sebebini söylüyor', () {
+      expect(TahtaAnahtarDeposu.geriYuklemeSebebi(''), contains('boş'));
+      expect(TahtaAnahtarDeposu.geriYuklemeSebebi('   '), contains('boş'));
+    });
+
+    test('çevresindeki boşluk sorun değil', () {
+      final gecerli = base64Encode(Uint8List(64));
+      expect(
+        TahtaAnahtarDeposu.geriYuklemeSebebi('  $gecerli \n'),
+        isNull,
+      );
+    });
+
+    test('KRİTİK: okunan anahtar 88 karakter', () async {
+      // Üretilen anahtarın yedeği her zaman tam uzunlukta olmalı;
+      // kısa üretilirse geri yükleme baştan imkânsız olur.
+      await anahtarDeposu.anahtarHazirla();
+      final b64 = await anahtarDeposu.anahtarBase64Oku();
+
+      expect(b64, isNotNull);
+      expect(b64!.length, 88);
+      expect(TahtaAnahtarDeposu.geriYuklemeSebebi(b64), isNull);
+    });
+
+    test('anahtar yokken base64 okuma null', () async {
+      expect(await anahtarDeposu.anahtarBase64Oku(), isNull);
+    });
+
+    test('KRİTİK: okunan anahtar gerçekten geri yüklenebiliyor', () async {
+      // Tur kapanmalı: üret → oku → geri yükle. Arada bir bayt
+      // kayarsa idareci telefonu değiştirdiğinde anahtarını
+      // kaybeder ve geri dönüşü yok.
+      await anahtarDeposu.anahtarHazirla();
+      final b64 = await anahtarDeposu.anahtarBase64Oku();
+      await anahtarDeposu.sil();
+
+      expect(await anahtarDeposu.yedektenGeriYukle(b64!), isTrue);
+      expect(await anahtarDeposu.anahtarVarMi(), isTrue);
+      expect(await anahtarDeposu.anahtarBase64Oku(), b64);
     });
   });
 }

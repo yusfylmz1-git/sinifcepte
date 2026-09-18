@@ -330,9 +330,23 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
     _mesaj('Anahtar oluşturuldu. Şimdi yedeğini almanız önerilir.');
   }
 
+  /// Anahtar yedeğini gösterir.
+  ///
+  /// ## Neden anahtar kendi kutusunda
+  ///
+  /// İlk tasarımda anahtar 20 satırlık açıklamanın içindeydi ve
+  /// idareci onu **elle seçmeye** çalışıyordu. Sahada bu yaşandı
+  /// (18 Eylül 2026): seçim bir karakter kaydı, base64'teki `/` düştü
+  /// ve 88 karakterlik anahtar 87 karaktere indi — hiç çözülemez hâle
+  /// geldi. `/` ve `+` base64'te sık geçtiği için tekrar etmesi
+  /// kaçınılmazdı.
+  ///
+  /// Artık anahtar ayrı kutuda ve **iki kopyalama düğmesi** var:
+  /// yalnızca anahtar, veya açıklamayla birlikte tam metin.
   Future<void> _yedegiGoster(String okulAdi) async {
     final metin = await _anahtarDeposu.yedekMetniUret(okulAdi: okulAdi);
-    if (!mounted || metin == null) return;
+    final anahtar = await _anahtarDeposu.anahtarBase64Oku();
+    if (!mounted || metin == null || anahtar == null) return;
 
     await showDialog<void>(
       context: context,
@@ -340,19 +354,74 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
         title: Text('Anahtar Yedeği',
             style: AppFonts.outfit(fontWeight: FontWeight.bold)),
         content: SingleChildScrollView(
-          child: SelectableText(
-            metin,
-            style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Anahtar EN ÜSTTE ve kendi kutusunda: aranmasın,
+              // içinden seçilmesin.
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.4)),
+                ),
+                child: SelectableText(
+                  anahtar,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontFamily: 'monospace',
+                    height: 1.5,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () async {
+                    await Clipboard.setData(ClipboardData(text: anahtar));
+                    if (!ctx.mounted) return;
+                    Navigator.pop(ctx);
+                    _mesaj('Anahtar panoya kopyalandı '
+                        '(${anahtar.length} karakter). Güvenli bir yere '
+                        'kaydedin.');
+                  },
+                  icon: const Icon(Icons.copy_rounded, size: 17),
+                  label: Text('Anahtarı Kopyala',
+                      style: AppFonts.outfit(fontSize: 12.5)),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Elle seçip kopyalamayın: tek karakter eksilse anahtar '
+                'kullanılamaz hâle gelir. Düğmeyi kullanın.',
+                style: AppFonts.outfit(
+                  fontSize: 10.5,
+                  color: Colors.orange,
+                  height: 1.4,
+                ),
+              ),
+              const Divider(height: 20),
+              SelectableText(
+                metin,
+                style: const TextStyle(fontSize: 10.5, fontFamily: 'monospace'),
+              ),
+            ],
           ),
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: metin));
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: metin));
+              if (!ctx.mounted) return;
               Navigator.pop(ctx);
-              _mesaj('Yedek panoya kopyalandı. Güvenli bir yere kaydedin.');
+              _mesaj('Açıklamalı yedek panoya kopyalandı.');
             },
-            child: const Text('Kopyala'),
+            child: const Text('Tam metni kopyala'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
