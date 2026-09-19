@@ -136,6 +136,7 @@ void main() {
       final sonuc = UretimSonucu.basarili(
         jsonYolu: '/yol/okul_config.json',
         imzaYolu: '/yol/okul_config.sig',
+        anahtarYolu: '/yol/dogrulama_anahtari.b64',
         baytSayisi: 836,
       );
 
@@ -166,6 +167,66 @@ void main() {
     test('Python tarafı bu adları okuyor', () {
       expect(TahtaYapilandirmaPaketi.jsonDosyaAdi, 'okul_config.json');
       expect(TahtaYapilandirmaPaketi.imzaDosyaAdi, 'okul_config.sig');
+    });
+  });
+
+  group('Doğrulama anahtarı — ÜÇÜNCÜ dosya', () {
+    // Bu dosya bir dönem hiç üretilmiyordu ve ekran "bu iki dosyayı
+    // kopyalayın" diyordu. Tahta ise üçünü arıyor; bulamayınca
+    // "Doğrulama anahtarı yok" deyip duruyordu ve müdür o dosyanın
+    // var olduğunu bile bilmiyordu.
+    //
+    // ETAP'ta gerçek kurulumda görüldü (19 Eylül 2026): dosya elle
+    // türetilerek kurtarıldı. Hiçbir müdür bunu yapamazdı.
+
+    test('KRİTİK: Python tarafının aradığı ad', () {
+      expect(
+        TahtaYapilandirmaPaketi.anahtarDosyaAdi,
+        'dogrulama_anahtari.b64',
+        reason: 'servis/ana.py bu adı okuyor; ayrışırsa tahta çalışmaz',
+      );
+    });
+
+    test('KRİTİK: sonuç üçüncü yolu taşıyor', () {
+      final sonuc = UretimSonucu.basarili(
+        jsonYolu: '/yol/okul_config.json',
+        imzaYolu: '/yol/okul_config.sig',
+        anahtarYolu: '/yol/dogrulama_anahtari.b64',
+        baytSayisi: 836,
+      );
+
+      expect(sonuc.anahtarYolu, isNotEmpty);
+      expect(sonuc.anahtarYolu, endsWith('dogrulama_anahtari.b64'));
+    });
+
+    test('KRİTİK: yazılan anahtar özel anahtarla eşleşiyor', () {
+      // Yanlış anahtar yazılırsa imza tahtada DOĞRULANMAZ ve hata
+      // "bozuk imza" gibi görünür; gerçek sebep eşleşmeyen anahtar
+      // olurdu — bu depoda o hata sınıfı bir kez yaşandı.
+      final cift = TahtaImza.anahtarCiftiUret();
+      final baytlar = TahtaImza.jsonBaytlari({'a': 1});
+      final imza = TahtaImza.imzala(baytlar, cift.ozelAnahtar);
+
+      // Servisin yazdığı base64, çiftin doğrulama anahtarı olmalı.
+      final yazilan = base64Encode(cift.dogrulamaAnahtari);
+      final geri = base64Decode(yazilan);
+
+      expect(geri.length, 32, reason: 'açık anahtar 32 bayt');
+      expect(TahtaImza.dogrula(baytlar, imza, geri), isTrue);
+    });
+
+    test('KRİTİK: yazılan dosya ÖZEL anahtarı içermiyor', () {
+      // Özel anahtar sızarsa flash belleği kopyalayan herkes geçerli
+      // yapılandırma üretebilir — kilidin tüm anlamı kaybolur.
+      final cift = TahtaImza.anahtarCiftiUret();
+      final yazilan = base64Encode(cift.dogrulamaAnahtari);
+
+      expect(base64Decode(yazilan).length, 32);
+      expect(
+        yazilan,
+        isNot(contains(base64Encode(cift.ozelAnahtar))),
+        reason: 'dosyaya yalnızca AÇIK anahtar yazılmalı',
+      );
     });
   });
 }

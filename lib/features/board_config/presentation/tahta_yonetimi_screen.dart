@@ -1266,14 +1266,14 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
     return _kart(
       isDark,
       baslik: '💾 Tahta Kurulum Dosyası',
-      aciklama: 'Tahta internete bağlanmaz. Bu iki dosyayı flash belleğe '
-          'kopyalayıp tahtaya götürün.',
+      aciklama: 'Tahta internete bağlanmaz. Üretilen dosyaları flash '
+          'belleğe kopyalayıp tahtaya götürün.',
       cocuklar: [
         if (!_anahtarVar)
           _bilgiSatiri(
-            Icons.warning_amber_rounded,
-            'Önce anahtar oluşturun',
-            'Dosya imzalanmadan tahta kabul etmez',
+            Icons.hourglass_empty_rounded,
+            'Güvenlik hazırlanıyor',
+            'Birkaç saniye sürer, sonra tekrar deneyin',
             Colors.orange,
           )
         else if (okulId.isEmpty)

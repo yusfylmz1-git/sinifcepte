@@ -144,8 +144,24 @@ class TahtaYapilandirmaPaketi {
   });
 
   /// Flash bellekteki dosya adları.
+  ///
+  /// **ÜÇÜ birlikte** gerekli. Tahta tarafı üçünü de arıyor
+  /// (`servis/ana.py`): imzasız dosya kabul edilmez, anahtarsız imza
+  /// da doğrulanamaz.
+  ///
+  /// Doğrulama anahtarı bir dönem hiç üretilmiyordu ve ekran "bu iki
+  /// dosyayı kopyalayın" diyordu. Tahta ise üçüncüyü arıyor ve
+  /// bulamayınca "Doğrulama anahtarı yok" deyip duruyordu — müdür o
+  /// dosyanın var olduğunu bile bilmiyordu (19 Eylül 2026, ETAP'ta
+  /// gerçek kurulumda görüldü).
   static const String jsonDosyaAdi = 'okul_config.json';
   static const String imzaDosyaAdi = 'okul_config.sig';
+
+  /// Tahtaya gömülecek **açık** anahtar (base64, 32 bayt).
+  ///
+  /// Özel anahtar bu dosyaya GİRMEZ; flash bellek kopyalansa bile
+  /// saldırgan geçerli yapılandırma üretemez.
+  static const String anahtarDosyaAdi = 'dogrulama_anahtari.b64';
 
   /// İnsan tarafından okunabilir JSON (günlük/hata ayıklama için).
   String get jsonMetni => utf8.decode(jsonBaytlari);

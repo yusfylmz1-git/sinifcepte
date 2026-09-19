@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -104,9 +105,29 @@ class OkulConfigService {
       await jsonDosya.writeAsBytes(paket.jsonBaytlari, flush: true);
       await imzaDosya.writeAsBytes(paket.imza, flush: true);
 
+      // ÜÇÜNCÜ dosya: tahtanın imzayı doğrulayacağı açık anahtar.
+      //
+      // Bir dönem hiç üretilmiyordu. Tahta onu arıyor ve bulamayınca
+      // "Doğrulama anahtarı yok" deyip duruyordu; müdür o dosyanın
+      // var olduğunu bile bilmiyordu (19 Eylül 2026, ETAP'ta gerçek
+      // kurulumda görüldü — dosya elle türetilerek kurtarıldı).
+      //
+      // Yalnızca AÇIK anahtar yazılıyor. Özel anahtar cihazdan
+      // çıkmıyor: flash bellek kopyalansa bile saldırgan geçerli
+      // yapılandırma üretemez.
+      final anahtarDosya = File(
+        '${klasor.path}${Platform.pathSeparator}'
+        '${TahtaYapilandirmaPaketi.anahtarDosyaAdi}',
+      );
+      await anahtarDosya.writeAsString(
+        base64Encode(dogrulamaAnahtari),
+        flush: true,
+      );
+
       return UretimSonucu.basarili(
         jsonYolu: jsonDosya.path,
         imzaYolu: imzaDosya.path,
+        anahtarYolu: anahtarDosya.path,
         baytSayisi: paket.jsonBaytlari.length,
       );
     } catch (e, stackTrace) {
@@ -132,6 +153,7 @@ class OkulConfigService {
           files: [
             XFile(sonuc.jsonYolu),
             XFile(sonuc.imzaYolu),
+            XFile(sonuc.anahtarYolu),
           ],
           subject: 'SınıfCepte tahta yapılandırması',
           text: 'Bu iki dosyayı flash belleğin kök dizinine kopyalayın. '
@@ -190,6 +212,13 @@ class UretimSonucu {
   final bool basarili;
   final String jsonYolu;
   final String imzaYolu;
+
+  /// Doğrulama anahtarı dosyasının yolu.
+  ///
+  /// Üçü birlikte paylaşılıyor: biri eksik giderse tahta çalışmaz ve
+  /// sebebi sahada anlaşılmaz.
+  final String anahtarYolu;
+
   final int baytSayisi;
   final String hataMesaji;
 
@@ -197,6 +226,7 @@ class UretimSonucu {
     required this.basarili,
     this.jsonYolu = '',
     this.imzaYolu = '',
+    this.anahtarYolu = '',
     this.baytSayisi = 0,
     this.hataMesaji = '',
   });
@@ -204,12 +234,14 @@ class UretimSonucu {
   factory UretimSonucu.basarili({
     required String jsonYolu,
     required String imzaYolu,
+    required String anahtarYolu,
     required int baytSayisi,
   }) =>
       UretimSonucu._(
         basarili: true,
         jsonYolu: jsonYolu,
         imzaYolu: imzaYolu,
+        anahtarYolu: anahtarYolu,
         baytSayisi: baytSayisi,
       );
 
