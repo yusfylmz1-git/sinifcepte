@@ -66,13 +66,39 @@ final classTokensProvider = FutureProvider.family<Map<int, ParentTokenModel>, Cl
   // öğretmen görüyordu. (Firestore'da `parent_tokens` koleksiyonu hiç
   // oluşmamıştı — kanıt buydu.)
   //
-  // Yalnızca bulutta bulunmayanlar yayımlanır; her ekran açılışında
-  // tüm sınıfı yeniden yazmak bütçeyi tüketirdi.
+  // Yalnızca BULUTTA OLMAYANLAR yayımlanır.
+  //
+  // Bu yorum bir dönem koda uymuyordu: döngü tüm aktif kodları
+  // koşulsuz yazıyordu. Her yayım 3 yazma (sınıf odası + kadro +
+  // token) ve ekran günde birkaç kez açılıyor.
+  //
+  // ÖLÇÜLDÜ (19 Eylül 2026): 30 öğrencili sınıf, günde 5 açılış
+  // = 450 yazma/gün. Koddaki günlük tavan 1.500, yani tek öğretmen
+  // tavanın %30'unu tüketiyor; ücretsiz katman 44 öğretmende
+  // doluyor. Hafızadaki maliyet kararları faturayı %89 azaltmak
+  // üzerineydi; bu yol onu geri alıyordu.
+  //
+  // Kontrol bir OKUMA maliyetinde (yazmadan ucuz). Bulut
+  // okunamazsa yayım DENENİYOR: eksik kod, fazladan yazmadan
+  // daha kötü — veli hiç bağlanamaz.
   final uid = TeacherIdentity.resolve(teacher);
   if (CloudIds.isValidUid(uid) && tokens.isNotEmpty) {
     final bridge = ref.read(parentLinkBridgeProvider);
+    final cloud = ref.read(cloudTokenRepositoryProvider);
     for (final token in tokens.values) {
       if (token.status != 'active') continue;
+
+      try {
+        final mevcut = await cloud
+            .lookupByCodeHash(token.codeHash)
+            .timeout(const Duration(seconds: 5),
+                onTimeout: () => CloudTokenLookup.notFound);
+
+        // Bulutta VARSA ve aktifse tekrar yazma.
+        if (mevcut.found && mevcut.status == 'active') continue;
+      } catch (e) {
+        debugPrint('Bulut kodu okunamadı (${token.code}): $e');
+      }
       try {
         await bridge
             .publishTokenToCloud(
