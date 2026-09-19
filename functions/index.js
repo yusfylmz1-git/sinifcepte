@@ -19,7 +19,7 @@ import { initializeApp } from 'firebase-admin/app';
 import { getRemoteConfig } from 'firebase-admin/remote-config';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
-import { dogrula, yetkiKontrol } from './validate.js';
+import { dogrula, yetkiKontrol, geriSarmaKontrol } from './validate.js';
 import { ayristir, karsilastir, OSYM_TAKVIM_URL } from './osym_parser.js';
 
 initializeApp();
@@ -70,6 +70,13 @@ export const publishRemoteConfig = onCall(
         'internal',
         `Remote Config şablonu okunamadı: ${e.message}`
       );
+    }
+
+    // Sürüm alanları geriye alınamaz — mantık `validate.js` içinde,
+    // orada Admin SDK'sız test edilebiliyor.
+    const geri = geriSarmaKontrol(sonuc.params, sablon.parameters);
+    if (!geri.ok) {
+      throw new HttpsError(geri.kod, geri.mesaj);
     }
 
     for (const [anahtar, deger] of Object.entries(sonuc.params)) {

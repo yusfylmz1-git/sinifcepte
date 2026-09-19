@@ -159,3 +159,77 @@ export function yetkiKontrol(auth) {
   }
   return { ok: true };
 }
+
+/**
+ * Sürüm alanları — yalnızca ARTABİLİR.
+ *
+ * Bu alanlar cihazın "yeni veri var mı" kararını veriyor
+ * (`uzakSurum <= yerelSurum` ise yok sayılır).
+ */
+export const SURUM_ALANLARI = [
+  'exams_version',
+  'calendar_version',
+  'outcomes_version',
+  'announcements_version',
+];
+
+/**
+ * Yayın sürümü geriye alınıyor mu?
+ *
+ * ## Neden gerekli
+ *
+ * Panel yayın sırasında yerel manifestin TAMAMINI gönderiyor. Yeni bir
+ * tarayıcıda localStorage boşsa varsayılanlar gidiyor:
+ * `exams_version: 1`, `maintenance_mode: false`, `min_app_version: 1.0.0`.
+ *
+ * Senaryo: A yönetici v10 yayınlar. B başka bir tarayıcıdan "sınav
+ * yayınla" der ve canlı sürüm 10'dan 1'e DÜŞER. Cihazlar yeni sınavı
+ * yok sayar; öğretmenler eski sınav tarihiyle kalır ve veliye yanlış
+ * başvuru tarihi söylenir.
+ *
+ * (Bağımsız incelemede bildirildi, 19 Eylül 2026'da doğrulandı:
+ * sunucu gelen anahtarları karşılaştırmadan üzerine yazıyordu.)
+ *
+ * ## Eşit değer GEÇER
+ *
+ * Aynı içeriği yeniden yayınlamak meşru bir iş; yalnızca DÜŞÜŞ
+ * engelleniyor.
+ *
+ * @param {Record<string, unknown>} gelen Yayınlanmak istenen parametreler
+ * @param {Record<string, {defaultValue?: {value?: string}}>} mevcutSablon
+ *        Remote Config'in şu anki parametreleri
+ * @returns {{ok: true} | {ok: false, kod: string, mesaj: string}}
+ */
+export function geriSarmaKontrol(gelen, mevcutSablon) {
+  const dusenler = [];
+
+  for (const alan of SURUM_ALANLARI) {
+    if (!(alan in (gelen ?? {}))) continue;
+
+    const mevcutHam = mevcutSablon?.[alan]?.defaultValue?.value;
+    const mevcut = Number.parseInt(mevcutHam ?? '0', 10);
+    const yeni = Number.parseInt(String(gelen[alan] ?? '0'), 10);
+
+    // Sayıya çevrilemeyen değer burada ELENMİYOR: `dogrula` zaten
+    // biçim denetimi yapıyor ve iki yerde aynı kuralı tutmak
+    // ayrışmaya açık.
+    if (!Number.isFinite(mevcut) || !Number.isFinite(yeni)) continue;
+
+    if (yeni < mevcut) dusenler.push(`${alan}: ${mevcut} -> ${yeni}`);
+  }
+
+  if (dusenler.length === 0) return { ok: true };
+
+  // Sessizce düzeltmek YANLIŞ olurdu: yönetici yayınladığını sanır,
+  // oysa veri eski kalır. Mesaj ne yapılacağını söylüyor.
+  return {
+    ok: false,
+    kod: 'failed-precondition',
+    mesaj:
+      'Sürüm geriye alınamaz (' +
+      dusenler.join(', ') +
+      '). Bu genellikle paneli YENİ bir tarayıcıda açmaktan olur: ' +
+      'yerel kayıt boş olduğu için varsayılan sürüm gönderiliyor. ' +
+      'Önce "Canlıdan Çek" ile mevcut durumu alın, sonra yayınlayın.',
+  };
+}
