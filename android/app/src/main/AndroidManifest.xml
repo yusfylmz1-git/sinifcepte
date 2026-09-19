@@ -2,6 +2,32 @@
     <!-- Android 13+ bildirim izni. Bu izin olmadan bildirimler
          SESSIZCE calismaz: kullanici hicbir sey gormez, hata da almaz. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Kesin zamanli alarm (Android 12+).
+
+         `NotificationService` `AndroidScheduleMode.exactAllowWhileIdle`
+         kullaniyor. Bu izinler olmadan Android 12+ cihazlarda alarm
+         KURULMUYOR ve hata da atmiyor: sinav hatirlatmasi sessizce hic
+         gelmiyordu (bagimsiz incelemede bildirildi, 19 Eylul 2026'da
+         dogrulandi — manifestte hicbiri yoktu).
+
+         USE_EXACT_ALARM: takvim/alarm islevi olan uygulamalar icin;
+         kullanicidan ayrica izin istemez. Sinav ve ders hatirlatmasi
+         bu tanima giriyor.
+
+         SCHEDULE_EXACT_ALARM: Android 12 (API 31-32) icin geri uyum;
+         orada USE_EXACT_ALARM yok. -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
+
+    <!-- Yeniden baslatmadan sonra alarmlari geri kur.
+
+         Android yeniden baslatildiginda TUM alarmlar silinir. Bu izin
+         ve asagidaki receiver olmadan ogretmenin kurdugu hatirlatmalar
+         telefon kapanip acilinca kayboluyordu. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- android:largeHeap — PDF onizlemesi icin pay birakir.
 
          PDF onizleme her sayfayi bitmap'e ceviriyor: 150 dpi'da sayfa
@@ -61,6 +87,32 @@
                 <data android:mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
             </intent-filter>
         </activity>
+        <!-- Bildirim zamanlayicisinin receiver'lari.
+
+             `flutter_local_notifications` bunlari kendi kutuphane
+             manifestinde tanimliyor ama BOOT_COMPLETED receiver'i
+             varsayilan olarak KAPALI geliyor (`enabled="false"`);
+             uygulamanin acikca etkinlestirmesi gerekiyor.
+
+             Bu olmadan telefon yeniden baslatildiginda kurulu tum
+             hatirlatmalar kayboluyordu ve ogretmen bunu ancak sinav
+             gunu fark ediyordu (19 Eylul 2026'da dogrulandi). -->
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
+            android:exported="false" />
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <!-- HTC cihazlarda standart eylem tetiklenmiyor. -->
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
