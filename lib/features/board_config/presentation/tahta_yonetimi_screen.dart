@@ -101,6 +101,15 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
   /// Buluttaki yetki kayıtları: bekleyen istekler ve onaylılar.
   List<TahtaYetkiKaydi> _yetkiKayitlari = const [];
 
+  /// Ana ekrandaki kart sayaçları.
+  ///
+  /// Bölümlerin kendisi veriyi yüklemiyor — doğrudan yazıyorlar. Sayı
+  /// göstermek için ayrı okuma gerekiyor ve bu, ana ekranın tek
+  /// bakışta durum vermesinin bedeli. Ağ yoksa `-1` kalıyor ve kart
+  /// sayı yerine hiçbir şey göstermiyor; sıfır yazmak yanlış olurdu.
+  int _nobetciSayisi = -1;
+  int _duyuruSayisi = -1;
+
   bool _isliyor = false;
 
   @override
@@ -209,6 +218,27 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
     final kayitlar = await _yetkiDeposu.okulunKayitlari(schoolId: okulId);
     if (!mounted) return;
     setState(() => _yetkiKayitlari = kayitlar);
+
+    await _sayaclariYukle(okulId);
+  }
+
+  /// Ana ekrandaki kart sayaçlarını okur.
+  ///
+  /// Başarısızlık sessiz: sayaçlar `-1` kalıyor ve kart sayı
+  /// göstermiyor. Hata mesajı basmak yanlış olurdu — müdürün
+  /// yapabileceği bir şey yok ve ekranın geri kalanı çalışıyor.
+  Future<void> _sayaclariYukle(String okulId) async {
+    try {
+      final nobetciler = await _panoDeposu.readDuties(schoolId: okulId);
+      final duyurular = await _panoDeposu.readNotices(schoolId: okulId);
+      if (!mounted) return;
+      setState(() {
+        _nobetciSayisi = nobetciler.length;
+        _duyuruSayisi = duyurular.length;
+      });
+    } catch (e) {
+      debugPrint('Tahta sayaçları okunamadı: $e');
+    }
   }
 
   List<TahtaYetkiKaydi> get _bekleyenler =>
@@ -256,23 +286,354 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
       ),
       body: _yukleniyor
           ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _caydiriciUyarisi(isDark),
-                const SizedBox(height: 16),
-                _anahtarBolumu(isDark, ogretmen.schoolName),
-                const SizedBox(height: 16),
-                _ogretmenBolumu(isDark, okulId),
-                const SizedBox(height: 16),
-                _nobetciBolumu(isDark, okulId),
-                const SizedBox(height: 16),
-                _duyuruBolumu(isDark, okulId),
-                const SizedBox(height: 16),
-                _kurulumBolumu(isDark, okulId, ogretmen.schoolName),
-                const SizedBox(height: 32),
-              ],
+          : _ozetGorunumu(isDark, okulId, ogretmen.schoolName),
+    );
+  }
+
+  // --- Ana ekran: ÖZET ---
+  //
+  // Kullanıcı itirazı (19 Eylül 2026): ekran "görsel olarak çirkin",
+  // "ne yapacağım belli değil" ve "çok fazla teknik ayrıntı var".
+  //
+  // Sebebi yapıydı: altı bölüm tek kaydırmada alt alta duruyordu ve
+  // çoğu BİR KEZ gerekiyordu. Müdür her açışında bir daha
+  // yapmayacağı işlerin arasından geçiyordu.
+  //
+  // Artık ana ekran yalnızca DURUMU gösteriyor; işler kendi
+  // sayfalarında. Bekleyen onay varsa en üste çıkıyor, çünkü
+  // zamana duyarlı tek iş odur.
+
+  Widget _ozetGorunumu(bool isDark, String okulId, String okulAdi) {
+    final bekleyenSayisi = _bekleyenler.length;
+    final ogretmenSayisi = _onaylilar.length + _ogretmenListesi.length;
+
+    return RefreshIndicator(
+      onRefresh: _durumYukle,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        children: [
+          // Zamana duyarlı tek iş: onay bekleyen öğretmen.
+          if (bekleyenSayisi > 0) ...[
+            _bekleyenUyarisi(isDark, bekleyenSayisi, okulId),
+            const SizedBox(height: 14),
+          ],
+
+          // Yedek alınmamışsa uyar. Alındıktan sonra bir daha
+          // görünmüyor — tek seferlik bir iş, kalıcı yer tutmamalı.
+          if (_anahtarVar && !_yedekAlindi) ...[
+            _yedekUyarisi(isDark, okulAdi),
+            const SizedBox(height: 14),
+          ],
+
+          _ozetKarti(
+            isDark,
+            simge: Icons.groups_outlined,
+            baslik: 'Öğretmenler',
+            altBaslik: 'Tahtayı kimler açabilir',
+            sayi: ogretmenSayisi,
+            renk: const Color(0xFF3B82F6),
+            acilacak: () => _bolumAc(
+              'Öğretmenler',
+              (isDark) => _ogretmenBolumu(isDark, okulId),
             ),
+          ),
+          const SizedBox(height: 10),
+
+          _ozetKarti(
+            isDark,
+            simge: Icons.event_available_outlined,
+            baslik: 'Nöbetçi listesi',
+            altBaslik: 'Teneffüste tahtada görünür',
+            sayi: _nobetciSayisi,
+            renk: const Color(0xFF8B5CF6),
+            acilacak: () => _bolumAc(
+              'Nöbetçi listesi',
+              (isDark) => _nobetciBolumu(isDark, okulId),
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          _ozetKarti(
+            isDark,
+            simge: Icons.campaign_outlined,
+            baslik: 'Duyurular',
+            altBaslik: 'Tüm tahtalarda görünür',
+            sayi: _duyuruSayisi,
+            renk: const Color(0xFFF59E0B),
+            acilacak: () => _bolumAc(
+              'Duyurular',
+              (isDark) => _duyuruBolumu(isDark, okulId),
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          _ozetKarti(
+            isDark,
+            simge: Icons.sd_card_outlined,
+            baslik: 'Tahta kurulumu',
+            altBaslik: _anahtarVar && okulId.isNotEmpty
+                ? 'Dosyalar üretilmeye hazır'
+                : 'Hazırlanıyor…',
+            sayi: null,
+            renk: const Color(0xFF10B981),
+            acilacak: () => _bolumAc(
+              'Tahta kurulumu',
+              (isDark) => Column(
+                children: [
+                  _kurulumBolumu(isDark, okulId, okulAdi),
+                  const SizedBox(height: 16),
+                  _anahtarBolumu(isDark, okulAdi),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+          _caydiriciUyarisi(isDark),
+        ],
+      ),
+    );
+  }
+
+  /// Bir bölümü kendi sayfasında açar.
+  ///
+  /// Bölüm widget'ları DEĞİŞTİRİLMEDİ; yalnızca nerede gösterildikleri
+  /// değişti. Beş ayrı dosyaya bölmek 1500 satır taşımak ve tüm iş
+  /// mantığını yeniden bağlamak olurdu — büyük bir yeniden yazım ve
+  /// yeni hata riski, görünür bir kazanç olmadan.
+  ///
+  /// Sayfa kapanınca özet yenileniyor: içeride öğretmen eklenmiş
+  /// olabilir ve ana ekran eski sayıyı göstermemeli.
+  Future<void> _bolumAc(
+    String baslik,
+    Widget Function(bool isDark) govde,
+  ) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, _) {
+            final isDark = Theme.of(ctx).brightness == Brightness.dark;
+            return Scaffold(
+              appBar: AppBar(
+                title: Text(baslik, style: AppFonts.outfit(fontSize: 17)),
+              ),
+              body: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                children: [govde(isDark)],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    if (mounted) await _durumYukle();
+  }
+
+
+  /// Özet ekranındaki dokunulabilir kart.
+  ///
+  /// [sayi] `null` ise sayı gösterilmiyor (kurulum kartı gibi
+  /// sayılamayan şeyler). `-1` ise veri okunamamış demek ve yine
+  /// gösterilmiyor — sıfır yazmak "hiç yok" anlamına gelir ve bu,
+  /// ağ hatası ile boş listeyi karıştırırdı.
+  Widget _ozetKarti(
+    bool isDark, {
+    required IconData simge,
+    required String baslik,
+    required String altBaslik,
+    required int? sayi,
+    required Color renk,
+    required VoidCallback acilacak,
+  }) {
+    final gosterilecekSayi = (sayi != null && sayi >= 0) ? '$sayi' : null;
+
+    return Material(
+      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: acilacak,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.07)
+                  : Colors.black.withValues(alpha: 0.07),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: renk.withValues(alpha: isDark ? 0.18 : 0.11),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(simge, size: 21, color: renk),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      baslik,
+                      style: AppFonts.outfit(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      altBaslik,
+                      style: AppFonts.outfit(
+                        fontSize: 11.5,
+                        color: Colors.grey,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (gosterilecekSayi != null) ...[
+                Text(
+                  gosterilecekSayi,
+                  style: AppFonts.outfit(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: renk,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 21,
+                color: Colors.grey.withValues(alpha: 0.7),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Onay bekleyen öğretmen uyarısı — zamana duyarlı tek iş.
+  ///
+  /// Öğretmen istek gönderdi ve derse giremiyor. Bu yüzden ekranın
+  /// en üstünde ve dokununca doğrudan öğretmen sayfasını açıyor.
+  Widget _bekleyenUyarisi(bool isDark, int sayi, String okulId) {
+    return Material(
+      color: Colors.orange.withValues(alpha: isDark ? 0.16 : 0.11),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: () => _bolumAc(
+          'Öğretmenler',
+          (d) => _ogretmenBolumu(d, okulId),
+        ),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.orange.withValues(alpha: 0.45),
+            ),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.pending_actions_rounded,
+                  size: 21, color: Colors.orange),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      sayi == 1
+                          ? '1 öğretmen onayınızı bekliyor'
+                          : '$sayi öğretmen onayınızı bekliyor',
+                      style: AppFonts.outfit(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Onaylanmadan tahtayı açamazlar',
+                      style: AppFonts.outfit(
+                        fontSize: 11.5,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded,
+                  size: 21, color: Colors.orange),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Güvenlik yedeği alınmamış uyarısı.
+  ///
+  /// Tek seferlik bir iş, o yüzden alındıktan sonra bir daha
+  /// görünmüyor. Eskiden ekranın tepesinde kalıcı bir kart olarak
+  /// duruyordu ve her açılışta yer tutuyordu.
+  Widget _yedekUyarisi(bool isDark, String okulAdi) {
+    return Material(
+      color: const Color(0xFF3B82F6).withValues(alpha: isDark ? 0.15 : 0.09),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: _isliyor ? null : () => _yedegiGoster(okulAdi),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: const Color(0xFF3B82F6).withValues(alpha: 0.4),
+            ),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.shield_outlined,
+                  size: 21, color: Color(0xFF3B82F6)),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Güvenlik yedeğinizi alın',
+                      style: AppFonts.outfit(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Bir dakika sürer, bir kez yapılır',
+                      style: AppFonts.outfit(
+                        fontSize: 11.5,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded,
+                  size: 21, color: Color(0xFF3B82F6)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
