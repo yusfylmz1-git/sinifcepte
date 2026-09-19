@@ -197,6 +197,50 @@ class SchoolAdminRepository {
     }
   }
 
+  /// Şikâyeti inceledi olarak işaretler.
+  ///
+  /// ## Neden gerekliydi
+  ///
+  /// "Şikâyetler" sekmesi açık raporları GÖSTERİYOR ama hiçbir şey
+  /// yapamıyordu: kural `status`, `reviewNote` ve `reviewedAt`
+  /// yazmaya izin veriyordu, depo metodu yoktu.
+  ///
+  /// Müdür paneli açıyor, şikâyeti görüyor, düğme arıyor, kapatıyor.
+  /// Liste hiç eksilmiyor (bağımsız incelemede bildirildi, 19 Eylül
+  /// 2026'da doğrulandı).
+  ///
+  /// [durum] `reviewed` (işlem yapıldı) ya da `dismissed` (yersiz
+  /// bulundu). `open`'a geri dönüş YOK: bir şikâyeti yeniden açmak
+  /// yeni bir iş akışı ve kural da buna izin vermiyor.
+  Future<bool> markReportReviewed({
+    required String reportId,
+    required String durum,
+    String? not,
+  }) async {
+    if (durum != 'reviewed' && durum != 'dismissed') {
+      debugPrint('markReportReviewed: geçersiz durum "$durum"');
+      return false;
+    }
+
+    await _client.ensureConfigured();
+    final db = _client.db;
+    if (db == null) return false;
+
+    try {
+      // Kural yalnızca bu üç alana izin veriyor; fazlası gönderilirse
+      // TÜM yazma reddedilir.
+      await db.collection(_reports).doc(reportId).update({
+        'status': durum,
+        'reviewNote': not?.trim() ?? '',
+        'reviewedAt': DateTime.now().toIso8601String(),
+      }).timeout(const Duration(seconds: 8));
+      return true;
+    } catch (e) {
+      debugPrint('markReportReviewed hatasi: $e');
+      return false;
+    }
+  }
+
   /// Başvuru durumundan kullanıcı rol durumunu türetir.
   ///
   /// Not: Bu yalnızca **gösterim** içindir. Gerçek yetki custom claim'den

@@ -389,6 +389,64 @@ class _SchoolAdminPanelViewState extends ConsumerState<SchoolAdminPanelView>
                       ),
                     ),
                   ],
+
+                  // İŞLEM DÜĞMELERİ.
+                  //
+                  // Bu sekme bir dönem yalnızca GÖSTERİYORDU: kural
+                  // `status`, `reviewNote` ve `reviewedAt` yazmaya
+                  // izin veriyordu ama ne depo metodu ne düğme vardı.
+                  // Müdür paneli açıyor, şikâyeti görüyor, düğme
+                  // arıyor, kapatıyordu; liste hiç eksilmiyordu
+                  // (bağımsız incelemede bildirildi, 19 Eylül 2026).
+                  //
+                  // Yalnızca AÇIK şikâyetlerde görünüyor: kapatılmış
+                  // bir kaydı yeniden açma yolu yok (kural da buna
+                  // izin vermiyor).
+                  if (rep.isOpen) ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _sikayetiKapat(
+                              rep,
+                              'dismissed',
+                              'Yersiz bulundu',
+                            ),
+                            icon: const Icon(Icons.close_rounded, size: 16),
+                            label: Text(
+                              'Yersiz',
+                              style: AppFonts.outfit(fontSize: 12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: () => _sikayetiKapat(
+                              rep,
+                              'reviewed',
+                              'İşlem yapıldı',
+                            ),
+                            icon: const Icon(Icons.check_rounded, size: 16),
+                            label: Text(
+                              'İncelendi',
+                              style: AppFonts.outfit(fontSize: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ] else if ((rep.reviewNote ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Sonuç: ${rep.reviewNote}',
+                      style: AppFonts.outfit(
+                        fontSize: 11.5,
+                        color: const Color(0xFF10B981),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             );
@@ -396,6 +454,41 @@ class _SchoolAdminPanelViewState extends ConsumerState<SchoolAdminPanelView>
         );
       },
     );
+  }
+
+  /// Şikâyeti kapatır ve listeyi yeniler.
+  ///
+  /// Başarısızlık SESSİZ GEÇMİYOR: müdür kapattığını sanıp listenin
+  /// aynı kalmasına bakarsa uygulamayı bozuk sanar. Bu depoda tam o
+  /// hata sınıfı yaşandı (izin hatası "bekleyen yok" gibi görünmüştü).
+  Future<void> _sikayetiKapat(
+    CloudContentReport rapor,
+    String durum,
+    String not,
+  ) async {
+    final basarili = await _repo.markReportReviewed(
+      reportId: rapor.id,
+      durum: durum,
+      not: not,
+    );
+
+    if (!mounted) return;
+
+    if (!basarili) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Şikâyet güncellenemedi. İnternet bağlantınızı kontrol edin.',
+            style: AppFonts.outfit(fontSize: 12.5),
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    // Liste yenileniyor: kapatılan şikâyet artık açık görünmemeli.
+    setState(() {});
   }
 
   Widget _emptyState({
