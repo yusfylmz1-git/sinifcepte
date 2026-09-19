@@ -230,14 +230,60 @@ class TahtaTotp {
   /// kullanılıyor ve yanlışsa istek başarısız olup 6 hane yoluna
   /// düşülüyor. Amaç, açıkça saçma değerleri (boş, harf içeren)
   /// elemek.
+  /// Adres YEREL AĞDA mı?
+  ///
+  /// ## Neden biçim denetimi yetmiyor
+  ///
+  /// İlk sürüm yalnızca "dört parça, her biri 0-255" diye bakıyordu.
+  /// `8.8.8.8` de, bir saldırganın sunucusu da geçiyordu.
+  ///
+  /// Saldırı (bağımsız incelemede bildirildi, 19 Eylül 2026'da
+  /// doğrulandı): öğrenci kendi telefonunda sahte bir `SC2` karekodu
+  /// gösterir — `okulId` gerçek kurum kodudur, yani okul denetimi
+  /// geçer. Öğretmen "tahtadaki karekod" sanıp okutur ve telefonu
+  /// **canlı TOTP kodunu** saldırganın sunucusuna POST eder. Kod 30
+  /// saniye geçerli; saldırgan onu gerçek tahtaya yazar.
+  ///
+  /// Kilit açma kodu tahtaya gitmeli, internete değil. Bu yüzden
+  /// yalnızca **özel ağ** adresleri kabul ediliyor (RFC 1918 + bağlantı
+  /// yerel + geri döngü).
+  ///
+  /// Yanlış tarafta hata yapmak: geçerli bir tahtayı reddetmek
+  /// öğretmeni 6 hane yoluna düşürür (akış devam eder). Sahte bir
+  /// adresi kabul etmek ise kodu sızdırır ve geri dönüşü yoktur.
   static bool _ipGecerliMi(String ip) {
     final parcalar = ip.split('.');
     if (parcalar.length != 4) return false;
+
+    final sayilar = <int>[];
     for (final p in parcalar) {
+      // Baştaki sıfır reddediliyor: `010.0.0.1` bazı çözümleyicilerde
+      // sekizlik okunur ve farklı bir adrese gider.
+      if (p.isEmpty || (p.length > 1 && p.startsWith('0'))) return false;
       final sayi = int.tryParse(p);
       if (sayi == null || sayi < 0 || sayi > 255) return false;
+      sayilar.add(sayi);
     }
-    return true;
+
+    return _ozelAgMi(sayilar);
+  }
+
+  /// RFC 1918 özel ağ, bağlantı yerel veya geri döngü mü?
+  ///
+  /// Okul ağları bu aralıklarda: FATİH altyapısı `10.x` ya da
+  /// `192.168.x`, bazı okullarda `172.16-31.x`.
+  static bool _ozelAgMi(List<int> o) {
+    // 10.0.0.0/8
+    if (o[0] == 10) return true;
+    // 172.16.0.0/12
+    if (o[0] == 172 && o[1] >= 16 && o[1] <= 31) return true;
+    // 192.168.0.0/16
+    if (o[0] == 192 && o[1] == 168) return true;
+    // 169.254.0.0/16 — DHCP yokken kendi kendine atanan adres
+    if (o[0] == 169 && o[1] == 254) return true;
+    // 127.0.0.0/8 — geri döngü; testler ve aynı makinede çalışma
+    if (o[0] == 127) return true;
+    return false;
   }
 
   static int _onunKuvveti(int kuvvet) {
@@ -290,6 +336,33 @@ class TahtaQrYuku {
   /// tarandığında sessizce çalışmayan bir kod vermek yerine sebebi
   /// söylenmeli.
   bool ayniOkul(String ogretmeninOkulId) => okulId == ogretmeninOkulId;
+
+  /// Karekod TAZE mi? (varsayılan tolerans: 2 dakika)
+  ///
+  /// ## Neden gerekli
+  ///
+  /// `unixDakika` ayrıştırılıyordu ama **hiçbir yerde
+  /// kullanılmıyordu** (bağımsız incelemede bildirildi, 19 Eylül
+  /// 2026'da doğrulandı). Yani tahtanın ekranından çekilmiş bir
+  /// fotoğraf süresiz geçerliydi.
+  ///
+  /// Tahta karekodu 30 saniyede bir yeniliyor; bunun tek sebebi
+  /// fotoğrafın tekrar kullanılmasını kısıtlamaktı ve telefon o
+  /// koruma­yı hiç uygulamıyordu.
+  ///
+  /// ## Neden 2 dakika, 30 saniye değil
+  ///
+  /// Tahta ile telefonun saatleri birkaç saniye kayabilir, öğretmen
+  /// karekodu okutup ekrana bakana kadar da zaman geçer. Sınır çok
+  /// darsa geçerli karekodlar reddedilir ve öğretmen sebebini
+  /// anlamaz. 2 dakika, fotoğrafı anlamlı biçimde kısıtlarken
+  /// meşru kullanımı bozmuyor.
+  bool tazeMi({DateTime? an, Duration tolerans = const Duration(minutes: 2)}) {
+    final simdi = (an ?? DateTime.now()).millisecondsSinceEpoch ~/ 1000;
+    final simdikiPencere = simdi ~/ TahtaTotp.adimSn;
+    final fark = (simdikiPencere - unixDakika).abs();
+    return fark * TahtaTotp.adimSn <= tolerans.inSeconds;
+  }
 
   @override
   String toString() =>

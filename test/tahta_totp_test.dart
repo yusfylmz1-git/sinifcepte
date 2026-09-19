@@ -396,4 +396,146 @@ void main() {
       expect(kodA, isNot(kodB));
     });
   });
+
+  group('SAHTE QR saldırısı — yalnızca yerel ağ', () {
+    // Bağımsız incelemede bildirildi, 19 Eylül 2026'da doğrulandı.
+    //
+    // Saldırı: öğrenci kendi telefonunda sahte bir SC2 karekodu
+    // gösterir. `okulId` gerçek kurum kodudur, yani okul denetimi
+    // geçer. Öğretmen "tahtadaki karekod" sanıp okutur ve telefonu
+    // CANLI TOTP kodunu saldırganın sunucusuna POST eder.
+    //
+    // Kod 30 saniye geçerli: saldırgan onu gerçek tahtaya yazar.
+    // "Öğrenciler tahtayı açtı" bir idare krizidir.
+    //
+    // İlk sürüm yalnızca IPv4 BİÇİMİNE bakıyordu; `8.8.8.8` de
+    // geçiyordu.
+
+    test('KRİTİK: genel internet adresi ağ yolunu AÇMAZ', () {
+      for (final ip in ['8.8.8.8', '203.0.113.7', '1.2.3.4', '52.1.2.3']) {
+        final yuk = TahtaTotp.qrAyristir('SC2:meb_1:t1:abc:1000:$ip:8443');
+
+        expect(yuk, isNotNull, reason: 'QR yine de ayrıştırılmalı');
+        expect(
+          yuk!.agdanAcilabilir,
+          isFalse,
+          reason: '$ip yerel ağda değil — koda gitmemeli',
+        );
+        expect(yuk.ip, isEmpty);
+      }
+    });
+
+    test('KRİTİK: sahte QR 6 hane yolunu BOZMUYOR', () {
+      // Ağ yolu kapanıyor ama karekodun geri kalanı geçerli: öğretmen
+      // kodu elle girebilmeli. Tümden reddetmek, saldırıyı önlerken
+      // meşru kullanımı da durdururdu.
+      final yuk = TahtaTotp.qrAyristir('SC2:meb_1:t1:abc:1000:8.8.8.8:8443')!;
+
+      expect(yuk.okulId, 'meb_1');
+      expect(yuk.ayniOkul('meb_1'), isTrue);
+      expect(yuk.agdanAcilabilir, isFalse);
+    });
+
+    test('okul ağı adresleri kabul ediliyor', () {
+      // FATİH altyapısı 10.x ya da 192.168.x; bazı okullarda 172.16-31.
+      for (final ip in [
+        '10.0.0.5',
+        '10.255.255.254',
+        '172.16.0.1',
+        '172.31.255.254',
+        '192.168.1.182',
+        '169.254.1.1',
+        '127.0.0.1',
+      ]) {
+        final yuk = TahtaTotp.qrAyristir('SC2:meb_1:t1:abc:1000:$ip:8443');
+        expect(
+          yuk!.agdanAcilabilir,
+          isTrue,
+          reason: '$ip okul ağında olabilir — reddedilmemeli',
+        );
+      }
+    });
+
+    test('172.15 ve 172.32 özel ağ DEĞİL', () {
+      // Sınır hatası: RFC 1918 yalnızca 172.16-31 arasını kapsıyor.
+      for (final ip in ['172.15.0.1', '172.32.0.1']) {
+        final yuk = TahtaTotp.qrAyristir('SC2:meb_1:t1:abc:1000:$ip:8443');
+        expect(yuk!.agdanAcilabilir, isFalse, reason: '$ip genel adres');
+      }
+    });
+
+    test('baştaki sıfırlı adres reddediliyor', () {
+      // `010.0.0.1` bazı çözümleyicilerde SEKİZLİK okunur (8.0.0.1)
+      // ve istek bambaşka bir yere gider.
+      final yuk = TahtaTotp.qrAyristir('SC2:meb_1:t1:abc:1000:010.0.0.1:8443');
+      expect(yuk!.agdanAcilabilir, isFalse);
+    });
+  });
+
+  group('Karekod tazeliği — ekran fotoğrafı süresiz geçerli değil', () {
+    // `unixDakika` ayrıştırılıyordu ama HİÇ KULLANILMIYORDU. Tahta
+    // karekodu 30 saniyede bir yeniliyor ve bunun tek sebebi
+    // fotoğrafın tekrar kullanımını kısıtlamaktı; telefon o korumayı
+    // hiç uygulamıyordu.
+
+    int pencere(DateTime an) =>
+        (an.millisecondsSinceEpoch ~/ 1000) ~/ TahtaTotp.adimSn;
+
+    test('KRİTİK: şu anki karekod taze', () {
+      final an = DateTime(2026, 9, 19, 14, 30);
+      final yuk = TahtaTotp.qrAyristir(
+        'SC2:meb_1:t1:abc:${pencere(an)}:192.168.1.5:8443',
+      )!;
+
+      expect(yuk.tazeMi(an: an), isTrue);
+    });
+
+    test('KRİTİK: bir saat önceki karekod BAYAT', () {
+      final an = DateTime(2026, 9, 19, 14, 30);
+      final eski = an.subtract(const Duration(hours: 1));
+      final yuk = TahtaTotp.qrAyristir(
+        'SC2:meb_1:t1:abc:${pencere(eski)}:192.168.1.5:8443',
+      )!;
+
+      expect(yuk.tazeMi(an: an), isFalse);
+    });
+
+    test('dünkü ekran görüntüsü bayat', () {
+      final an = DateTime(2026, 9, 19, 14, 30);
+      final dun = an.subtract(const Duration(days: 1));
+      final yuk = TahtaTotp.qrAyristir(
+        'SC2:meb_1:t1:abc:${pencere(dun)}:192.168.1.5:8443',
+      )!;
+
+      expect(yuk.tazeMi(an: an), isFalse);
+    });
+
+    test('küçük saat kayması tolere ediliyor', () {
+      // Tahta ile telefonun saatleri birkaç saniye kayabilir ve
+      // öğretmen okutup ekrana bakana kadar zaman geçer. Sınır çok
+      // darsa geçerli karekodlar reddedilir.
+      final an = DateTime(2026, 9, 19, 14, 30);
+      for (final kayma in [
+        const Duration(seconds: -60),
+        const Duration(seconds: 60),
+      ]) {
+        final yuk = TahtaTotp.qrAyristir(
+          'SC2:meb_1:t1:abc:${pencere(an.add(kayma))}:192.168.1.5:8443',
+        )!;
+        expect(yuk.tazeMi(an: an), isTrue, reason: '$kayma tolere edilmeli');
+      }
+    });
+
+    test('İLERİ tarihli karekod da bayat sayılıyor', () {
+      // Saldırgan geleceğe ait bir değer yazarsa tolerans penceresi
+      // tek yönlü olsaydı sınırsız geçerli olurdu.
+      final an = DateTime(2026, 9, 19, 14, 30);
+      final ileri = an.add(const Duration(hours: 5));
+      final yuk = TahtaTotp.qrAyristir(
+        'SC2:meb_1:t1:abc:${pencere(ileri)}:192.168.1.5:8443',
+      )!;
+
+      expect(yuk.tazeMi(an: an), isFalse);
+    });
+  });
 }

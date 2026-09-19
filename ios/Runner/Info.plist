@@ -2,6 +2,16 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- iOS, aciklamasiz kamera API cagrisinda uygulamayi OLDURUR.
+	     Flutter `errorBuilder` bu native kill'i yakalayamaz: karekod
+	     tarama acilir acilmaz uygulama cokerdi ve App Store incelemesi
+	     de reddederdi (bagimsiz incelemede bildirildi, 19 Eylul 2026'da
+	     dogrulandi; anahtar Info.plist'te hic yoktu).
+
+	     Metin ne icin kullanildigini SOMUT soyluyor: Apple genel
+	     ifadeleri ("kamera erisimi gerekli") reddedebiliyor. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Tahta kilidini açmak ve veli bağlantı kodunu okumak için karekod taranır. Kamera görüntüsü kaydedilmez, hiçbir yere gönderilmez.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

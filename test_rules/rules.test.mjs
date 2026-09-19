@@ -2255,14 +2255,53 @@ describe('Okul panosu (school_boards) — tahta modülü', () => {
       });
       await setDoc(doc(db, 'school_boards', OKUL_A, 'duty', 'pazartesi_1-_Kat'), NOBETCI);
       await setDoc(doc(db, 'school_boards', OKUL_A, 'notices', 'n1'), DUYURU_PANO);
+
+      // Öğretmenin OKUL A dizin kaydı.
+      //
+      // Fixture'da bu yoktu ve testler öğretmenin okul üyeliğini hiç
+      // kurmadan okuma yapıyordu — yani kuralın `request.auth != null`
+      // olduğunu varsayıyorlardı. O varsayım tam olarak açığın
+      // kendisiydi: oturum açmış herkes TÜM okulların nöbetçi
+      // listesini okuyabiliyordu (19 Eylül 2026).
+      await setDoc(doc(db, 'school_teachers', `${OKUL_A}_${TEACHER_UID}`), {
+        schoolId: OKUL_A,
+        teacherUid: TEACHER_UID,
+        adSoyad: 'Ahmet Öğretmen',
+      });
     });
   });
 
   // --- Okuma ---
 
-  it('oturum açmış öğretmen panoyu okuyabilir', async () => {
-    // Pano tahtada herkese açık gösteriliyor; kısıtlamak anlamsız.
+  it('KENDİ okulunun öğretmeni panoyu okuyabilir', async () => {
     await assertSucceeds(getDoc(doc(teacherDb(), 'school_boards', OKUL_A)));
+  });
+
+  it('KRİTİK: BAŞKA okulun panosu okunamaz', async () => {
+    // Eski kural `request.auth != null` idi: oturum açmış herkes TÜM
+    // okulların panosunu okuyabiliyordu ve kurum kodları tahmin
+    // edilebilir (`meb_*`). Nöbetçi listesi öğretmen ADI taşıyor —
+    // kişisel veri.
+    //
+    // Gerekçe "pano tahtada zaten herkese açık" idi ve yanlıştı:
+    // tahtada O OKULUN panosu görünür, kural ise tüm okulları
+    // taramaya izin veriyordu (19 Eylül 2026).
+    await assertFails(getDoc(doc(teacherDb(), 'school_boards', OKUL_B)));
+  });
+
+  it('KRİTİK: başka okulun nöbetçi listesi okunamaz', async () => {
+    await assertFails(
+      getDoc(doc(teacherDb(), 'school_boards', OKUL_B, 'duty', 'pazartesi_1-_Kat')),
+    );
+  });
+
+  it('KRİTİK: okul dizininde OLMAYAN kullanıcı okuyamaz', async () => {
+    // Veli hesabı ya da başka okulun öğretmeni.
+    const yabanci = testEnv.authenticatedContext('baskaBiri').firestore();
+    await assertFails(getDoc(doc(yabanci, 'school_boards', OKUL_A)));
+    await assertFails(
+      getDoc(doc(yabanci, 'school_boards', OKUL_A, 'duty', 'pazartesi_1-_Kat')),
+    );
   });
 
   it('nöbetçi listesi okunabilir', async () => {

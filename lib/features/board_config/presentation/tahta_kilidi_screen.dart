@@ -86,9 +86,19 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
       _yukleniyor = false;
     });
 
-    // Cihazda kayıt yoksa buluttaki yetki durumunu soruyoruz:
-    // öğretmen istek göndermiş ve onay bekliyor olabilir.
-    if (kayit == null) await _yetkiDurumunuYukle();
+    // Bulut durumu HER AÇILIŞTA soruluyor.
+    //
+    // Eskiden yalnızca cihazda kayıt YOKSA bakılıyordu. Sonuç:
+    // müdür "öğretmeni çıkar" dediğinde ekranda "Telefonu kod
+    // üretmeyi bırakacak" yazıyordu ama telefon buluta hiç bakmadığı
+    // için kod üretmeye devam ediyordu — verilen söz kodla
+    // tutulmuyordu (bağımsız incelemede bildirildi, 19 Eylül 2026'da
+    // doğrulandı).
+    //
+    // Ağ yoksa çağrı sessizce başarısız olur ve yerel kayıt kalır:
+    // çevrimdışı öğretmen derse girebilmeli. Yani bu, yetkiyi anında
+    // kesen bir kilit değil, ağ olduğunda uygulanan bir eşitleme.
+    await _yetkiDurumunuYukle();
   }
 
   /// Buluttaki yetki kaydını okur ve onaylıysa cihaza indirir.
@@ -124,6 +134,35 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
       );
       if (!mounted) return;
       if (kayit != null) setState(() => _kayit = kayit);
+      return;
+    }
+
+    // Yetki KALDIRILMIŞSA yerel kaydı da sil.
+    //
+    // Müdür "çıkar" dediğinde bulut belgesi siliniyor. Telefon o
+    // durumu görüp kendi kaydını silmezse tayini çıkan öğretmen
+    // tahtayı açmaya devam eder ve idare "sildim" sanır.
+    //
+    // KASITLI OLARAK DAR: yalnızca bulut kaydı **okunabildiği** ve
+    // yetkinin kalkmış olduğu KESİN olduğunda siliniyor.
+    // `yetki == null` iki farklı şey olabilir — kayıt silinmiş ya da
+    // ağ/izin sorunu — ve ikisini ayırt edemiyoruz. Ağ hatasında
+    // öğretmenin kaydını silmek, çevrimdışı bir öğretmeni ders
+    // başında yetkisiz bırakırdı.
+    if (_kayit != null && yetki != null && !yetki.onayli) {
+      debugPrint('Tahta: yetki kaldırılmış (${yetki.durum}), kayıt siliniyor');
+      await _depo.sil();
+      _sayac?.cancel();
+      if (!mounted) return;
+      setState(() {
+        _kayit = null;
+        _kod = null;
+        _kalanSaniye = 0;
+      });
+      _mesaj(
+        'Tahta yetkiniz okul yöneticisi tarafından kaldırıldı.',
+        hata: true,
+      );
     }
   }
 
@@ -614,6 +653,26 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
     // — oysa girecek kod yoktu (19 Eylül 2026, cihazda bulundu).
     final kod = _kod;
     if (!yuk.agdanAcilabilir || kod == null || kod.isEmpty) return;
+
+    // BAYAT karekoda istek GÖNDERİLMEZ.
+    //
+    // `unixDakika` ayrıştırılıyordu ama hiç kullanılmıyordu: tahtanın
+    // ekranından çekilmiş bir fotoğraf süresiz geçerliydi ve artık ağ
+    // isteği de tetikliyordu. Tahta karekodu 30 saniyede bir
+    // yeniliyor; bunun tek sebebi buydu.
+    //
+    // Kod yine de ekranda duruyor — öğretmen elle girebilir. Bayat
+    // karekod bir saldırı olabilir ama çoğu zaman sadece eski bir
+    // ekran görüntüsüdür ve akışı kesmek gereksiz olurdu.
+    if (!yuk.tazeMi()) {
+      debugPrint('Tahta: karekod bayat, ağ isteği gönderilmiyor');
+      _mesaj(
+        'Karekod güncel değil. Tahtadaki yeni karekodu okutun ya da '
+        'aşağıdaki kodu elle girin.',
+        hata: true,
+      );
+      return;
+    }
 
     await _agdanAc(yuk, kod);
   }
