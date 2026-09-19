@@ -138,6 +138,121 @@ describe('1. Veli referans kodları (parent_tokens)', () => {
   });
 });
 
+// ---------------------------------------------------------------------
+// 2b. Kimlik ile gövde uyuşmazlığı — codex-inceleme.md bulgu #1
+// ---------------------------------------------------------------------
+//
+// İddia: `isOwnParentLink` yalnızca kimliğin ÖNEKİNE bakıyor
+// (`uid_*`) ve sonundaki öğrenci kimliğini gövdedeki
+// `studentCloudId` ile karşılaştırmıyor. `tokenGecerli` ise gövdeyi
+// doğruluyor. Aradaki boşluk:
+//
+//   kimlik  = benimUid_KURBAN_OGRENCI   <- yetki buradan okunuyor
+//   gövde   = { studentCloudId: KENDI_COCUGUM }  <- token buna bakıyor
+//
+// `parentHasStudent(KURBAN)` sonra yalnızca `uid_KURBAN` yolunda
+// belge VAR MI diye baktığı için kurbanın mesajları, randevuları ve
+// sağlık bildirimleri okunabilir hâle gelir.
+describe('2b. parent_links kimlik/gövde uyuşmazlığı', () => {
+  const KURBAN = `stu_${OTHER_TEACHER_UID}_777`;
+  const KENDI = `stu_${TEACHER_UID}_88`;
+  const HASH = 'e'.repeat(64);
+
+  before(async () => {
+    await testEnv.clearFirestore();
+    await seed(async (db) => {
+      // Velinin GERÇEKTEN sahip olduğu kod — kendi çocuğu için.
+      await setDoc(doc(db, 'parent_tokens', HASH), {
+        studentCloudId: KENDI,
+        classCloudId: CLASS_ID,
+        teacherUid: TEACHER_UID,
+      });
+    });
+  });
+
+  it('KRİTİK: belge kimliğindeki öğrenci gövdedekiyle aynı olmalı', async () => {
+    // Saldırı: kimliğin sonuna KURBANı, gövdeye kendi çocuğunu yaz.
+    // Token doğrulaması gövdeye baktığı için geçer; yetki kontrolü
+    // kimliğe baktığı için kurbanın verisi açılır.
+    await assertFails(
+      setDoc(doc(parentDb(), 'parent_links', `${PARENT_UID}_${KURBAN}`), {
+        parentUid: PARENT_UID,
+        studentCloudId: KENDI,
+        classCloudId: CLASS_ID,
+        status: 'active',
+        codeHash: HASH,
+      }),
+    );
+  });
+
+  it('kimlik ve gövde tutarlıysa bağ kurulabiliyor', async () => {
+    // Düzeltmenin meşru akışı bozmadığını gösteriyor: aynı kod, aynı
+    // öğrenci, kimlik gövdeyle uyumlu.
+    await assertSucceeds(
+      setDoc(doc(parentDb(), 'parent_links', `${PARENT_UID}_${KENDI}`), {
+        parentUid: PARENT_UID,
+        studentCloudId: KENDI,
+        classCloudId: CLASS_ID,
+        status: 'active',
+        codeHash: HASH,
+      }),
+    );
+  });
+});
+
+// ---------------------------------------------------------------------
+// 2c. parent_class_access kimlik/gövde uyuşmazlığı — bulgu #2
+// ---------------------------------------------------------------------
+//
+// Aynı desen sınıf erişiminde de var: `isOwnParentLink(id)` kimliğin
+// sonuna HERHANGİ bir sınıf yazılmasına izin veriyor, `exists()` ise
+// yalnızca gövdedeki öğrenciyi doğruluyor.
+//
+//   kimlik = benimUid_HEDEF_SINIF   <- parentHasClass buradan okuyor
+//   gövde  = { studentCloudId: KENDI_COCUGUM }  <- exists buna bakıyor
+//
+// Sonuç: velinin çocuğu o sınıfta olmasa bile hedef sınıfın
+// duyuruları okunabilir.
+describe('2c. parent_class_access kimlik/gövde uyuşmazlığı', () => {
+  const KENDI = `stu_${TEACHER_UID}_55`;
+  const HEDEF_SINIF = `cls_${OTHER_TEACHER_UID}_9`;
+
+  before(async () => {
+    await testEnv.clearFirestore();
+    await seed(async (db) => {
+      // Velinin GERÇEK bağı — kendi çocuğu, kendi sınıfı.
+      await setDoc(doc(db, 'parent_links', `${PARENT_UID}_${KENDI}`), {
+        parentUid: PARENT_UID,
+        studentCloudId: KENDI,
+        classCloudId: CLASS_ID,
+        status: 'active',
+      });
+    });
+  });
+
+  it('KRİTİK: kimlikteki sınıf gövdedekiyle aynı olmalı', async () => {
+    // Saldırı: kimliğe BAŞKA öğretmenin sınıfını, gövdeye kendi
+    // çocuğunu yaz. `exists()` geçer çünkü bağ gerçek.
+    await assertFails(
+      setDoc(doc(parentDb(), 'parent_class_access', `${PARENT_UID}_${HEDEF_SINIF}`), {
+        parentUid: PARENT_UID,
+        studentCloudId: KENDI,
+        classCloudId: CLASS_ID,
+      }),
+    );
+  });
+
+  it('kendi sınıfına erişim kurulabiliyor', async () => {
+    await assertSucceeds(
+      setDoc(doc(parentDb(), 'parent_class_access', `${PARENT_UID}_${CLASS_ID}`), {
+        parentUid: PARENT_UID,
+        studentCloudId: KENDI,
+        classCloudId: CLASS_ID,
+      }),
+    );
+  });
+});
+
 describe('2. Veli–öğrenci bağı (parent_links) — izolasyon', () => {
   const myLinkId = `${PARENT_UID}_${STUDENT_ID}`;
   const otherLinkId = `${OTHER_PARENT_UID}_${OTHER_STUDENT_ID}`;

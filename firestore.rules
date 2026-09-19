@@ -105,8 +105,39 @@ service cloud.firestore {
     }
 
     // Veli bağ kaydını yalnızca kendi adına oluşturabilir.
+    //
+    // Yalnızca ÖNEK denetimi; kimliğin sonundaki öğrenci serbest.
+    // Yazma yollarında TEK BAŞINA YETMEZ — `parentLinkKimligiTutarli`
+    // ile birlikte kullanılmalı. Okuma yolunda yeterli: veli zaten
+    // yalnızca kendi önekindeki belgeleri görüyor.
     function isOwnParentLink(id) {
       return request.auth != null && id.matches(request.auth.uid + '_.*');
+    }
+
+    // Belge kimliği `{parentUid}_{studentCloudId}` ile BİREBİR aynı mı?
+    //
+    // GÜVENLİK AÇIĞI DÜZELTMESİ (19 Eylül 2026):
+    //
+    // `isOwnParentLink` yalnızca öneke, `tokenGecerli` yalnızca
+    // gövdeye bakıyordu. Aradaki boşluk şuydu:
+    //
+    //   kimlik = benimUid_KURBAN     <- yetki buradan okunuyor
+    //   gövde  = { studentCloudId: KENDI_COCUGUM }  <- token buna bakıyor
+    //
+    // Her iki kural da geçiyordu. `parentHasStudent(KURBAN)` sonra
+    // yalnızca `uid_KURBAN` yolunda belge VAR MI diye baktığı için
+    // kurbanın mesajları, randevuları ve sağlık bildirimleri
+    // okunabilir hâle geliyordu — ve sahte içerik yazılabiliyordu.
+    //
+    // Açık emülatörde kanıtlandı: saldırı testi "başarılı" oldu.
+    // Bulgu `codex-inceleme.md` #1'de bildirilmişti.
+    //
+    // `==` kullanılıyor, `matches` değil: desen eşleşmesi öğrenci
+    // kimliğinde düzenli ifade karakteri (`.` gibi) varsa fazladan
+    // eşleşir ve açığı yeniden açardı.
+    function parentLinkKimligiTutarli(id) {
+      return id == request.auth.uid + '_'
+        + request.resource.data.studentCloudId;
     }
 
     // Sınıfın branş öğretmeni kadrosunda mı?
@@ -238,6 +269,10 @@ service cloud.firestore {
       // Üçüncü koşul (token doğrulaması) yorumda yazılıydı ama KODDA
       // YOKTU; bu bir güvenlik açığıydı. Bkz. `tokenGecerli`.
       allow create: if isOwnParentLink(id)
+        // Kimlik gövdedeki öğrenciyle BİREBİR eşleşmeli. Bu satır
+        // olmadan token doğrulaması atlatılabiliyordu: gövdeye kendi
+        // çocuğunu, kimliğe kurbanı yazmak yetiyordu.
+        && parentLinkKimligiTutarli(id)
         && request.resource.data.parentUid == request.auth.uid
         && request.resource.data.status == 'active'
         && tokenGecerli(
@@ -263,7 +298,26 @@ service cloud.firestore {
       // Veli tarafı için bağın GERÇEKTEN kurulmuş olması şart:
       // `parent_class_access` tek başına yazılabilseydi, sahte erişimle
       // sınıf duyuruları okunabilirdi (emülatörde kanıtlandı).
+      //
+      // GÜVENLİK AÇIĞI DÜZELTMESİ (19 Eylül 2026):
+      //
+      // `isOwnParentLink` kimliğin sonuna HERHANGİ bir sınıf
+      // yazılmasına izin veriyordu, `exists()` ise yalnızca
+      // gövdedeki öğrenciyi doğruluyordu:
+      //
+      //   kimlik = benimUid_HEDEF_SINIF    <- parentHasClass buradan okur
+      //   gövde  = { studentCloudId: KENDI }  <- exists buna bakar
+      //
+      // İkisi de geçiyordu ve velinin çocuğu o sınıfta olmasa bile
+      // hedef sınıfın duyuruları açılıyordu. Emülatörde kanıtlandı;
+      // `codex-inceleme.md` #2'de bildirilmişti.
+      //
+      // Artık kimlik gövdedeki sınıfla birebir eşleşmeli. Öğretmen
+      // kolu etkilenmiyor: orada kimlik deseni değil öğrenci
+      // sahipliği denetleniyor.
       allow create: if (isOwnParentLink(id)
+          && id == request.auth.uid + '_'
+               + request.resource.data.classCloudId
           && request.resource.data.parentUid == request.auth.uid
           && exists(/databases/$(database)/documents/parent_links/$(
                request.auth.uid + '_' + request.resource.data.studentCloudId
