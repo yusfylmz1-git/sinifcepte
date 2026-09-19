@@ -173,7 +173,8 @@ class ParentLinkBridge {
             studentName: token.studentName ?? '',
             className: token.className ?? '',
             schoolName: token.schoolName ?? '',
-            studentNumber: token.studentNumber,
+            // Veliden gelen numara; token belgesinde artik yok.
+            studentNumber: int.tryParse(inputStudentNumber.trim()) ?? 0,
           ),
         );
         if (!accepted) {
@@ -187,6 +188,8 @@ class ParentLinkBridge {
         relation: relation,
         token: token,
         codeHash: codeHash,
+        // Veliden gelen numara — token belgesinden DEĞİL.
+        studentNumber: int.tryParse(inputStudentNumber.trim()) ?? 0,
       );
 
       if (!committed) {
@@ -205,7 +208,7 @@ class ParentLinkBridge {
         parentName: parentName.trim().isNotEmpty ? parentName.trim() : 'Veli',
         studentId: CloudIds.localIdOf(studentCloudId) ?? 0,
         studentName: token.studentName ?? '',
-        studentNumber: token.studentNumber,
+        studentNumber: int.tryParse(inputStudentNumber.trim()) ?? 0,
         schoolId: token.schoolId ?? '',
         schoolName: token.schoolName ?? '',
         classId: CloudIds.localIdOf(token.classCloudId ?? '') ?? 0,

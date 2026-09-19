@@ -192,6 +192,31 @@ void main() {
 
       expect(await anahtarDeposu.ozelAnahtarOku(), isNot(ilk));
     });
+
+    test('KRİTİK: anahtar değişince YEDEK BAYRAĞI sıfırlanır', () async {
+      // Bayrak kalsaydı ekran yeni anahtar için de "yedek alındı"
+      // derdi. Müdür elindeki ESKİ 88 karakteri saklamaya devam eder
+      // ve yeni anahtar hiç yedeklenmemiş olurdu.
+      //
+      // Sonucu telefon değişince ortaya çıkar: eski yedekten geri
+      // yüklenen anahtar tahtalardakiyle uyuşmaz, tüm tahtalar "imza
+      // geçersiz" der ve hepsine elden gitmek gerekir — bulut
+      // yedeğinin önlemek için var olduğu senaryonun ta kendisi.
+      //
+      // (Bağımsız incelemede bildirildi, 19 Eylül 2026'da
+      // doğrulandı.)
+      await anahtarDeposu.anahtarHazirla();
+      await anahtarDeposu.yedekAlindiIsaretle();
+      expect(await anahtarDeposu.yedekAlindiMi(), isTrue);
+
+      await anahtarDeposu.anahtariDegistir();
+
+      expect(
+        await anahtarDeposu.yedekAlindiMi(),
+        isFalse,
+        reason: 'yeni anahtarın yedeği YOK; ekran uyarmalı',
+      );
+    });
   });
 
   group('Yedek metni', () {

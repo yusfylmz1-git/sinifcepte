@@ -147,7 +147,20 @@ class CloudTokenRepository {
           'schoolName': token.schoolName,
           'className': token.className,
           'studentName': token.studentName,
-          'studentNumber': token.studentNumber,
+          // `studentNumber` BİLEREK YAZILMIYOR.
+          //
+          // Bu belge `allow get: if request.auth != null` ile okunuyor
+          // ve kimliği kodun hash'i. Kod uzayı küçük (sınıf etiketi
+          // başına 10.000) ve tuz kaynak kodda açık; yani oturum açmış
+          // biri hash'leri üretip belgeyi okuyabiliyor.
+          //
+          // Numara burada düz dursaydı İKİNCİ FAKTÖR aynı yanıttan
+          // öğrenilirdi ve koruma tamamen işlevsiz olurdu (bağımsız
+          // incelemede bildirildi, 19 Eylül 2026'da ölçüldü: tek
+          // sınıfın kod uzayı 13 ms'de üretiliyor).
+          //
+          // `secondFactorHash` kalıyor: doğrulama onunla yapılıyor ve
+          // hash'ten numara geri elde edilemez.
           'secondFactorHash': token.secondFactorHash,
           'expiresAt': token.expiresAt.toIso8601String(),
           'status': token.status,
@@ -211,6 +224,13 @@ class CloudTokenRepository {
     required String relation,
     required CloudTokenLookup token,
     required String codeHash,
+    // Veli bu numarayı bağlanırken ZATEN giriyor (ikinci faktör).
+    //
+    // Token belgesinden okunmuyor: orası kod tahminiyle okunabilen bir
+    // yol ve numara düz dursaydı ikinci faktör aynı yanıttan
+    // öğrenilirdi. Bağ belgesine yazmak meşru — o belge yalnızca
+    // velinin kendisine ve öğretmene açık.
+    required int studentNumber,
   }) async {
     await _client.ensureConfigured();
     if (!_client.isReady) return false;
@@ -240,7 +260,7 @@ class CloudTokenRepository {
           'relation': relation,
           'studentCloudId': studentCloudId,
           'studentName': token.studentName,
-          'studentNumber': token.studentNumber,
+          'studentNumber': studentNumber,
           'classCloudId': classCloudId,
           'className': token.className,
           'schoolId': token.schoolId,

@@ -20,6 +20,13 @@ class FakeCloudTokenRepository implements CloudTokenRepository {
     return tokens[codeHash] ?? CloudTokenLookup.notFound;
   }
 
+  /// Bağ kurulurken geçirilen öğrenci numaraları.
+  ///
+  /// Numaranın TOKEN BELGESİNDEN değil VELİDEN gelmesi gerekiyor:
+  /// token belgesi kod tahminiyle okunabiliyor ve numara orada düz
+  /// dursaydı ikinci faktör aynı yanıttan öğrenilirdi.
+  final List<int> gecirilenNumaralar = [];
+
   @override
   Future<bool> commitParentLink({
     required String parentUid,
@@ -27,8 +34,10 @@ class FakeCloudTokenRepository implements CloudTokenRepository {
     required String relation,
     required CloudTokenLookup token,
     required String codeHash,
+    required int studentNumber,
   }) async {
     if (failCommit) return false;
+    gecirilenNumaralar.add(studentNumber);
     committedLinks.add('${parentUid}_${token.studentCloudId}');
     return true;
   }
@@ -175,6 +184,26 @@ void main() {
         relation: 'Anne',
       );
     }
+
+    test('KRİTİK: öğrenci numarası VELİDEN alınıyor, tokendan değil', () async {
+      // Token belgesi `allow get: if request.auth != null` ile
+      // okunuyor ve kimliği kodun hash'i. Kod uzayı küçük (sınıf
+      // etiketi başına 10.000) ve tuz kaynak kodda açık: oturum açmış
+      // biri hash'leri üretip belgeyi okuyabiliyor.
+      //
+      // Numara token belgesinde düz dursaydı İKİNCİ FAKTÖR aynı
+      // yanıttan öğrenilirdi ve koruma işlevsiz kalırdı (bağımsız
+      // incelemede bildirildi, 19 Eylül 2026'da ölçüldü: tek sınıfın
+      // tüm kod uzayı 13 ms'de üretiliyor).
+      //
+      // Artık numara veliden geliyor; token belgesine hiç yazılmıyor.
+      fake.tokens[codeHash] = buildToken();
+
+      await attempt(studentNumber: '112');
+
+      expect(fake.gecirilenNumaralar, [112],
+          reason: 'bağ kaydına VELİNİN girdiği numara yazılmalı');
+    });
 
     test('Geçerli kod ve okul numarası ile bağ kurulur', () async {
       fake.tokens[codeHash] = buildToken();

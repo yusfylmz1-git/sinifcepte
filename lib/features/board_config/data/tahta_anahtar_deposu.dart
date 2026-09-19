@@ -144,6 +144,20 @@ class TahtaAnahtarDeposu {
     try {
       await _depo.delete(key: _anahtarAdi);
       await _depo.delete(key: _tarihAdi);
+
+      // YEDEK BAYRAĞI da siliniyor.
+      //
+      // Silinmediğinde ekran yeni anahtar için de "yedek alındı"
+      // diyordu. Müdür elindeki ESKİ 88 karakteri saklamaya devam
+      // ediyor ve yeni anahtar hiç yedeklenmemiş oluyordu.
+      //
+      // Sonucu telefon değişince ortaya çıkardı: eski yedekten
+      // geri yüklenen anahtar tahtalardakiyle uyuşmaz, tüm tahtalar
+      // "imza geçersiz" der ve hepsine elden gitmek gerekir —
+      // bulut yedeğinin önlemek için var olduğu senaryonun ta
+      // kendisi (bağımsız incelemede bildirildi, 19 Eylül 2026'da
+      // doğrulandı).
+      await _depo.delete(key: _yedekAdi);
     } catch (e, stackTrace) {
       debugPrint('anahtariDegistir silme hatası: $e\n$stackTrace');
       return null;
