@@ -42,7 +42,29 @@ class CloudExporter {
     this.downloadFile('official_exams.json', data);
   }
 
+  /**
+   * Tam yedek.
+   *
+   * `examsManager` bir dönem düğmeden GEÇİRİLMİYORDU: fonksiyon
+   * `null` alıp `official_exams: []` yazıyordu ve yedek sınavsız
+   * çıkıyordu. Felaket kurtarma boş sınav listesiyle yapılırdı ve
+   * geri dönüş olmazdı (bağımsız incelemede bildirildi, 19 Eylül
+   * 2026'da doğrulandı).
+   *
+   * Artık eksik yönetici SESSİZ GEÇMİYOR: yedek yine üretiliyor ama
+   * kullanıcı neyin eksik olduğunu görüyor. Yedeği hiç üretmemek
+   * daha kötü olurdu.
+   */
   static exportFullBackup(calendarManager, outcomesManager, manifestManager, examsManager = null) {
+    if (!examsManager) {
+      console.warn('exportFullBackup: examsManager verilmedi — yedek SINAVSIZ çıkacak');
+      alert(
+        'UYARI: Sınav listesi yedeğe eklenemedi. Bu yedekle geri '
+          + 'yükleme yaparsanız sınavlar KAYBOLUR. Sayfayı yenileyip '
+          + 'tekrar deneyin.',
+      );
+    }
+
     const bundle = {
       sync_manifest: manifestManager.manifest,
       system_announcements: manifestManager.announcements,
