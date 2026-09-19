@@ -67,7 +67,25 @@ class TahtaAgAcici {
           .timeout(_zamanAsimi);
 
       istek.headers.contentType = ContentType.json;
-      istek.write(jsonEncode({'kod': kod}));
+
+      // `contentLength` AÇIKÇA veriliyor.
+      //
+      // Verilmezse Dart `Transfer-Encoding: chunked` kullanıyor ve
+      // `Content-Length` başlığını hiç göndermiyor. Tahtanın
+      // `BaseHTTPRequestHandler` tabanlı sunucusu o başlığı okuyor,
+      // bulamayınca uzunluğu 0 sayıp **HTTP 400** dönüyor — kodu hiç
+      // doğrulamadan.
+      //
+      // Sahada bu, "tahta kodu kabul etmedi" olarak görünüyordu ve
+      // öğretmen kodu tekrar tekrar deniyordu. Oysa kod doğruydu;
+      // tahta onu hiç görmemişti (19 Eylül 2026, cihazda logcat ile
+      // ölçüldü: kod="167580" gitti, tahta 400 döndü).
+      //
+      // Testler bunu kaçırmıştı: `dart:io` `HttpServer` chunked'ı
+      // saydam biçimde çözüyor, Python'un sunucusu çözmüyor.
+      final istekGovdesi = utf8.encode(jsonEncode({'kod': kod}));
+      istek.contentLength = istekGovdesi.length;
+      istek.add(istekGovdesi);
 
       final yanit = await istek.close().timeout(_zamanAsimi);
       final govde = await yanit

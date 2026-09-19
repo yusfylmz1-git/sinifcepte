@@ -505,6 +505,27 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
   }
 
   void _kodUret(String secret) {
+    // Boş secret SESSİZCE geçiyordu.
+    //
+    // `kodUret('')` istisna atmıyor: boş anahtarla geçerli görünen
+    // ama hiçbir tahtada kabul edilmeyen bir değer üretiyor. Secret
+    // boş kalmasının gerçek bir sebebi var — güvenli depo
+    // çözülemediğinde (uygulama farklı anahtarla yeniden imzalanmış,
+    // Keystore sıfırlanmış) okuma boş dize dönüyor.
+    //
+    // Sahada bu, "tahta kodu kabul etmedi" olarak görünüyordu ve
+    // öğretmen kodu tekrar tekrar deniyordu; oysa kurulumu yenilemesi
+    // gerekiyordu (19 Eylül 2026, cihazda logcat ile bulundu).
+    if (secret.trim().isEmpty) {
+      debugPrint('Tahta: secret BOŞ — güvenli depo okunamamış olabilir');
+      setState(() => _kod = null);
+      _mesaj(
+        "Tahta kaydınız okunamıyor. Kurulum QR'ını yeniden okutun.",
+        hata: true,
+      );
+      return;
+    }
+
     try {
       final kod = TahtaTotp.kodUret(secret);
       _sayac?.cancel();
@@ -584,9 +605,17 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
     // `SC2` QR'ı tahtanın IP'sini taşıyor. `SC1` (eski tahta, ağ yok,
     // port dolu) durumunda `agdanAcilabilir` false ve doğrudan 6 hane
     // yolu kalıyor.
-    if (!yuk.agdanAcilabilir || _kod == null) return;
+    // BOŞ kod ağa gönderilmemeli.
+    //
+    // `_kod == null` yetmiyordu: güvenli depo okunamadığında secret
+    // boş dize kalıyor, `kodUret('')` istisna atmadan geçersiz bir
+    // değer üretiyor ve tahta HTTP 400 dönüyordu. Öğretmen ise
+    // "tahta kodu kabul etmedi, aşağıdaki kodu elle girin" görüyordu
+    // — oysa girecek kod yoktu (19 Eylül 2026, cihazda bulundu).
+    final kod = _kod;
+    if (!yuk.agdanAcilabilir || kod == null || kod.isEmpty) return;
 
-    await _agdanAc(yuk, _kod!);
+    await _agdanAc(yuk, kod);
   }
 
   /// Tahtayı ağdan açmayı dener.

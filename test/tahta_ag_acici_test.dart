@@ -251,4 +251,72 @@ void main() {
       }
     });
   });
+
+  group('Content-Length — tahta bu başlığı okuyor', () {
+    test('KRİTİK: istek Content-Length taşıyor, chunked değil', () async {
+      // Tahtanın sunucusu (Python `BaseHTTPRequestHandler`) gövde
+      // uzunluğunu bu başlıktan okuyor. `contentLength` verilmezse
+      // Dart `Transfer-Encoding: chunked` kullanıyor ve başlığı HİÇ
+      // göndermiyor; tahta uzunluğu 0 sayıp HTTP 400 dönüyor — kodu
+      // hiç doğrulamadan.
+      //
+      // Sahada bu "tahta kodu kabul etmedi" olarak görünüyordu ve
+      // öğretmen doğru kodu tekrar tekrar deniyordu (19 Eylül 2026,
+      // cihazda logcat ile ölçüldü).
+      //
+      // `dart:io` `HttpServer` chunked'ı saydam çözdüğü için bu
+      // testin BAŞLIĞA bakması gerekiyor; gövdeyi okumak yetmez ve
+      // kusur yine kaçardı.
+      String? uzunluk;
+      String? aktarim;
+
+      final sunucu = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      unawaited(() async {
+        await for (final istek in sunucu) {
+          uzunluk = istek.headers.value('content-length');
+          aktarim = istek.headers.value('transfer-encoding');
+          await utf8.decoder.bind(istek).join();
+          istek.response.statusCode = 200;
+          istek.response.write(jsonEncode({'tamam': true, 'mesaj': 'ok'}));
+          await istek.response.close();
+        }
+      }());
+
+      final acici = TahtaAgAcici();
+      await acici.ac(adres: _adres(sunucu), kod: '167580');
+      acici.kapat();
+      await sunucu.close(force: true);
+
+      expect(uzunluk, isNotNull,
+          reason: 'Content-Length yok — tahta HTTP 400 döner');
+      expect(int.parse(uzunluk!), greaterThan(0));
+      expect(aktarim, isNot('chunked'));
+    });
+
+    test('Content-Length gövdenin gerçek bayt uzunluğu', () async {
+      // Türkçe karakter gövdede yoksa da olabilir; yine de uzunluk
+      // KARAKTER değil BAYT sayısı olmalı. Yanlışsa tahta gövdeyi
+      // eksik okur ve JSON çözümlemesi başarısız olur.
+      String? uzunluk;
+      String? govde;
+
+      final sunucu = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      unawaited(() async {
+        await for (final istek in sunucu) {
+          uzunluk = istek.headers.value('content-length');
+          govde = await utf8.decoder.bind(istek).join();
+          istek.response.statusCode = 200;
+          istek.response.write(jsonEncode({'tamam': true}));
+          await istek.response.close();
+        }
+      }());
+
+      final acici = TahtaAgAcici();
+      await acici.ac(adres: _adres(sunucu), kod: '123456');
+      acici.kapat();
+      await sunucu.close(force: true);
+
+      expect(int.parse(uzunluk!), utf8.encode(govde!).length);
+    });
+  });
 }
