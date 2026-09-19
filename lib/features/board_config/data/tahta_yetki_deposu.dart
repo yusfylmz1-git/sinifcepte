@@ -100,7 +100,17 @@ class TahtaYetkiDeposu {
       schoolId: schoolId,
       teacherUid: teacherUid,
     );
-    if (mevcut != null) {
+    // REDDEDİLMİŞ kayıt yeniden isteğe açık.
+    //
+    // Eskiden her mevcut kayıt "zaten gönderilmiş, onay bekleniyor"
+    // sayılıyordu — reddedilmiş olsa bile. Yanlışlıkla reddedilen
+    // öğretmen müdürün kapısına gitmek zorunda kalıyordu: tam da
+    // otomatik kaydın çözmek istediği sahne (bağımsız incelemede
+    // bildirildi, 19 Eylül 2026'da doğrulandı).
+    //
+    // Kurallar da buna göre açıldı: `reddedildi` -> `bekliyor`
+    // geçişine yalnızca kaydın sahibi ve yalnızca bu yönde izin var.
+    if (mevcut != null && mevcut.durum != YetkiDurumu.reddedildi) {
       return YetkiIstekSonucu(
         kayit: mevcut,
         hata: mevcut.durum == YetkiDurumu.onayli

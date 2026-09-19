@@ -800,10 +800,33 @@ service cloud.firestore {
           && request.resource.data.ad.size() <= 80;
 
         // Onay, ret ve çıkarma: yalnızca o okulun onaylı yöneticisi.
-        //
-        // Öğretmen kendi kaydını güncelleyemiyor: güncelleyebilse
-        // `durum`u `onayli` yapardı.
-        allow update, delete: if isSchoolAdminOf(schoolId);
+        allow update, delete: if isSchoolAdminOf(schoolId)
+          // REDDEDİLEN öğretmen yeniden isteyebilir.
+          //
+          // `reddet` belgeyi silmiyor, `durum: 'reddedildi'` yapıyor.
+          // Öğretmenin `update` hakkı olmadığı için yeniden istek
+          // gönderemiyordu; ekran ise "İsteğiniz zaten gönderilmiş,
+          // onay bekleniyor" diyordu — oysa reddedilmişti.
+          //
+          // Yanlışlıkla reddedilen öğretmen müdürün kapısına gitmek
+          // zorunda kalıyordu: tam da otomatik kaydın çözmek istediği
+          // sahne (bağımsız incelemede bildirildi, 19 Eylül 2026'da
+          // doğrulandı).
+          //
+          // İzin DAR: yalnızca `reddedildi` -> `bekliyor` ve yalnızca
+          // kendi kaydı. Yetki yükselmesi yok — `onayli` yazmak hâlâ
+          // imkânsız.
+          || (request.auth != null
+              && request.auth.uid == teacherUid
+              && resource.data.durum == 'reddedildi'
+              && request.resource.data.durum == 'bekliyor'
+              && request.resource.data.teacherUid == request.auth.uid
+              && request.resource.data.totpSecret is string
+              && request.resource.data.totpSecret.size() >= 16
+              && request.resource.data.totpSecret.size() <= 64
+              && request.resource.data.ad is string
+              && request.resource.data.ad.size() > 0
+              && request.resource.data.ad.size() <= 80);
       }
     }
   }

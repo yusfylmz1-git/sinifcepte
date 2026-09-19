@@ -2583,6 +2583,99 @@ describe('Okul panosu (school_boards) — tahta modülü', () => {
       );
     });
 
+    it('KRİTİK: REDDEDİLEN öğretmen yeniden istek gönderebilir', async () => {
+      // `reddet` belgeyi silmiyor, `durum: 'reddedildi'` yapıyor.
+      // Öğretmenin `update` hakkı olmadığı için yeniden istek
+      // gönderemiyordu; ekran ise "İsteğiniz zaten gönderilmiş, onay
+      // bekleniyor" diyordu — oysa reddedilmişti.
+      //
+      // Yanlışlıkla reddedilen öğretmen müdürün kapısına gitmek
+      // zorunda kalıyordu: tam da otomatik kaydın çözmek istediği
+      // sahne (19 Eylül 2026).
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(
+          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          { ...istek(TEACHER_UID), durum: 'reddedildi' },
+        );
+      });
+
+      await assertSucceeds(
+        setDoc(
+          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          istek(TEACHER_UID),
+        ),
+      );
+    });
+
+    it('KRİTİK: öğretmen kendini ONAYLAYAMAZ', async () => {
+      // Yeniden istek izni yetki yükseltmeye açılmamalı. `reddedildi`
+      // durumundan çıkış YALNIZCA `bekliyor` yönünde.
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(
+          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          { ...istek(TEACHER_UID), durum: 'reddedildi' },
+        );
+      });
+
+      await assertFails(
+        setDoc(
+          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          { ...istek(TEACHER_UID), durum: 'onayli' },
+        ),
+      );
+    });
+
+    it('KRİTİK: BEKLEYEN kayıt öğretmen tarafından değiştirilemez', async () => {
+      // Yalnızca `reddedildi` durumundan çıkış serbest. Bekleyen bir
+      // kaydı yeniden yazmak, secret'ı değiştirip müdürün onayladığı
+      // şeyden başkasını kurmaya yol açabilirdi.
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(
+          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          istek(TEACHER_UID),
+        );
+      });
+
+      await assertFails(
+        setDoc(
+          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          { ...istek(TEACHER_UID), ad: 'Değişti' },
+        ),
+      );
+    });
+
+    it('KRİTİK: ONAYLI kayıt öğretmen tarafından değiştirilemez', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(
+          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          { ...istek(TEACHER_UID), durum: 'onayli' },
+        );
+      });
+
+      await assertFails(
+        setDoc(
+          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
+          istek(TEACHER_UID),
+        ),
+      );
+    });
+
+    it('KRİTİK: BAŞKASININ reddedilmiş kaydı yeniden açılamaz', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(
+          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', 'baskaUid'),
+          { ...istek('baskaUid'), durum: 'reddedildi' },
+        );
+      });
+
+      await assertFails(
+        setDoc(
+          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', 'baskaUid'),
+          istek('baskaUid'),
+        ),
+      );
+    });
+
     it('öğretmen KENDİ kaydını okuyabilir', async () => {
       await testEnv.withSecurityRulesDisabled(async (ctx) => {
         await setDoc(
