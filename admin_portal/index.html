@@ -10,8 +10,20 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <!-- SheetJS (Excel .xlsx Okuyucu) -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- SheetJS (Excel .xlsx Okuyucu)
+
+       `integrity` ZORUNLU: bu dosya üçüncü taraf bir CDN'den geliyor ve
+       süper admin oturumunda çalışıyor. CDN bozulursa ya da dosya
+       değiştirilirse tarayıcı script'i REDDEDER.
+
+       Hash 19 Eylül 2026'da indirilen dosyadan hesaplandı
+       (881.727 bayt). Sürüm yükseltilirse hash de yenilenmeli, yoksa
+       Excel içe aktarma sessizce çalışmaz. -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
+    integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw"
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"></script>
 
   <link rel="stylesheet" href="css/admin_styles.css">
 </head>

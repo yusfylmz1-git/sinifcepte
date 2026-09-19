@@ -1165,9 +1165,9 @@ class AdminApp {
               ${this.kaynakBaglantisi(exam.institution)}
             </td>
             <td>
-              <div style="font-weight: 700; color: var(--text-main); font-size: 13.5px;">${exam.title}</div>
-              ${exam.description ? `<div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">${exam.description}</div>` : ''}
-              ${exam.applicationUrl ? `<a href="${exam.applicationUrl}" target="_blank" style="font-size: 11px; color: var(--primary); text-decoration: none; display: inline-flex; align-items: center; gap: 3px; margin-top: 3px;">🔗 Başvuru Sayfası ↗</a>` : ''}
+              <div style="font-weight: 700; color: var(--text-main); font-size: 13.5px;">${this.kacisliMetin(exam.title)}</div>
+              ${exam.description ? `<div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">${this.kacisliMetin(exam.description)}</div>` : ''}
+              ${this.basvuruBaglantisi(exam.applicationUrl)}
             </td>
             <td>
               <div style="font-weight: 700; font-size: 13px; color: var(--text-main);">📅 ${examDateFormatted}</div>
@@ -1177,10 +1177,10 @@ class AdminApp {
               ⏳ Son: ${deadlineFormatted}
             </td>
             <td style="text-align: right; white-space: nowrap;">
-              <button class="btn btn-sm btn-secondary" onclick="window.adminApp.editExam('${exam.doc_id}')" title="Düzenle">
+              <button class="btn btn-sm btn-secondary" onclick="window.adminApp.editExam('${this.kacisliOznitelik(this.kacisliJsDizesi(exam.doc_id))}')" title="Düzenle">
                 ✏️
               </button>
-              <button class="btn btn-sm btn-danger" onclick="window.adminApp.deleteExam('${exam.doc_id}')" title="Sil">
+              <button class="btn btn-sm btn-danger" onclick="window.adminApp.deleteExam('${this.kacisliOznitelik(this.kacisliJsDizesi(exam.doc_id))}')" title="Sil">
                 🗑️
               </button>
             </td>
@@ -1729,6 +1729,76 @@ class AdminApp {
     const d = document.createElement('div');
     d.textContent = x ?? '';
     return d.innerHTML;
+  }
+
+  /**
+   * HTML ÖZNİTELİĞİ içine güvenli gömme.
+   *
+   * `kacisliMetin` metin düğümü için doğru ama öznitelik için yetmez:
+   * tırnak kaçmazsa saldırgan özniteliği kapatıp yenisini açabilir
+   * (`" onmouseover="...`).
+   *
+   * Tek tırnak da kaçırılıyor çünkü bu panelde `onclick='...'` ve
+   * `href="..."` biçimleri birlikte kullanılıyor.
+   */
+  kacisliOznitelik(x) {
+    return String(x ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  /**
+   * JS dize literali içine güvenli gömme (`onclick="fn('...')"`).
+   *
+   * Öznitelik kaçışı tek başına yetmiyor: değer önce HTML olarak
+   * çözülüp SONRA JS olarak yorumlanıyor, yani iki katman var.
+   */
+  kacisliJsDizesi(x) {
+    return String(x ?? '')
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '\\"')
+      .replace(/</g, '\\x3C')
+      .replace(/\r?\n/g, '');
+  }
+
+  /**
+   * Başvuru bağlantısını güvenli biçimde üretir.
+   *
+   * Adres `javascript:` gibi bir protokol taşıyorsa bağlantı HİÇ
+   * basılmıyor — boş bir `href` bırakmak yerine öğeyi tamamen
+   * atlamak, tıklanabilir ama işlevsiz bir bağlantıdan iyi.
+   */
+  basvuruBaglantisi(ham) {
+    const adres = this.guvenliBaglanti(ham);
+    if (!adres) return '';
+    return `<a href="${this.kacisliOznitelik(adres)}" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: var(--primary); text-decoration: none; display: inline-flex; align-items: center; gap: 3px; margin-top: 3px;">🔗 Başvuru Sayfası ↗</a>`;
+  }
+
+  /**
+   * Bağlantı adresini doğrular; güvenli değilse boş döner.
+   *
+   * `javascript:` ve `data:` protokolleri `href` içinde kod
+   * çalıştırıyor. ÖSYM/MEB içe aktarımı JSON'dan geliyor ve şema
+   * denetimi yok, yani bu alan saldırgan kontrolünde olabilir
+   * (bağımsız incelemede bildirildi, 19 Eylül 2026'da doğrulandı).
+   *
+   * Beyaz liste yaklaşımı: yalnızca http/https geçer. Bilinmeyen bir
+   * protokolü reddetmek, tanımaya çalışmaktan güvenli.
+   */
+  guvenliBaglanti(x) {
+    const ham = String(x ?? '').trim();
+    if (!ham) return '';
+    try {
+      const u = new URL(ham, window.location.origin);
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+      return u.href;
+    } catch (_) {
+      return '';
+    }
   }
 
   /** Fonksiyon hatasını öğretmenin anlayacağı dile çevirir. */

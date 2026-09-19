@@ -1,4 +1,55 @@
 /**
+ * HTML kaçışı — XSS koruması.
+ *
+ * Sınav/takvim/duyuru başlıkları JSON içe aktarımından geliyor ve şema
+ * denetimi yok, yani saldırgan kontrolünde olabilir. Kaçışsız
+ * `innerHTML` süper admin oturumunda script çalıştırır ve o oturumun
+ * Remote Config yetkisi vardır (bağımsız incelemede bildirildi,
+ * 19 Eylül 2026'da doğrulandı).
+ */
+function scKacis(x) {
+  return String(x ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * `onclick="fn('...')"` içine gömülecek değer.
+ *
+ * Öznitelik kaçışı tek başına yetmiyor: değer önce HTML olarak
+ * çözülüp SONRA JS olarak yorumlanıyor, yani iki katman var.
+ */
+function scJsKacis(x) {
+  return scKacis(
+    String(x ?? '')
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/\r?\n/g, ''),
+  );
+}
+
+/**
+ * Bağlantı adresi güvenli mi? Değilse boş döner.
+ *
+ * `javascript:` ve `data:` protokolleri `href` içinde kod çalıştırır.
+ * Beyaz liste: yalnızca http/https geçer.
+ */
+function scGuvenliBaglanti(x) {
+  const ham = String(x ?? '').trim();
+  if (!ham) return '';
+  try {
+    const u = new URL(ham, window.location.origin);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+    return u.href;
+  } catch (_) {
+    return '';
+  }
+}
+
+/**
  * SınıfCepte Web Admin Paneli - Versiyon Manifesti ve Bakım Modu Yöneticisi
  */
 class ManifestManager {
@@ -180,12 +231,12 @@ class ManifestManager {
       .map((item) => {
         return `
         <tr>
-          <td><strong>${item.title}</strong></td>
-          <td style="max-width: 300px; font-size: 12.5px;">${item.body}</td>
+          <td><strong>${scKacis(item.title)}</strong></td>
+          <td style="max-width: 300px; font-size: 12.5px;">${scKacis(item.body)}</td>
           <td><span class="badge ${item.type === 'exam' ? 'badge-exam' : 'badge-special'}">${item.type === 'exam' ? '📝 Sınav' : '📢 Genel'}</span></td>
-          <td>${item.publishDate}</td>
+          <td>${scKacis(item.publishDate)}</td>
           <td style="text-align: right;">
-            <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="window.adminApp.deleteAnnouncement('${item.id}')">Sil</button>
+            <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="window.adminApp.deleteAnnouncement('${scJsKacis(item.id)}')">Sil</button>
           </td>
         </tr>
       `;

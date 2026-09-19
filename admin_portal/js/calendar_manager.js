@@ -1,4 +1,55 @@
 /**
+ * HTML kaçışı — XSS koruması.
+ *
+ * Sınav/takvim/duyuru başlıkları JSON içe aktarımından geliyor ve şema
+ * denetimi yok, yani saldırgan kontrolünde olabilir. Kaçışsız
+ * `innerHTML` süper admin oturumunda script çalıştırır ve o oturumun
+ * Remote Config yetkisi vardır (bağımsız incelemede bildirildi,
+ * 19 Eylül 2026'da doğrulandı).
+ */
+function scKacis(x) {
+  return String(x ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * `onclick="fn('...')"` içine gömülecek değer.
+ *
+ * Öznitelik kaçışı tek başına yetmiyor: değer önce HTML olarak
+ * çözülüp SONRA JS olarak yorumlanıyor, yani iki katman var.
+ */
+function scJsKacis(x) {
+  return scKacis(
+    String(x ?? '')
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/\r?\n/g, ''),
+  );
+}
+
+/**
+ * Bağlantı adresi güvenli mi? Değilse boş döner.
+ *
+ * `javascript:` ve `data:` protokolleri `href` içinde kod çalıştırır.
+ * Beyaz liste: yalnızca http/https geçer.
+ */
+function scGuvenliBaglanti(x) {
+  const ham = String(x ?? '').trim();
+  if (!ham) return '';
+  try {
+    const u = new URL(ham, window.location.origin);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+    return u.href;
+  } catch (_) {
+    return '';
+  }
+}
+
+/**
  * SınıfCepte Web Admin Paneli - MEB Akademik Takvim Yöneticisi
  */
 class CalendarManager {
@@ -146,14 +197,14 @@ class CalendarManager {
 
         return `
         <tr>
-          <td><strong>${item.title}</strong><br><small style="color: var(--text-muted)">${item.description || ''}</small></td>
+          <td><strong>${scKacis(item.title)}</strong><br><small style="color: var(--text-muted)">${scKacis(item.description || '')}</small></td>
           <td>${this.getCategoryBadge(item.category)}</td>
-          <td>${item.startDate}</td>
-          <td>${item.endDate}</td>
+          <td>${scKacis(item.startDate)}</td>
+          <td>${scKacis(item.endDate)}</td>
           <td><span class="badge" style="background: rgba(79,70,229,0.1); color: var(--primary)">${diffDays} Gün</span></td>
           <td style="text-align: right;">
-            <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 11px;" onclick="window.adminApp.editCalendarEvent('${item.id}')">Düzenle</button>
-            <button class="btn btn-danger" style="padding: 5px 10px; font-size: 11px;" onclick="window.adminApp.deleteCalendarEvent('${item.id}')">Sil</button>
+            <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 11px;" onclick="window.adminApp.editCalendarEvent('${scJsKacis(item.id)}')">Düzenle</button>
+            <button class="btn btn-danger" style="padding: 5px 10px; font-size: 11px;" onclick="window.adminApp.deleteCalendarEvent('${scJsKacis(item.id)}')">Sil</button>
           </td>
         </tr>
       `;
