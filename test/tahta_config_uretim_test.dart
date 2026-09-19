@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/material.dart' show TimeOfDay;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sinifcepte/features/board_config/data/okul_config_service.dart';
 import 'package:sinifcepte/features/board_config/models/okul_config_model.dart';
@@ -227,6 +228,98 @@ void main() {
         isNot(contains(base64Encode(cift.ozelAnahtar))),
         reason: 'dosyaya yalnızca AÇIK anahtar yazılmalı',
       );
+    });
+  });
+
+  group('Pano içeriği dosyaya GİRİYOR — Y8', () {
+    // Nöbetçi ve duyurular bir dönem dosyaya hiç girmiyordu:
+    // `OkulConfigModel` kurulurken verilmiyorlardı ve boş varsayılana
+    // düşüyorlardı. Müdür nöbetçi giriyor, "kaydedildi" mesajını
+    // alıyor, tahtada hiçbir zaman görmüyordu.
+    //
+    // Nöbetçi listesi bu modülün rakiplerde olmayan TEK ayırt edici
+    // özelliği; bağlanmamış olması modülün varlık sebebini
+    // boşaltıyordu (bağımsız incelemede bildirildi, 19 Eylül 2026'da
+    // doğrulandı).
+    //
+    // Varsayılanın boş liste olması hatayı SESSİZ kılıyordu: derleme
+    // hatası yok, çalışma zamanı hatası yok, yalnızca eksik veri.
+
+    test('KRİTİK: nöbetçi listesi JSON çıktısında', () {
+      final config = OkulConfigModel(
+        surum: 1,
+        okulId: 'meb_1',
+        okulAdi: 'Deneme',
+        uretimZamani: '2026-09-19T10:00:00+03:00',
+        gecerlilikBitis: '2027-08-31T23:59:59+03:00',
+        zil: const ScheduleSettings(
+          firstLessonTime: TimeOfDay(hour: 8, minute: 30),
+          lessonDuration: 40,
+          breakDuration: 10,
+          dailyLessonCount: 8,
+        ),
+        ogretmenler: const [
+          PanoOgretmeni(kod: 'AYILMAZ', ad: 'A. Yilmaz', totpSecret: 'X'),
+        ],
+        nobetciler: const [
+          NobetciKaydi(gun: 'pazartesi', kat: '1. Kat', ad: 'A. Yilmaz'),
+          NobetciKaydi(gun: 'sali', kat: '2. Kat', ad: 'B. Kaya'),
+        ],
+        duyurular: const [
+          PanoDuyurusu(id: 'd1', baslik: 'Veli toplantisi', metin: 'Cuma'),
+        ],
+      );
+
+      final json = config.toJson();
+      final nobetciler = json['nobetciler'] as List<Object?>;
+      final duyurular = json['duyurular'] as List<Object?>;
+
+      expect(nobetciler, hasLength(2), reason: 'tahtada boş görünürdü');
+      expect(duyurular, hasLength(1));
+
+      final ilk = nobetciler.first as Map<String, Object?>;
+      expect(ilk['gun'], 'pazartesi');
+      expect(ilk['ad'], 'A. Yilmaz');
+    });
+
+    test('boş liste verilirse JSON alanı yine VAR (boş dizi)', () {
+      // Tahta tarafı alanın varlığını bekliyor; eksik alan farklı bir
+      // hata sınıfı olurdu.
+      final config = OkulConfigModel(
+        surum: 1,
+        okulId: 'meb_1',
+        okulAdi: 'Deneme',
+        uretimZamani: '2026-09-19T10:00:00+03:00',
+        gecerlilikBitis: '2027-08-31T23:59:59+03:00',
+        zil: const ScheduleSettings(
+          firstLessonTime: TimeOfDay(hour: 8, minute: 30),
+          lessonDuration: 40,
+          breakDuration: 10,
+          dailyLessonCount: 8,
+        ),
+        ogretmenler: const [
+          PanoOgretmeni(kod: 'A', ad: 'A', totpSecret: 'X'),
+        ],
+      );
+
+      final json = config.toJson();
+      expect(json.containsKey('nobetciler'), isTrue);
+      expect(json['nobetciler'], isEmpty);
+    });
+
+    test('KRİTİK: nöbetçi GÜN adı tahtanın beklediği biçimde', () {
+      // `ekran.py::_GUNLER` aksansız küçük harf bekliyor. Şema bir kez
+      // `tarih` → `gun` değişmiş ve liste tahtada SESSİZCE boş
+      // kalmıştı; bu test o hata sınıfını kilitliyor.
+      const kayit = NobetciKaydi(
+        gun: 'carsamba',
+        kat: '1. Kat',
+        ad: 'A. Yilmaz',
+      );
+
+      final json = kayit.toJson();
+      expect(json['gun'], 'carsamba');
+      expect(json.containsKey('tarih'), isFalse);
     });
   });
 }

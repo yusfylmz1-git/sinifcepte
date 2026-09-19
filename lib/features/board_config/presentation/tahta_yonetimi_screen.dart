@@ -1724,6 +1724,32 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
         return;
       }
 
+      // Nöbetçi ve duyurular BULUTTAN okunuyor.
+      //
+      // Bunlar bir dönem dosyaya HİÇ girmiyordu: `OkulConfigModel`
+      // kurulurken verilmiyordu ve boş varsayılana düşüyorlardı.
+      // Müdür nöbetçi giriyor, "kaydedildi" mesajını alıyor, tahtada
+      // hiçbir zaman görmüyordu.
+      //
+      // Nöbetçi listesi bu modülün rakiplerde olmayan TEK ayırt edici
+      // özelliği; bağlanmamış olması modülün varlık sebebini
+      // boşaltıyordu (bağımsız incelemede bildirildi, 19 Eylül
+      // 2026'da doğrulandı — VM'de üretilen dosyada `nöbetçi: 0`
+      // görülmüştü ve "boş liste" sanılmıştı).
+      //
+      // Okuma başarısız olursa üretim DURMUYOR: kilit çalışmalı.
+      // Ama müdür boş gittiğini bilmeli, o yüzden mesaj veriliyor.
+      var nobetciler = const <NobetciKaydi>[];
+      var duyurular = const <PanoDuyurusu>[];
+      var panoOkunamadi = false;
+      try {
+        nobetciler = await _panoDeposu.readDuties(schoolId: okulId);
+        duyurular = await _panoDeposu.readNotices(schoolId: okulId);
+      } catch (e) {
+        debugPrint('Pano içeriği okunamadı: $e');
+        panoOkunamadi = true;
+      }
+
       final config = OkulConfigModel(
         surum: surum,
         okulId: okulId,
@@ -1735,6 +1761,8 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
             .toIso8601String(),
         zil: zil,
         ogretmenler: ogretmenListesi,
+        nobetciler: nobetciler,
+        duyurular: duyurular,
       );
 
       final sonuc = await OkulConfigService.uret(
@@ -1752,8 +1780,28 @@ class _TahtaYonetimiScreenState extends ConsumerState<TahtaYonetimiScreen> {
 
       await OkulConfigService.paylas(sonuc);
       if (!mounted) return;
-      _mesaj('Dosya üretildi (${sonuc.baytSayisi} bayt). İki dosyayı '
-          'birlikte flash belleğe kopyalayın.');
+
+      // Ne gittiğini SAY. "Dosya üretildi" demek yetmiyordu: nöbetçi
+      // listesi bir dönem hiç girmiyordu ve müdür bunu ancak tahtada
+      // (boş ekranda) fark edebiliyordu.
+      final parcalar = <String>[
+        '${ogretmenListesi.length} öğretmen',
+        if (nobetciler.isNotEmpty) '${nobetciler.length} nöbetçi',
+        if (duyurular.isNotEmpty) '${duyurular.length} duyuru',
+      ];
+
+      if (panoOkunamadi) {
+        _mesaj(
+          'Dosyalar üretildi ama nöbetçi ve duyurular OKUNAMADI '
+          '(internet?). Tahtada o bölümler boş görünecek.',
+          hata: true,
+        );
+      } else {
+        _mesaj(
+          'Dosyalar üretildi: ${parcalar.join(", ")}. Üçünü birlikte '
+          'flash belleğe kopyalayın.',
+        );
+      }
     } catch (e, stackTrace) {
       debugPrint('Config üretim hatası: $e\n$stackTrace');
       if (!mounted) return;
