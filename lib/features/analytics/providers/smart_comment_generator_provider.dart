@@ -18,7 +18,15 @@ class SmartCommentGenerator {
     required int materialsReady,
     required double averageStars,
   }) {
-    if (totalSessions <= 0) return 100.0;
+    // VERI YOK ile MUKEMMEL ayri seyler.
+    //
+    // Eskiden oturum hic yoksa 100 donuyordu: hicbir katilim
+    // kaydedilmemis bir sinif "mukemmel" gorunuyor ve karne gorusu
+    // bunu yaziyordu. Veli toplantisinda soylenen cumle yanlis olur
+    // (bagimsiz incelemede bildirildi, 21 Eylul 2026'da dogrulandi).
+    //
+    // `-1` "hesaplanamaz" demek; cagiran taraf bunu gostermemeli.
+    if (totalSessions <= 0) return -1;
 
     final hwScore = ((homeworkDone + (homeworkPartial * 0.5)) / totalSessions * 100).clamp(0.0, 100.0);
     final matScore = (materialsReady / totalSessions * 100).clamp(0.0, 100.0);

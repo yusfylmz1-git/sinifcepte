@@ -566,19 +566,18 @@ class ClassroomParticipationNotifier
     }
   }
 
-  /// Akademik yıl boyunca henüz girilmemiş tüm dersleri tam puanla ön doldurur
-  Future<int> autoFillAcademicYearBaseline({
-    DateTime? startDate,
-    DateTime? endDate,
-  }) async {
-    try {
-      return await _repo.autoFillAcademicYearBaseline(
-        startDate: startDate,
-        endDate: endDate,
-      );
-    } catch (e, stackTrace) {
-      debugPrint('autoFillAcademicYearBaseline hatası: $e\n$stackTrace');
-      return 0;
-    }
-  }
+  // KALDIRILDI: autoFillAcademicYearBaseline
+  //
+  // Metot akademik yılın HER İŞ GÜNÜNE 1. saat TAM PUAN basıyordu
+  // ve tarihler sabitti (2025-09-08 … 2026-06-19). Arayüzden hiç
+  // çağrılmıyordu ama sağlayıcıda erişilebilir duruyordu: bir gün
+  // biri bağlarsa uydurma bir dönem üretirdi — öğretmenin hiç
+  // işaretlemediği derslerde %100 ödev, 3.0 yıldız.
+  //
+  // Bağımsız incelemede "ölü mayın" olarak bildirildi
+  // (21 Eylül 2026'da doğrulandı). Depodaki metot da kaldırıldı.
+  //
+  // Gerçekten gerekirse: öğretmenin ONAYLADIĞI bir tarih
+  // aralığıyla, sabit tarih olmadan ve ne yazılacağı ekranda
+  // gösterilerek yeniden yazılmalı.
 }

@@ -730,121 +730,21 @@ class ClassroomParticipationRepository {
     }
   }
 
-  /// Akademik takvim boyunca (tatiller ve hafta sonları hariç) tüm sınıflar için
-  /// henüz değerlendirilmemiş dersleri otomatik olarak 100% tam puanla (3 Yıldız, Ödev Tam, Materyal Tam, Vaktinde) doldurur
-  Future<int> autoFillAcademicYearBaseline({
-    DateTime? startDate,
-    DateTime? endDate,
-  }) async {
-    try {
-      final db = await _dbHelper.database;
-      final now = DateTime.now();
-
-      // Varsayılan akademik yıl sınırları: 2025-09-08'den bugüne veya dönem sonuna (2026-06-19)
-      final start = startDate ?? DateTime(2025, 9, 8);
-      final end = endDate ?? (now.isAfter(DateTime(2026, 6, 19)) ? DateTime(2026, 6, 19) : now);
-
-      if (start.isAfter(end)) return 0;
-
-      // 1. Resmi Tatil ve Ara Tatil Tarihlerini Çek
-      final holidayRows = await db.query('academic_calendar');
-      final Set<String> holidayDates = {};
-      for (var row in holidayRows) {
-        final sStr = row['start_date'] as String?;
-        final eStr = row['end_date'] as String?;
-        if (sStr != null) {
-          final sDate = DateTime.tryParse(sStr);
-          final eDate = eStr != null ? DateTime.tryParse(eStr) : sDate;
-          if (sDate != null && eDate != null) {
-            var cur = sDate;
-            while (!cur.isAfter(eDate)) {
-              holidayDates.add(cur.toIso8601String().substring(0, 10));
-              cur = cur.add(const Duration(days: 1));
-            }
-          }
-        }
-      }
-
-      // 2. Tüm Sınıfları ve Öğrencileri Çek
-      final classRows = await db.query('classes');
-      if (classRows.isEmpty) return 0;
-
-      int insertedSessionsCount = 0;
-
-      for (var classRow in classRows) {
-        final classId = classRow['id'] as int;
-        final className = classRow['name'] as String? ?? 'Sınıf';
-        final subjectName = classRow['subject'] as String? ?? 'Ders';
-
-        final studentRows = await db.query(
-          'students',
-          where: 'class_id = ?',
-          whereArgs: [classId],
-        );
-        if (studentRows.isEmpty) continue;
-
-        // Mevcut oturumları çek (Üzerine yazmamak için)
-        final existingSessionRows = await db.query(
-          'participation_sessions',
-          where: 'class_id = ?',
-          whereArgs: [classId],
-        );
-        final Set<String> existingSessionKeys = {
-          for (var s in existingSessionRows)
-            '${s['date']}_${s['lesson_hour']}',
-        };
-
-        // Tarih aralığında hafta içi ve tatil olmayan günleri tara
-        var currentDay = start;
-        while (!currentDay.isAfter(end)) {
-          final isWeekend = currentDay.weekday == DateTime.saturday || currentDay.weekday == DateTime.sunday;
-          final dateStr = currentDay.toIso8601String().substring(0, 10);
-          final isHoliday = holidayDates.contains(dateStr);
-
-          if (!isWeekend && !isHoliday) {
-            // Varsayılan olarak 1. ders saatini doldur
-            const lessonHour = 1;
-            final key = '${dateStr}_$lessonHour';
-
-            if (!existingSessionKeys.contains(key)) {
-              // Oturumu ve öğrencileri tam puanla ekle
-              await db.transaction((txn) async {
-                final sessionId = await txn.insert('participation_sessions', {
-                  'class_id': classId,
-                  'class_name': className,
-                  'date': dateStr,
-                  'lesson_hour': lessonHour,
-                  'subject_name': subjectName,
-                });
-
-                final batch = txn.batch();
-                for (var s in studentRows) {
-                  batch.insert('participation_records', {
-                    'session_id': sessionId,
-                    'student_id': s['id'] as int,
-                    'homework_status': 'yapti',
-                    'materials_status': 'tam',
-                    'arrival_status': 'vaktinde',
-                    'stars_count': 3,
-                    'badge_name': null,
-                    'note': null,
-                  });
-                }
-                await batch.commit(noResult: true);
-              });
-              existingSessionKeys.add(key);
-              insertedSessionsCount++;
-            }
-          }
-          currentDay = currentDay.add(const Duration(days: 1));
-        }
-      }
-
-      return insertedSessionsCount;
-    } catch (e, stackTrace) {
-      debugPrint('autoFillAcademicYearBaseline hatası: $e\n$stackTrace');
-      return 0;
-    }
-  }
+  // KALDIRILDI: autoFillAcademicYearBaseline
+  //
+  // Akademik yılın HER İŞ GÜNÜNE 1. saat TAM PUAN basıyordu
+  // (ödev yaptı, materyal tam, 3 yıldız) ve tarihler SABİTTİ:
+  // 2025-09-08 … 2026-06-19.
+  //
+  // Arayüzden hiç çağrılmıyordu ama sağlayıcıda erişilebilir
+  // duruyordu. Bağlanırsa öğretmenin hiç işaretlemediği bütün
+  // derslere mükemmel puan yazar ve kümülatif rapor, karne görüşü,
+  // veli toplantısı kılavuzu bunu GERÇEK sanır.
+  //
+  // Bağımsız incelemede "ölü mayın" olarak bildirildi
+  // (21 Eylül 2026'da doğrulandı).
+  //
+  // Sabit tarihler ayrıca hafızadaki zaman bombası tuzağı: 2026
+  // Haziran'dan sonra metot sessizce hiçbir şey yapmazdı.
 }
 

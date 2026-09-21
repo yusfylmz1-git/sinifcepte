@@ -466,14 +466,23 @@ class StudentParticipationSummaryStats {
     this.recentNotes = const [],
   });
 
+  /// Odev tamamlama orani; veri yoksa `-1` ("hesaplanamaz").
+  ///
+  /// Eskiden kayit yokken 100 donuyordu ve hicbir sey isaretlenmemis
+  /// bir sinif "%100 odev" gorunuyordu. Veri yok ile mukemmel ayri
+  /// seyler (bagimsiz incelemede bildirildi, 21 Eylul 2026).
   double get homeworkCompletionRate {
     final total = homeworkDoneCount + homeworkPartialCount + homeworkNoneCount;
-    if (total == 0) return 100.0;
+    if (total == 0) return -1;
     return ((homeworkDoneCount * 1.0 + homeworkPartialCount * 0.5) / total) * 100.0;
   }
 
+  /// Materyal hazirlik orani; veri yoksa `-1` ("hesaplanamaz").
   double get materialsRate {
-    if (totalSessions == 0) return 100.0;
+    if (totalSessions == 0) return -1;
     return (materialsReadyCount / totalSessions) * 100.0;
   }
+
+  /// Oran gosterilebilir mi? (`-1` ise veri yok.)
+  static bool oranGecerli(double oran) => oran >= 0;
 }

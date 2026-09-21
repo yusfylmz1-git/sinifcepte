@@ -1800,7 +1800,19 @@ class ClassroomDocumentsPdfGenerator {
         pw.Row(
           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           children: [
-            pw.Text(documentCode ?? '', style: const pw.TextStyle(fontSize: 7, color: PdfColors.black)),
+            // UYDURMA MEB KODU BASILMIYOR.
+            //
+            // `MEB.ÖĞR.01`, `MEB.REH.06 (GİZLİ)` gibi kodlar gerçek
+            // MEB matbu kodu DEĞİL; uydurulmuştu. Antette durmaları
+            // çıktıyı "resmî form" gibi gösteriyor ve öğretmen bunu
+            // idareye verdiğinde sahte resmî evrak oluyor (bağımsız
+            // incelemede bildirildi, 21 Eylül 2026'da doğrulandı:
+            // 11 ayrı uydurma kod).
+            //
+            // Parametre KALDIRILMADI: çağıranların hepsini değiştirmek
+            // yerine basım susturuldu. İleride gerçek bir kod
+            // gerekirse tek satır açılır.
+            pw.SizedBox(),
             pw.Text('T.C.', style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
             pw.SizedBox(width: 40),
           ],
