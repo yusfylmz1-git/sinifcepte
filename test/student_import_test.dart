@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui';
 
@@ -662,5 +663,124 @@ void main() {
       expect(subeOf(501), '5-A');
       expect(subeOf(802), '8-B');
   });
+  });
+
+  group('GERCEK e-Okul dosyasi — 14 sube, 375 ogrenci', () {
+    // Kullanicinin gonderdigi GERCEK dosya (22 Eylul 2026):
+    // Mimar Sinan Ortaokulu, 14 sayfa, 5-A'dan 8-A'ya.
+    //
+    // Uc ayri kusur bu dosyayla bulundu; hicbiri uydurma satirlarla
+    // yazilmis testlerde gorunmuyordu:
+    //
+    // 1. `extractTextLines()` TUM sayfalari tek listede veriyor ve
+    //    Y koordinatina gore siralama SAYFA SINIRINI yok ediyordu.
+    //    14 sayfanin satirlari karisiyor, her baslik kendi
+    //    ogrencilerinden kopuyordu -> hepsine tek sube atandi.
+    //
+    // 2. Parca CINSIYETTE kesiliyordu ama gercek duzen
+    //    `{sira} {no} {AD} {Cinsiyet} {SOYAD}` — soyad sonra geliyor.
+    //    Soyad bir sonraki ogrencinin adina karisiyordu.
+    //
+    // 3. `_processChunk` `chunk.last`'i cinsiyet saniyordu.
+    //
+    // Bu testler GERCEK dosyaya bakiyor: uydurma satir yok.
+
+    // Dosya KISISEL VERI iceriyor (375 ogrenci adi) ve depoya
+    // girmiyor (.gitignore). Yoksa testler atlaniyor: baska bir
+    // makinede calisan CI kirilmasin.
+    //
+    // Dosyayi tekrar elde etmek icin: e-Okul > Sinif Listeleri > tum
+    // subeler > PDF, sonra `test/veri/eokul_14_sube.pdf` olarak
+    // kaydet.
+    final dosya = File('test/veri/eokul_14_sube.pdf');
+    late Uint8List baytlar;
+    var dosyaVar = false;
+
+    setUpAll(() {
+      dosyaVar = dosya.existsSync();
+      if (dosyaVar) baytlar = dosya.readAsBytesSync();
+    });
+
+    test('KRITIK: 14 sube ayri ayri taniniyor', () {
+      if (!dosyaVar) {
+        markTestSkipped('test/veri/eokul_14_sube.pdf yok');
+        return;
+      }
+      final r = PdfStudentParser.parseBytes(baytlar, 1);
+
+      expect(r.success, isTrue, reason: r.errorMessage);
+      expect(r.isMultiClass, isTrue);
+      expect(r.distinctClasses, hasLength(14));
+      expect(
+        r.distinctClasses..sort(),
+        containsAll(['5-A', '5-E', '6-A', '7-A', '8-A']),
+      );
+    });
+
+    test('KRITIK: 375 ogrenci okunuyor', () {
+      if (!dosyaVar) {
+        markTestSkipped('test/veri/eokul_14_sube.pdf yok');
+        return;
+      }
+      final r = PdfStudentParser.parseBytes(baytlar, 1);
+      // Once 169 okunuyordu (yarisi kayip).
+      expect(r.parsedStudents, hasLength(375));
+    });
+
+    test('KRITIK: ad ve soyad DOGRU ayrilmis', () {
+      if (!dosyaVar) {
+        markTestSkipped('test/veri/eokul_14_sube.pdf yok');
+        return;
+      }
+      final r = PdfStudentParser.parseBytes(baytlar, 1);
+      final ilk = r.parsedStudents.firstWhere((o) => o.schoolNumber == 23);
+
+      // Eskiden: firstName="Abdullatif" lastName="Eymen" (DILDIRIM kayip)
+      expect(ilk.firstName, 'Abdullatif Eymen');
+      expect(ilk.lastName, 'Dildirim');
+      expect(ilk.gender, 'Erkek');
+    });
+
+    test('KRITIK: her ogrenci KENDI subesinde', () {
+      if (!dosyaVar) {
+        markTestSkipped('test/veri/eokul_14_sube.pdf yok');
+        return;
+      }
+      final r = PdfStudentParser.parseBytes(baytlar, 1);
+
+      String? subeOf(int no) => r.parsedStudents
+          .firstWhere((o) => o.schoolNumber == no)
+          .className;
+
+      expect(subeOf(23), '5-A');   // ilk sayfa
+      expect(subeOf(24), '5-B');   // ikinci sayfa
+      expect(subeOf(32), '5-C');
+      expect(subeOf(6), '6-A');
+    });
+
+    test('alt toplam satirindan sahte ogrenci uretilmiyor', () {
+      if (!dosyaVar) {
+        markTestSkipped('test/veri/eokul_14_sube.pdf yok');
+        return;
+      }
+      final r = PdfStudentParser.parseBytes(baytlar, 1);
+
+      final sahte = r.parsedStudents.where(
+        (o) => o.firstName.contains('Öğrenci') ||
+            o.lastName.contains('Sayısı') ||
+            o.firstName.contains('Sınıf'),
+      );
+      expect(sahte, isEmpty, reason: 'sahte kayit: ${sahte.toList()}');
+    });
+
+    test('ogrenci numaralari tekil', () {
+      if (!dosyaVar) {
+        markTestSkipped('test/veri/eokul_14_sube.pdf yok');
+        return;
+      }
+      final r = PdfStudentParser.parseBytes(baytlar, 1);
+      final nolar = r.parsedStudents.map((o) => o.schoolNumber).toList();
+      expect(nolar.toSet(), hasLength(nolar.length));
+    });
   });
 }

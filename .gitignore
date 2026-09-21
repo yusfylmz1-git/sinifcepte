@@ -81,3 +81,10 @@ scratch/
 # ikisini de okumuyor; kaynak daima yillik_guncelle.py hattidir.
 scripts/maarif/generate_weekly_plans.py
 scripts/maarif/generate_all_curriculum_plans.py
+
+# Gercek e-Okul ciktilari OGRENCI ADI iceriyor: kisisel veri.
+# Testler bu dosya varsa kosuyor, yoksa ATLANIYOR (markTestSkipped).
+# Dosyayi yalnizca gelistirme makinesinde tutuyoruz.
+test/veri/*.pdf
+test/veri/*.xlsx
+test/veri/*.xls

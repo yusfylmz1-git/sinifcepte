@@ -19,7 +19,31 @@ class PdfStudentParser {
       String detectedClassName = _detectClassName(rawText);
 
       // KOORDİNAT BAZLI (Layout-Aware) Satır Satır Çıkarma
-      final List<TextLine> textLines = extractor.extractTextLines();
+      //
+      // SAYFA SAYFA okunuyor, hepsi birlikte DEĞİL.
+      //
+      // `extractTextLines()` tüm sayfaları tek listede veriyor ve
+      // aşağıdaki sıralama Y koordinatına göre yapıldığı için sayfa
+      // bilgisi KAYBOLUYOR: 14 sayfanın satırları Y değerine göre
+      // karışıyor. Sonuç: her sayfanın başlığı öğrencilerinden
+      // kopuyor ve TÜM öğrencilere tek şube atanıyordu (22 Eylül
+      // 2026, kullanıcı bildirdi: "sadece 5/A yükledi").
+      //
+      // Sayfa sınırı korunursa her sayfanın başlığı kendi
+      // öğrencilerinin önünde kalıyor ve `aktifSube` doğru çalışıyor.
+      final sayfaSayisi = document.pages.count;
+      final List<TextLine> textLines = [];
+      final List<int> sayfaBaslangiclari = [];
+
+      for (var sayfa = 0; sayfa < sayfaSayisi; sayfa++) {
+        sayfaBaslangiclari.add(textLines.length);
+        textLines.addAll(
+          extractor.extractTextLines(
+            startPageIndex: sayfa,
+            endPageIndex: sayfa,
+          ),
+        );
+      }
       document.dispose();
 
       if (textLines.isEmpty && rawText.trim().isEmpty) {
@@ -29,15 +53,33 @@ class PdfStudentParser {
         );
       }
 
-      // 1. TextLine nesnelerini Y (top) koordinatlarına göre sırala (O(N log N))
-      textLines.sort((a, b) => a.bounds.top.compareTo(b.bounds.top));
+      // 1. Sıralama SAYFA İÇİNDE yapılıyor.
+      //
+      // Tüm listeyi sıralamak sayfa sınırını yok ediyordu.
+      for (var i = 0; i < sayfaBaslangiclari.length; i++) {
+        final bas = sayfaBaslangiclari[i];
+        final son = i + 1 < sayfaBaslangiclari.length
+            ? sayfaBaslangiclari[i + 1]
+            : textLines.length;
+        if (son - bas < 2) continue;
+
+        final dilim = textLines.sublist(bas, son)
+          ..sort((a, b) => a.bounds.top.compareTo(b.bounds.top));
+        textLines.setRange(bas, son, dilim);
+      }
 
       // 2. Y eksenine göre satırları doğrusal grupla (O(N))
       final List<List<TextLine>> groupedRows = [];
       const double yTolerance = 5.0; // Aynı satırda sayılabilmeleri için esneklik payı
 
-      for (final line in textLines) {
-        if (groupedRows.isEmpty) {
+      final sayfaSinirlari = sayfaBaslangiclari.toSet();
+      for (var idx = 0; idx < textLines.length; idx++) {
+        final line = textLines[idx];
+        // Yeni sayfa başlıyorsa gruplama SIFIRLANIYOR: iki sayfanın
+        // aynı Y değerindeki satırları aynı gruba giremez.
+        final yeniSayfa = sayfaSinirlari.contains(idx);
+
+        if (groupedRows.isEmpty || yeniSayfa) {
           groupedRows.add([line]);
         } else {
           final lastRow = groupedRows.last;
@@ -278,8 +320,30 @@ class PdfStudentParser {
         final token = allTokens[i];
         currentChunk.add(token);
 
-        // Eğer Cinsiyet kelimesi bulduysak, bu chunk bir öğrenci kaydıdır!
-        if (_isGenderToken(token)) {
+        // Parça CİNSİYETTE DEĞİL, SOYADIN SONUNDA kesiliyor.
+        //
+        // Gerçek e-Okul düzeni `{sıra} {no} {AD} {Cinsiyet} {SOYAD}`
+        // (22 Eylül 2026'da ölçüldü):
+        //
+        //     1   23 ABDULLATİF EYMEN Erkek DİLDİRİM
+        //     2   86 ÖMER Erkek DEMİR
+        //
+        // Cinsiyette kesilirse SOYAD hiç gelmiyor: soyad bir sonraki
+        // öğrencinin adına karışıyor, ad ikiye bölünüyor ve
+        // öğrencilerin çoğu hiç çıkmıyordu (kullanıcı bildirdi:
+        // "sadece 5/A yükledi").
+        //
+        // Cinsiyetten sonra soyadı bekliyoruz; parça satırın sonunda
+        // ya da bir sonraki SIRA NUMARASI geldiğinde kapanıyor.
+        final cinsiyetGorulduMu =
+            currentChunk.any(_isGenderToken);
+        final sonTokenMi = i == allTokens.length - 1;
+        final siradakiSiraNo = !sonTokenMi &&
+            cinsiyetGorulduMu &&
+            _isGenderToken(token) == false &&
+            RegExp(r'^\d{1,3}$').hasMatch(allTokens[i + 1]);
+
+        if (cinsiyetGorulduMu && (sonTokenMi || siradakiSiraNo)) {
           // Sıra: satırın kendi şubesi > chunk içindeki > SON BAŞLIK.
           //
           // Son başlık en güvenilir kaynak ama en sona konuyor:
@@ -309,13 +373,36 @@ class PdfStudentParser {
   }) {
     if (chunk.length < 3) return null; // En az Ad, OkulNo, Cinsiyet olmalı
 
-    final genderStr = chunk.last;
-    final gender = genderStr.toLowerCase().startsWith('k') ? 'Kız' : 'Erkek';
+    // CİNSİYET SONDA DEĞİL, ORTADA OLABİLİR.
+    //
+    // Gerçek e-Okul düzeni ölçüldü (22 Eylül 2026, 14 sayfalık dosya,
+    // `extractTextLines` çıktısı):
+    //
+    //     " 23 ABDULLATİF EYMEN Erkek DİLDİRİM"
+    //     " 86 ÖMER Erkek DEMİR"
+    //
+    // Yani `{no} {AD} {Cinsiyet} {SOYAD}` — soyadı cinsiyetten SONRA.
+    //
+    // Eski kod `chunk.last`'ı cinsiyet sanıyordu: soyad cinsiyet
+    // yerine okunuyor, ad ikiye bölünüyor (`"Abdullatif" "Eymen"`,
+    // DİLDİRİM kayıp) ve öğrencilerin çoğu hiç çıkmıyordu.
+    final genderIndex = chunk.lastIndexWhere(_isGenderToken);
+    if (genderIndex < 0) return null;
+
+    final gender =
+        chunk[genderIndex].toLowerCase().startsWith('k') ? 'Kız' : 'Erkek';
+
+    // Cinsiyetten SONRAKİ geçerli kelimeler soyadı.
+    final soyadTokenlari = chunk
+        .sublist(genderIndex + 1)
+        .where((t) => _isValidNamePart(t) && !_isForbiddenToken(t))
+        .toList();
 
     // 1. Okul Numarasını Bul (En son geçen 10'dan büyük sayı)
     int? schoolNo;
     int schoolNoIndex = -1;
-    for (int i = chunk.length - 2; i >= 0; i--) {
+    // Okul numarası CİNSİYETTEN ÖNCE aranıyor: sonrasında soyad var.
+    for (int i = genderIndex - 1; i >= 0; i--) {
       if (_isSchoolNumber(chunk[i])) {
         schoolNo = int.parse(chunk[i]);
         schoolNoIndex = i;
@@ -327,7 +414,7 @@ class PdfStudentParser {
 
     // 2. İsmi Bul
     List<String> nameTokensAfter = [];
-    for (int i = schoolNoIndex + 1; i < chunk.length - 1; i++) {
+    for (int i = schoolNoIndex + 1; i < genderIndex; i++) {
       if (_isValidNamePart(chunk[i]) && !_isForbiddenToken(chunk[i])) {
         nameTokensAfter.add(chunk[i]);
       }
@@ -355,6 +442,19 @@ class PdfStudentParser {
       }
     }
 
+    // SOYAD cinsiyetten sonra geldiyse onu kullan: ad tek kelimelik
+    // olabilir ("ÖMER Erkek DEMİR").
+    if (soyadTokenlari.isNotEmpty && nameTokens.isNotEmpty) {
+      return ParsedStudentItem(
+        schoolNumber: schoolNo,
+        firstName: _titleCase(nameTokens.join(' ')),
+        lastName: _titleCase(soyadTokenlari.join(' ')),
+        gender: gender,
+        className: assignedClass,
+      );
+    }
+
+    // ESKİ düzen: soyad cinsiyetten ÖNCE, son kelime soyadı.
     if (nameTokens.length >= 2) {
       final lastName = _titleCase(nameTokens.last);
       final firstName = _titleCase(nameTokens.sublist(0, nameTokens.length - 1).join(' '));
