@@ -161,6 +161,44 @@ class PdfStudentParser {
       }
     }
 
+    // SAYISAL OLMAYAN düzeyler: Hazırlık, Anasınıfı.
+    //
+    // Yukarıdaki desen `[1-9]|1[0-2]` bekliyor, yani lisedeki
+    // hazırlık sınıfı ve okul öncesi HİÇ tanınmıyordu: o sayfanın
+    // öğrencileri şubesiz kalıyor ve çok şubeli dosyada önceki
+    // şubeye yazılıyordu (22 Eylül 2026, kullanıcı bildirdi:
+    // "bu lisede Hazırlık 9-12 olabilir").
+    //
+    // Kısaltma kullanılıyor (`HZ`, `AN`): sınıf adı belge
+    // başlıklarında ve listelerde geçiyor, uzun ad taşmaya yol
+    // açıyor.
+    final ozelDuzeyler = <RegExp, String>{
+      RegExp(r'Hazırlık|Hazirlik', caseSensitive: false): 'HZ',
+      // Anasınıfı / okul öncesi aynı düzey, farklı yazılıyor.
+      // e-Okul bazı okullarda "Okul Öncesi", bazısında "Anasınıfı"
+      // basıyor (kullanıcı bildirdi, 22 Eylül 2026).
+      RegExp(
+        r'Anasınıfı|Anasinifi|Ana\s*Sınıf|Ana\s*Sinif|'
+        r'Okul\s*Öncesi|Okul\s*Oncesi',
+        caseSensitive: false,
+      ): 'AN',
+    };
+
+    for (final girdi in ozelDuzeyler.entries) {
+      if (!girdi.key.hasMatch(text)) continue;
+
+      // Şube harfi: "Hazırlık Sınıfı / A Şubesi" ya da "Hazırlık A".
+      final subeDeseni = RegExp(
+        r'([A-Za-zğüşöçıİĞÜŞÖÇ])\s*(?:Şubesi|Subesi|Şube|Sube)',
+        caseSensitive: false,
+      );
+      final subeEslesme = subeDeseni.firstMatch(text);
+      final sube = subeEslesme?.group(1)?.toUpperCase();
+      if (sube == null) continue;
+
+      return InputSanitizer.cleanClassName('${girdi.value}-$sube');
+    }
+
     return null;
   }
 
@@ -185,8 +223,28 @@ class PdfStudentParser {
     final List<ParsedStudentItem> studentList = [];
     final Set<int> seenSchoolNumbers = {};
 
+    // SON GÖRÜLEN başlıktaki şube, sonraki öğrencilere uygulanıyor.
+    //
+    // e-Okul çok şubeli dosyada her sayfaya kendi başlığını basıyor:
+    //
+    //     5. Sınıf / A Şubesi Sınıf Listesi
+    //     1  23  ABDULLATİF ...        <- şube satırda YOK
+    //     ...
+    //     5. Sınıf / B Şubesi Sınıf Listesi
+    //     1  24  ELİF ...              <- B şubesine ait
+    //
+    // Şube yalnızca BAŞLIKTA geçiyor. Eskiden her satır kendi başına
+    // okunuyordu; başlık satırı şubeyi buluyor ama o bilgi sonraki
+    // öğrencilere taşınmıyordu. Sonuç: yalnızca ilk sayfanın şubesi
+    // (dosya düzeyinde tespit edilen) kullanılıyor, B/C/D şubeleri
+    // ayırt edilemiyordu (22 Eylül 2026, kullanıcı bildirdi:
+    // "sadece 5/A algılandı, diğerlerini almadı").
+    String? aktifSube;
+
     for (var line in lines) {
       final lineClass = _extractClassFromLineOrChunk(line);
+      // Başlık satırı geldi: bundan sonraki öğrenciler bu şubeye ait.
+      if (lineClass != null && lineClass.isNotEmpty) aktifSube = lineClass;
 
       // 1. Gereksiz karakterleri temizle ve token'lara ayır
       String cleaned = line.replaceAll(RegExp(r'[\r\n\t]+'), ' ');
@@ -222,7 +280,14 @@ class PdfStudentParser {
 
         // Eğer Cinsiyet kelimesi bulduysak, bu chunk bir öğrenci kaydıdır!
         if (_isGenderToken(token)) {
-          final chunkClass = lineClass ?? _extractClassFromLineOrChunk(currentChunk.join(' '));
+          // Sıra: satırın kendi şubesi > chunk içindeki > SON BAŞLIK.
+          //
+          // Son başlık en güvenilir kaynak ama en sona konuyor:
+          // bazı dosyalarda şube öğrenci satırının içinde de geçiyor
+          // (`5-A  23  ABDULLATİF ...`) ve o daha kesindir.
+          final chunkClass = lineClass ??
+              _extractClassFromLineOrChunk(currentChunk.join(' ')) ??
+              aktifSube;
           final student = _processChunk(currentChunk, targetClassId, assignedClass: chunkClass);
           if (student != null && !seenSchoolNumbers.contains(student.schoolNumber)) {
             seenSchoolNumbers.add(student.schoolNumber);

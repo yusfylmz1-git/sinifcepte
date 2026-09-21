@@ -275,8 +275,13 @@ void main() {
         1,
       );
 
-      // Hiçbir öğrenciye şube atanmamalı: bu listede şube bilgisi
-      // yalnızca BAŞLIKTA var, satırlarda yok.
+      // Hepsi BAŞLIKTAKİ şubeye ait olmalı: 5-A.
+      //
+      // Bu beklenti 22 Eylül'de değişti. Önce "hiç şube atanmamalı"
+      // yazılıydı çünkü uydurma şubeler engellenmişti; ama o zaman
+      // çok şubeli dosyada B/C şubeleri de ayırt edilemiyordu
+      // (kullanıcı bildirdi: "sadece 5/A algılandı"). Artık son
+      // görülen BAŞLIK sonraki öğrencilere uygulanıyor.
       final atananSubeler = ogrenciler
           .map((o) => o.className)
           .where((c) => c != null && c.isNotEmpty)
@@ -284,8 +289,9 @@ void main() {
 
       expect(
         atananSubeler,
-        isEmpty,
-        reason: 'öğrenci satırlarından şube türetilmiş: $atananSubeler',
+        {'5-A'},
+        reason: 'başlıktaki şube öğrencilere uygulanmalı, '
+            'satırlardan UYDURULMAMALI',
       );
     });
 
@@ -472,5 +478,189 @@ void main() {
         returnsNormally,
       );
     });
+  });
+
+  group('COK SUBELI dosya — her sayfa kendi subesi', () {
+    // Kullanici bildirdi (22 Eylul 2026): "pdf sinif icin yuklerken
+    // sadece 5/A sinifi algilandi, digerlerini almadi."
+    //
+    // e-Okul cok subeli dosyada her sayfaya kendi basligini basiyor.
+    // Sube YALNIZCA baslikta geciyor; ogrenci satirlarinda yok. Eski
+    // surum her satiri kendi basina okuyordu, yani baslik bilgisi
+    // sonraki ogrencilere tasinmiyordu.
+
+    const cokSubeli = [
+      '5. Sınıf / A Şubesi Sınıf Listesi',
+      'S.No Öğrenci No Adı Soyadı Cinsiyeti',
+      '1 23 ABDULLATİF EYMEN DİLDİRİM Erkek',
+      '2 86 ÖMER DEMİR Erkek',
+      '3 121 ŞİRİN ŞAVLİ Kız',
+      'Kız Öğrenci Sayısı : 1 Erkek Öğrenci Sayısı : 2',
+      '5. Sınıf / B Şubesi Sınıf Listesi',
+      'S.No Öğrenci No Adı Soyadı Cinsiyeti',
+      '1 24 ELİF EREKİNCİ Kız',
+      '2 111 ABDULLAH GÖNCÜ Erkek',
+      '3 169 BERFİN BİŞKİN Kız',
+      '5. Sınıf / C Şubesi Sınıf Listesi',
+      '1 300 ARAS ARGEŞ TİLKİ Erkek',
+    ];
+
+    test('KRITIK: UC sube ayri ayri taniniyor', () {
+      final ogrenciler = PdfStudentParser.extractStudentsFromLines(
+        cokSubeli,
+        1,
+      );
+
+      final subeler = ogrenciler.map((o) => o.className).toSet();
+      expect(subeler, {'5-A', '5-B', '5-C'});
+    });
+
+    test('KRITIK: her ogrenci DOGRU subeye atanmis', () {
+      final ogrenciler = PdfStudentParser.extractStudentsFromLines(
+        cokSubeli,
+        1,
+      );
+
+      String? subeOf(int no) => ogrenciler
+          .firstWhere((o) => o.schoolNumber == no)
+          .className;
+
+      // A subesi
+      expect(subeOf(23), '5-A');
+      expect(subeOf(86), '5-A');
+      expect(subeOf(121), '5-A');
+      // B subesi — baslik degisti
+      expect(subeOf(24), '5-B');
+      expect(subeOf(111), '5-B');
+      expect(subeOf(169), '5-B');
+      // C subesi
+      expect(subeOf(300), '5-C');
+    });
+
+    test('ogrenci sayisi dogru (alt toplam satiri haric)', () {
+      final ogrenciler = PdfStudentParser.extractStudentsFromLines(
+        cokSubeli,
+        1,
+      );
+      expect(ogrenciler, hasLength(7));
+    });
+  });
+
+  group('TUM DUZEYLER — ilkokul, ortaokul, lise, hazirlik, anasinifi', () {
+    // Kullanici bildirdi (22 Eylul 2026): "sadece 5/A 5/B degil tum
+    // okulun subeleri var 5-8 arasi. bu lisede Hazirlik 9-12 olabilir."
+    // ve "okul oncesi de olabilir anasinifta olabilir".
+    //
+    // Olculdu: 1-12 calisiyordu ama HAZIRLIK ve ANASINIFI hic
+    // taninmiyordu — desen `[1-9]|1[0-2]` bekliyordu. O sayfanin
+    // ogrencileri subesiz kaliyor ve cok subeli dosyada onceki
+    // subeye yaziliyordu.
+
+    test('KRITIK: ilkokul + ortaokul (1-8)', () {
+      for (var s = 1; s <= 8; s++) {
+        expect(
+          PdfStudentParser.detectClassNameFrom('$s. Sınıf / A Şubesi'),
+          '$s-A',
+        );
+      }
+    });
+
+    test('KRITIK: lise (9-12)', () {
+      for (var s = 9; s <= 12; s++) {
+        expect(
+          PdfStudentParser.detectClassNameFrom('$s. Sınıf / B Şubesi'),
+          '$s-B',
+        );
+      }
+    });
+
+    test('KRITIK: HAZIRLIK sinifi (lisede 9-12 oncesi)', () {
+      const beklenen = {
+        'Hazırlık Sınıfı / A Şubesi': 'HZ-A',
+        'Hazırlık / B Şubesi': 'HZ-B',
+        'HAZIRLIK SINIFI C ŞUBESİ': 'HZ-C',
+        'Hazirlik Sinifi / D Subesi': 'HZ-D',
+      };
+      beklenen.forEach((girdi, cikti) {
+        expect(
+          PdfStudentParser.detectClassNameFrom(girdi),
+          cikti,
+          reason: girdi,
+        );
+      });
+    });
+
+    test('KRITIK: ANASINIFI / OKUL ONCESI', () {
+      // e-Okul bazi okullarda "Okul Oncesi", bazisinda "Anasinifi"
+      // basiyor; ikisi ayni duzey.
+      const beklenen = {
+        'Anasınıfı / A Şubesi': 'AN-A',
+        'Ana Sınıf / B Şubesi': 'AN-B',
+        'Okul Öncesi / C Şubesi': 'AN-C',
+        'Okul Öncesi D Şubesi': 'AN-D',
+      };
+      beklenen.forEach((girdi, cikti) {
+        expect(
+          PdfStudentParser.detectClassNameFrom(girdi),
+          cikti,
+          reason: girdi,
+        );
+      });
+    });
+
+    test('KRITIK: ogrenci satiri hala temiz', () {
+      // Yeni desenler uydurma sube uretmeye baslamamali.
+      for (final satir in [
+        '1 23 ABDULLATİF EYMEN DİLDİRİM Erkek',
+        '2 86 ÖMER DEMİR Erkek',
+        '17 297 HÜSEYİN EFE AKBAY Erkek',
+      ]) {
+        expect(
+          PdfStudentParser.detectClassNameFrom(satir),
+          isEmpty,
+          reason: satir,
+        );
+      }
+    });
+
+    test('ortaokul cok subeli dosya: 5-8 arasi hepsi ayri', () {
+      // Sekiz sube (5-A .. 8-B), her birinde bir ogrenci.
+      const satirlar = [
+        '5. Sınıf / A Şubesi Sınıf Listesi',
+        '1 501 AHMET YILMAZ Erkek',
+        '5. Sınıf / B Şubesi Sınıf Listesi',
+        '1 502 AYSE DEMIR Kız',
+        '6. Sınıf / A Şubesi Sınıf Listesi',
+        '1 601 MEHMET KAYA Erkek',
+        '6. Sınıf / B Şubesi Sınıf Listesi',
+        '1 602 FATMA SAHIN Kız',
+        '7. Sınıf / A Şubesi Sınıf Listesi',
+        '1 701 ALI CELIK Erkek',
+        '7. Sınıf / B Şubesi Sınıf Listesi',
+        '1 702 ZEYNEP ARSLAN Kız',
+        '8. Sınıf / A Şubesi Sınıf Listesi',
+        '1 801 MUSTAFA AYDIN Erkek',
+        '8. Sınıf / B Şubesi Sınıf Listesi',
+        '1 802 ELIF OZER Kız',
+      ];
+
+      final ogrenciler = PdfStudentParser.extractStudentsFromLines(
+        satirlar,
+        1,
+      );
+
+      expect(ogrenciler, hasLength(8));
+
+      final subeler = ogrenciler.map((o) => o.className).toSet();
+      expect(subeler, hasLength(8), reason: 'sube: $subeler');
+      expect(subeler, contains('5-A'));
+      expect(subeler, contains('8-B'));
+
+      // Her ogrenci DOGRU subede.
+      String? subeOf(int no) =>
+          ogrenciler.firstWhere((o) => o.schoolNumber == no).className;
+      expect(subeOf(501), '5-A');
+      expect(subeOf(802), '8-B');
+  });
   });
 }
