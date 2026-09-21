@@ -24,6 +24,18 @@ class DatabaseHelper {
   static Database? _database;
   static String? _openUid;
 
+  /// Şu an açık olan hesabın uid'si; ortak dosya açıksa `null`.
+  ///
+  /// Test için gözlemlenebilirlik: "hangi dosya açıldı" sorusunun
+  /// cevabı yoktu ve bu yüzden yarış düzeltmesinin ASIL katmanı
+  /// (getter'ın kendi uid aramasını yapması) hiç sınanamıyordu.
+  ///
+  /// 21 Eylül 2026'da ölçüldü: koruma kaldırıldığında testlerin
+  /// hiçbiri kırılmıyordu — yardımcı fonksiyonları sınıyorlardı,
+  /// getter davranışını değil.
+  @visibleForTesting
+  static String? get acikHesapUid => _openUid;
+
   /// Süren `openForUid` çağrısı. Eşzamanlı çağrılar buna katılır.
   ///
   /// İki çağrı üst üste gelirse ikincisi, birincisi dosyayı açmadan
