@@ -25,6 +25,25 @@ class StudentFileImporter {
   /// Kullanıcıya gösterilen biçim etiketi.
   static const String supportedLabel = 'PDF veya Excel';
 
+  /// Eski `.xls` dosyası için yol tarifi.
+  ///
+  /// e-Okul bazı sayfalarda hâlâ Excel 97-2003 (`.xls`) üretiyor.
+  /// Kullanılan `excel` paketi o biçimi okuyamıyor ve bu bir PAKET
+  /// SINIRI — kodda çözülemez.
+  ///
+  /// Eski mesaj paketten geliyordu ve İngilizceydi:
+  ///
+  ///     Unsupported operation: Excel format unsupported.
+  ///     Only .xlsx files are supported
+  ///
+  /// Öğretmen bundan ne yapacağını anlayamıyordu (21 Eylül 2026,
+  /// sahada yaşandı). Artık yapabileceği iki şey de yazılı.
+  static const String eskiExcelYonlendirmesi =
+      'Bu dosya eski Excel biçiminde (.xls) ve okunamıyor. '
+      'İki çözüm var: (1) e-Okul\'da listeyi PDF olarak indirin '
+      '— en kolayı budur. (2) Dosyayı Excel veya Google Sheets ile '
+      'açıp "Farklı Kaydet" ile .xlsx biçimini seçin.';
+
   /// WhatsApp/SAF dosyası okunamadığında gösterilen yol tarifi.
   static const String shareFallbackHint =
       'Dosya okunamadı. WhatsApp\'taki PDF\'ye basıp Paylaş → SınıfCepte deneyin.';
@@ -165,7 +184,19 @@ class StudentFileImporter {
         bytes[1] == 0xCF &&
         bytes[2] == 0x11 &&
         bytes[3] == 0xE0) {
-      return StudentFileFormat.excel; // OLE Compound (.xls)
+      // ESKİ Excel (OLE Compound, Excel 97-2003).
+      //
+      // `excel` paketi bu biçimi OKUYAMIYOR; yalnızca `.xlsx` (ZIP
+      // tabanlı) destekliyor. Eskiden `excel` olarak işaretleniyor ve
+      // pakete gönderiliyordu; paket şunu atıyordu:
+      //
+      //   Unsupported operation: Excel format unsupported.
+      //   Only .xlsx files are supported
+      //
+      // Öğretmen bu mesajdan ne yapacağını anlayamıyordu (21 Eylül
+      // 2026, sahada yaşandı). Ayrı bir biçim olarak işaretlenip
+      // anlaşılır bir yönlendirme veriliyor.
+      return StudentFileFormat.eskiExcel;
     }
     if (bytes.length >= 2 && bytes[0] == 0x50 && bytes[1] == 0x4B) {
       return StudentFileFormat.excel; // ZIP (.xlsx)
@@ -188,6 +219,10 @@ class StudentFileImporter {
         return StudentImportResult.fromExcel(
           ExcelStudentParser.parseBytes(bytes, targetClassId),
         );
+      case StudentFileFormat.eskiExcel:
+        // Paket sınırı; kodda çözülemez. Öğretmene NE YAPACAĞINI
+        // söylüyoruz — "desteklenmiyor" demek yol göstermiyordu.
+        return StudentImportResult.failure(eskiExcelYonlendirmesi);
     }
   }
 }
@@ -195,9 +230,25 @@ class StudentFileImporter {
 /// Desteklenen dosya biçimleri.
 enum StudentFileFormat {
   pdf,
-  excel;
+  excel,
 
-  String get label => this == StudentFileFormat.pdf ? 'PDF' : 'Excel';
+  /// Excel 97-2003 (`.xls`, OLE Compound).
+  ///
+  /// Ayrı tutuluyor çünkü `excel` paketi bu biçimi OKUYAMIYOR.
+  /// `excel` ile birlikte işaretlenirse pakete gider ve anlaşılmaz
+  /// bir İngilizce hata döner.
+  eskiExcel;
+
+  String get label {
+    switch (this) {
+      case StudentFileFormat.pdf:
+        return 'PDF';
+      case StudentFileFormat.excel:
+        return 'Excel';
+      case StudentFileFormat.eskiExcel:
+        return 'Excel (eski .xls)';
+    }
+  }
 }
 
 /// PDF ve Excel için ortak içe aktarma sonucu.
@@ -250,6 +301,21 @@ class StudentImportResult {
       isMultiClass: result.isMultiClass,
       distinctClasses: result.distinctClasses,
       format: StudentFileFormat.excel,
+    );
+  }
+
+  /// Ayrıştırma hiç denenmeden başarısız olduğunda.
+  ///
+  /// Eski `.xls` gibi, kütüphanenin okuyamadığı biçimler için:
+  /// pakete göndermek anlaşılmaz bir İngilizce hata döndürüyordu.
+  factory StudentImportResult.failure(
+    String mesaj, {
+    StudentFileFormat? format,
+  }) {
+    return StudentImportResult(
+      success: false,
+      errorMessage: mesaj,
+      format: format,
     );
   }
 

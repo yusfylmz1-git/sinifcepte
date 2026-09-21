@@ -172,9 +172,27 @@ class ExcelStudentParser {
       );
     } catch (e, st) {
       debugPrint('Excel Parse Error: $e\n$st');
+
+      // Paketin ham istisnası öğretmene GÖSTERİLMİYOR.
+      //
+      // `Unsupported operation: Excel format unsupported. Only
+      // .xlsx files are supported` metni İngilizce ve ne
+      // yapılacağını söylemiyor (21 Eylül 2026, sahada yaşandı).
+      //
+      // Eski `.xls` artık buraya hiç gelmiyor (biçim önceden
+      // ayrılıyor), ama bozuk ya da şifreli bir `.xlsx` gelebilir.
+      // Sebep ne olursa olsun öğretmenin yapabileceği şey aynı.
+      final hamHata = e.toString();
+      final bicimSorunu = hamHata.contains('format unsupported') ||
+          hamHata.contains('Only .xlsx');
+
       return ExcelParseResult(
         success: false,
-        errorMessage: 'Excel okunurken bir hata oluştu: ${e.toString()}',
+        errorMessage: bicimSorunu
+            ? 'Bu Excel dosyası okunamıyor. e-Okul listesini PDF '
+                'olarak indirmeyi deneyin — en kolayı budur.'
+            : 'Excel dosyası okunamadı. Dosya bozuk ya da şifreli '
+                'olabilir. Listeyi PDF olarak indirmeyi deneyin.',
       );
     }
   }

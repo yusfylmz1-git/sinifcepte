@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../../../../core/utils/input_sanitizer.dart';
+import '../../../../core/utils/name_formatter.dart';
 import '../../../../data/models/student_model.dart';
 
 /// SınıfCepte - Layout-Aware (Koordinat Bazlı) Gelişmiş PDF Ayıklayıcı
@@ -101,56 +102,60 @@ class PdfStudentParser {
     }
   }
 
-  /// PDF İçerisindeki Metinden Sınıf Adını Bulur
+  /// PDF İçerisindeki Metinden Sınıf Adını Bulur.
+  ///
+  /// Aynı desene bağlı: ikisi ayrı yazılıydı ve biri düzeltilip
+  /// diğeri kaldığında dosya başlığından doğru şubeyi okurken
+  /// öğrenci satırlarından uydurmaya devam ediyordu. İki yerde
+  /// aynı kuralı tutmak bu depoda tekrar eden hata sınıfı.
   static String _detectClassName(String text) {
-    // Şube harfi TÜM alfabeyi kapsamalı. Önceki desen [A-Za-d] yazıyordu
-    // ve yalnızca A-D şubelerini tanıyordu; E, F, G... şubeleri olan
-    // okullarda sınıf adı sessizce boş kalıyordu.
-    //
-    // Ayrıca '5. Sınıf / D Şubesi' biçiminde sayı ile şube harfi arasına
-    // nokta ve 'Sınıf' kelimesi girebiliyor.
-    final classRegex = RegExp(
-      r'([1-9]|1[0-2])\s*\.?\s*(?:Sınıfı?|Sinifi?)?\s*[\/\-\s]\s*'
-      r'([A-Za-zğüşöçıİĞÜŞÖÇ])\s*(?:Şubesi|Subesi|Şube|Sube)?\b',
-      caseSensitive: false,
-    );
-
-    final match = classRegex.firstMatch(text);
-    if (match != null) {
-      final grade = match.group(1);
-      final branch = match.group(2)?.toUpperCase();
-      if (grade != null && branch != null) {
-        return InputSanitizer.cleanClassName('$grade-$branch');
-      }
-    }
-    return '';
+    return _extractClassFromLineOrChunk(text) ?? '';
   }
 
-  /// Satır veya chunk içindeki sınıf adını ayıklar (Örn: "5. Sınıf / D Şubesi" -> "5-D", "6/A" -> "6-A")
+  /// Satır veya chunk içindeki sınıf adını ayıklar.
+  ///
+  /// `5. Sınıf / D Şubesi` -> `5-D`, `6/A` -> `6-A`
+  ///
+  /// ## Boşluk ARTIK tek başına ayırıcı değil
+  ///
+  /// Eski desen sayı ile harf arasında boşluğu da kabul ediyordu
+  /// (`[\/\-\s]`). Sonuç: ÖĞRENCİ SATIRLARINDAN uydurma şube
+  /// türetiyordu.
+  ///
+  /// Ölçüldü (21 Eylül 2026, gerçek e-Okul çıktısı, 26 öğrencilik
+  /// 5/A listesi): 26 satırın 6'sı yanlış eşleşti.
+  ///
+  ///     2  86  ÖMER  DEMİR  Erkek        -> 6-Ö
+  ///     17  297  HÜSEYİN EFE  AKBAY      -> 7-H
+  ///     25  358  İKRA ALEYNA  NERGİS     -> 8-İ
+  ///
+  /// Kullanıcının ekranında "Çoklu Sınıf Dağıtımı (25 Şube)"
+  /// görünmesinin sebebi tam buydu: her öğrenci kendi uydurma
+  /// şubesine dağıtılıyordu.
+  ///
+  /// Artık boşluk yalnızca "Sınıf" kelimesi varsa ayırıcı sayılıyor:
+  /// `5. Sınıf A Şubesi` geçiyor, `86 ÖMER` geçmiyor.
   static String? _extractClassFromLineOrChunk(String text) {
-    // 1. "5. Sınıf / D Şubesi", "6 . Sınıf / A Şubesi", "6.Sınıf/C Subesi", "5. Sınıf D Şubesi", "7. Sınıf / B Şubesi"
+    // İki kol:
+    //   a) "Sınıf" kelimesi VAR  -> ayırıcı serbest (/, -, boşluk)
+    //   b) "Sınıf" kelimesi YOK  -> ayırıcı / veya - OLMALI
+    //
+    // Şube harfi iki ayrı grupta çıkıyor (2 ve 3); hangisi doldu ise
+    // o alınıyor.
     final mebPattern = RegExp(
-      r'([1-9]|1[0-2])\s*\.?\s*(?:Sınıfı?|Sinifi?)?\s*[\/\-\s]\s*([A-Za-zğüşöçıİĞÜŞÖÇ])\s*(?:Şubesi|Subesi|Şube|Sube)?\b',
+      r'([1-9]|1[0-2])\s*\.?\s*(?:'
+      r'(?:Sınıfı?|Sinifi?)\s*[\/\-\s]\s*([A-Za-zğüşöçıİĞÜŞÖÇ])'
+      r'\s*(?:Şubesi|Subesi|Şube|Sube)?'
+      r'|'
+      r'[\/\-]\s*([A-Za-zğüşöçıİĞÜŞÖÇ])'
+      r'\s*(?:Şubesi|Subesi|Şube|Sube)?'
+      r')\b',
       caseSensitive: false,
     );
     final match = mebPattern.firstMatch(text);
     if (match != null) {
       final grade = match.group(1);
-      final branch = match.group(2)?.toUpperCase();
-      if (grade != null && branch != null) {
-        return InputSanitizer.cleanClassName('$grade-$branch');
-      }
-    }
-
-    // 2. Standart "5/A", "5-A", "7-B", "8/C"
-    final compactPattern = RegExp(
-      r'\b([1-9]|1[0-2])\s*[\/\-]\s*([A-Za-zğüşöçıİĞÜŞÖÇ])\b',
-      caseSensitive: false,
-    );
-    final compactMatch = compactPattern.firstMatch(text);
-    if (compactMatch != null) {
-      final grade = compactMatch.group(1);
-      final branch = compactMatch.group(2)?.toUpperCase();
+      final branch = (match.group(2) ?? match.group(3))?.toUpperCase();
       if (grade != null && branch != null) {
         return InputSanitizer.cleanClassName('$grade-$branch');
       }
@@ -337,6 +342,34 @@ class PdfStudentParser {
       'eğitim',
       'bakanlığı',
       'sayfa',
+      // ALT TOPLAM satırı sahte öğrenci üretiyordu.
+      //
+      // `Kız Öğrenci Sayısı : 13 Erkek Öğrenci Sayısı : 13` satırı
+      // "13 / Öğrenci / Sayısı / ... / Erkek" olarak okunup bir
+      // öğrenci kaydına dönüşüyordu: no=13, ad="Öğrenci",
+      // soyad="Sayısı". Her listede bir uydurma öğrenci eklenmiş
+      // oluyordu (21 Eylül 2026, gerçek e-Okul çıktısıyla ölçüldü).
+      'öğrenci',
+      'ogrenci',
+      'sayısı',
+      'sayisi',
+      'toplam',
+      'kız',
+      'kiz',
+      'erkek',
+      'cinsiyeti',
+      'cinsiyet',
+      'adı',
+      'adi',
+      'soyadı',
+      'soyadi',
+      'öğretmeni',
+      'ogretmeni',
+      'başkanı',
+      'baskani',
+      'yrd',
+      'müdür',
+      'mudur',
     ];
     return forbidden.any((f) => lower == f);
   }
@@ -348,15 +381,24 @@ class PdfStudentParser {
     return true;
   }
 
+  /// Ad-soyad biçimlendirir — TÜRKÇE uyumlu.
+  ///
+  /// Eski sürüm `toLowerCase()` kullanıyordu ve Türkçe büyük harfleri
+  /// bozuyordu:
+  ///
+  ///     DİLDİRİM -> Dildirim   (İ kaybolmuş)
+  ///     AYDIN    -> Aydin      (I yanlış)
+  ///     ŞAVLİ    -> Şavli
+  ///
+  /// e-Okul listelerinin TAMAMI büyük harf, yani bu her isimde
+  /// oluyordu. Öğrenci adı yanlış kaydedilince veli eşleştirmesi ve
+  /// belgeler de yanlış çıkıyor.
+  ///
+  /// `NameFormatter` bu iş için zaten vardı ve Türkçe kurallarını
+  /// uyguluyor; ayrı bir kopya tutmak hafızadaki İ tuzağının tekrarı
+  /// olurdu (21 Eylül 2026).
   static String _titleCase(String text) {
-    return text
-        .split(' ')
-        .map((word) {
-          if (word.isEmpty) return '';
-          if (word.length == 1) return word.toUpperCase();
-          return word[0].toUpperCase() + word.substring(1).toLowerCase();
-        })
-        .join(' ');
+    return NameFormatter.formatFirstName(text);
   }
 }
 
