@@ -434,7 +434,26 @@ void main() {
         ogretmen: ogretmen,
       );
 
-      expect(yuk, 'SCT1:meb_16_1:OGR001:A. Yılmaz:GEZDGNBVGY3TQOJQ');
+      // Ad ASCII: karekod okuyucusu UTF-8'i başka kodlama sanabiliyor.
+      expect(yuk, 'SCT1:meb_16_1:OGR001:A. Yilmaz:GEZDGNBVGY3TQOJQ');
+    });
+
+    test('KRİTİK: Türkçe ad karekod yükünü ASCII dışına çıkarmıyor', () {
+      // `ş`/`ç` ile biten ad: ikinci bayt Shift-JIS'te ':' ayırıcısını
+      // yutabiliyordu.
+      const ogretmen = PanoOgretmeni(
+        kod: 'BKOC',
+        ad: 'Barış Koç',
+        totpSecret: 'GEZDGNBVGY3TQOJQ',
+      );
+
+      final yuk = TahtaOgretmenDeposu.kurulumQrYuku(
+        okulId: 'meb_16_1',
+        ogretmen: ogretmen,
+      );
+
+      expect(yuk.runes.every((r) => r < 128), isTrue, reason: yuk);
+      expect(yuk.split(':')[3], 'Baris Koc');
     });
 
     test('KRİTİK: önek tahtanın QR\'ından farklı', () {

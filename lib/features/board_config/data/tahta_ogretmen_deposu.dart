@@ -231,7 +231,11 @@ class TahtaOgretmenDeposu {
     required PanoOgretmeni ogretmen,
   }) {
     // Ad içindeki ':' ayırıcıyı bozar; boşlukla değiştiriliyor.
-    final guvenliAd = ogretmen.ad.replaceAll(':', ' ').trim();
+    //
+    // Ad ASCII'ye katlanıyor (`Şükrü` → `Sukru`): Türkçe harf
+    // okuyucuda başka kodlama sanılıp ':' ayırıcısını yutabiliyor
+    // ([asciiKatla] notu). Ad telefonda yalnızca gösterim için.
+    final guvenliAd = asciiKatla(ogretmen.ad).replaceAll(':', ' ').trim();
     return 'SCT1:$okulId:${ogretmen.kod}:$guvenliAd:${ogretmen.totpSecret}';
   }
 

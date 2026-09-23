@@ -115,7 +115,8 @@ void main() {
       expect(ayristirilan, isNotNull);
       expect(ayristirilan!.okulId, 'meb_16_1');
       expect(ayristirilan.kod, 'AYILMAZ');
-      expect(ayristirilan.ad, 'A. Yılmaz');
+      // Ad karekodda ASCII'ye katlanıyor (okuyucu kodlama tahmini).
+      expect(ayristirilan.ad, 'A. Yilmaz');
       expect(ayristirilan.totpSecret, 'GEZDGNBVGY3TQOJQ');
     });
 
