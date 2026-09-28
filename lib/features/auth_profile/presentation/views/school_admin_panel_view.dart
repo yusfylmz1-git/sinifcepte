@@ -4,6 +4,7 @@ import '../../../../core/theme/app_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../board_config/presentation/tahta_yonetimi_screen.dart';
+import '../../../board_config/tahta_ozellikleri.dart';
 import '../../data/repositories/school_admin_repository.dart';
 import '../../providers/teacher_profile_provider.dart';
 import '../../providers/user_role_provider.dart';
@@ -76,16 +77,20 @@ class _SchoolAdminPanelViewState extends ConsumerState<SchoolAdminPanelView>
         // ve duyuru formu geniş alan istiyor. Giriş noktası buraya
         // konuldu çünkü idareci zaten bu paneldedir; ayrı bir gezinme
         // noktası aramak zorunda kalmasın.
+        //
+        // Şimdilik KAPALI: okulun tek yayıncısı Ana Program
+        // (`tahta_ozellikleri.dart`).
         actions: [
-          IconButton(
-            tooltip: 'Tahta Yönetimi',
-            icon: const Icon(Icons.desktop_windows_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const TahtaYonetimiScreen(),
+          if (telefonTahtaYonetimiAktif)
+            IconButton(
+              tooltip: 'Tahta Yönetimi',
+              icon: const Icon(Icons.desktop_windows_outlined),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const TahtaYonetimiScreen(),
+                ),
               ),
             ),
-          ),
         ],
         bottom: TabBar(
           controller: _tabController,

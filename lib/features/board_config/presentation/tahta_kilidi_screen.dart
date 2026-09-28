@@ -12,6 +12,7 @@ import '../data/ogretmen_tahta_deposu.dart';
 import '../data/tahta_ag_acici.dart';
 import '../data/tahta_ogretmen_deposu.dart';
 import '../data/tahta_yetki_deposu.dart';
+import '../tahta_ozellikleri.dart';
 import '../utils/tahta_totp.dart';
 
 /// Öğretmenin tahta kilidini açtığı ekran.
@@ -109,6 +110,10 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
   /// interneti olmayabilir (hafızadaki varsayım). Secret bir kez
   /// güvenli depoya yazılınca sonrası ağsız çalışıyor.
   Future<void> _yetkiDurumunuYukle() async {
+    // Telefondan yönetim kapalıyken bulutla EŞİTLENMİYOR: eşitleme,
+    // Ana Program'dan alınan anahtarı silebilir ya da buluttakiyle
+    // değiştirebilirdi (`tahta_ozellikleri.dart`).
+    if (!telefonTahtaYonetimiAktif) return;
     final profil = ref.read(teacherProfileProvider);
     final okulId = profil.schoolId ?? '';
     if (okulId.isEmpty || profil.id.isEmpty) return;
@@ -306,40 +311,46 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
     return _kart(
       isDark,
       baslik: '📲 Kurulum',
-      aciklama: 'Tahtaları açabilmek için okul yöneticinizin onayı '
-          'gerekiyor. Onay verildiğinde bu ekran açma koduna geçer.',
+      aciklama: telefonTahtaYonetimiAktif
+          ? 'Tahtaları açabilmek için okul yöneticinizin onayı '
+              'gerekiyor. Onay verildiğinde bu ekran açma koduna geçer.'
+          : 'Tahtaları açabilmek için okul idaresinin size göstereceği '
+              'kurulum karekodunu bir kez okutun (SınıfCepte Ana Program → '
+              'Öğretmenler → Telefon karekodu).',
       cocuklar: [
-        // Yeni yol ÖNCE: öğretmenin müdürün odasına gitmesi gerekmiyor.
-        //
-        // Eski akışta 40 öğretmen tek tek gelip QR okutuyordu; sahada
-        // saatler sürüyordu. Artık istek uzaktan gönderiliyor.
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: _yetkiIsliyor ? null : _yetkiIste,
-            icon: _yetkiIsliyor
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.how_to_reg_rounded, size: 18),
-            label: Text('Tahta yetkisi iste',
-                style: AppFonts.outfit(fontSize: 13)),
+        // Uzaktan istek yolu: yönetici telefondan onaylıyor. Telefondan
+        // yönetim kapalıyken gizli — onaylayacak kimse yok, öğretmen
+        // boşuna beklerdi (`tahta_ozellikleri.dart`).
+        if (telefonTahtaYonetimiAktif) ...[
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _yetkiIsliyor ? null : _yetkiIste,
+              icon: _yetkiIsliyor
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.how_to_reg_rounded, size: 18),
+              label: Text('Tahta yetkisi iste',
+                  style: AppFonts.outfit(fontSize: 13)),
+            ),
           ),
-        ),
-        const SizedBox(height: 6),
+          const SizedBox(height: 6),
+          Text(
+            'Okulunuz profilinizden okunuyor. Yöneticiniz isteği '
+            'onayladığında başka bir şey yapmanız gerekmez.',
+            style: AppFonts.outfit(
+                fontSize: 10.5, color: Colors.grey, height: 1.4),
+          ),
+          const Divider(height: 24),
+        ],
+        // Karekod yolu: Ana Program'ın gösterdiği kurulum karekodu.
         Text(
-          'Okulunuz profilinizden okunuyor. Yöneticiniz isteği '
-          'onayladığında başka bir şey yapmanız gerekmez.',
-          style: AppFonts.outfit(
-              fontSize: 10.5, color: Colors.grey, height: 1.4),
-        ),
-        const Divider(height: 24),
-        // Eski yol KALIYOR: yöneticisi olmayan okul, çevrimdışı
-        // kurulum ve yüz yüze kayıt için gerekli.
-        Text(
-          'Yöneticiniz size QR gösterdiyse',
+          telefonTahtaYonetimiAktif
+              ? 'Yöneticiniz size QR gösterdiyse'
+              : 'İdarenin gösterdiği karekodu okutun',
           style: AppFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
