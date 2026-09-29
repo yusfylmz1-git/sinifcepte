@@ -169,6 +169,24 @@ window.SinifCepteAdminAuth = {
     return sonuc.data;
   },
 
+  /** Okul yöneticiliği başvuruları (durum: pending | approved | rejected). */
+  async listSchoolAdminRequests(durum) {
+    const cagir = httpsCallable(functions, 'listSchoolAdminRequests');
+    const sonuc = await cagir({ durum });
+    return sonuc.data;
+  },
+
+  /**
+   * Okul yöneticiliği kararı: 'onay' | 'red' | 'geri_al'.
+   *
+   * Claim sunucuda yazılıyor; buradan yalnızca istek gidiyor.
+   */
+  async decideSchoolAdmin(uid, karar, gerekce = '') {
+    const cagir = httpsCallable(functions, 'decideSchoolAdmin');
+    const sonuc = await cagir({ uid, karar, gerekce });
+    return sonuc.data;
+  },
+
   /**
    * ÖSYM takvimini çeker ve mevcut veriyle karşılaştırır.
    *

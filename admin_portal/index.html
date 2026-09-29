@@ -98,6 +98,11 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
           Versiyon & Senkronizasyon
         </a>
+
+        <a href="#" class="menu-item" data-tab="yoneticiler">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z"/><polyline points="9 12 11 14 15 10"/></svg>
+          Okul Yöneticileri
+        </a>
       </nav>
 
       <div class="sidebar-footer">
@@ -475,6 +480,48 @@
         </section>
 
         <!-- TAB 5: VERSİYON MANİFESTİ & DUYURULAR -->
+        <!-- OKUL YÖNETİCİLERİ (Y17): başvuruya panelden karar. Yetkiyi
+             sunucu (decideSchoolAdmin) veriyor; düğmeler yalnızca süper
+             yöneticiye çıkıyor. -->
+        <section id="tab-yoneticiler" class="tab-content">
+          <div class="panel-card">
+            <div class="panel-header">
+              <h2 class="panel-title">Okul yöneticiliği başvuruları</h2>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <select id="yonetici-durum" class="form-control" data-degisim="yoneticileriYukle" style="width: auto;">
+                  <option value="pending">Bekleyen</option>
+                  <option value="approved">Onaylanan</option>
+                  <option value="rejected">Reddedilen / geri alınan</option>
+                </select>
+                <button class="btn btn-secondary" data-eylem="yoneticileriYukle">Yenile</button>
+              </div>
+            </div>
+            <p style="margin: 0 0 12px; font-size: 13px; line-height: 1.55; color: var(--text-muted);">
+              Onaylanan öğretmen kendi okulunun şikâyetlerini görür ve öğretmen
+              onaylarını yönetir. <strong>Kanıt sütunu</strong> başvuranın o okulun
+              öğretmen dizininde kayıtlı olup olmadığını gösterir; dizin kaydı onaysız
+              oluştuğu için tek başına yeterli değildir. Emin değilseniz okulu
+              arayıp teyit edin.
+            </p>
+            <p id="yonetici-bilgi" style="margin: 0 0 12px; font-size: 12px; color: var(--text-muted);"></p>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Öğretmen</th>
+                    <th>Okul</th>
+                    <th>Kanıt</th>
+                    <th>Not</th>
+                    <th>Tarih</th>
+                    <th style="text-align: right;">İşlem</th>
+                  </tr>
+                </thead>
+                <tbody id="yonetici-tablo"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
         <section id="tab-manifest" class="tab-content">
           <div class="stats-grid">
             <div class="stat-card">
@@ -1146,6 +1193,7 @@
   <script src="js/manifest_manager.js?v=202609291200"></script>
   <script src="js/cloud_exporter.js?v=202609291200"></script>
   <script src="js/admin_app.js?v=202609291200"></script>
+  <script src="js/okul_yonetimi.js?v=202609291200"></script>
   <script src="js/eylemler.js?v=202609291200"></script>
   <!--
     ES modulu: Firebase Web SDK'yi CDN'den ice aktariyor. Panelde derleme

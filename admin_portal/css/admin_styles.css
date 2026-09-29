@@ -282,6 +282,17 @@ body {
   color: var(--primary);
 }
 
+/* Tablo satırlarındaki küçük düğmeler (sınav listesi, yönetici başvuruları). */
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .btn-danger {
   background: var(--danger);
   color: white;

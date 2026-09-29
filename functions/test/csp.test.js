@@ -69,6 +69,19 @@ const yontemler = new Set(
   )
 );
 
+/**
+ * Ayrı dosyalarda `Object.assign(window.AdminApp.prototype, {...})` ile
+ * eklenen yöntemler (ör. okul_yonetimi.js). Yalnızca o blok taranıyor:
+ * başka sınıfların yöntemleri sayılsaydı yanlış yere bağlı düğme geçerdi.
+ */
+for (const { kod } of jsDosyalari) {
+  const bas = kod.indexOf('Object.assign(window.AdminApp.prototype, {');
+  if (bas < 0) continue;
+  for (const m of kod.slice(bas).matchAll(/^ {4}(?:async\s+)?([A-Za-z][A-Za-z0-9]*)\s*\([^)]*\)\s*\{/gm)) {
+    yontemler.add(m[1]);
+  }
+}
+
 /** eylemler.js'teki özel eylemler (adminApp dışı). */
 const ozel = new Set(
   [...eylemlerKaynak.match(/const OZEL = \{([\s\S]*?)\n {2}\};/)[1].matchAll(/^ {4}(\w+):/gm)].map(
@@ -106,6 +119,12 @@ test('her data-tikla gerçek bir öğeyi gösteriyor', () => {
 test('eylemler.js paneli yükleyen betiklerle birlikte yükleniyor', () => {
   const sira = [...isaretleme.matchAll(/<script[^>]*src="js\/([^"?]+)/g)].map((m) => m[1]);
   assert.ok(sira.indexOf('eylemler.js') > sira.indexOf('admin_app.js'));
+  // Eklenti dosyaları AdminApp tanımlandıktan SONRA.
+  for (const { ad, kod } of jsDosyalari) {
+    if (kod.includes('window.AdminApp.prototype')) {
+      assert.ok(sira.indexOf(ad) > sira.indexOf('admin_app.js'), ad);
+    }
+  }
 });
 
 // --- 3. Dağıtıcının davranışı ---
