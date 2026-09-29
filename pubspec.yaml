@@ -61,6 +61,10 @@ dependencies:
   http: ^1.2.2
   qr_flutter: ^4.1.0
   crypto: ^3.0.6
+  # e-Okul ogrenci fotografi: EXIF yonu, kirpma, tam 133x171 JPEG.
+  # `pdf` paketi uzerinden zaten projedeydi (dolayli, 4.3.0); dogrudan
+  # kullanildigi icin ayni surumle acikca yaziliyor.
+  image: ^4.3.0
   # Tahta yapilandirmasinin imzalanmasi (Ed25519, RFC 8032).
   #
   # Idarenin telefonu `okul_config.json`'i imzalar, tahtada yalnizca

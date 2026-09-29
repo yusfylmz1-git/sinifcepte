@@ -9,6 +9,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../config/app_config.dart';
 import '../../features/outcomes/data/models/curriculum_outcome_model.dart';
+import '../../features/student_photos/data/ogrenci_foto_semasi.dart';
 import '../utils/gzip_asset.dart';
 import '../utils/name_formatter.dart';
 
@@ -250,7 +251,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 27,
+      version: 28,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
       onConfigure: _onConfigure,
@@ -267,6 +268,10 @@ class DatabaseHelper {
   Future<void> _onOpen(Database db) async {
     await _ensureParticipationTablesExist(db);
     await _ensureCloudIds(db);
+    // e-Okul fotograf tablolari: surum 28 gocu kacirilmis olsa bile
+    // (gelistirme surumunden gelen cihaz) tablolar ve temizlik
+    // tetikleyicisi yerinde olsun. Hepsi IF NOT EXISTS.
+    await ogrenciFotoTablolariniKur(db);
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -737,6 +742,7 @@ class DatabaseHelper {
     await _createBepTables(db);
     await _createGuidanceTables(db);
     await _createAbsenceTables(db);
+    await ogrenciFotoTablolariniKur(db);
 
     // D. 2025-2026 Resmî MEB Çalışma Takvimi Tohumlama (Seed Data)
     final calendarCountQuery = await db.rawQuery('SELECT COUNT(*) as c FROM academic_calendar_events');
@@ -1086,6 +1092,12 @@ class DatabaseHelper {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 28) {
+      // e-Okul ogrenci fotografi. Yeni tablolar, ALTER yok: mevcut
+      // ogrenci kayitlarina dokunmaz.
+      await ogrenciFotoTablolariniKur(db);
+    }
+
     if (oldVersion < 27) {
       // Devamsiz ogrenci takibi. Tablo yeni oldugu icin ALTER degil
       // CREATE; mevcut kayitlara dokunmaz.

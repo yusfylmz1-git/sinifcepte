@@ -115,8 +115,12 @@ void main() {
   }
 
   group('Sema', () {
-    test('KRITIK: veritabani surumu 27', () {
-      expect(read(dbHelper).contains('version: 27,'), isTrue,
+    test('KRITIK: veritabani surumu en az 27', () {
+      // Tam esitlik degil: sonraki tablolar (28: e-Okul foto) surumu
+      // yine artirir; bu testin korudugu sey 27'nin altina dusmemesi.
+      final m = RegExp(r'version: (\d+),').firstMatch(read(dbHelper));
+      expect(m, isNotNull);
+      expect(int.parse(m!.group(1)!), greaterThanOrEqualTo(27),
           reason: 'Yeni tablo surum artmadan cihaza inmez');
     });
 
