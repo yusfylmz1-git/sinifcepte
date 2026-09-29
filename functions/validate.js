@@ -228,8 +228,126 @@ export function geriSarmaKontrol(gelen, mevcutSablon) {
     mesaj:
       'Sürüm geriye alınamaz (' +
       dusenler.join(', ') +
-      '). Bu genellikle paneli YENİ bir tarayıcıda açmaktan olur: ' +
-      'yerel kayıt boş olduğu için varsayılan sürüm gönderiliyor. ' +
-      'Önce "Canlıdan Çek" ile mevcut durumu alın, sonra yayınlayın.',
+      '). Siz sayfayı açtıktan sonra başka biri yayın yapmış olabilir: ' +
+      'sayfayı yenileyip yeniden deneyin.',
+  };
+}
+
+/**
+ * Canlı değerleri görme yetkisi: süper yönetici VE moderatör.
+ *
+ * Görmek yayın değil. Moderatör de bakım modunun açık olup olmadığını
+ * bilmeli; yayını yine yalnızca süper yönetici yapar (`yetkiKontrol`).
+ *
+ * @param {{token?: Record<string, unknown>} | null | undefined} auth
+ */
+export function okumaYetkisi(auth) {
+  if (!auth) {
+    return { ok: false, kod: 'unauthenticated', mesaj: 'Önce giriş yapmalısınız.' };
+  }
+  const rol = auth.token?.adminRole;
+  if (rol !== 'super' && rol !== 'moderator') {
+    return {
+      ok: false,
+      kod: 'permission-denied',
+      mesaj: 'Bu işlem için yönetici yetkisi gerekir.',
+    };
+  }
+  return { ok: true };
+}
+
+/**
+ * Şablondan panelin yönettiği parametrelerin canlı değerleri.
+ *
+ * Beyaz liste dışındaki parametreler (Console'dan elle eklenmiş olanlar)
+ * panele gönderilmiyor: panel onları yönetmiyor.
+ *
+ * @param {Record<string, {defaultValue?: {value?: string}}>} sablonParams
+ * @returns {Record<string, string>}
+ */
+export function canliDegerler(sablonParams) {
+  const sonuc = {};
+  for (const anahtar of IZINLI_PARAMETRELER) {
+    const deger = sablonParams?.[anahtar]?.defaultValue?.value;
+    if (typeof deger === 'string') sonuc[anahtar] = deger;
+  }
+  return sonuc;
+}
+
+/**
+ * Ayar parametreleri — sürüm DEĞİL, üzerine yazılan değerler.
+ *
+ * Bunlarda "ileri/geri" yok; tek koruma, panelin gördüğü değerin hâlâ
+ * canlıdaki değer olması. Sürüm alanlarını `geriSarmaKontrol`, sınav
+ * verisini ise onunla birlikte giden `exams_version` koruyor.
+ */
+export const AYAR_ALANLARI = [
+  'min_app_version',
+  'latest_app_version',
+  'maintenance_mode',
+  'maintenance_message',
+  'admin_notice',
+  'admin_notice_id',
+];
+
+/**
+ * Yayınlanan ayar, panel onu okuduktan sonra başkası tarafından
+ * değiştirilmiş mi?
+ *
+ * ## Neden (K8, ikinci yarı)
+ *
+ * Panel eskiden her yayında yerel kaydın TAMAMINI gönderiyordu. Başka
+ * bir tarayıcıda açılan bakım modu ya da yükseltilen en düşük sürüm,
+ * ilgisiz bir sınav yayınıyla sessizce eski değerine dönüyordu. Karar
+ * (28 Eylül 2026): panel yalnızca değiştirilen ayarı güncellesin.
+ *
+ * Panel artık her ayar için gördüğü değeri (`onceki`) de gönderiyor.
+ * Canlı değer farklıysa yayın reddediliyor: iki yönetici aynı ayarı
+ * aynı anda değiştirirse ikincisi birincinin değişikliğini görmeden
+ * ezemez.
+ *
+ * `onceki` taşımayan ayar yayını REDDEDİLİYOR: tarayıcı önbelleğindeki
+ * eski panel her şeyi göndermeye devam ederdi.
+ *
+ * @param {Record<string, string>} gelen  Doğrulanmış parametreler
+ * @param {unknown} onceki  { anahtar: panelin gördüğü değer | null (yoktu) }
+ * @param {Record<string, {defaultValue?: {value?: string}}>} mevcutSablon
+ */
+export function cakismaKontrol(gelen, onceki, mevcutSablon) {
+  const ayarlar = Object.keys(gelen ?? {}).filter((a) => AYAR_ALANLARI.includes(a));
+  if (ayarlar.length === 0) return { ok: true };
+
+  if (onceki === null || typeof onceki !== 'object' || Array.isArray(onceki)) {
+    return {
+      ok: false,
+      kod: 'failed-precondition',
+      mesaj:
+        'Paneliniz eski sürüm. Sayfayı tamamen yenileyin (Ctrl+F5) ve ' +
+        'ayarı yeniden kaydedin.',
+    };
+  }
+
+  const cakisan = [];
+  for (const anahtar of ayarlar) {
+    if (!(anahtar in onceki)) {
+      return {
+        ok: false,
+        kod: 'invalid-argument',
+        mesaj: `${anahtar} için önceki değer gönderilmedi.`,
+      };
+    }
+    const gorulen = onceki[anahtar] === null ? undefined : String(onceki[anahtar]);
+    const mevcut = mevcutSablon?.[anahtar]?.defaultValue?.value;
+    if (gorulen !== mevcut) cakisan.push(anahtar);
+  }
+
+  if (cakisan.length === 0) return { ok: true };
+  return {
+    ok: false,
+    kod: 'aborted',
+    mesaj:
+      'Siz sayfayı açtıktan sonra başka biri şu ayarları değiştirdi: ' +
+      cakisan.join(', ') +
+      '. Sayfayı yenileyip güncel değerleri görün, sonra yeniden kaydedin.',
   };
 }

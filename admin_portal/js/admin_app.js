@@ -63,6 +63,9 @@ class AdminApp {
     if (tabId === 'manifest') {
       this.manifestManager.renderAnnouncementsTable();
       this.renderManifestUI();
+      // Ekran yerel kayıttan değil canlıdan kurulsun (K8). Hata
+      // `canliOku` içinde ekrana yazılıyor.
+      this.canliOku().catch(() => {});
     }
   }
 
@@ -812,32 +815,144 @@ class AdminApp {
     if (elMaintMsg) elMaintMsg.value = m.maintenanceMessage;
   }
 
-  saveManifestSettings() {
-    const minApp = document.getElementById('manifest-min-app')?.value;
-    const isMaint = document.getElementById('manifest-maint-switch')?.checked;
-    const maintMsg = document.getElementById('manifest-maint-msg')?.value;
+  /**
+   * Remote Config'in canlı değerlerini okur ve ekrana basar.
+   *
+   * Yayınlar bu değerlere dayanıyor: `this.canli` yoksa ayar
+   * yayınlanmıyor. Yerel kayıt başka tarayıcıda yapılan değişikliği
+   * bilmiyordu ve ekran yanlış durumu gösteriyordu (K8).
+   */
+  async canliOku() {
+    const durum = document.getElementById('manifest-canli-durum');
+    if (durum) durum.textContent = 'Canlı değerler okunuyor…';
+    try {
+      const sonuc = await window.SinifCepteAdminAuth.readRemoteConfig();
+      this.canli = { ...(sonuc?.degerler || {}) };
+      this.manifestManager.canliUygula(this.canli);
+      this.renderManifestUI();
+      this.updateDashboardStats();
+      if (durum) {
+        const saat = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+        durum.textContent =
+          `Canlı değerler gösteriliyor (Remote Config sürüm ${sonuc?.version ?? '?'}, ${saat}).`;
+      }
+      return this.canli;
+    } catch (e) {
+      this.canli = null;
+      if (durum) {
+        durum.textContent =
+          `Canlı değerler okunamadı: ${this.yayinHatasi(e)} Ayarlar yayınlanamaz.`;
+      }
+      throw e;
+    }
+  }
 
-    this.manifestManager.manifest.minRequiredAppVersion = minApp;
-    this.manifestManager.manifest.maintenanceMode = isMaint;
-    this.manifestManager.manifest.maintenanceMessage = maintMsg;
-    this.manifestManager.save();
+  /**
+   * Bakım modu ve en düşük sürüm: YALNIZCA değişen ayar yayınlanır.
+   *
+   * Eskiden "Kaydet" yalnızca yerele yazıyordu; değer bir sonraki sınav
+   * yayınıyla habersizce canlıya gidiyor, ya da başka tarayıcıdan
+   * yapılan yayın onu eziyordu (K8, karar 28 Eylül 2026).
+   */
+  async saveManifestSettings() {
+    if (!this.canli) {
+      this.showToast('Canlı değerler okunamadı; sekmeyi yeniden açın. Hiçbir şey yayınlanmadı.', 'error');
+      return;
+    }
+    const form = {
+      minApp: document.getElementById('manifest-min-app')?.value ?? '',
+      bakim: Boolean(document.getElementById('manifest-maint-switch')?.checked),
+      bakimMesaji: document.getElementById('manifest-maint-msg')?.value ?? '',
+    };
+    if (!/^\d+\.\d+\.\d+$/.test(form.minApp.trim())) {
+      // Bozuk sürüm karşılaştırması öğretmenleri uygulamadan kilitleyebilir.
+      this.showToast('En düşük sürüm 1.2.3 biçiminde olmalı.', 'error');
+      return;
+    }
+    const { params, onceki } = ManifestManager.ayarDegisiklikleri(form, this.canli);
+    const adlar = Object.keys(params);
+    if (adlar.length === 0) {
+      this.showToast('Değişiklik yok; hiçbir şey yayınlanmadı.', 'info');
+      return;
+    }
 
-    this.showToast('Manifest ayarları kaydedildi ⚙️', 'success');
-    this.renderManifestUI();
+    const ETIKET = {
+      min_app_version: 'En düşük uygulama sürümü',
+      maintenance_mode: 'Bakım modu',
+      maintenance_message: 'Bakım mesajı',
+    };
+    const goster = (anahtar, deger) => {
+      if (anahtar === 'maintenance_mode') return deger === 'true' ? 'AÇIK' : 'kapalı';
+      if (deger === null || deger === '') return '(boş)';
+      return `"${deger}"`;
+    };
+    const satirlar = adlar.map(
+      (a) => `• ${ETIKET[a]}: ${goster(a, onceki[a] ?? ManifestManager.MOBIL_VARSAYILAN[a])} → ${goster(a, params[a])}`
+    );
+    const uyari =
+      params.maintenance_mode === 'true'
+        ? '\n\nDİKKAT: Bakım modu açılınca öğretmen ve veliler uygulamayı kullanamaz.'
+        : '';
+    const onay = confirm(
+      `Yalnızca şu ayar canlıya gidecek:\n\n${satirlar.join('\n')}${uyari}\n\n` +
+        'Diğer ayarlara dokunulmayacak. Devam edilsin mi?'
+    );
+    if (!onay) return;
+
+    try {
+      await window.SinifCepteAdminAuth.publishRemoteConfig(params, onceki);
+      Object.assign(this.canli, params);
+      this.manifestManager.canliUygula(this.canli);
+      this.renderManifestUI();
+      this.showToast(`Yayınlandı: ${adlar.map((a) => ETIKET[a]).join(', ')} ⚙️`, 'success');
+    } catch (e) {
+      this.showToast(this.yayinHatasi(e), 'error');
+      console.error('Ayar yayını hatası:', e);
+    }
   }
 
   incrementCalendarVersionManual() {
-    const v = this.manifestManager.incrementCalendarVersion();
-    this.showToast(`Takvim sürümü artırıldı: v${v} 🚩`, 'success');
-    this.renderManifestUI();
-    this.updateDashboardStats();
+    return this.surumYayinla('calendar_version', 'Takvim');
   }
 
   incrementOutcomesVersionManual() {
-    const v = this.manifestManager.incrementOutcomesVersion();
-    this.showToast(`Kazanım sürümü artırıldı: v${v} 📚`, 'success');
-    this.renderManifestUI();
-    this.updateDashboardStats();
+    return this.surumYayinla('outcomes_version', 'Kazanım');
+  }
+
+  /**
+   * Tek bir sürümü canlı değerin BİR fazlasına çıkarır ve yalnızca onu
+   * yayınlar.
+   *
+   * Eskiden yalnızca yerel sayaç artıyor, değer sınav yayınıyla
+   * habersizce gidiyordu. Yeni tarayıcıda yerel sayaç 1'den başladığı
+   * için "artır" canlıdakinden KÜÇÜK bir değer üretebiliyordu.
+   */
+  async surumYayinla(anahtar, ad) {
+    let canli;
+    try {
+      canli = await this.canliOku();
+    } catch (e) {
+      this.showToast(this.yayinHatasi(e), 'error');
+      return;
+    }
+    const mevcut = Number.parseInt(canli[anahtar] ?? '1', 10) || 1;
+    const yeni = mevcut + 1;
+    const onay = confirm(
+      `${ad} sürümü ${mevcut} → ${yeni} olacak.\n\n` +
+        'Cihazlar "güncelleme var" bildirimi alır. Yalnızca bu sürüm değişir; ' +
+        'diğer ayarlara dokunulmaz.\n\nDevam edilsin mi?'
+    );
+    if (!onay) return;
+    try {
+      await window.SinifCepteAdminAuth.publishRemoteConfig({ [anahtar]: String(yeni) });
+      this.canli[anahtar] = String(yeni);
+      this.manifestManager.canliUygula(this.canli);
+      this.renderManifestUI();
+      this.updateDashboardStats();
+      this.showToast(`${ad} sürümü yayınlandı: v${yeni}`, 'success');
+    } catch (e) {
+      this.showToast(this.yayinHatasi(e), 'error');
+    }
   }
 
   openAddAnnouncementModal() {
@@ -1297,8 +1412,8 @@ class AdminApp {
    * icinde degisiyor (ertelenen LGS, acilanan basvuru tarihi) ve
    * ogretmen uygulama guncellemesi bekleyemez.
    *
-   * Uretilen dosya Remote Config'e su komutla yayinlanir:
-   *   node scripts/admin/publish_remote_config.mjs remote_config_params.json
+   * Yayin `publishRemoteConfig` fonksiyonundan gecer ve YALNIZCA
+   * `exams_version` + `exams_payload` gonderir (K8).
    */
   async publishExamsToMobile() {
     const sinavSayisi = this.examsManager.getAllExams().length;
@@ -1321,16 +1436,21 @@ class AdminApp {
       dugme.textContent = '⏳ Yayınlanıyor…';
     }
 
-    // Sürüm ÖNCE artırılıyor ama yayın başarısız olursa geri alınıyor:
-    // aksi hâlde sayaç ilerler, bir dahaki denemede "zaten güncel"
-    // sanılır ve veri hiç gitmez.
-    const oncekiSurum = this.manifestManager.manifest.examsVersion || 1;
-    const yeniSurum = this.manifestManager.incrementExamsVersion();
-
     try {
-      const sonuc = await window.SinifCepteAdminAuth.publishRemoteConfig(
-        this.manifestManager.toRemoteConfigParams(this.examsManager)
-      );
+      // Sürüm CANLI değerden: yerel sayaç yeni tarayıcıda 1'den
+      // başlıyordu. Yerel sayaç yalnızca yayın BAŞARILI olunca
+      // ilerliyor; başarısız yayında "zaten güncel" sanılmıyor.
+      const canli = await this.canliOku();
+      const yeniSurum = (Number.parseInt(canli.exams_version ?? '1', 10) || 1) + 1;
+
+      // YALNIZCA sınav parametreleri. Eskiden yerel kaydın tamamı
+      // gidiyor, bakım modu ve en düşük sürüm sessizce eziliyordu (K8).
+      const sonuc = await window.SinifCepteAdminAuth.publishRemoteConfig({
+        exams_version: String(yeniSurum),
+        exams_payload: JSON.stringify(this.examsManager.getAllExams()),
+      });
+      this.canli.exams_version = String(yeniSurum);
+      this.manifestManager.canliUygula(this.canli);
 
       this.updateDashboardStats();
       this.showToast(
@@ -1340,10 +1460,6 @@ class AdminApp {
       );
       console.info('Remote Config sürümü:', sonuc?.version);
     } catch (e) {
-      // Sayaç geri alınır ki yeniden denenebilsin.
-      this.manifestManager.manifest.examsVersion = oncekiSurum;
-      this.manifestManager.save();
-
       this.showToast(this.yayinHatasi(e), 'error');
       console.error('Yayın hatası:', e);
     } finally {
@@ -1806,6 +1922,10 @@ class AdminApp {
         return 'İşlev bulunamadı. Önce `firebase deploy --only functions` çalıştırın.';
       case 'functions/failed-precondition':
         // Ayrıştırma bozuldu: kaynak sitenin yapısı değişmiş olabilir.
+        return e.message;
+      case 'functions/aborted':
+        // Başkası aynı ayarı bu arada değiştirdi (K8): ne olduğunu
+        // sunucunun mesajı söylüyor.
         return e.message;
       default:
         return `Yayın başarısız: ${e?.message || e}`;

@@ -38,6 +38,22 @@ function scGuvenliBaglanti(x) {
  * SınıfCepte Web Admin Paneli - Versiyon Manifesti ve Bakım Modu Yöneticisi
  */
 class ManifestManager {
+  /**
+   * Canlıda parametre YOKSA mobilin kullandığı değer.
+   * `lib/core/cloud/remote_manifest_service.dart` varsayılanlarıyla aynı.
+   */
+  static MOBIL_VARSAYILAN = {
+    calendar_version: '1',
+    outcomes_version: '1',
+    announcements_version: '1',
+    school_directory_version: '1',
+    exams_version: '1',
+    min_app_version: '1.0.0',
+    latest_app_version: '1.0.0',
+    maintenance_mode: 'false',
+    maintenance_message: '',
+  };
+
   constructor() {
     this.manifest = {
       calendarVersion: 1,
@@ -181,6 +197,68 @@ class ManifestManager {
         '  node scripts/admin/publish_remote_config.mjs remote_config_params.json'
     );
     return params;
+  }
+
+  /**
+   * Remote Config'in CANLI değerlerini yerel kayda yazar.
+   *
+   * Yerel kayıt artık yalnızca önbellek: ekran canlı değeri gösteriyor.
+   * Canlıda olmayan alan için mobilin varsayılanı geçerli
+   * (`remote_manifest_service.dart`); eski yerel değer değil — yoksa
+   * formda görünen ama canlıda olmayan bir bakım mesajı "değişiklik"
+   * sanılıp yayınlanırdı.
+   *
+   * @param {Record<string, string>} canli readRemoteConfig'in değerleri
+   */
+  canliUygula(canli) {
+    const d = { ...ManifestManager.MOBIL_VARSAYILAN, ...(canli || {}) };
+    const sayi = (x) => Number.parseInt(x, 10) || 1;
+    this.manifest.calendarVersion = sayi(d.calendar_version);
+    this.manifest.outcomesVersion = sayi(d.outcomes_version);
+    this.manifest.announcementsVersion = sayi(d.announcements_version);
+    this.manifest.schoolDirectoryVersion = sayi(d.school_directory_version);
+    this.manifest.examsVersion = sayi(d.exams_version);
+    this.manifest.minRequiredAppVersion = d.min_app_version;
+    this.manifest.latestAppVersion = d.latest_app_version;
+    this.manifest.maintenanceMode = d.maintenance_mode === 'true';
+    this.manifest.maintenanceMessage = d.maintenance_message;
+    this.save();
+  }
+
+  /**
+   * Formdaki ayarlardan YALNIZCA değişenleri çıkarır (K8).
+   *
+   * Karar (28 Eylül 2026): panel yalnızca değiştirilen ayarı
+   * güncellesin, diğerlerine dokunmasın. Eskiden her yayın yerel kaydın
+   * tamamını gönderiyordu ve başka tarayıcıda açılan bakım modu
+   * sessizce kapanıyordu.
+   *
+   * `onceki`: panelin gördüğü canlı değer (canlıda yoksa null). Sunucu
+   * bunu şimdiki değerle karşılaştırıp arada yapılan değişikliği ezmeyi
+   * reddediyor.
+   *
+   * @param {{minApp: string, bakim: boolean, bakimMesaji: string}} form
+   * @param {Record<string, string>} canli
+   * @returns {{params: Record<string, string>, onceki: Record<string, string|null>}}
+   */
+  static ayarDegisiklikleri(form, canli) {
+    const istenen = {
+      min_app_version: String(form.minApp ?? '').trim(),
+      maintenance_mode: form.bakim ? 'true' : 'false',
+      maintenance_message: String(form.bakimMesaji ?? '').trim(),
+    };
+    const params = {};
+    const onceki = {};
+    for (const [anahtar, deger] of Object.entries(istenen)) {
+      const mevcut = Object.prototype.hasOwnProperty.call(canli || {}, anahtar)
+        ? canli[anahtar]
+        : null;
+      const etkin = mevcut ?? ManifestManager.MOBIL_VARSAYILAN[anahtar];
+      if (deger === etkin) continue;
+      params[anahtar] = deger;
+      onceki[anahtar] = mevcut;
+    }
+    return { params, onceki };
   }
 
   setMaintenanceMode(enabled, message = null) {

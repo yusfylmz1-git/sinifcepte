@@ -39,7 +39,7 @@ test('KRİTİK: sürüm düşüşü reddedilir', () => {
   // Mesaj SEBEBİ ve ÇÖZÜMÜ söylemeli: "reddedildi" demek yöneticiyi
   // yeniden denemeye iter ve aynı hata tekrarlanır.
   assert.match(sonuc.mesaj, /10 -> 1/);
-  assert.match(sonuc.mesaj, /Canlıdan Çek/);
+  assert.match(sonuc.mesaj, /yenileyip/);
 });
 
 test('KRİTİK: yeni tarayıcı senaryosu — varsayılan 1 gönderiliyor', () => {

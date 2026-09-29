@@ -100,9 +100,10 @@ test('KRITIK: panel icerigi giris olmadan gizli', () => {
 
 test('KRITIK: yayin sunucudan geciyor, dosya inmiyor', () => {
   const govde = adminApp.slice(
-    adminApp.indexOf('publishExamsToMobile'),
-    adminApp.indexOf('yayinHatasi')
+    adminApp.indexOf('async publishExamsToMobile'),
+    adminApp.indexOf('mebMetinAc')
   );
+  assert.ok(govde.length > 200, 'yöntem gövdesi bulunamadı');
   assert.ok(
     govde.includes('publishRemoteConfig'),
     'yayın Cloud Function’a gitmiyor'
@@ -113,15 +114,43 @@ test('KRITIK: yayin sunucudan geciyor, dosya inmiyor', () => {
   );
 });
 
-test('KRITIK: yayin basarisiz olursa surum sayaci geri aliniyor', () => {
+test('KRITIK: yayin basarisiz olursa surum sayaci ilerlemiyor', () => {
   // Sayaç ilerler ve yayın başarısız olursa, bir dahaki denemede
-  // "zaten güncel" sanılır ve veri hiç gitmez.
-  const govde = adminApp.slice(adminApp.indexOf('publishExamsToMobile'));
-  const catchBlok = govde.slice(govde.indexOf('catch'), govde.indexOf('finally'));
-  assert.ok(
-    catchBlok.includes('oncekiSurum'),
-    'hata durumunda sürüm geri alınmıyor'
+  // "zaten güncel" sanılır ve veri hiç gitmez. Sürüm artık canlı
+  // değerden hesaplanıyor ve yerel kayıt yalnızca yayından SONRA
+  // güncelleniyor.
+  const govde = adminApp.slice(
+    adminApp.indexOf('async publishExamsToMobile'),
+    adminApp.indexOf('mebMetinAc')
   );
+  assert.ok(!govde.includes('incrementExamsVersion'), 'yayından önce yerel sayaç artıyor');
+  const yayin = govde.indexOf('publishRemoteConfig');
+  const yerel = govde.indexOf('canliUygula');
+  assert.ok(yayin > 0 && yerel > yayin, 'yerel kayıt yayından önce güncelleniyor');
+});
+
+test('KRITIK: sinav yayini YALNIZCA sinav parametrelerini gonderiyor (K8)', () => {
+  // Eskiden yerel kaydın tamamı gidiyordu; bakım modu ve en düşük
+  // sürüm sessizce eziliyordu.
+  const govde = adminApp.slice(
+    adminApp.indexOf('async publishExamsToMobile'),
+    adminApp.indexOf('mebMetinAc')
+  );
+  assert.ok(!govde.includes('toRemoteConfigParams'), 'yerel kaydın tamamı gönderiliyor');
+  const cagri = govde.slice(govde.indexOf('publishRemoteConfig('));
+  const nesne = cagri.slice(cagri.indexOf('{'), cagri.indexOf('});'));
+  const anahtarlar = [...nesne.matchAll(/^\s*(\w+):/gm)].map((m) => m[1]);
+  assert.deepEqual(anahtarlar, ['exams_version', 'exams_payload']);
+});
+
+test('KRITIK: ayar kaydi yalnizca degisenleri, onceki degerle gonderiyor (K8)', () => {
+  const govde = adminApp.slice(
+    adminApp.indexOf('async saveManifestSettings'),
+    adminApp.indexOf('incrementCalendarVersionManual')
+  );
+  assert.ok(govde.includes('ManifestManager.ayarDegisiklikleri'), 'fark hesaplanmıyor');
+  assert.match(govde, /publishRemoteConfig\(params, onceki\)/, 'önceki değer gönderilmiyor');
+  assert.ok(govde.includes('if (!this.canli)'), 'canlı değer okunmadan yayınlanabiliyor');
 });
 
 test('fonksiyon bolgesi panel ile ayni', () => {

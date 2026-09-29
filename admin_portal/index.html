@@ -511,7 +511,7 @@
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
               <div class="form-group">
                 <label>Minimum Zorunlu Mobil Uygulama Sürümü:</label>
-                <input type="text" id="manifest-min-app" class="form-control" value="1.0.0" placeholder="1.0.0">
+                <input type="text" id="manifest-min-app" class="form-control" placeholder="1.0.0">
               </div>
 
               <div class="form-group">
@@ -524,12 +524,18 @@
 
               <div class="form-group" style="grid-column: 1 / -1;">
                 <label>Bakım Modu Mesajı:</label>
-                <input type="text" id="manifest-maint-msg" class="form-control" value="Sistemlerimizde planlı bakım çalışması yapılmaktadır. Lütfen daha sonra tekrar deneyiniz.">
+                <input type="text" id="manifest-maint-msg" class="form-control" placeholder="Sistemlerimizde planlı bakım çalışması yapılmaktadır. Lütfen daha sonra tekrar deneyiniz.">
               </div>
             </div>
 
+            <!-- Ekran canlı değerleri gösteriyor; yayın yalnızca değişen
+                 ayarı gönderiyor (K8). -->
+            <p id="manifest-canli-durum" style="margin: 16px 0 0; font-size: 12px; color: var(--text-muted);">
+              Canlı değerler henüz okunmadı.
+            </p>
+
             <div style="margin-top: 16px; text-align: right;">
-              <button class="btn btn-primary" data-eylem="saveManifestSettings">Ayarları Kaydet</button>
+              <button class="btn btn-primary" data-eylem="saveManifestSettings">Değişenleri Yayınla</button>
               <button class="btn btn-secondary" data-eylem="manifestiIndir">Manifest JSON İndir</button>
             </div>
           </div>

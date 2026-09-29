@@ -147,10 +147,25 @@ window.SinifCepteAdminAuth = {
    * Remote Config yayını — sunucudaki fonksiyonu çağırır.
    *
    * Anahtar tarayıcıya inmez; yetki fonksiyonda doğrulanır.
+   *
+   * `onceki`: değiştirilen her AYAR için panelin gördüğü canlı değer.
+   * Bu arada başkası değiştirdiyse sunucu yayını reddeder (K8).
    */
-  async publishRemoteConfig(params) {
+  async publishRemoteConfig(params, onceki = undefined) {
     const cagir = httpsCallable(functions, 'publishRemoteConfig');
-    const sonuc = await cagir({ params });
+    const sonuc = await cagir(onceki === undefined ? { params } : { params, onceki });
+    return sonuc.data;
+  },
+
+  /**
+   * Panelin yönettiği Remote Config parametrelerinin CANLI değerleri.
+   *
+   * Panel ekranı ve yayınları yerel kayıttan değil bundan kuruyor:
+   * yerel kayıt başka bir tarayıcıda yapılan değişikliği bilmiyordu.
+   */
+  async readRemoteConfig() {
+    const cagir = httpsCallable(functions, 'readRemoteConfig');
+    const sonuc = await cagir({});
     return sonuc.data;
   },
 

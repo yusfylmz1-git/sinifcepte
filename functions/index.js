@@ -19,7 +19,14 @@ import { initializeApp } from 'firebase-admin/app';
 import { getRemoteConfig } from 'firebase-admin/remote-config';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
-import { dogrula, yetkiKontrol, geriSarmaKontrol } from './validate.js';
+import {
+  dogrula,
+  yetkiKontrol,
+  geriSarmaKontrol,
+  okumaYetkisi,
+  canliDegerler,
+  cakismaKontrol,
+} from './validate.js';
 import { ayristir, karsilastir, OSYM_TAKVIM_URL } from './osym_parser.js';
 
 initializeApp();
@@ -29,14 +36,20 @@ const BOLGE = 'europe-west1';
 /**
  * Remote Config parametrelerini yayınlar.
  *
- * Girdi : { params: { exams_version: 3, exams_payload: '[...]' , ... } }
- * Çıktı : { ok: true, version: 42, parametreler: ['exams_version', ...] }
+ * Girdi : { params: { maintenance_mode: 'true' },
+ *           onceki: { maintenance_mode: 'false' } }
+ * Çıktı : { ok: true, version: 42, parametreler: ['maintenance_mode'] }
+ *
+ * Yalnızca GÖNDERİLEN parametreler değişir; şablondaki diğerleri olduğu
+ * gibi kalır. Panel yalnızca değiştirilen ayarı gönderiyor (K8).
  *
  * ## Güvenlik sırası
  * 1. Oturum var mı
  * 2. `adminRole == 'super'` mi (claim SUNUCUDA çözülür)
  * 3. Parametreler beyaz listede mi
  * 4. Veri alanları geçerli JSON mu, boyut sınırda mı
+ * 5. Sürüm geriye gitmiyor mu; ayar, panel onu okuduktan sonra
+ *    başkasınca değiştirilmemiş mi
  *
  * Doğrulama `validate.js` içinde; Firebase'e bağlı olmadığı için
  * emülatörsüz test edilebiliyor.
@@ -79,6 +92,26 @@ export const publishRemoteConfig = onCall(
       throw new HttpsError(geri.kod, geri.mesaj);
     }
 
+    const cakisma = cakismaKontrol(
+      sonuc.params,
+      request.data?.onceki,
+      sablon.parameters
+    );
+    if (!cakisma.ok) {
+      throw new HttpsError(cakisma.kod, cakisma.mesaj);
+    }
+
+    // Denetim kaydı için: neyin neyden neye değiştiği. Sınav verisi
+    // büyük ve zaten sürümüyle izleniyor; kayda girmiyor.
+    const degisiklikler = {};
+    for (const [anahtar, deger] of Object.entries(sonuc.params)) {
+      if (anahtar === 'exams_payload') continue;
+      degisiklikler[anahtar] = {
+        onceki: sablon.parameters[anahtar]?.defaultValue?.value ?? null,
+        yeni: deger,
+      };
+    }
+
     for (const [anahtar, deger] of Object.entries(sonuc.params)) {
       sablon.parameters[anahtar] = {
         defaultValue: { value: deger },
@@ -115,6 +148,7 @@ export const publishRemoteConfig = onCall(
         uid: request.auth.uid,
         email: request.auth.token.email ?? '',
         parametreler: anahtarlar,
+        degisiklikler,
         rcSurum: surum,
         olusturmaZamani: FieldValue.serverTimestamp(),
       });
@@ -123,6 +157,42 @@ export const publishRemoteConfig = onCall(
     }
 
     return { ok: true, version: surum, parametreler: anahtarlar };
+  }
+);
+
+/**
+ * Panelin yönettiği Remote Config parametrelerinin CANLI değerleri.
+ *
+ * Girdi : {}
+ * Çıktı : { ok: true, degerler: { maintenance_mode: 'false', ... },
+ *           version: 42 }
+ *
+ * ## Neden
+ * Panel eskiden yerel kaydını (localStorage) gerçek sanıyordu: yeni bir
+ * tarayıcıda bakım modu "kapalı", sürüm "1" görünüyordu ve bu değerler
+ * sonraki yayınla canlıya gidiyordu (K8). Panel artık ekranı ve
+ * yayınları canlı değerlerden kuruyor.
+ *
+ * Okur, YAZMAZ: moderatör de görebilir.
+ */
+export const readRemoteConfig = onCall(
+  { region: BOLGE, maxInstances: 3, cors: true },
+  async (request) => {
+    const yetki = okumaYetkisi(request.auth);
+    if (!yetki.ok) {
+      throw new HttpsError(yetki.kod, yetki.mesaj);
+    }
+    let sablon;
+    try {
+      sablon = await getRemoteConfig().getTemplate();
+    } catch (e) {
+      throw new HttpsError('internal', `Remote Config şablonu okunamadı: ${e.message}`);
+    }
+    return {
+      ok: true,
+      degerler: canliDegerler(sablon.parameters),
+      version: sablon.version?.versionNumber ?? null,
+    };
   }
 );
 
