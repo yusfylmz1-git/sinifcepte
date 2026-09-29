@@ -39,6 +39,15 @@ import {
   okulKimligiGecerli,
   yeniClaimler,
 } from './okul_yonetici.js';
+import {
+  cikarmaDogrula,
+  dizinKimligi,
+  epostaGecerli,
+  kayitOzetleri,
+  ogretmenOzeti,
+  okulKimligiCoz,
+  yoneticilikEkle,
+} from './okullar.js';
 
 initializeApp();
 
@@ -469,5 +478,183 @@ export const decideSchoolAdmin = onCall(
     }
 
     return { ok: true, durum: guncelleme.status };
+  }
+);
+
+/**
+ * Kişisel veri görüntüleme kaydı.
+ *
+ * Panel öğretmen adı ve e-postası gösteriyor; kimin neye baktığı iz
+ * bırakmalı (KVKK hesap verebilirlik). Kayıt atılamazsa görüntüleme
+ * engellenmiyor: destek işi durmasın.
+ */
+async function goruntulemeKaydet(request, tur, hedef) {
+  try {
+    await getFirestore().collection('audit_logs').add({
+      tur,
+      uid: request.auth.uid,
+      email: request.auth.token.email ?? '',
+      goruntulenen: hedef,
+      olusturmaZamani: FieldValue.serverTimestamp(),
+    });
+  } catch (e) {
+    console.error('Görüntüleme kaydı yazılamadı:', e);
+  }
+}
+
+/**
+ * Bir okulun görünümü: kayıtlı öğretmenler, yöneticilik durumu, geçmiş.
+ *
+ * Girdi : { okul: '775214' | 'meb_775214' }
+ * Çıktı : { ok, okulId, ogretmenler: [...], basvurular: [...], kayitlar: [...] }
+ *
+ * Okur, YAZMAZ (görüntüleme kaydı hariç): moderatör de görebilir.
+ */
+export const schoolOverview = onCall(
+  { region: BOLGE, maxInstances: 3, cors: true },
+  async (request) => {
+    const yetki = okumaYetkisi(request.auth);
+    if (!yetki.ok) {
+      throw new HttpsError(yetki.kod, yetki.mesaj);
+    }
+    const okulId = okulKimligiCoz(request.data?.okul);
+    if (!okulId) {
+      throw new HttpsError('invalid-argument', 'Kurum kodunu 6 haneli yazın (ör. 775214).');
+    }
+
+    const db = getFirestore();
+    const [dizin, basvuru, kayit] = await Promise.all([
+      db.collection('school_teachers').where('schoolId', '==', okulId).limit(500).get(),
+      db.collection('school_admin_requests').where('school_id', '==', okulId).limit(100).get(),
+      db.collection('audit_logs').where('okulId', '==', okulId).limit(100).get(),
+    ]);
+    await goruntulemeKaydet(request, 'okul_goruntuleme', okulId);
+
+    const basvurular = basvuru.docs.map((b) => b.data());
+    const ogretmenler = yoneticilikEkle(
+      dizin.docs.map((b) => ogretmenOzeti(b.data())),
+      basvurular
+    ).sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+
+    return {
+      ok: true,
+      okulId,
+      ogretmenler,
+      basvurular: basvurular.map((b) => basvuruOzeti(b, true)),
+      kayitlar: kayitOzetleri(kayit.docs.map((b) => b.data())),
+    };
+  }
+);
+
+/**
+ * E-postayla kişi arama: hesap, yetkiler, kayıtlı olduğu okullar.
+ *
+ * Girdi : { eposta }
+ * Çıktı : { ok, kisi: { uid, ad, eposta, olusturma, sonGiris, devreDisi,
+ *                       yetkiler, okullar } | null }
+ *
+ * Destek için: "hesabım çalışmıyor" diyen öğretmenin hangi okula
+ * kayıtlı olduğu, yöneticiliği olup olmadığı tek bakışta görünsün.
+ */
+export const findPerson = onCall(
+  { region: BOLGE, maxInstances: 3, cors: true },
+  async (request) => {
+    const yetki = okumaYetkisi(request.auth);
+    if (!yetki.ok) {
+      throw new HttpsError(yetki.kod, yetki.mesaj);
+    }
+    const eposta = String(request.data?.eposta ?? '').trim().toLowerCase();
+    if (!epostaGecerli(eposta)) {
+      throw new HttpsError('invalid-argument', 'Geçerli bir e-posta yazın.');
+    }
+
+    let kullanici;
+    try {
+      kullanici = await getAuth().getUserByEmail(eposta);
+    } catch (e) {
+      if (e?.code === 'auth/user-not-found') {
+        await goruntulemeKaydet(request, 'kisi_goruntuleme', eposta);
+        return { ok: true, kisi: null };
+      }
+      throw new HttpsError('internal', `Hesap okunamadı: ${e.message}`);
+    }
+    const dizin = await getFirestore()
+      .collection('school_teachers')
+      .where('teacherUid', '==', kullanici.uid)
+      .limit(20)
+      .get();
+    await goruntulemeKaydet(request, 'kisi_goruntuleme', kullanici.uid);
+
+    const c = kullanici.customClaims || {};
+    return {
+      ok: true,
+      kisi: {
+        uid: kullanici.uid,
+        ad: kullanici.displayName ?? '',
+        eposta: kullanici.email ?? '',
+        olusturma: kullanici.metadata?.creationTime ?? '',
+        sonGiris: kullanici.metadata?.lastSignInTime ?? '',
+        devreDisi: Boolean(kullanici.disabled),
+        yetkiler: {
+          adminRole: c.adminRole ?? '',
+          schoolAdminStatus: c.schoolAdminStatus ?? '',
+          schoolId: c.schoolId ?? '',
+        },
+        okullar: dizin.docs.map((b) => {
+          const v = b.data();
+          return { okulId: String(v.schoolId ?? ''), brans: String(v.branch ?? '') };
+        }),
+      },
+    };
+  }
+);
+
+/**
+ * Bir öğretmeni okulun dizininden çıkarır.
+ *
+ * Girdi : { okulId, uid, gerekce }
+ *
+ * Ne için: okuldan ayrılan öğretmen ya da okula ait olmadığı hâlde
+ * kendini eklemiş biri. Dizin kaydı onaysız oluşuyor (Y9); kişi okulunu
+ * uygulamada yeniden seçerse kayıt yeniden oluşur — bu bir yasak değil,
+ * temizlik. Yöneticiliği varsa bu işlem onu KALDIRMAZ (ayrı karar).
+ *
+ * Yalnızca süper yönetici.
+ */
+export const removeFromSchoolDirectory = onCall(
+  { region: BOLGE, maxInstances: 3, cors: true },
+  async (request) => {
+    const yetki = yetkiKontrol(request.auth);
+    if (!yetki.ok) {
+      throw new HttpsError(yetki.kod, yetki.mesaj);
+    }
+    const c = cikarmaDogrula(request.data);
+    if (!c.ok) {
+      throw new HttpsError(c.kod, c.mesaj);
+    }
+    const db = getFirestore();
+    const ref = db.collection('school_teachers').doc(dizinKimligi(c.okulId, c.uid));
+    const belge = await ref.get();
+    if (!belge.exists) {
+      throw new HttpsError('not-found', 'Bu öğretmen bu okulun dizininde değil.');
+    }
+    const ad = String(belge.data().fullName ?? '');
+    await ref.delete();
+
+    try {
+      await db.collection('audit_logs').add({
+        tur: 'okul_dizininden_cikarma',
+        uid: request.auth.uid,
+        email: request.auth.token.email ?? '',
+        hedefUid: c.uid,
+        okulId: c.okulId,
+        karar: `${ad} dizinden çıkarıldı`,
+        gerekce: c.gerekce,
+        olusturmaZamani: FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      console.error('Denetim kaydı yazılamadı:', e);
+    }
+    return { ok: true };
   }
 );

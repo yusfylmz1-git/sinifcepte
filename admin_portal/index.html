@@ -99,6 +99,11 @@
           Versiyon & Senkronizasyon
         </a>
 
+        <a href="#" class="menu-item" data-tab="okullar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg>
+          Okullar ve Kişiler
+        </a>
+
         <a href="#" class="menu-item" data-tab="yoneticiler">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z"/><polyline points="9 12 11 14 15 10"/></svg>
           Okul Yöneticileri
@@ -480,6 +485,36 @@
         </section>
 
         <!-- TAB 5: VERSİYON MANİFESTİ & DUYURULAR -->
+        <!-- OKULLAR VE KİŞİLER: kurum koduyla okul, e-postayla kişi.
+             Kişisel veri gösteriyor; sunucu her bakışı denetim kaydına
+             yazıyor. -->
+        <section id="tab-okullar" class="tab-content">
+          <div class="panel-card" style="margin-bottom: 24px;">
+            <div class="panel-header">
+              <h2 class="panel-title">Okul ara</h2>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <input type="text" id="okul-ara-kod" class="form-control" inputmode="numeric"
+                     placeholder="Kurum kodu (ör. 775214)" style="max-width: 260px;">
+              <button class="btn btn-primary" data-eylem="okulAra">Ara</button>
+            </div>
+            <p id="okul-bilgi" style="margin: 12px 0 0; font-size: 13px; color: var(--text-muted);"></p>
+            <div id="okul-sonuc"></div>
+          </div>
+
+          <div class="panel-card">
+            <div class="panel-header">
+              <h2 class="panel-title">Kişi ara</h2>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <input type="email" id="kisi-ara-eposta" class="form-control"
+                     placeholder="E-posta (ör. ogretmen@gmail.com)" style="max-width: 320px;">
+              <button class="btn btn-primary" data-eylem="kisiAra">Ara</button>
+            </div>
+            <div id="kisi-sonuc" style="margin-top: 12px; font-size: 13px;"></div>
+          </div>
+        </section>
+
         <!-- OKUL YÖNETİCİLERİ (Y17): başvuruya panelden karar. Yetkiyi
              sunucu (decideSchoolAdmin) veriyor; düğmeler yalnızca süper
              yöneticiye çıkıyor. -->
@@ -1194,6 +1229,7 @@
   <script src="js/cloud_exporter.js?v=202609291200"></script>
   <script src="js/admin_app.js?v=202609291200"></script>
   <script src="js/okul_yonetimi.js?v=202609291200"></script>
+  <script src="js/okullar.js?v=202609291200"></script>
   <script src="js/eylemler.js?v=202609291200"></script>
   <!--
     ES modulu: Firebase Web SDK'yi CDN'den ice aktariyor. Panelde derleme

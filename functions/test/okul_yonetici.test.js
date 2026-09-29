@@ -124,8 +124,12 @@ test('başvuru kimliği mobil depoyla aynı', () => {
 // --- Sunucu fonksiyonlarının bağlantısı ---
 
 const kaynak = readFileSync(new URL('../index.js', import.meta.url), 'utf8');
-const govde = (ad, sonraki) =>
-  kaynak.slice(kaynak.indexOf(`export const ${ad}`), sonraki ? kaynak.indexOf(`export const ${sonraki}`) : undefined);
+/** Bir fonksiyonun gövdesi: bir sonraki dışa aktarıma kadar. */
+const govde = (ad) => {
+  const bas = kaynak.indexOf(`export const ${ad}`);
+  const son = kaynak.indexOf('export const ', bas + 10);
+  return kaynak.slice(bas, son < 0 ? undefined : son);
+};
 
 test('KRITIK: kararı yalnızca süper yönetici veriyor', () => {
   const g = govde('decideSchoolAdmin');
@@ -149,7 +153,7 @@ test('KRITIK: karar sırası — doğrula, durum, claim, belge', () => {
 });
 
 test('listeyi moderatör de görebiliyor, liste yazmıyor', () => {
-  const g = govde('listSchoolAdminRequests', 'decideSchoolAdmin');
+  const g = govde('listSchoolAdminRequests');
   assert.ok(g.includes('okumaYetkisi(request.auth)'));
   assert.ok(!/\.(update|set|add|delete)\(/.test(g), 'liste fonksiyonu yazıyor');
 });

@@ -48,6 +48,7 @@ class AdminApp {
       exams: { title: 'MEB & ÖSYM Resmî Sınav Takvimi', sub: 'LGS, YKS, MEB Ortak Sınavlar ve Kurumsal Sınav Takvimi' },
       manifest: { title: 'Versiyon Manifesti & Sistem Duyuruları', sub: 'Mobil Uygulama Senkronizasyonu & Bakım Modu' },
       yoneticiler: { title: 'Okul Yöneticileri', sub: 'Yöneticilik başvurularına karar' },
+      okullar: { title: 'Okullar ve Kişiler', sub: 'Kayıtlı öğretmenler, yöneticiler ve yapılan işlemler' },
     };
 
     if (titles[tabId]) {

@@ -187,6 +187,27 @@ window.SinifCepteAdminAuth = {
     return sonuc.data;
   },
 
+  /** Okul görünümü: kayıtlı öğretmenler, yöneticilik, geçmiş. */
+  async schoolOverview(okul) {
+    const cagir = httpsCallable(functions, 'schoolOverview');
+    const sonuc = await cagir({ okul });
+    return sonuc.data;
+  },
+
+  /** E-postayla kişi: hesap, yetkiler, okullar. */
+  async findPerson(eposta) {
+    const cagir = httpsCallable(functions, 'findPerson');
+    const sonuc = await cagir({ eposta });
+    return sonuc.data;
+  },
+
+  /** Öğretmeni okulun dizininden çıkarır (yalnızca süper yönetici). */
+  async removeFromSchoolDirectory(okulId, uid, gerekce) {
+    const cagir = httpsCallable(functions, 'removeFromSchoolDirectory');
+    const sonuc = await cagir({ okulId, uid, gerekce });
+    return sonuc.data;
+  },
+
   /**
    * ÖSYM takvimini çeker ve mevcut veriyle karşılaştırır.
    *
