@@ -20,6 +20,7 @@ import '../../parent_portal/data/services/student_lifecycle_coordinator.dart';
 import '../../parent_portal/data/services/student_lifecycle_policy.dart';
 import '../../../core/utils/search_debouncer.dart';
 import '../../../core/utils/turkish_text.dart';
+import '../../student_photos/presentation/widgets/ogrenci_foto_kucuk.dart';
 
 /// Sınıf İçi Öğrenci Listesi ve Yönetim Ekranı (StudentListScreen)
 class StudentListScreen extends ConsumerStatefulWidget {
@@ -492,8 +493,12 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                                       ),
                                       const SizedBox(width: 8),
                                     ],
-                                    // Cinsiyet Profil Avatarı
-                                    Container(
+                                    // Profil: e-Okul fotoğrafı varsa o, yoksa cinsiyet simgesi.
+                                    OgrenciAvatari(
+                                      ogrenciId: student.id!,
+                                      sinifId: widget.classModel.id!,
+                                      boyut: 38,
+                                      yedek: Container(
                                       width: 38,
                                       height: 38,
                                       decoration: BoxDecoration(
@@ -519,6 +524,7 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                                           : student.gender.toLowerCase().contains('kız') ? Colors.pinkAccent : Colors.blueAccent,
                                         size: 20,
                                       ),
+                                    ),
                                     ),
                                 const SizedBox(width: 12),
 

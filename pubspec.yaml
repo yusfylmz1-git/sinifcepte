@@ -65,6 +65,11 @@ dependencies:
   # `pdf` paketi uzerinden zaten projedeydi (dolayli, 4.3.0); dogrudan
   # kullanildigi icin ayni surumle acikca yaziliyor.
   image: ^4.3.0
+  # Galeri ve kamera. Telefonun KENDI cozucusuyle 2000 piksele kucultup
+  # verir (maxWidth/maxHeight): 50 MP kamera fotografini saf Dart ile
+  # acmak telefonda 10-20 sn ve yuzlerce MB bellek demekti. HEIC de
+  # JPEG'e cevrilir.
+  image_picker: ^1.2.3
   # Tahta yapilandirmasinin imzalanmasi (Ed25519, RFC 8032).
   #
   # Idarenin telefonu `okul_config.json`'i imzalar, tahtada yalnizca

@@ -15,6 +15,28 @@ class FotoKayitHatasi implements Exception {
   String toString() => mesaj;
 }
 
+/// Fotoğraf merkezindeki sınıf kartı: "28/32 hazır".
+class SinifFotoOzeti {
+  const SinifFotoOzeti({
+    required this.toplam,
+    required this.hazir,
+    required this.inceleme,
+    required this.dosyaYok,
+  });
+  final int toplam;
+  final int hazir;
+  final int inceleme;
+  final int dosyaYok;
+
+  /// Fotoğrafı hiç olmayan öğrenci.
+  int get eksik => toplam - hazir - inceleme - dosyaYok;
+
+  /// e-Okul'a yüklenebilir (onaylı) fotoğraf sayısı.
+  int get kullanilabilir => hazir + inceleme;
+
+  static const bos = SinifFotoOzeti(toplam: 0, hazir: 0, inceleme: 0, dosyaYok: 0);
+}
+
 class UzlastirmaSonucu {
   const UzlastirmaSonucu({
     required this.eksikIsaretlenen,
@@ -223,6 +245,119 @@ class OgrenciFotoDeposu {
     if (!await d.exists()) return false;
     final bayt = await d.readAsBytes();
     return bayt.length == f.byteSize && FotoDepolama.ozet(bayt) == f.checksum;
+  }
+
+  /// Sınıf başına sayım, TEK sorgu. Öğrencisi olmayan sınıf haritada
+  /// yer almaz (çağıran [SinifFotoOzeti.bos] kullanır).
+  Future<Map<int, SinifFotoOzeti>> sinifOzetleri() async {
+    final db = await _veritabani();
+    final r = await db.rawQuery(
+      'SELECT s.class_id AS sinif, COUNT(*) AS toplam, '
+      "SUM(CASE WHEN p.status = 'hazir' THEN 1 ELSE 0 END) AS hazir, "
+      "SUM(CASE WHEN p.status = 'inceleme' THEN 1 ELSE 0 END) AS inceleme, "
+      "SUM(CASE WHEN p.status = 'dosya_yok' THEN 1 ELSE 0 END) AS dosya_yok "
+      'FROM students s '
+      'LEFT JOIN student_photos p ON p.student_id = s.id AND p.is_current = 1 '
+      'GROUP BY s.class_id',
+    );
+    return {
+      for (final m in r)
+        m['sinif']! as int: SinifFotoOzeti(
+          toplam: m['toplam']! as int,
+          hazir: (m['hazir'] as int?) ?? 0,
+          inceleme: (m['inceleme'] as int?) ?? 0,
+          dosyaYok: (m['dosya_yok'] as int?) ?? 0,
+        ),
+    };
+  }
+
+  /// Yanlış öğrenciye bağlanmış fotoğrafı doğru öğrenciye aktarır.
+  ///
+  /// Plan §4.10: işlem "düzenleme" değil YENİDEN EŞLEŞTİRME; ekran eski
+  /// ve yeni kimliği birlikte gösterip ayrıca onay alır ([kimlikOnaylandi]).
+  /// Hedefin mevcut fotoğrafı varsa değiştirilir (temizlik kuyruğuna).
+  ///
+  /// Dosya hedef öğrencinin klasörüne KOPYALANIR (yolda eski öğrencinin
+  /// kimliği kalmasın); kopya doğrulanmadan kayda dokunulmaz, işlem
+  /// düşerse kaynak fotoğraf olduğu gibi kalır.
+  Future<OgrenciFoto> yenidenEsle({
+    required int kaynakOgrenciId,
+    required int hedefOgrenciId,
+    required DateTime kimlikOnaylandi,
+  }) async {
+    if (kaynakOgrenciId == hedefOgrenciId) {
+      throw FotoKayitHatasi('Fotoğraf zaten bu öğrenciye ait.');
+    }
+    final kaynak = await guncel(kaynakOgrenciId);
+    if (kaynak == null || !kaynak.hazirMi) {
+      throw FotoKayitHatasi('Aktarılacak fotoğraf bulunamadı.');
+    }
+    final db = await _veritabani();
+    final hesap = await _hesap(db);
+    final bayt = await depolama.dosya(kaynak.standardPath).readAsBytes();
+    if (FotoDepolama.ozet(bayt) != kaynak.checksum) {
+      throw FotoKayitHatasi('Fotoğraf dosyası bozuk; aktarılamaz. Yeniden çekin.');
+    }
+    final yeniYol = FotoDepolama.standartYol(hesap, hedefOgrenciId, kaynak.id);
+    await depolama.atomikYaz(yeniYol, bayt);
+    final simdi = _zaman(_saat());
+
+    try {
+      await db.transaction((tx) async {
+        final hedef = await tx.query(
+          'students',
+          columns: ['school_number', 'first_name', 'last_name'],
+          where: 'id = ?',
+          whereArgs: [hedefOgrenciId],
+        );
+        if (hedef.isEmpty) {
+          throw FotoKayitHatasi('Hedef öğrenci bulunamadı; silinmiş olabilir.');
+        }
+        final halaAyni = await tx.query('student_photos',
+            columns: ['id'], where: 'id = ? AND student_id = ? AND is_current = 1',
+            whereArgs: [kaynak.id, kaynakOgrenciId]);
+        if (halaAyni.isEmpty) {
+          throw FotoKayitHatasi('Fotoğraf bu arada değişti; yeniden deneyin.');
+        }
+        final sonRevizyon = Sqflite.firstIntValue(await tx.rawQuery(
+              'SELECT MAX(revision) FROM student_photos WHERE student_id = ?',
+              [hedefOgrenciId],
+            )) ??
+            0;
+        await tx.delete('student_photos', where: 'student_id = ?', whereArgs: [hedefOgrenciId]);
+        final h = hedef.first;
+        await tx.update(
+          'student_photos',
+          {
+            'student_id': hedefOgrenciId,
+            'revision': sonRevizyon + 1,
+            'standard_relative_path': yeniYol,
+            'captured_school_number': h['school_number'],
+            'captured_full_name': '${h['first_name']} ${h['last_name']}',
+            'identity_confirmed_at': _zaman(kimlikOnaylandi),
+            'updated_at': simdi,
+          },
+          where: 'id = ?',
+          whereArgs: [kaynak.id],
+        );
+        // Güncelleme tetikleyiciyi çalıştırmaz; eski yol elle kuyruğa.
+        await tx.insert('photo_cleanup_queue', {
+          'relative_path': kaynak.standardPath,
+          'reason': 'yeniden_eslendi',
+          'created_at': simdi,
+        });
+      });
+    } catch (_) {
+      try {
+        await depolama.sil(yeniYol);
+      } catch (e) {
+        debugPrint('Foto aktarma geri alma silmesi: $e');
+      }
+      rethrow;
+    }
+
+    await _sessizTemizle();
+    return (await guncel(hedefOgrenciId))!;
   }
 
   /// Öğrencinin fotoğrafını siler. Dosya temizlik kuyruğundan silinir.

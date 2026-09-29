@@ -6,6 +6,7 @@ import '../../data/models/classroom_participation_model.dart';
 import '../../providers/classroom_participation_provider.dart';
 import 'quick_student_eval_dialog.dart';
 import '../../../../core/utils/turkish_text.dart';
+import '../../../student_photos/presentation/widgets/ogrenci_foto_kucuk.dart';
 
 /// SınıfCepte - Tek Sayfada Sıralı & Cinsiyet Temalı Mini Öğrenci Kartları Izgarası (UI-UX-MAX)
 class CompactStudentParticipationGrid extends ConsumerWidget {
@@ -222,8 +223,14 @@ class CompactStudentParticipationGrid extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Küçük Profil Avatarı
-                  Container(
+                  // Küçük Profil Avatarı: e-Okul fotoğrafı varsa o (aynı
+                  // boyutta; numara ve ad küçülmez), yoksa simge. Sınıfın
+                  // fotoğrafları tek sorguyla gelir, kart başına sorgu yok.
+                  OgrenciAvatari(
+                    ogrenciId: student.studentId,
+                    sinifId: session.classId,
+                    boyut: 22,
+                    yedek: Container(
                     width: 22,
                     height: 22,
                     decoration: BoxDecoration(
@@ -243,6 +250,7 @@ class CompactStudentParticipationGrid extends ConsumerWidget {
                         style: const TextStyle(fontSize: 11),
                       ),
                     ),
+                  ),
                   ),
                   const SizedBox(width: 3),
                   // Okul Numarası

@@ -148,6 +148,135 @@ Uint8List standartFotoUret(
   return jpeg;
 }
 
+// ---------------------------------------------------------------------
+// Çalışma görüntüsü: seçilen fotoğrafın kırpma ekranında kullanılan,
+// yönü düzeltilmiş ve küçültülmüş kopyası.
+// ---------------------------------------------------------------------
+
+/// Kırpma ekranının üzerinde çalıştığı görüntünün uzun kenarı.
+///
+/// Çıktı 133×171; 2000 piksel, yüzü 10 kat yakınlaştırsa bile çıktıdan
+/// büyük kalır. Tam boy 50 MP fotoğrafı bellekte tutmak (≈200 MB) düşük
+/// donanımlı telefonda uygulamayı kapatabilirdi.
+const int calismaUzunKenar = 2000;
+
+/// Açılmadan reddedilen sınırlar: bellek taşmasına karşı.
+const int kaynakEnFazlaBayt = 40 * 1024 * 1024;
+const int kaynakEnFazlaPiksel = 60 * 1000 * 1000;
+
+/// Kırpılan alan bundan küçükse fotoğraf büyütülerek üretilir ve bulanık
+/// olur; kayıt öğretmen onayı ister.
+const String kaliteDusukCozunurluk = 'dusuk_cozunurluk';
+
+class CalismaGoruntusu {
+  const CalismaGoruntusu(this.jpeg, this.genislik, this.yukseklik);
+
+  /// Yönü uygulanmış, EXIF'siz JPEG. Ekranda doğrudan gösterilir.
+  final Uint8List jpeg;
+  final int genislik;
+  final int yukseklik;
+}
+
+bool _heicMi(Uint8List b) {
+  if (b.length < 12) return false;
+  final tur = String.fromCharCodes(b.sublist(4, 12));
+  return tur == 'ftypheic' || tur == 'ftypheix' || tur == 'ftypmif1' || tur == 'ftyphevc';
+}
+
+/// Seçilen dosyayı kırpma ekranına hazırlar. AYRI İZOLATTA çağrılmalı
+/// (`Isolate.run`): çözme ve küçültme ana iş parçacığını dondurur.
+CalismaGoruntusu calismaGoruntusuHazirla(Uint8List kaynak) {
+  if (kaynak.length > kaynakEnFazlaBayt) {
+    throw FotoIslemeHatasi('Dosya çok büyük (en fazla 40 MB).');
+  }
+  if (_heicMi(kaynak)) {
+    throw FotoIslemeHatasi(
+      'Bu fotoğraf HEIC biçiminde ve açılamıyor. Galeriden seçerek '
+      'deneyin ya da fotoğrafı JPEG olarak kaydedin.',
+    );
+  }
+  // Önce yalnızca başlığı oku: çok büyük görüntüyü açmadan reddet.
+  final cozucu = img.findDecoderForData(kaynak);
+  if (cozucu == null) {
+    throw FotoIslemeHatasi('Dosya açılamadı ya da resim değil (JPEG/PNG seçin).');
+  }
+  try {
+    final bilgi = cozucu.startDecode(kaynak);
+    // Ölçü okunamıyorsa AÇMA (ek önlem): boyutunu bilmediğimiz görüntüyü
+    // tam çözmek bellek sınırını atlamak olurdu. Bilinen bir örneği yok;
+    // eksik başlıklı PNG'yi tam çözücü de zaten reddediyor.
+    if (bilgi == null) {
+      throw FotoIslemeHatasi('Dosya açılamadı ya da bozuk.');
+    }
+    if (bilgi.width * bilgi.height > kaynakEnFazlaPiksel) {
+      throw FotoIslemeHatasi('Fotoğraf çok büyük (${bilgi.width}×${bilgi.height}).');
+    }
+  } on FotoIslemeHatasi {
+    rethrow;
+  } catch (_) {
+    throw FotoIslemeHatasi('Dosya açılamadı ya da resim değil.');
+  }
+
+  var g = duzeltilmisGoruntu(kaynak);
+  final uzun = g.width > g.height ? g.width : g.height;
+  if (uzun > calismaUzunKenar) {
+    g = g.width >= g.height
+        ? img.copyResize(g, width: calismaUzunKenar, interpolation: img.Interpolation.average)
+        : img.copyResize(g, height: calismaUzunKenar, interpolation: img.Interpolation.average);
+  }
+  if (g.width < 40 || g.height < 50) {
+    throw FotoIslemeHatasi('Fotoğraf çok küçük (${g.width}×${g.height}).');
+  }
+  return _calismaKodla(g);
+}
+
+CalismaGoruntusu _calismaKodla(img.Image g) {
+  // Saydam PNG: JPEG'de siyaha dönmesin, beyaz zemin.
+  if (g.hasAlpha) {
+    final zemin = img.Image(width: g.width, height: g.height);
+    img.fill(zemin, color: img.ColorRgb8(255, 255, 255));
+    g = img.compositeImage(zemin, g);
+  }
+  g.exif = img.ExifData();
+  g.iccProfile = null;
+  g.textData = null;
+  return CalismaGoruntusu(Uint8List.fromList(img.encodeJpg(g, quality: 92)), g.width, g.height);
+}
+
+/// Küçük açı düzeltmesi. Tuval büyür, köşeler boş kalır; kırpma
+/// ekranı bu yeni ölçüyle çalışır. AYRI İZOLATTA.
+///
+/// Her zaman DÖNDÜRÜLMEMİŞ çalışma görüntüsüne uygulanır; açılar üst
+/// üste eklenmez (her adımda kalite kaybı birikmesin).
+CalismaGoruntusu calismaGoruntusunuDondur(CalismaGoruntusu c, double derece) {
+  if (derece.abs() < 0.01) return c;
+  // Saydamlık kanalı şart: yoksa döndürmenin açtığı köşeler siyah
+  // dolar ve beyaz zemin işe yaramaz.
+  final g = img.decodeJpg(c.jpeg)!.convert(numChannels: 4);
+  final d = img.copyRotate(g, angle: derece, interpolation: img.Interpolation.cubic);
+  // Boş köşeler beyaz (siyah köşe e-Okul'da çirkin durur).
+  final zemin = img.Image(width: d.width, height: d.height);
+  img.fill(zemin, color: img.ColorRgb8(255, 255, 255));
+  return _calismaKodla(img.compositeImage(zemin, d));
+}
+
+/// Kırpma ekranının sonucu: standart fotoğraf ve kalite uyarıları.
+class UretimSonucu {
+  const UretimSonucu(this.jpeg, this.kaliteUyarilari);
+  final Uint8List jpeg;
+  final List<String> kaliteUyarilari;
+}
+
+/// Çalışma görüntüsünden (döndürülmüşse döndürülmüş hâlinden) standart
+/// fotoğraf. AYRI İZOLATTA.
+UretimSonucu calismadanUret(CalismaGoruntusu c, KirpmaAlani alan) {
+  final g = img.decodeJpg(c.jpeg)!;
+  final jpeg = standartFotoUret(g, alan: alan);
+  return UretimSonucu(jpeg, [
+    if (alan.genislik < eokulGenislik || alan.yukseklik < eokulYukseklik) kaliteDusukCozunurluk,
+  ]);
+}
+
 /// Diskten ya da bellekten gelen standart fotoğrafı doğrular.
 ///
 /// Kayıt ve dışa aktarma bu kapıdan geçmeyen dosyayı kabul etmez.

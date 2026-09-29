@@ -14,6 +14,7 @@ import 'package:sinifcepte/data/repositories/class_repository.dart';
 import 'package:sinifcepte/data/repositories/student_repository.dart';
 import 'package:sinifcepte/features/student_photos/data/foto_depolama.dart';
 import 'package:sinifcepte/features/student_photos/data/ogrenci_foto_deposu.dart';
+import 'package:sinifcepte/features/student_photos/domain/foto_isleme.dart';
 import 'package:sinifcepte/features/student_photos/domain/ogrenci_foto.dart';
 
 /// e-Okul fotoğrafı — veri ve güvenli saklama (Faz 1).
@@ -124,6 +125,14 @@ void main() {
       // Güncel olmayan ikinci satır kabul edilir (indeks kısmi).
       kopya['is_current'] = 0;
       await d.insert('student_photos', kopya);
+    });
+
+    test('KRITIK: hesap değişince fotoğraf listeleri tazeleniyor (iki giriş yolu)', () {
+      // İkinci hesap birincinin fotoğraflarını görmesin (31 Ağustos
+      // hesap izolasyonu hatasının aynısı).
+      final s = File('lib/core/database/account_switch.dart').readAsStringSync();
+      expect('ref.invalidate(sinifFotolariProvider);'.allMatches(s).length, 2);
+      expect('ref.invalidate(sinifFotoOzetleriProvider);'.allMatches(s).length, 2);
     });
 
     test('şema fonksiyonu tekrar çağrılınca bozulmuyor', () async {
@@ -347,6 +356,97 @@ void main() {
       final idler = [for (var i = 100000; i < 101200; i++) i, ogrenciId];
       final r = await depo.guncelFotolar(idler);
       expect(r.keys, [ogrenciId]);
+    });
+  });
+
+  group('sınıf özeti', () {
+    test('KRITIK: sayım durumlara göre doğru, fotoğrafsız öğrenci "eksik"', () async {
+      final r = StudentRepository();
+      final b = await r.insertStudent(StudentModel(classId: sinifId, schoolNumber: 2, firstName: 'B', lastName: 'B'));
+      await r.insertStudent(StudentModel(classId: sinifId, schoolNumber: 3, firstName: 'C', lastName: 'C'));
+      final bosSinif = await ClassRepository().insertClass(const ClassModel(
+        name: '6-A',
+        subject: 'Türkçe',
+        academicYear: '2026-2027',
+      ));
+      await kaydet();
+      await depo.kaydet(
+        ogrenciId: b,
+        standartJpeg: jpeg(),
+        kaynak: FotoKaynagi.dosya,
+        kimlikOnaylandi: DateTime.now(),
+        kaliteUyarilari: [kaliteDusukCozunurluk],
+        elleOnay: true,
+      );
+      final o = (await depo.sinifOzetleri())[sinifId]!;
+      expect((o.toplam, o.hazir, o.inceleme, o.dosyaYok, o.eksik), (3, 1, 1, 0, 1));
+      expect(o.kullanilabilir, 2);
+      expect((await depo.sinifOzetleri())[bosSinif], isNull, reason: 'öğrencisiz sınıf');
+    });
+  });
+
+  group('başka öğrenciye aktarma', () {
+    late int hedef;
+    setUp(() async {
+      hedef = await StudentRepository().insertStudent(StudentModel(
+        classId: sinifId,
+        schoolNumber: 1250,
+        firstName: 'Ayşe',
+        lastName: 'KAYA',
+      ));
+    });
+
+    test('KRITIK: fotoğraf doğru öğrenciye geçiyor, kimlik kopyası hedefin', () async {
+      final f = await kaydet();
+      final t = await depo.yenidenEsle(
+        kaynakOgrenciId: ogrenciId,
+        hedefOgrenciId: hedef,
+        kimlikOnaylandi: DateTime.now(),
+      );
+      expect(t.id, f.id);
+      expect(t.studentId, hedef);
+      expect((t.capturedSchoolNumber, t.capturedFullName), (1250, 'Ayşe KAYA'));
+      expect(t.standardPath, contains('/$hedef/'), reason: 'yolda eski öğrencinin kimliği kalmasın');
+      expect(await depo.guncel(ogrenciId), isNull);
+      expect(await depo.butunlukTamam(t), isTrue);
+      expect((await diskteki()).length, 1, reason: 'eski yol temizlendi');
+    });
+
+    test('KRITIK: hedefin eski fotoğrafı değiştiriliyor ve dosyası temizleniyor', () async {
+      final hedefinEskisi = await kaydet(ogrenci: hedef, renk: 10);
+      await kaydet(renk: 200);
+      final t = await depo.yenidenEsle(
+        kaynakOgrenciId: ogrenciId,
+        hedefOgrenciId: hedef,
+        kimlikOnaylandi: DateTime.now(),
+      );
+      expect(t.revision, 2, reason: 'hedefin revizyonu sürer');
+      expect(await depolama.dosya(hedefinEskisi.standardPath).exists(), isFalse);
+      expect((await diskteki()).length, 1);
+      final d = await db();
+      expect((await d.query('student_photos')).length, 1);
+    });
+
+    test('KRITIK: hedef silinmişse kaynak fotoğraf yerinde, artık dosya yok', () async {
+      final f = await kaydet();
+      await StudentRepository().deleteStudent(hedef);
+      await expectLater(
+        depo.yenidenEsle(kaynakOgrenciId: ogrenciId, hedefOgrenciId: hedef, kimlikOnaylandi: DateTime.now()),
+        throwsA(isA<FotoKayitHatasi>()),
+      );
+      expect((await depo.guncel(ogrenciId))?.id, f.id);
+      expect(await depo.butunlukTamam(f), isTrue);
+      expect((await diskteki()).length, 1);
+    });
+
+    test('bozuk dosya aktarılmıyor', () async {
+      final f = await kaydet();
+      await depolama.dosya(f.standardPath).writeAsBytes([1, 2, 3]);
+      await expectLater(
+        depo.yenidenEsle(kaynakOgrenciId: ogrenciId, hedefOgrenciId: hedef, kimlikOnaylandi: DateTime.now()),
+        throwsA(isA<FotoKayitHatasi>()),
+      );
+      expect(await depo.guncel(hedef), isNull);
     });
   });
 

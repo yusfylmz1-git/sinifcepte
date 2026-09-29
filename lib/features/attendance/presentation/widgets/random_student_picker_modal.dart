@@ -6,6 +6,8 @@ import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/models/classroom_participation_model.dart';
 import '../../providers/classroom_participation_provider.dart';
+import '../../../student_photos/presentation/widgets/ogrenci_foto_kucuk.dart';
+import '../../../student_photos/providers/ogrenci_foto_providers.dart';
 
 /// SınıfCepte - "Sırada Kim Var?" Seçici
 ///
@@ -108,6 +110,11 @@ class _RandomStudentPickerModalState extends ConsumerState<RandomStudentPickerMo
 
     final isFemale = currentStudent.isFemale;
     final Color avatarBg = isFemale ? const Color(0xFFEC4899) : const Color(0xFF3B82F6);
+    final fotoVar = ref
+            .watch(sinifFotolariProvider(currentSession.classId))
+            .valueOrNull?[currentStudent.studentId]
+            ?.hazirMi ??
+        false;
     final Color cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
 
     return Dialog(
@@ -161,17 +168,50 @@ class _RandomStudentPickerModalState extends ConsumerState<RandomStudentPickerMo
                   CircleAvatar(
                     radius: 38,
                     backgroundColor: avatarBg.withValues(alpha: 0.2),
-                    child: CircleAvatar(
-                      radius: 30,
-                      backgroundColor: avatarBg,
-                      child: Text(
-                        '${currentStudent.studentNumber}',
-                        style: AppFonts.outfit(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
+                    // e-Okul fotoğrafı varsa yüz, numara köşede rozet;
+                    // yoksa eskisi gibi numara.
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        OgrenciAvatari(
+                          ogrenciId: currentStudent.studentId,
+                          sinifId: currentSession.classId,
+                          boyut: 60,
+                          yedek: CircleAvatar(
+                            radius: 30,
+                            backgroundColor: avatarBg,
+                            child: Text(
+                              '${currentStudent.studentNumber}',
+                              style: AppFonts.outfit(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                        if (fotoVar)
+                          Positioned(
+                            right: -8,
+                            bottom: -4,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: avatarBg,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.white, width: 1.5),
+                              ),
+                              child: Text(
+                                '${currentStudent.studentNumber}',
+                                style: AppFonts.outfit(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 10),

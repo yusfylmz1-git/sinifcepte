@@ -7,6 +7,7 @@ import '../../features/attendance/presentation/views/classroom_participation_vie
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/classes/screens/my_class_hub_screen.dart';
 import '../../features/navigation/providers/navigation_provider.dart';
+import '../../features/student_photos/presentation/eokul_foto_merkezi_ekrani.dart';
 import 'glass_card.dart';
 import '../../core/backup/backup_service.dart';
 
@@ -204,6 +205,22 @@ class AppDrawer extends ConsumerWidget {
                     ),
                     const SizedBox(height: 6),
 
+                    // Idari islemler: okul idaresine teslim edilen isler.
+                    _buildSectionHeader(context, 'İdari işlemler'),
+                    _buildMenuItem(
+                      context,
+                      icon: Icons.badge_outlined,
+                      title: 'e-Okul foto',
+                      subtitle: 'Öğrenci fotoğrafı, tam 133×171 piksel',
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const EokulFotoMerkeziEkrani()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 14),
+
                     _buildMenuItem(
                       context,
                       icon: Icons.sd_storage_rounded,
@@ -271,6 +288,23 @@ class AppDrawer extends ConsumerWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(BuildContext context, String title) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(6, 8, 6, 6),
+      child: Text(
+        // toUpperCase() YOK: Dart 'i'yi 'I' yapar ("IDARI IŞLEMLER").
+        title,
+        style: TextStyle(
+          color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.3,
         ),
       ),
     );

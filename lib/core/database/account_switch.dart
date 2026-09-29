@@ -9,6 +9,7 @@ import '../../features/exam_operations/providers/exam_tracking_provider.dart';
 import '../../features/exam_operations/providers/project_tracking_provider.dart';
 import '../../features/exam_operations/providers/quiz_tracking_provider.dart';
 import '../../features/schedule/providers/schedule_provider.dart';
+import '../../features/student_photos/providers/ogrenci_foto_providers.dart';
 
 /// Hesap değişiminde yerel veri sağlayıcılarını tazeler.
 ///
@@ -71,6 +72,10 @@ class AccountSwitch {
     ref.invalidate(currentParticipationSessionProvider);
     ref.invalidate(activeTimetableLessonProvider);
 
+    // e-Okul fotoğrafları (hesap başına ayrı klasör)
+    ref.invalidate(sinifFotolariProvider);
+    ref.invalidate(sinifFotoOzetleriProvider);
+
     // Kazanımlar hesaba bağlı değil (APK ile gelen ortak veri);
     // tazelenmesi gerekmiyor.
   }
@@ -88,5 +93,7 @@ class AccountSwitch {
     ref.invalidate(projectTrackingProvider);
     ref.invalidate(currentParticipationSessionProvider);
     ref.invalidate(activeTimetableLessonProvider);
+    ref.invalidate(sinifFotolariProvider);
+    ref.invalidate(sinifFotoOzetleriProvider);
   }
 }
