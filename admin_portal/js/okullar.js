@@ -86,7 +86,7 @@
         ? o.kayitlar.map((k) => `
             <tr>
               <td style="white-space: nowrap; font-size: 12px;">${m(tarihYaz(k.zaman))}</td>
-              <td>${m(KAYIT_ADI[k.tur] || k.tur)}${k.karar ? ` — ${m(KARAR_ADI[k.karar] || k.karar)}` : ''}</td>
+              <td>${m(KAYIT_ADI[k.tur] || k.tur)}${k.karar ? ` — ${m(KARAR_ADI[k.karar] || k.karar)}` : ''}${k.talep ? ` (talep ${m(k.talep)})` : ''}</td>
               <td style="font-size: 12px;">${m(k.gerekce)}</td>
               <td style="font-size: 12px;">${m(k.eposta)}</td>
             </tr>`).join('')
@@ -103,6 +103,7 @@
             <tbody>${satirlar}</tbody>
           </table>
         </div>
+        ${this.destekKarti(o.okulId)}
         <h4 style="margin: 20px 0 8px;">Bu okulda yapılan işlemler</h4>
         <div class="table-responsive">
           <table class="data-table">
@@ -110,6 +111,82 @@
             <tbody>${kayitlar}</tbody>
           </table>
         </div>`;
+    },
+
+    /**
+     * Ana Program parolası unutulduysa ve anahtar yedeği yoksa.
+     *
+     * Kod imzalı; yalnızca bu kurum kodu ve okulun bilgisayarında
+     * üretilen talep numarası için geçerli. Yalnızca MEB kurum kodlu
+     * okullarda: Ana Program ilk kurulumda 6 haneli kurum kodu istiyor.
+     */
+    destekKarti(okulId) {
+      if (!superMi() || !/^meb_\d{6}$/.test(okulId)) return '';
+      const kurum = this.kacisliMetin(okulId.slice(4));
+      return `
+        <div class="panel-card" style="margin-top: 20px; box-shadow: none; border: 1px solid var(--border-color);">
+          <h4 style="margin: 0 0 6px;">Ana Program parolası — destek kodu</h4>
+          <p style="margin: 0 0 12px; font-size: 13px; line-height: 1.55; color: var(--text-muted);">
+            Okul Ana Program parolasını unuttuysa ve anahtar yedeği yoksa.
+            Okuldan, Ana Program'da <strong>Parolamı unuttum → Yedeğim yok</strong>
+            penceresindeki talep numarasını isteyin. Kodu yalnızca okulun resmî
+            e-postasına gönderin: <strong>${kurum}@meb.k12.tr</strong>.
+          </p>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <input type="text" id="destek-talep" class="form-control" placeholder="Talep no (ör. K7MQ-2XPA)" style="max-width: 200px;">
+            <input type="text" id="destek-gerekce" class="form-control" placeholder="Kim istedi, nasıl teyit edildi" style="flex: 1; min-width: 220px;">
+            <button class="btn btn-primary" data-eylem="destekKoduUret">Kod üret</button>
+          </div>
+          <div id="destek-sonuc" style="margin-top: 12px;"></div>
+        </div>`;
+    },
+
+    async destekKoduUret() {
+      const o = this._okul;
+      if (!o) return;
+      const kurum = o.okulId.slice(4);
+      const talep = document.getElementById('destek-talep')?.value || '';
+      const gerekce = document.getElementById('destek-gerekce')?.value || '';
+      const kutu = document.getElementById('destek-sonuc');
+      if (kutu) kutu.textContent = 'Kod üretiliyor…';
+      try {
+        const s = await window.SinifCepteAdminAuth.issueSupportCode(kurum, talep, gerekce);
+        const talepBicimli = talep.trim().toUpperCase();
+        this._destekMetni = [
+          'Konu: SınıfCepte Ana Program destek kodu',
+          '',
+          'Merhaba,',
+          '',
+          `${kurum} kurum kodlu okulunuzun Ana Program parolası için destek kodunuz ` +
+            'aşağıdadır. Ana Program\'da "Parolamı unuttum → Yedeğim yok" penceresine ' +
+            `yapıştırıp yeni parolanızı belirleyin. Kod yalnızca ${talepBicimli} numaralı ` +
+            'talep için, talep oluşturulduktan sonra 24 saat geçerlidir.',
+          '',
+          s.kod,
+          '',
+          'Bu kodu siz istemediyseniz lütfen bize bildirin.',
+        ].join('\n');
+        if (kutu) {
+          kutu.innerHTML = `
+            <p style="margin: 0 0 6px; font-size: 13px;">
+              Alıcı: <strong>${this.kacisliMetin(s.eposta)}</strong>
+            </p>
+            <pre style="white-space: pre-wrap; word-break: break-all; font-size: 12px; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">${this.kacisliMetin(this._destekMetni)}</pre>
+            <button class="btn btn-secondary" data-eylem="destekMetniKopyala">E-posta metnini kopyala</button>`;
+        }
+      } catch (e) {
+        if (kutu) kutu.textContent = this.yayinHatasi(e);
+      }
+    },
+
+    async destekMetniKopyala() {
+      if (!this._destekMetni) return;
+      try {
+        await navigator.clipboard.writeText(this._destekMetni);
+        this.showToast('E-posta metni kopyalandı.', 'success');
+      } catch {
+        this.showToast('Kopyalanamadı; metni seçip elle kopyalayın.', 'error');
+      }
     },
 
     async dizindenCikar(uid) {

@@ -201,6 +201,16 @@ window.SinifCepteAdminAuth = {
     return sonuc.data;
   },
 
+  /**
+   * Ana Program parolası için destek kodu (yalnızca süper yönetici).
+   * İmza sunucuda; gizli anahtar tarayıcıya inmez.
+   */
+  async issueSupportCode(kurumKodu, talep, gerekce) {
+    const cagir = httpsCallable(functions, 'issueSupportCode');
+    const sonuc = await cagir({ kurumKodu, talep, gerekce });
+    return sonuc.data;
+  },
+
   /** Öğretmeni okulun dizininden çıkarır (yalnızca süper yönetici). */
   async removeFromSchoolDirectory(okulId, uid, gerekce) {
     const cagir = httpsCallable(functions, 'removeFromSchoolDirectory');

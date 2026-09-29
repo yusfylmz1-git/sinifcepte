@@ -15,6 +15,7 @@
  * `europe-west1` — Firestore `eur3` ile aynı kıta.
  */
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { defineSecret } from 'firebase-functions/params';
 import { initializeApp } from 'firebase-admin/app';
 import { getRemoteConfig } from 'firebase-admin/remote-config';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
@@ -48,6 +49,7 @@ import {
   okulKimligiCoz,
   yoneticilikEkle,
 } from './okullar.js';
+import { imzala, istekDogrula, kodBicimle, mesaj as destekMesaji } from './destek.js';
 
 initializeApp();
 
@@ -656,5 +658,63 @@ export const removeFromSchoolDirectory = onCall(
       console.error('Denetim kaydı yazılamadı:', e);
     }
     return { ok: true };
+  }
+);
+
+/**
+ * Destek kodunun gizli imza anahtarı (Ed25519 tohumu, base64).
+ *
+ * Firebase gizli değer deposunda; kodda ve depoda YOK. Açık yarısı Ana
+ * Program'a gömülü. Yayından önce bir kez:
+ *   firebase functions:secrets:set DESTEK_IMZA_TOHUMU --data-file <dosya>
+ */
+const DESTEK_IMZA_TOHUMU = defineSecret('DESTEK_IMZA_TOHUMU');
+
+/**
+ * Ana Program parolası için destek kodu üretir (yedek yoksa).
+ *
+ * Girdi : { kurumKodu: '775214', talep: 'K7MQ-2XPA', gerekce }
+ * Çıktı : { ok, kod: 'EOYE3-ECDL2-…', eposta: '775214@meb.k12.tr' }
+ *
+ * Yalnızca süper yönetici. Kod yalnızca o okul ve o talep için geçerli;
+ * talebi okulun bilgisayarı üretiyor ve 24 saatlik, tek kullanımlık.
+ * Her kod denetim kaydına ve okulun geçmişine düşüyor.
+ *
+ * Kod okulun resmî e-postasına gönderilmeli: telefonda "müdür
+ * yardımcısıyım" diyen herkese değil.
+ */
+export const issueSupportCode = onCall(
+  { region: BOLGE, maxInstances: 3, cors: true, secrets: [DESTEK_IMZA_TOHUMU] },
+  async (request) => {
+    const yetki = yetkiKontrol(request.auth);
+    if (!yetki.ok) {
+      throw new HttpsError(yetki.kod, yetki.mesaj);
+    }
+    const i = istekDogrula(request.data);
+    if (!i.ok) {
+      throw new HttpsError(i.kod, i.mesaj);
+    }
+
+    let kod;
+    try {
+      kod = kodBicimle(imzala(DESTEK_IMZA_TOHUMU.value(), destekMesaji(i.kurumKodu, i.talep)));
+    } catch (e) {
+      // Tohum eksik ya da bozuk: yayın adımı unutulmuş.
+      console.error('Destek kodu imzalanamadı:', e);
+      throw new HttpsError('failed-precondition', 'Destek imza anahtarı ayarlı değil.');
+    }
+
+    // Kod ancak kayıt yazıldıktan SONRA dönüyor: izi olmayan kod olmasın.
+    await getFirestore().collection('audit_logs').add({
+      tur: 'destek_kodu',
+      uid: request.auth.uid,
+      email: request.auth.token.email ?? '',
+      okulId: `meb_${i.kurumKodu}`,
+      talep: i.talep,
+      gerekce: i.gerekce,
+      olusturmaZamani: FieldValue.serverTimestamp(),
+    });
+
+    return { ok: true, kod, eposta: `${i.kurumKodu}@meb.k12.tr` };
   }
 );

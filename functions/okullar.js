@@ -81,6 +81,7 @@ export function kayitOzetleri(belgeler) {
       karar: String(d?.karar ?? ''),
       gerekce: String(d?.gerekce ?? ''),
       hedefUid: String(d?.hedefUid ?? ''),
+      talep: String(d?.talep ?? ''),
       zaman: iso(d?.olusturmaZamani),
     }))
     .sort((a, b) => b.zaman.localeCompare(a.zaman));
