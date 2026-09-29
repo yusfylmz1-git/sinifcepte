@@ -17,21 +17,6 @@ function scKacis(x) {
 }
 
 /**
- * `onclick="fn('...')"` içine gömülecek değer.
- *
- * Öznitelik kaçışı tek başına yetmiyor: değer önce HTML olarak
- * çözülüp SONRA JS olarak yorumlanıyor, yani iki katman var.
- */
-function scJsKacis(x) {
-  return scKacis(
-    String(x ?? '')
-      .replace(/\\/g, '\\\\')
-      .replace(/'/g, "\\'")
-      .replace(/\r?\n/g, ''),
-  );
-}
-
-/**
  * Bağlantı adresi güvenli mi? Değilse boş döner.
  *
  * `javascript:` ve `data:` protokolleri `href` içinde kod çalıştırır.
@@ -203,8 +188,8 @@ class CalendarManager {
           <td>${scKacis(item.endDate)}</td>
           <td><span class="badge" style="background: rgba(79,70,229,0.1); color: var(--primary)">${diffDays} Gün</span></td>
           <td style="text-align: right;">
-            <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 11px;" onclick="window.adminApp.editCalendarEvent('${scJsKacis(item.id)}')">Düzenle</button>
-            <button class="btn btn-danger" style="padding: 5px 10px; font-size: 11px;" onclick="window.adminApp.deleteCalendarEvent('${scJsKacis(item.id)}')">Sil</button>
+            <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 11px;" data-eylem="editCalendarEvent" data-arg="${scKacis(item.id)}">Düzenle</button>
+            <button class="btn btn-danger" style="padding: 5px 10px; font-size: 11px;" data-eylem="deleteCalendarEvent" data-arg="${scKacis(item.id)}">Sil</button>
           </td>
         </tr>
       `;

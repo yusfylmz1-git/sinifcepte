@@ -39,3 +39,40 @@ firebase deploy --only hosting
 4. **⚙️ Versiyon Manifest & Bakım Modu:**
    - Takvim veya kazanım güncellediğinizde `+1 Artır (Yayınla)` butonuna basarak mobil cihazların otomatik senkronizasyon yapmasını sağlama.
    - Bakım modunu açıp kullanıcılara nazik bir bakım mesajı gösterme.
+
+---
+
+## Güvenlik başlığı (CSP) — satır içi betik YOK
+
+`firebase.json` panele `Content-Security-Policy` başlığı koyuyor:
+`script-src 'self'` satır içi betiği ve `onclick="..."` gibi işleyicileri
+engelliyor. Enjekte edilen bir betiğin süper admin oturumunda
+çalışmaması bu kurala dayanıyor.
+
+**Düğme eklerken `onclick` YAZMAYIN.** `data-eylem` kullanın
+(`js/eylemler.js`):
+
+```html
+<button data-eylem="openAddExamModal">Sınav ekle</button>
+<button data-eylem="closeModal" data-arg="modal-exam">Kapat</button>
+<select data-degisim="handleCalendarYearChange" data-deger>…</select>
+```
+
+`functions/test/csp.test.js` satır içi işleyiciyi ve var olmayan bir
+yöntemi gösteren `data-eylem`'i yakalıyor.
+
+### Yayın planı (karar, 28 Eylül 2026)
+
+1. Başlık şimdi **raporlayan kipte** (`Content-Security-Policy-Report-Only`):
+   hiçbir şeyi engellemiyor, yalnızca tarayıcı konsoluna yazıyor.
+2. Bir hafta paneli kullanırken konsolu (F12 → Console) açık tutun.
+   "Content Security Policy" geçen bir satır görürseniz not alın.
+3. Hiç görünmezse `firebase.json`'daki anahtarı
+   `Content-Security-Policy` yapın ve `csp.test.js`'teki "RAPORLAYAN
+   kipte" testini buna göre değiştirin.
+
+Doğrulama (29 Eylül 2026): panel yerelde başlık **zorunlu** hâlde
+Chrome'da açıldı. 180 düğmenin hepsi doğru eylemi çağırdı, ihlal çıkmadı.
+Eski (onclick'li) panelde aynı deneme 174 ihlal verdi. Google ile giriş
+açılır penceresi bu denemede sınanamadı (hesap yok). Raporlayan kipteki
+hafta asıl bunu gösterecek.

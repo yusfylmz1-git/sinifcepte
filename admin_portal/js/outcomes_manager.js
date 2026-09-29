@@ -341,7 +341,7 @@ class OutcomesManager {
         <span style="font-size: 12px; color: var(--text-muted);">
           (${schoolType === 'ALL' ? 'Tüm Kademeler' : schoolType} / ${gradeLevel === 'ALL' ? 'Tüm Sınıflar' : gradeLevel + '. Sınıf'} / ${subjectCode} / Kategori: ${category})
         </span><br><br>
-        <button class="btn btn-primary" style="background: linear-gradient(135deg, #10b981, #059669); border:none; padding: 8px 16px; font-size: 12px;" onclick="window.adminApp.syncFromOfficialMaarif()">
+        <button class="btn btn-primary" style="background: linear-gradient(135deg, #10b981, #059669); border:none; padding: 8px 16px; font-size: 12px;" data-eylem="syncFromOfficialMaarif">
           🌐 Resmî Maarif Müfredatını Yükle / Senkronize Et
         </button>
       </td></tr>`;
@@ -428,7 +428,7 @@ class OutcomesManager {
           </td>
           <td>${statusBadge}</td>
           <td style="text-align: right; white-space: nowrap;">
-            <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="window.adminApp.editOutcome('${e(item.id)}')">
+            <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;" data-eylem="editOutcome" data-arg="${e(item.id)}">
               ✏️ Düzenle
             </button>
           </td>

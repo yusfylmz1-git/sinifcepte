@@ -17,21 +17,6 @@ function scKacis(x) {
 }
 
 /**
- * `onclick="fn('...')"` içine gömülecek değer.
- *
- * Öznitelik kaçışı tek başına yetmiyor: değer önce HTML olarak
- * çözülüp SONRA JS olarak yorumlanıyor, yani iki katman var.
- */
-function scJsKacis(x) {
-  return scKacis(
-    String(x ?? '')
-      .replace(/\\/g, '\\\\')
-      .replace(/'/g, "\\'")
-      .replace(/\r?\n/g, ''),
-  );
-}
-
-/**
  * Bağlantı adresi güvenli mi? Değilse boş döner.
  *
  * `javascript:` ve `data:` protokolleri `href` içinde kod çalıştırır.
@@ -236,7 +221,7 @@ class ManifestManager {
           <td><span class="badge ${item.type === 'exam' ? 'badge-exam' : 'badge-special'}">${item.type === 'exam' ? '📝 Sınav' : '📢 Genel'}</span></td>
           <td>${scKacis(item.publishDate)}</td>
           <td style="text-align: right;">
-            <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="window.adminApp.deleteAnnouncement('${scJsKacis(item.id)}')">Sil</button>
+            <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" data-eylem="deleteAnnouncement" data-arg="${scKacis(item.id)}">Sil</button>
           </td>
         </tr>
       `;

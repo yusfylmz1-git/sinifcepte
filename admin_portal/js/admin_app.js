@@ -1177,10 +1177,10 @@ class AdminApp {
               ⏳ Son: ${deadlineFormatted}
             </td>
             <td style="text-align: right; white-space: nowrap;">
-              <button class="btn btn-sm btn-secondary" onclick="window.adminApp.editExam('${this.kacisliOznitelik(this.kacisliJsDizesi(exam.doc_id))}')" title="Düzenle">
+              <button class="btn btn-sm btn-secondary" data-eylem="editExam" data-arg="${this.kacisliOznitelik(exam.doc_id)}" title="Düzenle">
                 ✏️
               </button>
-              <button class="btn btn-sm btn-danger" onclick="window.adminApp.deleteExam('${this.kacisliOznitelik(this.kacisliJsDizesi(exam.doc_id))}')" title="Sil">
+              <button class="btn btn-sm btn-danger" data-eylem="deleteExam" data-arg="${this.kacisliOznitelik(exam.doc_id)}" title="Sil">
                 🗑️
               </button>
             </td>
@@ -1738,8 +1738,7 @@ class AdminApp {
    * tırnak kaçmazsa saldırgan özniteliği kapatıp yenisini açabilir
    * (`" onmouseover="...`).
    *
-   * Tek tırnak da kaçırılıyor çünkü bu panelde `onclick='...'` ve
-   * `href="..."` biçimleri birlikte kullanılıyor.
+   * Tek tırnak da kaçırılıyor: öznitelik tek tırnakla da açılabilir.
    */
   kacisliOznitelik(x) {
     return String(x ?? '')
@@ -1750,20 +1749,6 @@ class AdminApp {
       .replace(/>/g, '&gt;');
   }
 
-  /**
-   * JS dize literali içine güvenli gömme (`onclick="fn('...')"`).
-   *
-   * Öznitelik kaçışı tek başına yetmiyor: değer önce HTML olarak
-   * çözülüp SONRA JS olarak yorumlanıyor, yani iki katman var.
-   */
-  kacisliJsDizesi(x) {
-    return String(x ?? '')
-      .replace(/\\/g, '\\\\')
-      .replace(/'/g, "\\'")
-      .replace(/"/g, '\\"')
-      .replace(/</g, '\\x3C')
-      .replace(/\r?\n/g, '');
-  }
 
   /**
    * Başvuru bağlantısını güvenli biçimde üretir.
@@ -2059,8 +2044,9 @@ function initAdminApp() {
     window.adminApp = new AdminApp();
   } catch (error) {
     // Yapıcıdaki tek bir hata window.adminApp'i undefined bırakıyordu;
-    // paneldeki her düğme onclick="window.adminApp..." çağırdığı için
-    // arayüz tamamen tepkisiz kalıyor ve sebebi görünmüyordu.
+    // paneldeki her düğme window.adminApp üzerinden çalıştığı için
+    // (js/eylemler.js) arayüz tamamen tepkisiz kalıyor ve sebebi
+    // görünmüyordu.
     console.error('Admin paneli başlatılamadı:', error);
     const banner = document.createElement('div');
     banner.style.cssText =
