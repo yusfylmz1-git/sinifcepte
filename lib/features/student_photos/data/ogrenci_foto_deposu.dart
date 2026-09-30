@@ -396,6 +396,18 @@ class OgrenciFotoDeposu {
     return (await guncel(ogrenciId))!;
   }
 
+  /// Sınıfın bütün fotoğraflarını siler (yıl sonu temizliği; öğrenci
+  /// kayıtları kalır). Silinen fotoğraf sayısını döndürür.
+  Future<int> sinifFotolariniSil(int sinifId) async {
+    final db = await _veritabani();
+    final n = await db.rawDelete(
+      'DELETE FROM student_photos WHERE student_id IN (SELECT id FROM students WHERE class_id = ?)',
+      [sinifId],
+    );
+    await _sessizTemizle();
+    return n;
+  }
+
   /// Öğrencinin fotoğrafını siler. Dosya temizlik kuyruğundan silinir.
   Future<void> sil(int ogrenciId) async {
     final db = await _veritabani();

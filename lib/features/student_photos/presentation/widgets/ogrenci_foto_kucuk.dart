@@ -95,6 +95,7 @@ class OgrenciAvatari extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (!ref.watch(fotolariGosterProvider)) return yedek;
     final foto = ref.watch(sinifFotolariProvider(sinifId)).valueOrNull?[ogrenciId];
     if (foto == null) return yedek;
     return OgrenciFotoKucuk(foto: foto, genislik: boyut, yuvarlak: true, yedek: yedek);

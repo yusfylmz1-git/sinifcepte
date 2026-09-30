@@ -4,8 +4,11 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:sqflite/sqflite.dart';
 
+import '../../features/student_photos/data/foto_depolama.dart';
 import '../database/database_helper.dart';
+import 'tam_yedek.dart';
 
 /// Veritabanı yedekleme.
 ///
@@ -26,9 +29,11 @@ import '../database/database_helper.dart';
 /// Bağımsız denetimde (Grok, 31 Ağustos 2026) yakalandı ve doğrulandı.
 ///
 /// ## Ne yapıyor
-/// Aktif hesabın SQLite dosyasını kopyalayıp paylaşım penceresine
-/// veriyor. Öğretmen dosyayı e-postayla kendine gönderebilir, buluta
-/// atabilir ya da bilgisayarına aktarabilir.
+/// Aktif hesabın TAM yedeğini (veritabanı + e-Okul fotoğrafları, bkz.
+/// [TamYedek]) üretip paylaşım penceresine veriyor. Öğretmen dosyayı
+/// e-postayla kendine gönderebilir, buluta atabilir ya da bilgisayarına
+/// aktarabilir. Geri yükleme doğrulayıp kapsamı gösterdikten sonra
+/// uygulanır.
 ///
 /// Bulut yedeklemesi **bilinçli olarak yapılmıyor**: öğrenci notları,
 /// katılım ve devamsızlık cihazda kalıyor (KVKK kararı). Yedeği nereye
@@ -41,42 +46,28 @@ class BackupService {
   /// Yedek dosyasının uzantısı.
   static const String extension = 'sinifcepte';
 
-  /// Aktif hesabın veritabanını yedekler ve paylaşım penceresini açar.
+  /// Aktif hesabın TAM yedeğini (veritabanı + e-Okul fotoğrafları)
+  /// üretir; paylaşım penceresini çağıran açar.
   ///
   /// Başarılıysa yedek dosyasının yolunu döner; başarısızsa `null`.
+  ///
+  /// 30 Eylül 2026'dan önce yalnızca SQLite dosyası kopyalanıyordu;
+  /// fotoğraflar yedeğe girmiyordu. WAL checkpoint, biçim ve geri
+  /// okuyarak doğrulama [TamYedek.olustur]'da.
   Future<String?> exportDatabase() async {
     try {
       final db = await DatabaseHelper.instance.database;
-      final kaynakYolu = db.path;
-
-      final kaynak = File(kaynakYolu);
-      if (!await kaynak.exists()) {
-        debugPrint('BackupService: veritabanı dosyası bulunamadı ($kaynakYolu)');
+      if (!await File(db.path).exists()) {
+        debugPrint('BackupService: veritabanı dosyası bulunamadı');
         return null;
       }
-
-      // WAL modunda son yazmalar ayrı dosyada bekliyor olabilir.
-      // Checkpoint almadan kopyalanan yedek EKSİK olur — en son girilen
-      // notlar yedekte bulunmaz.
-      try {
-        await db.rawQuery('PRAGMA wal_checkpoint(TRUNCATE)');
-      } catch (e) {
-        debugPrint('BackupService: checkpoint alınamadı: $e');
-      }
-
       final gecici = await getTemporaryDirectory();
-      final damga = _timestamp(DateTime.now());
-      final hedefYolu = p.join(gecici.path, 'sinifcepte_yedek_$damga.$extension');
-
-      await kaynak.copy(hedefYolu);
-
-      final boyut = await File(hedefYolu).length();
-      if (boyut == 0) {
-        debugPrint('BackupService: yedek dosyası boş çıktı');
-        return null;
-      }
-
-      return hedefYolu;
+      final dosya = await TamYedek.olustur(
+        db: db,
+        depolama: await FotoDepolama.uygulamaIcin(),
+        hedefDizin: Directory(p.join(gecici.path, 'sinifcepte_yedek')),
+      );
+      return dosya.path;
     } catch (e, stackTrace) {
       debugPrint('BackupService.exportDatabase hatası: $e\n$stackTrace');
       return null;
@@ -101,54 +92,53 @@ class BackupService {
     }
   }
 
-  /// Yedek dosyasından geri yükler.
-  ///
-  /// Mevcut veritabanının üzerine yazar; çağıran **onay almalıdır**.
-  Future<bool> restoreDatabase(String yedekYolu) async {
-    try {
-      final yedek = File(yedekYolu);
-      if (!await yedek.exists()) return false;
+  /// Seçilen yedeği inceler (üzerine YAZMAZ). Kapsam onay ekranında
+  /// gösterilir; eski biçim (düz SQLite) de kabul edilir.
+  Future<HazirYedek> yedegiIncele(String yol) async {
+    final db = await DatabaseHelper.instance.database;
+    final gecici = await getTemporaryDirectory();
+    return TamYedek.incele(
+      dosya: File(yol),
+      calismaDizini: Directory(
+          p.join(gecici.path, 'sinifcepte_geri_yukleme_${DateTime.now().microsecondsSinceEpoch}')),
+      mevcutHesap: FotoDepolama.hesapAlani(db.path),
+    );
+  }
 
-      // Dosya gerçekten SQLite mi? Yanlış dosya seçilirse veritabanı
-      // bozulur ve öğretmen her şeyini kaybeder.
-      if (!await _isSqlite(yedek)) {
-        debugPrint('BackupService: seçilen dosya SQLite değil');
-        return false;
+  /// Mevcut hesabın sayıları (onay ekranında "üzerine yazılacak").
+  Future<({int sinif, int ogrenci, int fotograf})> mevcutKapsam() async {
+    final db = await DatabaseHelper.instance.database;
+    Future<int> say(String tablo) async {
+      try {
+        return Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM $tablo')) ?? 0;
+      } catch (_) {
+        return 0;
       }
-
-      final db = await DatabaseHelper.instance.database;
-      final hedefYolu = db.path;
-
-      // Bağlantı kapatılmadan dosyanın üzerine yazmak veritabanını
-      // bozar. Kapatma alanı da temizler; sonraki erişimde yeni dosya
-      // açılır.
-      await DatabaseHelper.instance.closeConnection();
-
-      await yedek.copy(hedefYolu);
-      return true;
-    } catch (e, stackTrace) {
-      debugPrint('BackupService.restoreDatabase hatası: $e\n$stackTrace');
-      return false;
     }
+
+    return (
+      sinif: await say('classes'),
+      ogrenci: await say('students'),
+      fotograf: await say('student_photos'),
+    );
   }
 
-  /// Dosyanın SQLite olup olmadığını başlıktan doğrular.
+  /// İncelenmiş yedeği uygular: mevcut verinin üzerine yazar; çağıran
+  /// **onay almalıdır**. Yarıda kalırsa önceki veri geri konur.
   ///
-  /// SQLite dosyaları "SQLite format 3\0" ile başlar.
-  Future<bool> _isSqlite(File f) async {
+  /// Eski `restoreDatabase` hiçbir yerden çağrılmıyordu (uygulamada geri
+  /// yükleme yolu yoktu) ve doğrulamasız üzerine yazıyordu; bunun
+  /// yerine geçti.
+  Future<void> geriYukle(HazirYedek yedek) async {
     try {
-      final bytes = await f.openRead(0, 16).first;
-      const imza = 'SQLite format 3';
-      final basi = String.fromCharCodes(bytes.take(imza.length));
-      return basi == imza;
-    } catch (_) {
-      return false;
+      await TamYedek.uygula(
+        yedek: yedek,
+        depolama: await FotoDepolama.uygulamaIcin(),
+        veritabani: () => DatabaseHelper.instance.database,
+        baglantiyiKapat: DatabaseHelper.instance.closeConnection,
+      );
+    } finally {
+      await yedek.temizle();
     }
-  }
-
-  static String _timestamp(DateTime t) {
-    String iki(int n) => n.toString().padLeft(2, '0');
-    return '${t.year}${iki(t.month)}${iki(t.day)}_'
-        '${iki(t.hour)}${iki(t.minute)}';
   }
 }

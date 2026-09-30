@@ -21,6 +21,10 @@ class DatabaseHelper {
   /// Bu cihazda en son giriş yapan hesabın kimliği.
   static const String _kLastUidKey = 'sinifcepte_last_teacher_uid';
 
+  /// Şema sürümü. Yedekten geri yüklemede "daha yeni sürümün yedeği"
+  /// denetimi de buna bakar; tek yerde durur.
+  static const int veritabaniSurumu = 28;
+
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
   static String? _openUid;
@@ -251,7 +255,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 28,
+      version: veritabaniSurumu,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
       onConfigure: _onConfigure,

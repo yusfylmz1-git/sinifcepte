@@ -80,7 +80,7 @@ void main() {
   });
 
   group('SQLite imza dogrulamasi', () {
-    /// `BackupService._isSqlite` ile ayni mantik.
+    /// `TamYedek._sqliteMi` ile ayni mantik (eskiden BackupService._isSqlite).
     Future<bool> sqliteMi(File f) async {
       try {
         final bytes = await f.openRead(0, 16).first;

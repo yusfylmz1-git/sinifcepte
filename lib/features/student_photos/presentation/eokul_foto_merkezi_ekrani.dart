@@ -71,7 +71,13 @@ class _EokulFotoMerkeziEkraniState extends ConsumerState<EokulFotoMerkeziEkrani>
             padding: const EdgeInsets.all(16),
             children: [
               const _BilgiKarti(),
-              const SizedBox(height: 12),
+              SwitchListTile(
+                value: ref.watch(fotolariGosterProvider),
+                onChanged: (v) => ref.read(fotolariGosterProvider.notifier).ayarla(v),
+                title: const Text('Fotoğrafları katılım ve öğrenci listesinde göster'),
+                subtitle: const Text('Ders sırasında kapatabilirsiniz; fotoğraflar silinmez'),
+              ),
+              const SizedBox(height: 4),
               if (sirali.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(24),
@@ -124,19 +130,10 @@ class _BilgiKarti extends StatelessWidget {
               style: stil,
             ),
             const SizedBox(height: 6),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.warning_amber_rounded, size: 16, color: AppColors.warning),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'Veri yedeği fotoğrafları henüz içermiyor. Telefon değişmeden önce '
-                    'fotoğrafları paylaşıp saklayın.',
-                    style: stil,
-                  ),
-                ),
-              ],
+            Text(
+              'Veri yedeği (Menü > Veri Yedekleme) fotoğrafları da içerir; telefon '
+              'değişince yedekten geri yükleyin.',
+              style: stil,
             ),
           ],
         ),

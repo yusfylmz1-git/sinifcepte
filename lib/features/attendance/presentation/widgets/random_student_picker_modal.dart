@@ -110,11 +110,12 @@ class _RandomStudentPickerModalState extends ConsumerState<RandomStudentPickerMo
 
     final isFemale = currentStudent.isFemale;
     final Color avatarBg = isFemale ? const Color(0xFFEC4899) : const Color(0xFF3B82F6);
-    final fotoVar = ref
-            .watch(sinifFotolariProvider(currentSession.classId))
-            .valueOrNull?[currentStudent.studentId]
-            ?.hazirMi ??
-        false;
+    final fotoVar = ref.watch(fotolariGosterProvider) &&
+        (ref
+                .watch(sinifFotolariProvider(currentSession.classId))
+                .valueOrNull?[currentStudent.studentId]
+                ?.hazirMi ??
+            false);
     final Color cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
 
     return Dialog(

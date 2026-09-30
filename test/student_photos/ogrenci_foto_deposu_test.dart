@@ -450,6 +450,29 @@ void main() {
     });
   });
 
+  group('sınıf temizliği', () {
+    test('KRITIK: yalnızca o sınıfın fotoğrafları siliniyor, öğrenciler ve diğer sınıf kalıyor', () async {
+      final ikinciSinif = await ClassRepository().insertClass(const ClassModel(
+        name: '6-A',
+        subject: 'Türkçe',
+        academicYear: '2026-2027',
+      ));
+      final baska = await StudentRepository().insertStudent(
+          StudentModel(classId: ikinciSinif, schoolNumber: 1, firstName: 'Başka', lastName: 'SINIF'));
+      final kardes = await StudentRepository().insertStudent(
+          StudentModel(classId: sinifId, schoolNumber: 2, firstName: 'Aynı', lastName: 'SINIF'));
+      await kaydet();
+      await kaydet(ogrenci: kardes);
+      final kalan = await kaydet(ogrenci: baska);
+
+      expect(await depo.sinifFotolariniSil(sinifId), 2);
+      expect(await depo.sinifFotolari(sinifId), isEmpty);
+      expect((await StudentRepository().getStudentsByClassId(sinifId)).length, 2);
+      expect(await depo.butunlukTamam(kalan), isTrue);
+      expect((await diskteki()).length, 1, reason: 'silinenlerin dosyaları da gitti');
+    });
+  });
+
   group('kimliği yeniden onaylama', () {
     test('KRITIK: kimlik farkı onayla güncel bilgiye çekiliyor', () async {
       final f = await kaydet();

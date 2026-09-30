@@ -185,6 +185,29 @@ void main() {
       expect(ogr!.length, 2, reason: 'öğrenci silinmedi');
     });
 
+    testWidgets('KRITIK: sınıfın fotoğraflarını toplu silme onaysız çalışmıyor', (tester) async {
+      await tester.runAsync(() => depo().kaydet(
+            ogrenciId: ismail,
+            standartJpeg: jpeg(133, 171),
+            kaynak: FotoKaynagi.dosya,
+            kimlikOnaylandi: DateTime.now(),
+          ));
+      await tester.pumpWidget(sahne(SinifFotoEkrani(sinif: sinif)));
+      await bekleKadar(tester, () => find.text('1/2 hazır').evaluate().isNotEmpty);
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Bu sınıfın fotoğraflarını sil'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Öğrenci kayıtları, katılım ve not bilgileri silinmez'), findsOneWidget);
+      final sil = find.ancestor(of: find.text('Sil'), matching: find.byWidgetPredicate((w) => w is ButtonStyleButton));
+      expect(tester.widget<ButtonStyleButton>(sil).onPressed, isNull);
+      await tester.tap(find.text('1 fotoğrafın silineceğini anlıyorum'));
+      await tester.pump();
+      await tester.tap(sil);
+      await bekleKadar(tester, () => find.text('0/2 hazır').evaluate().isNotEmpty);
+      expect(find.text('0/2 hazır'), findsOneWidget);
+    });
+
     testWidgets('fotoğrafı olmayan öğrencide paylaş/aktar/sil yok', (tester) async {
       await tester.pumpWidget(sahne(SinifFotoEkrani(sinif: sinif)));
       await bekleKadar(tester, () => find.textContaining('/2 hazır').evaluate().isNotEmpty);
@@ -319,6 +342,36 @@ void main() {
       expect(find.byKey(yedekAnahtar), findsNothing);
       expect(tester.getSize(find.byType(OgrenciAvatari)), const Size(22, 22),
           reason: 'kart düzeni kaymasın');
+    });
+
+    testWidgets('KRITIK: "fotoğrafları göster" kapalıysa fotoğraf olsa da eski görünüm', (tester) async {
+      final f = await tester.runAsync(() => depo().kaydet(
+            ogrenciId: ismail,
+            standartJpeg: jpeg(133, 171),
+            kaynak: FotoKaynagi.dosya,
+            kimlikOnaylandi: DateTime.now(),
+          ));
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          fotoDepolamaProvider.overrideWith((ref) async => depolama),
+          sinifFotolariProvider(sinifId).overrideWith((ref) async => {ismail: f!}),
+          fotolariGosterProvider.overrideWith((ref) => FotolariGosterNotifier(false)),
+        ],
+        child: MaterialApp(
+          home: Scaffold(
+            body: OgrenciAvatari(
+              ogrenciId: ismail,
+              sinifId: sinifId,
+              boyut: 22,
+              yedek: const SizedBox(key: yedekAnahtar, width: 22, height: 22),
+            ),
+          ),
+        ),
+      ));
+      await tester.pump();
+      await tester.pump();
+      expect(find.byKey(yedekAnahtar), findsOneWidget);
+      expect(find.byType(Image), findsNothing);
     });
 
     testWidgets('fotoğraf yoksa mevcut görünüm aynen', (tester) async {

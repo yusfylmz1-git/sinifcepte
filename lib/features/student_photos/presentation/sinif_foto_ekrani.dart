@@ -73,6 +73,14 @@ class _SinifFotoEkraniState extends ConsumerState<SinifFotoEkrani> {
             icon: Icon(_izgara ? Icons.view_list_rounded : Icons.grid_view_rounded),
             onPressed: () => setState(() => _izgara = !_izgara),
           ),
+          PopupMenuButton<String>(
+            onSelected: (v) {
+              if (v == 'hepsini_sil') _sinifFotolariniSil();
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'hepsini_sil', child: Text('Bu sınıfın fotoğraflarını sil')),
+            ],
+          ),
         ],
       ),
       body: ogrencilerA.when(
@@ -484,6 +492,60 @@ class _SinifFotoEkraniState extends ConsumerState<SinifFotoEkrani> {
       if (!mounted) return;
       fotolarDegisti(ref);
       _mesaj('Fotoğraf silindi.');
+    } catch (e) {
+      _mesaj('Silinemedi: $e', hata: true);
+    }
+  }
+
+  /// Yıl sonu temizliği: sınıfın bütün fotoğrafları. Öğrenciler kalır.
+  Future<void> _sinifFotolariniSil() async {
+    final sayi = (ref.read(sinifFotolariProvider(_sinifId)).valueOrNull ?? const {}).length;
+    if (sayi == 0) {
+      _mesaj('Bu sınıfta silinecek fotoğraf yok.');
+      return;
+    }
+    var anladim = false;
+    final evet = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          title: Text('${widget.sinif.name}: fotoğrafları sil'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('$sayi öğrencinin fotoğrafı bu cihazdan silinecek. Öğrenci kayıtları, '
+                  'katılım ve not bilgileri silinmez.'),
+              const SizedBox(height: 6),
+              const Text('Daha önce paylaştığınız kopyalar bundan etkilenmez.',
+                  style: TextStyle(fontSize: 12)),
+              CheckboxListTile(
+                value: anladim,
+                onChanged: (v) => setD(() => anladim = v ?? false),
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+                title: Text('$sayi fotoğrafın silineceğini anlıyorum'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+              onPressed: anladim ? () => Navigator.pop(ctx, true) : null,
+              child: const Text('Sil'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (evet != true || !mounted) return;
+    try {
+      final depo = await ref.read(ogrenciFotoDeposuProvider.future);
+      final n = await depo.sinifFotolariniSil(_sinifId);
+      if (!mounted) return;
+      fotolarDegisti(ref);
+      _mesaj('$n fotoğraf silindi.');
     } catch (e) {
       _mesaj('Silinemedi: $e', hata: true);
     }

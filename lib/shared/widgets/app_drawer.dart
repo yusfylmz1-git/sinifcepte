@@ -10,6 +10,7 @@ import '../../features/navigation/providers/navigation_provider.dart';
 import '../../features/student_photos/presentation/eokul_foto_merkezi_ekrani.dart';
 import 'glass_card.dart';
 import '../../core/backup/backup_service.dart';
+import '../../core/backup/geri_yukleme_akisi.dart';
 
 /// SınıfCepte - Gezinme Çekmecesi (AppDrawer)
 class AppDrawer extends ConsumerWidget {
@@ -388,7 +389,7 @@ class AppDrawer extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Tüm sınıf ve öğrenci verileriniz internet kotası harcanmadan doğrudan bu cihaza yedeklenebilir.',
+              'Tüm sınıf ve öğrenci verileriniz, e-Okul fotoğrafları dahil, internet kotası harcanmadan tek dosyaya yedeklenir.',
               style: TextStyle(
                 color: isDark ? Colors.white70 : AppColors.textSecondaryLight,
                 fontSize: 13,
@@ -403,6 +404,16 @@ class AppDrawer extends ConsumerWidget {
           ],
         ),
         actions: [
+          TextButton(
+            onPressed: () {
+              // Gezgin durumu pencere kapansa da yaşar; çekmecenin ve
+              // pencerenin bağlamı ölür.
+              final nav = Navigator.of(ctx);
+              nav.pop();
+              nav.push(MaterialPageRoute(builder: (_) => const GeriYuklemeEkrani()));
+            },
+            child: const Text('Yedekten geri yükle'),
+          ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
             child: Text(
