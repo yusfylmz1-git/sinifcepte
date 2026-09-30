@@ -7,6 +7,7 @@ import '../../classes/providers/class_provider.dart';
 import '../data/ogrenci_foto_deposu.dart';
 import '../domain/foto_isleme.dart';
 import '../providers/ogrenci_foto_providers.dart';
+import 'disa_aktarim_ekrani.dart';
 import 'sinif_foto_ekrani.dart';
 
 /// e-Okul foto — giriş ekranı (menü > İdari işlemler > e-Okul foto).
@@ -46,7 +47,18 @@ class _EokulFotoMerkeziEkraniState extends ConsumerState<EokulFotoMerkeziEkrani>
     final ozetler = ref.watch(sinifFotoOzetleriProvider).valueOrNull ?? const {};
 
     return Scaffold(
-      appBar: AppBar(title: const Text('e-Okul foto')),
+      appBar: AppBar(
+        title: const Text('e-Okul foto'),
+        actions: [
+          IconButton(
+            tooltip: 'Dışa aktar (ZIP, PDF albüm, kontrol listesi)',
+            icon: const Icon(Icons.ios_share_rounded),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const DisaAktarimEkrani()),
+            ),
+          ),
+        ],
+      ),
       body: siniflarA.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Sınıflar yüklenemedi: $e')),

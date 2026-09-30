@@ -19,6 +19,7 @@ import 'package:sinifcepte/features/student_photos/data/foto_depolama.dart';
 import 'package:sinifcepte/features/student_photos/data/ogrenci_foto_deposu.dart';
 import 'package:sinifcepte/features/student_photos/domain/foto_isleme.dart';
 import 'package:sinifcepte/features/student_photos/domain/ogrenci_foto.dart';
+import 'package:sinifcepte/features/student_photos/presentation/disa_aktarim_ekrani.dart';
 import 'package:sinifcepte/features/student_photos/presentation/eokul_foto_merkezi_ekrani.dart';
 import 'package:sinifcepte/features/student_photos/presentation/foto_hizalama_ekrani.dart';
 import 'package:sinifcepte/features/student_photos/presentation/sinif_foto_ekrani.dart';
@@ -193,6 +194,92 @@ void main() {
       expect(find.text('Galeriden seç'), findsOneWidget);
       expect(find.text('Paylaş / kaydet'), findsNothing);
       expect(find.text('Fotoğrafı sil'), findsNothing);
+    });
+  });
+
+  group('dışa aktarma ekranı', () {
+    Finder dugme(String metin) => find.ancestor(
+        of: find.text(metin), matching: find.byWidgetPredicate((w) => w is ButtonStyleButton));
+    bool etkin(WidgetTester t, String metin) => t.widget<ButtonStyleButton>(dugme(metin)).onPressed != null;
+
+    Future<void> kur(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      await tester.runAsync(() async {
+        await depo().kaydet(
+          ogrenciId: ismail,
+          standartJpeg: jpeg(133, 171),
+          kaynak: FotoKaynagi.dosya,
+          kimlikOnaylandi: DateTime.now(),
+        );
+        // Veli: fotoğraf çekildikten sonra numarası değişti.
+        final veli = await StudentRepository().insertStudent(
+            StudentModel(classId: sinifId, schoolNumber: 7, firstName: 'Veli', lastName: 'KAR'));
+        await depo().kaydet(
+          ogrenciId: veli,
+          standartJpeg: jpeg(133, 171),
+          kaynak: FotoKaynagi.dosya,
+          kimlikOnaylandi: DateTime.now(),
+        );
+        await StudentRepository().updateStudent(
+            StudentModel(id: veli, classId: sinifId, schoolNumber: 8, firstName: 'Veli', lastName: 'KAR'));
+      });
+      await tester.pumpWidget(sahne(DisaAktarimEkrani(baslangicSinifId: sinifId)));
+      await bekleKadar(tester, () => find.textContaining('pakete girecek').evaluate().isNotEmpty);
+      await bekle(tester, 3);
+    }
+
+    testWidgets('KRITIK: satırda dosya adı; kimlik farkı varken ZIP ve albüm kapalı, nedeni yazıyor',
+        (tester) async {
+      await kur(tester);
+      expect(find.text('1234_İsmail_IŞIK.jpg'), findsOneWidget);
+      expect(find.text('Fotoğraf yok'), findsOneWidget);
+      expect(find.text('Kimlik kontrolü gerekli'), findsOneWidget);
+      expect(find.textContaining('1 fotoğraf pakete girecek'), findsOneWidget);
+      expect(etkin(tester, 'ZIP paketi'), isFalse);
+      expect(etkin(tester, 'PDF albüm'), isFalse);
+      expect(etkin(tester, 'Fotoğraflı kontrol listesi (PDF)'), isTrue, reason: 'kontrol her zaman');
+      expect(find.textContaining('1 öğrencide çözülmesi gereken sorun var'), findsOneWidget);
+    });
+
+    testWidgets('KRITIK: kimlik farkı iki kimlik yan yana gösterilip onayla çözülüyor', (tester) async {
+      await kur(tester);
+      await tester.tap(find.text('8  Veli KAR'));
+      await tester.pumpAndSettle();
+      expect(find.text('Çekimde: 7 — Veli KAR'), findsOneWidget);
+      expect(find.text('Şimdi: 8 — Veli KAR'), findsOneWidget);
+      expect(etkin(tester, 'Onayla'), isFalse, reason: 'işaretlemeden onay yok');
+      await tester.tap(find.text('Fotoğraf 8 — Veli KAR öğrencisine ait'));
+      await tester.pump();
+      await tester.tap(dugme('Onayla'));
+      await bekleKadar(tester, () => find.textContaining('2 fotoğraf pakete girecek').evaluate().isNotEmpty);
+      expect(find.text('8_Veli_KAR.jpg'), findsOneWidget);
+      expect(etkin(tester, 'ZIP paketi'), isTrue);
+    });
+
+    testWidgets('albüm ayarları: sığmayan ölçek ve kimliksiz albüm uyarısı', (tester) async {
+      await kur(tester);
+      await tester.tap(find.text('8  Veli KAR'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Fotoğraf 8 — Veli KAR öğrencisine ait'));
+      await tester.pump();
+      await tester.tap(dugme('Onayla'));
+      await bekleKadar(tester, () => find.textContaining('2 fotoğraf pakete girecek').evaluate().isNotEmpty);
+
+      await tester.tap(dugme('PDF albüm'));
+      await bekleKadar(tester, () => find.text('Albüm ayarları').evaluate().isNotEmpty);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('3 sütun · sayfada'), findsOneWidget);
+      await tester.tap(find.text('2 sütun'));
+      await tester.tap(find.text('Büyük'));
+      await tester.tap(find.text('Yatay sayfa'));
+      await tester.pump();
+      expect(find.textContaining('Seçilen ölçek sayfaya sığmıyor'), findsOneWidget);
+      await tester.tap(find.text('Ad-soyad'));
+      await tester.tap(find.text('Okul numarası'));
+      await tester.pump();
+      expect(find.textContaining('yalnız görsel albümdür'), findsOneWidget);
     });
   });
 

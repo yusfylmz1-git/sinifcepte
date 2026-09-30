@@ -13,6 +13,7 @@ import '../data/foto_paylasim.dart';
 import '../domain/foto_isleme.dart';
 import '../domain/ogrenci_foto.dart';
 import '../providers/ogrenci_foto_providers.dart';
+import 'disa_aktarim_ekrani.dart';
 import 'foto_hizalama_ekrani.dart';
 import 'widgets/ogrenci_foto_kucuk.dart';
 
@@ -60,6 +61,13 @@ class _SinifFotoEkraniState extends ConsumerState<SinifFotoEkrani> {
       appBar: AppBar(
         title: Text('e-Okul foto · ${widget.sinif.name}'),
         actions: [
+          IconButton(
+            tooltip: 'Dışa aktar',
+            icon: const Icon(Icons.ios_share_rounded),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => DisaAktarimEkrani(baslangicSinifId: _sinifId)),
+            ),
+          ),
           IconButton(
             tooltip: _izgara ? 'Liste görünümü' : 'Fotoğraf ızgarası',
             icon: Icon(_izgara ? Icons.view_list_rounded : Icons.grid_view_rounded),

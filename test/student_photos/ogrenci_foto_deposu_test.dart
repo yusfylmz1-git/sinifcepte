@@ -450,6 +450,37 @@ void main() {
     });
   });
 
+  group('kimliği yeniden onaylama', () {
+    test('KRITIK: kimlik farkı onayla güncel bilgiye çekiliyor', () async {
+      final f = await kaydet();
+      await StudentRepository().updateStudent(StudentModel(
+        id: ogrenciId,
+        classId: sinifId,
+        schoolNumber: 1300,
+        firstName: 'İsmail',
+        lastName: 'IŞIK',
+      ));
+      expect(f.kimlikFarkli(okulNo: 1300, adSoyad: 'İsmail IŞIK'), isTrue);
+      final t = await depo.kimligiYenidenOnayla(
+        ogrenciId: ogrenciId,
+        beklenenFotoId: f.id,
+        kimlikOnaylandi: DateTime.now(),
+      );
+      expect(t.capturedSchoolNumber, 1300);
+      expect(t.kimlikFarkli(okulNo: 1300, adSoyad: 'İsmail IŞIK'), isFalse);
+      expect(t.checksum, f.checksum, reason: 'fotoğraf değişmez');
+    });
+
+    test('KRITIK: bu arada fotoğraf değiştiyse onay eski fotoğrafa gitmiyor', () async {
+      final eski = await kaydet(renk: 10);
+      await kaydet(renk: 200);
+      await expectLater(
+        depo.kimligiYenidenOnayla(ogrenciId: ogrenciId, beklenenFotoId: eski.id, kimlikOnaylandi: DateTime.now()),
+        throwsA(isA<FotoKayitHatasi>()),
+      );
+    });
+  });
+
   group('uzlaştırma', () {
     test('KRITIK: dosyası kaybolan kayıt "hazır" sayılmıyor, geri gelince düzeliyor', () async {
       final f = await kaydet();

@@ -70,6 +70,10 @@ dependencies:
   # acmak telefonda 10-20 sn ve yuzlerce MB bellek demekti. HEIC de
   # JPEG'e cevrilir.
   image_picker: ^1.2.3
+  # e-Okul fotograf paketi (sinif klasorleri + kontrol listeleri). `pdf`
+  # uzerinden zaten projedeydi (dolayli, 3.6.1); ZIP dosyaya AKISLA yazilir,
+  # Turkce dosya adlari UTF-8 isaretiyle.
+  archive: ^3.6.1
   # Tahta yapilandirmasinin imzalanmasi (Ed25519, RFC 8032).
   #
   # Idarenin telefonu `okul_config.json`'i imzalar, tahtada yalnizca

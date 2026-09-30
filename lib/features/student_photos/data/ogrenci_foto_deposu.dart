@@ -360,6 +360,42 @@ class OgrenciFotoDeposu {
     return (await guncel(hedefOgrenciId))!;
   }
 
+  /// Çekimdeki kimlik güncel kayıttan farklıysa (numara/ad sonradan
+  /// değişti) öğretmen yeniden onaylar: denetim kopyası güncel bilgiye
+  /// çekilir. Dışa aktarma bu onay olmadan fotoğrafı pakete koymaz.
+  ///
+  /// Fotoğraf yanlış öğrenciye aitse bu DEĞİL [yenidenEsle] kullanılır.
+  Future<OgrenciFoto> kimligiYenidenOnayla({
+    required int ogrenciId,
+    required String beklenenFotoId,
+    required DateTime kimlikOnaylandi,
+  }) async {
+    final db = await _veritabani();
+    await db.transaction((tx) async {
+      final ogr = await tx.query('students',
+          columns: ['school_number', 'first_name', 'last_name'],
+          where: 'id = ?',
+          whereArgs: [ogrenciId]);
+      if (ogr.isEmpty) throw FotoKayitHatasi('Öğrenci bulunamadı; silinmiş olabilir.');
+      final o = ogr.first;
+      final n = await tx.update(
+        'student_photos',
+        {
+          'captured_school_number': o['school_number'],
+          'captured_full_name': '${o['first_name']} ${o['last_name']}',
+          'identity_confirmed_at': _zaman(kimlikOnaylandi),
+          'updated_at': _zaman(_saat()),
+        },
+        // Ekran eski fotoğrafı gösterirken yenisi kaydedildiyse onay
+        // yanlış fotoğrafa gitmesin.
+        where: 'id = ? AND student_id = ? AND is_current = 1',
+        whereArgs: [beklenenFotoId, ogrenciId],
+      );
+      if (n != 1) throw FotoKayitHatasi('Fotoğraf bu arada değişti; listeyi yenileyin.');
+    });
+    return (await guncel(ogrenciId))!;
+  }
+
   /// Öğrencinin fotoğrafını siler. Dosya temizlik kuyruğundan silinir.
   Future<void> sil(int ogrenciId) async {
     final db = await _veritabani();

@@ -80,3 +80,45 @@ String asciiKatla(String raw) {
   }
   return buffer.toString();
 }
+
+/// Türk alfabesi sırası (şapkalı harfler şapkasızın hemen ardından;
+/// yabancı adlardaki q, w, x Latin sırasındaki yerinde).
+const String _trAlfabe = 'aâbcçdefgğhıiîjklmnoöpqrsştuûüvwxyz';
+final Map<String, int> _trSira = {
+  for (var i = 0; i < _trAlfabe.length; i++) _trAlfabe[i]: i,
+};
+
+String _trKucuk(String ch) {
+  // İ/I lower()'dan ÖNCE: Dart 'I'.toLowerCase() → 'i' (Türkçede 'ı').
+  if (ch == 'İ') return 'i';
+  if (ch == 'I') return 'ı';
+  return ch.toLowerCase();
+}
+
+/// Boşluk en önde ("Ali Can" < "Alican"), sonra rakam/işaret, sonra
+/// harfler; alfabede olmayan harfler en sonda.
+int _trSiraDegeri(String ch) {
+  if (ch.trim().isEmpty) return -2000;
+  final s = _trSira[ch];
+  if (s != null) return s;
+  final kod = ch.codeUnitAt(0);
+  return kod < 128 ? -1000 + kod : 1000 + kod;
+}
+
+/// İki metni Türk alfabesine göre karşılaştırır (büyük/küçük harf
+/// duyarsız): "Çelik" "Cem"den sonra, "Ilgaz" "İlker"den önce gelir.
+///
+/// `String.compareTo` kod noktasına bakar ve Türkçe harfleri alfabenin
+/// sonuna atar ("Şule" "Zeynep"ten sonra çıkardı).
+int trKarsilastir(String a, String b) {
+  final n = a.length < b.length ? a.length : b.length;
+  for (var i = 0; i < n; i++) {
+    final x = _trKucuk(a[i]);
+    final y = _trKucuk(b[i]);
+    if (x == y) continue;
+    final sx = _trSiraDegeri(x);
+    final sy = _trSiraDegeri(y);
+    if (sx != sy) return sx.compareTo(sy);
+  }
+  return a.length.compareTo(b.length);
+}
