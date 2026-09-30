@@ -76,7 +76,21 @@ class _FotoHizalamaEkraniState extends ConsumerState<FotoHizalamaEkrani> {
   DateTime? _kimlikOnaylandi;
   bool _bulaniklikOnay = false;
 
-  ArkaPlanCalistirici get _calistir => widget.arkaPlan ?? Isolate.run;
+  // İzolat işleri ÜST DÜZEY fonksiyonlardan başlıyor (`foto_isleme.dart`):
+  // buradaki bir kapanış `Isolate.run`'a verilince ekranın kendisi de
+  // gönderilmeye çalışılıyor ve telefonda "object is unsendable" ile
+  // düşüyordu. `arkaPlan` yalnızca testte (izolatsız düz çalıştırıcı).
+  Future<CalismaGoruntusu> _dondur(CalismaGoruntusu kaynak, double aci) {
+    final c = widget.arkaPlan;
+    return c != null
+        ? c(() => calismaGoruntusunuDondur(kaynak, aci))
+        : calismaGoruntusunuDondurArkaPlanda(kaynak, aci);
+  }
+
+  Future<UretimSonucu> _uret(CalismaGoruntusu g, KirpmaAlani alan) {
+    final c = widget.arkaPlan;
+    return c != null ? c(() => calismadanUret(g, alan)) : calismadanUretArkaPlanda(g, alan);
+  }
 
   String get _adSoyad => '${widget.ogrenci.firstName} ${widget.ogrenci.lastName}';
 
@@ -85,7 +99,7 @@ class _FotoHizalamaEkraniState extends ConsumerState<FotoHizalamaEkrani> {
     final onceki = _gorunen;
     setState(() => _isleniyor = true);
     try {
-      final yeni = await _calistir(() => calismaGoruntusunuDondur(kaynak, aci));
+      final yeni = await _dondur(kaynak, aci);
       if (!mounted) return;
       setState(() {
         _gorunen = yeni;
@@ -144,7 +158,7 @@ class _FotoHizalamaEkraniState extends ConsumerState<FotoHizalamaEkrani> {
     final alan = d.alan(g.genislik, g.yukseklik, c.width);
     setState(() => _isleniyor = true);
     try {
-      final sonuc = await _calistir(() => calismadanUret(g, alan));
+      final sonuc = await _uret(g, alan);
       if (!mounted) return;
       setState(() {
         _sonuc = sonuc;
@@ -592,8 +606,7 @@ class _CerceveBoyasi extends CustomPainter {
 }
 
 /// Seçilen fotoğrafı çalışma görüntüsüne çevirir (ayrı izolatta).
-Future<CalismaGoruntusu> calismaGoruntusuAc(Uint8List bayt) =>
-    Isolate.run(() => calismaGoruntusuHazirla(bayt));
+Future<CalismaGoruntusu> calismaGoruntusuAc(Uint8List bayt) => calismaGoruntusuHazirlaArkaPlanda(bayt);
 
 /// Galeri/kamera baytlarını çalışma görüntüsüne çevirip hizalama ve
 /// kimlik onayı ekranını açar. Kaydedildiyse `true`.

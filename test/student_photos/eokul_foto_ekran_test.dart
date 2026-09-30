@@ -540,7 +540,7 @@ void main() {
   });
 
   group('hizalama ve kimlik onayı', () {
-    Future<bool?> ac(WidgetTester tester, {bool mevcut = false}) async {
+    Future<bool?> ac(WidgetTester tester, {bool mevcut = false, bool gercekIzolat = false}) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2;
       addTearDown(tester.view.reset);
@@ -558,7 +558,7 @@ void main() {
                   calisma: calisma,
                   kaynak: FotoKaynagi.dosya,
                   mevcutFotoVar: mevcut,
-                  arkaPlan: <T>(FutureOr<T> Function() is_) async => is_(),
+                  arkaPlan: gercekIzolat ? null : <T>(FutureOr<T> Function() is_) async => is_(),
                 ),
               ));
             },
@@ -570,6 +570,35 @@ void main() {
       await tester.pumpAndSettle();
       return sonuc;
     }
+
+    // Telefonda "Devam" → "object is unsendable" (30 Eylül 2026): izolata
+    // ekranın içinden kapanış veriliyordu ve Dart ekranın kendisini de
+    // göndermeye çalışıyordu. Diğer testler izolatsız çalıştırıcıyla
+    // koştuğu için göremedi; bu test GERÇEK izolatla.
+    testWidgets('KRITIK: GERÇEK izolatla Devam onay adımına geçiyor (hata yok)', (tester) async {
+      await ac(tester, gercekIzolat: true);
+      await tester.tap(find.text('Devam'));
+      await bekleKadar(
+          tester,
+          () =>
+              find.text('Kimliği onayla').evaluate().isNotEmpty ||
+              find.textContaining('hazırlanamadı').evaluate().isNotEmpty);
+      expect(find.textContaining('hazırlanamadı'), findsNothing);
+      expect(find.text('Kimliği onayla'), findsOneWidget);
+    });
+
+    testWidgets('KRITIK: GERÇEK izolatla açı düzeltmesi çalışıyor (hata yok)', (tester) async {
+      await ac(tester, gercekIzolat: true);
+      final kaydirici = tester.widget<Slider>(find.byType(Slider));
+      kaydirici.onChangeEnd!(5);
+      await bekleKadar(
+          tester,
+          () =>
+              find.textContaining('Döndürülemedi').evaluate().isNotEmpty ||
+              find.byType(CircularProgressIndicator).evaluate().isEmpty);
+      await bekle(tester, 10);
+      expect(find.textContaining('Döndürülemedi'), findsNothing);
+    });
 
     testWidgets('KRITIK: kimlik iki adımda da görünür, onaysız Kaydet çalışmaz', (tester) async {
       await ac(tester, mevcut: true);

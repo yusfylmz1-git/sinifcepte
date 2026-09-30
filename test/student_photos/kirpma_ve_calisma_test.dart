@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -154,6 +155,32 @@ void main() {
       final kucuk = calismadanUret(c, const KirpmaAlani(0, 0, 100, 129));
       expect(kucuk.kaliteUyarilari, [kaliteDusukCozunurluk]);
       expect(img.decodeJpg(kucuk.jpeg)!.width, 133, reason: 'ölçü yine tam');
+    });
+  });
+
+  group('gerçek izolat', () {
+    test('KRITIK: arka plan işleri GERÇEK izolatta çalışıyor', () async {
+      final r = img.Image(width: 1200, height: 1600);
+      img.fill(r, color: img.ColorRgb8(30, 90, 160));
+      final c = await calismaGoruntusuHazirlaArkaPlanda(Uint8List.fromList(img.encodeJpg(r)));
+      final d = await calismaGoruntusunuDondurArkaPlanda(c, 4);
+      final u = await calismadanUretArkaPlanda(d, kirpmaAlani(d.genislik, d.yukseklik));
+      expect(img.decodeJpg(u.jpeg)!.width, 133);
+    });
+
+    test('KRITIK: ekran dosyaları Isolate.run çağırmıyor (üst düzey fonksiyonlar çağırır)', () {
+      // Ekranın içinde yazılan kapanış, aynı metottaki setState
+      // kapanışlarıyla bağlamı paylaşıyor ve izolata EKRANIN KENDİSİ
+      // gönderilmeye çalışılıyordu ("object is unsendable", telefonda
+      // 30 Eylül 2026).
+      final dizin = Directory('lib/features/student_photos/presentation');
+      for (final f in dizin.listSync(recursive: true).whereType<File>()) {
+        final kod = f
+            .readAsLinesSync()
+            .where((s) => !s.trimLeft().startsWith('//'))
+            .join('\n');
+        expect(kod.contains('Isolate.run('), isFalse, reason: f.path);
+      }
     });
   });
 

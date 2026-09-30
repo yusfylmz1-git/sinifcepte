@@ -1,3 +1,4 @@
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:image/image.dart' as img;
@@ -276,6 +277,27 @@ UretimSonucu calismadanUret(CalismaGoruntusu c, KirpmaAlani alan) {
     if (alan.genislik < eokulGenislik || alan.yukseklik < eokulYukseklik) kaliteDusukCozunurluk,
   ]);
 }
+
+// ---------------------------------------------------------------------
+// Ayrı izolatta çalıştırma
+// ---------------------------------------------------------------------
+//
+// Bu üç fonksiyon ÜST DÜZEY olmak ZORUNDA. `Isolate.run`'a verilen kapanış
+// bir ekranın (State) metodunda yazılınca Dart, kapanışın bağlamına
+// ekranın kendisini de koyuyor; izolata bütün arayüz ağacını göndermeye
+// çalışıp "object is unsendable (_AsyncCompleter … WidgetsFlutterBinding)"
+// hatasıyla düşüyor. Telefonda "Devam"a basınca yaşandı (30 Eylül 2026).
+// Testler bunu göremedi: ekranlar testte izolat yerine düz çalıştırıcı
+// kullanıyordu. Bu fonksiyonlar GERÇEK izolatla sınanıyor.
+
+Future<CalismaGoruntusu> calismaGoruntusuHazirlaArkaPlanda(Uint8List kaynak) =>
+    Isolate.run(() => calismaGoruntusuHazirla(kaynak));
+
+Future<CalismaGoruntusu> calismaGoruntusunuDondurArkaPlanda(CalismaGoruntusu c, double derece) =>
+    Isolate.run(() => calismaGoruntusunuDondur(c, derece));
+
+Future<UretimSonucu> calismadanUretArkaPlanda(CalismaGoruntusu c, KirpmaAlani alan) =>
+    Isolate.run(() => calismadanUret(c, alan));
 
 /// Diskten ya da bellekten gelen standart fotoğrafı doğrular.
 ///
