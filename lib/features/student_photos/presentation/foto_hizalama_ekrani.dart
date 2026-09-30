@@ -412,7 +412,9 @@ class _FotoHizalamaEkraniState extends ConsumerState<FotoHizalamaEkrani> {
               width: eokulGenislik * 2,
               height: eokulYukseklik * 2,
               fit: BoxFit.fill,
-              filterQuality: FilterQuality.none,
+              // `none` (en yakın komşu) 133×171'i telefonda kare kare,
+              // bozuk gösteriyordu; dosya öyle değil. Yumuşak büyütme.
+              filterQuality: FilterQuality.medium,
             ),
           ),
         ),

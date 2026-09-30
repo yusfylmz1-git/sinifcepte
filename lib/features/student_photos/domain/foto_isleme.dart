@@ -22,9 +22,10 @@ const int eokulGenislik = 133;
 const int eokulYukseklik = 171;
 const double eokulOran = eokulGenislik / eokulYukseklik;
 
-/// Varsayılan JPEG kalitesi. e-Okul'un KB sınırı doğrulanmadı; doğrulanırsa
-/// ölçü değişmeden kalite aranır (plan §6).
-const int varsayilanKalite = 90;
+/// Varsayılan JPEG kalitesi. 133×171'de 95 bile yalnızca birkaç on KB;
+/// 90'da yüz kenarlarında sıkıştırma izi görünüyordu. e-Okul'un KB sınırı
+/// doğrulanmadı; doğrulanırsa ölçü değişmeden kalite aranır (plan §6).
+const int varsayilanKalite = 95;
 
 class FotoIslemeHatasi implements Exception {
   FotoIslemeHatasi(this.mesaj);
@@ -134,11 +135,18 @@ Uint8List standartFotoUret(
     width: a.genislik,
     height: a.yukseklik,
   );
+  // ALAN ORTALAMASI (average), cubic DEĞİL. Kırpılan alan tipik olarak
+  // ~1300 piksel; 133'e ~10 kat küçültmede cubic yalnızca komşu 4×4
+  // pikseli örnekliyor ve saç/kaş/kumaş gibi ince ayrıntılar rastgele
+  // siyah-beyaz noktalara dönüyordu. Ölçüldü (30 Eylül 2026, 3 px çizgili
+  // desen, ideal sonuç düz gri): tırtık sapması cubic 120, average 21;
+  // kenar netliği ikisinde de ~1 px. Kullanıcı telefonda "kalite çok kötü"
+  // dedi.
   final kucuk = img.copyResize(
     kirpilmis,
     width: eokulGenislik,
     height: eokulYukseklik,
-    interpolation: img.Interpolation.cubic,
+    interpolation: img.Interpolation.average,
   );
   // EXIF, ICC ve metin alanları yok: konum/cihaz bilgisi çıkmasın.
   kucuk.exif = img.ExifData();
@@ -241,7 +249,8 @@ CalismaGoruntusu _calismaKodla(img.Image g) {
   g.exif = img.ExifData();
   g.iccProfile = null;
   g.textData = null;
-  return CalismaGoruntusu(Uint8List.fromList(img.encodeJpg(g, quality: 92)), g.width, g.height);
+  // Ara kopya: her JPEG kuşağı iz bırakıyor, yüksek kalitede tutuluyor.
+  return CalismaGoruntusu(Uint8List.fromList(img.encodeJpg(g, quality: 95)), g.width, g.height);
 }
 
 /// Küçük açı düzeltmesi. Tuval büyür, köşeler boş kalır; kırpma

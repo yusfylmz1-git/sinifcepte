@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -47,6 +48,38 @@ void main() {
         final px = cikti.getPixel(x, 85);
         expect(px.g > 200 && px.r < 60, isTrue, reason: 'x=$x: ${px.r},${px.g},${px.b}');
       }
+    });
+
+    test('KRITIK: küçültme ince ayrıntıyı tırtıklamıyor (kalite)', () {
+      // 3 piksellik siyah-beyaz çizgiler 10 kat küçülünce ideal sonuç düz
+      // gri. cubic bunu rastgele siyah-beyaz noktalara çeviriyordu (sapma
+      // ~120); telefonda "kalite çok kötü" (30 Eylül 2026). average ~21.
+      final r = img.Image(width: 1330, height: 1710);
+      for (var y = 0; y < r.height; y++) {
+        for (var x = 0; x < r.width; x++) {
+          final v = (x ~/ 3) % 2 == 0 ? 255 : 0;
+          r.setPixelRgb(x, y, v, v, v);
+        }
+      }
+      final c = img.decodeJpg(standartFotoUret(r))!;
+      final v = [
+        for (var y = 10; y < c.height - 10; y++)
+          for (var x = 10; x < c.width - 10; x++) c.getPixel(x, y).r.toDouble(),
+      ];
+      final ort = v.reduce((a, b) => a + b) / v.length;
+      final sapma = math.sqrt(v.map((d) => (d - ort) * (d - ort)).reduce((a, b) => a + b) / v.length);
+      expect(sapma, lessThan(45), reason: 'tırtık sapması $sapma');
+    });
+
+    test('KRITIK: keskin kenar net kalıyor (aşırı yumuşatma yok)', () {
+      final r = img.Image(width: 1330, height: 1710);
+      img.fill(r, color: img.ColorRgb8(20, 20, 20));
+      img.fillRect(r, x1: 665, y1: 0, x2: 1329, y2: 1709, color: img.ColorRgb8(235, 235, 235));
+      final c = img.decodeJpg(standartFotoUret(r))!;
+      final satir = [for (var x = 0; x < c.width; x++) c.getPixel(x, 85).r.toDouble()];
+      final x1 = satir.indexWhere((d) => d > 20 + 215 * 0.1);
+      final x2 = satir.indexWhere((d) => d > 20 + 215 * 0.9);
+      expect(x2 - x1, lessThanOrEqualTo(3), reason: 'kenar geçişi ${x2 - x1} px');
     });
 
     test('kırpma alanı merkeze kaydırılabilir ama görüntüden taşmaz', () {
