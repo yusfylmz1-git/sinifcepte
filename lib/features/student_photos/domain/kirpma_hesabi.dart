@@ -40,6 +40,13 @@ class KirpmaDurumu {
     return KirpmaDurumu(s, x0, y0);
   }
 
+  /// İstenen kırpma alanını gösteren durum (otomatik hizalama önerisi
+  /// ekrana böyle yansır); sınırlar içine çekilmiş olarak.
+  factory KirpmaDurumu.alandan(KirpmaAlani a, int gorselG, int gorselY, double cerceveG, double cerceveY) {
+    final s = cerceveG / a.genislik;
+    return KirpmaDurumu(s, -a.x * s, -a.y * s).sinirla(gorselG, gorselY, cerceveG, cerceveY);
+  }
+
   /// İki parmak hareketi: [odakBaslangic] noktasının altındaki görüntü
   /// noktası parmakla birlikte gider. [baslangic] hareketin başındaki
   /// durum, [carpan] hareketin toplam ölçek çarpanı.

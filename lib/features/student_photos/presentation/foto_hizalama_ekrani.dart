@@ -9,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/models/student_model.dart';
 import '../domain/foto_isleme.dart';
 import '../domain/kirpma_hesabi.dart';
+import '../domain/yuz_kadraj.dart';
 import '../domain/ogrenci_foto.dart';
 import '../providers/ogrenci_foto_providers.dart';
 
@@ -68,6 +69,9 @@ class _FotoHizalamaEkraniState extends ConsumerState<FotoHizalamaEkrani> {
   Offset _odakBasi = Offset.zero;
 
   bool _isleniyor = false;
+  bool _yuzAraniyor = false;
+  bool _otomatikDenendi = false;
+  List<String> _yuzNotlari = const [];
   UretimSonucu? _sonuc;
   DateTime? _kimlikOnaylandi;
   bool _bulaniklikOnay = false;
@@ -102,6 +106,33 @@ class _FotoHizalamaEkraniState extends ConsumerState<FotoHizalamaEkrani> {
       _hata('Döndürülemedi: $e');
     } finally {
       if (mounted) setState(() => _isleniyor = false);
+    }
+  }
+
+  /// Yüzün yerini bulup 133:171 kadraj önerir (plan §4.7). Yüz TANIMA
+  /// değil; sonuç yalnızca kadraj için kullanılır, öğretmen elle düzeltir.
+  Future<void> _yuzeHizala() async {
+    final bulucu = ref.read(yuzBulucuProvider);
+    final c = _cerceve;
+    if (!bulucu.destekli || c == null || _yuzAraniyor) return;
+    setState(() => _yuzAraniyor = true);
+    try {
+      final g = _gorunen;
+      final oneri = kadrajOner(await bulucu.bul(g), g.genislik, g.yukseklik);
+      if (!mounted) return;
+      setState(() {
+        if (oneri == null) {
+          _yuzNotlari = const ['Yüz bulunamadı; fotoğrafı elle hizalayın.'];
+        } else {
+          _durum = KirpmaDurumu.alandan(oneri.alan, g.genislik, g.yukseklik, c.width, c.height);
+          _yuzNotlari = ['Yüze göre hizalandı; gerekirse elle düzeltin.', ...oneri.uyarilar];
+        }
+      });
+    } catch (e) {
+      debugPrint('Yüz aranamadı: $e');
+      if (mounted) setState(() => _yuzNotlari = const ['Yüz aranamadı; fotoğrafı elle hizalayın.']);
+    } finally {
+      if (mounted) setState(() => _yuzAraniyor = false);
     }
   }
 
@@ -215,6 +246,11 @@ class _FotoHizalamaEkraniState extends ConsumerState<FotoHizalamaEkrani> {
                           eski.y * cg / eskiC.width)
                       .sinirla(g.genislik, g.yukseklik, cg, cy);
             }
+            // Açılışta bir kez otomatik öneri (plan §4.7 varsayılanı).
+            if (!_otomatikDenendi && ref.read(yuzBulucuProvider).destekli) {
+              _otomatikDenendi = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) => _yuzeHizala());
+            }
             final d = _durum!;
             final ox = (kisit.maxWidth - cg) / 2;
             final oy = (kisit.maxHeight - cy) / 2;
@@ -260,7 +296,7 @@ class _FotoHizalamaEkraniState extends ConsumerState<FotoHizalamaEkrani> {
                         child: CustomPaint(painter: _CerceveBoyasi(Rect.fromLTWH(ox, oy, cg, cy))),
                       ),
                     ),
-                    if (_isleniyor) const Center(child: CircularProgressIndicator()),
+                    if (_isleniyor || _yuzAraniyor) const Center(child: CircularProgressIndicator()),
                   ],
                 ),
               ),
@@ -276,6 +312,26 @@ class _FotoHizalamaEkraniState extends ConsumerState<FotoHizalamaEkrani> {
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ),
+        if (ref.read(yuzBulucuProvider).destekli)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+            child: Column(
+              children: [
+                TextButton.icon(
+                  onPressed: _isleniyor || _yuzAraniyor ? null : _yuzeHizala,
+                  icon: const Icon(Icons.face_retouching_natural_rounded),
+                  label: const Text('Yüzü bul ve otomatik hizala'),
+                ),
+                for (final n in _yuzNotlari)
+                  Text(n, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  'Yüz tanıma yapmaz: yalnızca yüzün yerini bulur, kimseyi tanımlamaz, saklamaz.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+              ],
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(

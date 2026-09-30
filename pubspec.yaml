@@ -74,6 +74,11 @@ dependencies:
   # uzerinden zaten projedeydi (dolayli, 3.6.1); ZIP dosyaya AKISLA yazilir,
   # Turkce dosya adlari UTF-8 isaretiyle.
   archive: ^3.6.1
+  # e-Okul foto Faz 4: YALNIZ yuz KONUMU (otomatik hizalama; kullanici
+  # karari 30 Eylul). Model uygulamaya GOMULU (com.google.mlkit:face-detection),
+  # internetsiz calisir. Yuz tanima degil, hicbir sey saklanmaz. iOS en az
+  # 15.5 istiyor (proje 13.0 idi, yukseltildi). Windows'ta yok.
+  google_mlkit_face_detection: ^0.14.0
   # Tahta yapilandirmasinin imzalanmasi (Ed25519, RFC 8032).
   #
   # Idarenin telefonu `okul_config.json`'i imzalar, tahtada yalnizca
