@@ -1,5 +1,12 @@
 # Admin paneli yayını — kontrol listesi
 
+> **YAYIMLANDI — 30 Eylül 2026** (kullanıcı onayıyla). `DESTEK_IMZA_TOHUMU`
+> gizli değeri sürüm 1 olarak yüklendi; kasadan geri okunup açık anahtarın
+> Ana Program'dakiyle aynı olduğu doğrulandı. `functions,hosting` birlikte
+> yayımlandı (7 yeni, 2 güncellenen fonksiyon). Dışarıdan doğrulanan: CSP
+> raporlayan başlık geliyor, yeni JS dosyaları sunuluyor, fonksiyonlar
+> girişsiz çağrıyı reddediyor. Girişli kontroller (aşağıda) kullanıcıda.
+
 28–30 Eylül 2026'da yapılan panel ve sunucu işleri **yayımlanmadı**.
 Bu liste, yayın onaylandığında sırayla yapılacakları tutuyor.
 
