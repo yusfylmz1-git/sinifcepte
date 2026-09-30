@@ -15,6 +15,7 @@ import 'package:sinifcepte/data/models/class_model.dart';
 import 'package:sinifcepte/data/models/student_model.dart';
 import 'package:sinifcepte/data/repositories/class_repository.dart';
 import 'package:sinifcepte/data/repositories/student_repository.dart';
+import 'package:sinifcepte/features/student_photos/data/foto_alici.dart';
 import 'package:sinifcepte/features/student_photos/data/foto_depolama.dart';
 import 'package:sinifcepte/features/student_photos/data/ogrenci_foto_deposu.dart';
 import 'package:sinifcepte/features/student_photos/domain/foto_isleme.dart';
@@ -23,6 +24,7 @@ import 'package:sinifcepte/features/student_photos/presentation/disa_aktarim_ekr
 import 'package:sinifcepte/features/student_photos/presentation/eokul_foto_merkezi_ekrani.dart';
 import 'package:sinifcepte/features/student_photos/presentation/foto_hizalama_ekrani.dart';
 import 'package:sinifcepte/features/student_photos/presentation/sinif_foto_ekrani.dart';
+import 'package:sinifcepte/features/student_photos/presentation/seri_cekim_ekrani.dart';
 import 'package:sinifcepte/features/student_photos/presentation/widgets/ogrenci_foto_kucuk.dart';
 import 'package:sinifcepte/features/student_photos/providers/ogrenci_foto_providers.dart';
 import 'package:sinifcepte/shared/widgets/app_drawer.dart';
@@ -306,6 +308,121 @@ void main() {
     });
   });
 
+  group('seri çekim', () {
+    Finder dugme(String metin, {bool dolu = false}) => find.ancestor(
+        of: find.text(metin),
+        matching: find.byWidgetPredicate((w) => dolu ? w is FilledButton : w is ButtonStyleButton));
+
+    Future<_SahteAlici> kur(WidgetTester tester, {List<int>? sira, Uint8List? kayip}) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      final alici = _SahteAlici(jpeg(600, 800), kayip: kayip);
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          fotoDepolamaProvider.overrideWith((ref) async => depolama),
+          fotoAliciProvider.overrideWithValue(alici),
+        ],
+        child: MaterialApp(
+          home: SeriCekimEkrani(
+            sinif: sinif,
+            baslangicSirasi: sira,
+            arkaPlan: <T>(FutureOr<T> Function() is_) async => is_(),
+          ),
+        ),
+      ));
+      return alici;
+    }
+
+    Future<void> kartBekle(WidgetTester tester, String kimlik) =>
+        bekleKadar(tester, () => find.text(kimlik).evaluate().isNotEmpty);
+
+    /// Kamera → hizala → kimlik onayı → kaydet.
+    Future<void> cekVeKaydet(WidgetTester tester, String onayMetni) async {
+      await tester.tap(dugme('Fotoğraf çek'));
+      await bekleKadar(tester, () => find.text('Fotoğrafı hizala').evaluate().isNotEmpty);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Devam'));
+      await bekleKadar(tester, () => find.text(onayMetni).evaluate().isNotEmpty);
+      await tester.tap(find.text(onayMetni));
+      await tester.pump();
+      await tester.tap(dugme('Kaydet'));
+      await bekleKadar(tester, () => find.byType(FotoHizalamaEkrani).evaluate().isEmpty);
+      await bekle(tester, 6);
+    }
+
+    testWidgets('KRITIK: kimlik kartı → çek → onayla → kaydet ve sıradaki; geri al', (tester) async {
+      final ali = (await tester.runAsync(() => StudentRepository().getStudentsByClassId(sinifId)))!
+          .firstWhere((o) => o.schoolNumber == 5)
+          .id!;
+      final alici = await kur(tester, sira: [ali, ismail]);
+      await kartBekle(tester, '5-A • 5');
+      expect(find.text('Ali CAN'), findsOneWidget);
+      expect(alici.kamera, 0, reason: 'kamera kimlik gösterilmeden açılmaz');
+
+      await cekVeKaydet(tester, 'Bu fotoğraf 5 — Ali CAN öğrencisine ait');
+      expect(alici.kamera, 1);
+      expect(await tester.runAsync(() => depo().guncel(ali)), isNotNull, reason: "Ali'ye kaydedildi");
+      await kartBekle(tester, '5-A • 1234');
+      expect(find.text('1/2 çekildi'), findsOneWidget);
+      expect(find.text('Son: 5 Ali'), findsOneWidget);
+
+      // Geri al: fotoğraf silinir, Ali yeniden sıradaki.
+      await tester.tap(find.widgetWithText(TextButton, 'Geri al'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('az önce kaydedilen fotoğrafı silinecek'), findsOneWidget);
+      await tester.tap(dugme('Geri al', dolu: true));
+      await kartBekle(tester, '5-A • 5');
+      await bekleKadar(tester, () => find.text('0/2 çekildi').evaluate().isNotEmpty);
+      expect(find.text('0/2 çekildi'), findsOneWidget);
+      expect(await tester.runAsync(() => depo().guncel(ali)), isNull, reason: 'geri alınan fotoğraf silindi');
+      await bekle(tester, 6); // yarım kalan sorgular bitsin
+    });
+
+    testWidgets('atla, sıra sonu, atlananları yeniden çek', (tester) async {
+      await kur(tester, sira: [ismail]);
+      await kartBekle(tester, '5-A • 1234');
+      await tester.tap(find.text('Şimdi atla'));
+      await bekleKadar(tester, () => find.textContaining('1 öğrenci atlandı').evaluate().isNotEmpty);
+      await tester.tap(find.text('Atlananları çek'));
+      await kartBekle(tester, '5-A • 1234');
+    });
+
+    testWidgets('KRITIK: uygulama kapanınca oturum kaldığı öğrenciden sürüyor', (tester) async {
+      final ali = (await tester.runAsync(() => StudentRepository().getStudentsByClassId(sinifId)))!
+          .firstWhere((o) => o.schoolNumber == 5)
+          .id!;
+      await kur(tester, sira: [ali, ismail]);
+      await kartBekle(tester, '5-A • 5');
+      await tester.tap(find.text('Şimdi atla'));
+      await kartBekle(tester, '5-A • 1234');
+
+      // Yeni ekran, yeni sağlayıcılar: oturum veritabanından okunur.
+      await tester.pumpWidget(const SizedBox());
+      await kur(tester); // sira: null → devam
+      await kartBekle(tester, '5-A • 1234');
+      expect(find.text('0/2 çekildi'), findsOneWidget);
+      expect(find.textContaining('1 atlandı'), findsOneWidget);
+    });
+
+    testWidgets('kamera açıkken kaybolan fotoğraf kimlik sorularak kurtarılıyor', (tester) async {
+      await kur(tester, sira: [ismail], kayip: jpeg(600, 800));
+      await bekleKadar(tester, () => find.text('Fotoğraf kurtarıldı').evaluate().isNotEmpty);
+      expect(find.textContaining('1234 — İsmail IŞIK için kullanılsın mı?'), findsOneWidget);
+      await tester.tap(find.text('Kullan'));
+      await bekleKadar(tester, () => find.text('Fotoğrafı hizala').evaluate().isNotEmpty);
+    });
+
+    testWidgets('KRITIK: kurtarılan fotoğraf "Kullanma" denirse kullanılmıyor', (tester) async {
+      await kur(tester, sira: [ismail], kayip: jpeg(600, 800));
+      await bekleKadar(tester, () => find.text('Fotoğraf kurtarıldı').evaluate().isNotEmpty);
+      await tester.tap(find.text('Kullanma'));
+      await bekle(tester, 6);
+      expect(find.text('Fotoğrafı hizala'), findsNothing);
+      expect(find.text('5-A • 1234'), findsOneWidget);
+    });
+  });
+
   group('avatar (katılım kartı, rastgele seçici, öğrenci listesi)', () {
     const yedekAnahtar = Key('yedek');
 
@@ -501,4 +618,30 @@ void main() {
       expect(find.byType(FotoHizalamaEkrani), findsOneWidget);
     });
   });
+}
+
+/// Kamera/galeri yerine sabit fotoğraf veren alıcı.
+class _SahteAlici extends FotoAlici {
+  _SahteAlici(this.bayt, {this.kayip});
+  final Uint8List bayt;
+  final Uint8List? kayip;
+  int kamera = 0;
+
+  @override
+  bool get kameraVar => true;
+
+  @override
+  Future<Uint8List?> kameradanAl() async {
+    kamera++;
+    return bayt;
+  }
+
+  @override
+  Future<Uint8List?> galeridenAl() async => bayt;
+
+  @override
+  Future<Uint8List?> kayipFotograf() async {
+    final k = kayip;
+    return k;
+  }
 }

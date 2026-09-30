@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/database_helper.dart';
 import '../../../core/storage/prefs_service.dart';
+import '../data/cekim_oturumu_deposu.dart';
+import '../data/foto_alici.dart';
 import '../data/foto_depolama.dart';
 import '../data/ogrenci_foto_deposu.dart';
 import '../domain/ogrenci_foto.dart';
@@ -65,6 +67,12 @@ class FotolariGosterNotifier extends StateNotifier<bool> {
 
 final fotolariGosterProvider =
     StateNotifierProvider<FotolariGosterNotifier, bool>((ref) => FotolariGosterNotifier());
+
+/// Galeri/kamera erişimi (testte sahtesi verilir).
+final fotoAliciProvider = Provider<FotoAlici>((ref) => const FotoAlici());
+
+final cekimOturumuDeposuProvider =
+    Provider<CekimOturumuDeposu>((ref) => CekimOturumuDeposu(() => DatabaseHelper.instance.database));
 
 /// Kaydetme/silme/aktarma sonrası çağrılır.
 void fotolarDegisti(WidgetRef ref) => ref.read(fotoSurumuProvider.notifier).state++;

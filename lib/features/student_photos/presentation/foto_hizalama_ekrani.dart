@@ -538,3 +538,51 @@ class _CerceveBoyasi extends CustomPainter {
 /// Seçilen fotoğrafı çalışma görüntüsüne çevirir (ayrı izolatta).
 Future<CalismaGoruntusu> calismaGoruntusuAc(Uint8List bayt) =>
     Isolate.run(() => calismaGoruntusuHazirla(bayt));
+
+/// Galeri/kamera baytlarını çalışma görüntüsüne çevirip hizalama ve
+/// kimlik onayı ekranını açar. Kaydedildiyse `true`.
+///
+/// Sınıf ekranı (tek öğrenci) ve seri çekim aynı yolu kullanır: kamera
+/// ve galeri çıktısı AYNI işlem hattından geçer (plan §4.6).
+Future<bool> fotoyuHizalaVeKaydet(
+  BuildContext context, {
+  required Uint8List bayt,
+  required StudentModel ogrenci,
+  required String sinifAdi,
+  required String kaynak,
+  required bool mevcutFotoVar,
+  void Function(bool mesgul)? mesgul,
+  ArkaPlanCalistirici? arkaPlan,
+}) async {
+  mesgul?.call(true);
+  CalismaGoruntusu calisma;
+  try {
+    calisma = arkaPlan != null
+        ? await arkaPlan(() => calismaGoruntusuHazirla(bayt))
+        : await calismaGoruntusuAc(bayt);
+  } catch (e) {
+    mesgul?.call(false);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(e is FotoIslemeHatasi ? e.mesaj : 'Fotoğraf açılamadı: $e'),
+        backgroundColor: AppColors.danger,
+      ));
+    }
+    return false;
+  }
+  mesgul?.call(false);
+  if (!context.mounted) return false;
+  final sonuc = await Navigator.of(context).push<bool>(
+    MaterialPageRoute(
+      builder: (_) => FotoHizalamaEkrani(
+        ogrenci: ogrenci,
+        sinifAdi: sinifAdi,
+        calisma: calisma,
+        kaynak: kaynak,
+        mevcutFotoVar: mevcutFotoVar,
+        arkaPlan: arkaPlan,
+      ),
+    ),
+  );
+  return sonuc == true;
+}

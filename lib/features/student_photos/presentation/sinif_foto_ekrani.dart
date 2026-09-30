@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -10,11 +9,11 @@ import '../../../data/models/class_model.dart';
 import '../../../data/models/student_model.dart';
 import '../../classes/providers/student_provider.dart';
 import '../data/foto_paylasim.dart';
-import '../domain/foto_isleme.dart';
 import '../domain/ogrenci_foto.dart';
 import '../providers/ogrenci_foto_providers.dart';
 import 'disa_aktarim_ekrani.dart';
 import 'foto_hizalama_ekrani.dart';
+import 'seri_cekim_ekrani.dart';
 import 'widgets/ogrenci_foto_kucuk.dart';
 
 enum _Suzgec { tumu, eksik, inceleme, hazir, dosyaYok }
@@ -61,6 +60,11 @@ class _SinifFotoEkraniState extends ConsumerState<SinifFotoEkrani> {
       appBar: AppBar(
         title: Text('e-Okul foto · ${widget.sinif.name}'),
         actions: [
+          IconButton(
+            tooltip: 'Seri çekim',
+            icon: const Icon(Icons.burst_mode_outlined),
+            onPressed: _seriCekim,
+          ),
           IconButton(
             tooltip: 'Dışa aktar',
             icon: const Icon(Icons.ios_share_rounded),
@@ -286,6 +290,13 @@ class _SinifFotoEkraniState extends ConsumerState<SinifFotoEkrani> {
                     '(yedekten dönülmüş olabilir). Yeniden seçin ya da kaydı kaldırın.',
                   ),
                 ),
+              if (ref.read(fotoAliciProvider).kameraVar)
+                ListTile(
+                  leading: const Icon(Icons.photo_camera_outlined),
+                  title: Text(f == null ? 'Fotoğraf çek' : 'Yeniden çek'),
+                  subtitle: const Text('Telefonun kamerası açılır'),
+                  onTap: () => Navigator.pop(ctx, 'kamera'),
+                ),
               ListTile(
                 leading: const Icon(Icons.photo_library_outlined),
                 title: Text(f == null ? 'Galeriden seç' : 'Galeriden değiştir'),
@@ -324,8 +335,10 @@ class _SinifFotoEkraniState extends ConsumerState<SinifFotoEkrani> {
     );
     if (!mounted || secim == null) return;
     switch (secim) {
+      case 'kamera':
+        await _fotoEkle(o, mevcutVar: f != null, kamera: true);
       case 'galeri':
-        await _galeridenEkle(o, mevcutVar: f != null);
+        await _fotoEkle(o, mevcutVar: f != null, kamera: false);
       case 'paylas':
         await _paylas(o, f!);
       case 'aktar':
@@ -335,48 +348,28 @@ class _SinifFotoEkraniState extends ConsumerState<SinifFotoEkrani> {
     }
   }
 
-  Future<void> _galeridenEkle(StudentModel o, {required bool mevcutVar}) async {
-    XFile? secilen;
+  Future<void> _fotoEkle(StudentModel o, {required bool mevcutVar, required bool kamera}) async {
+    final alici = ref.read(fotoAliciProvider);
+    Uint8List? bayt;
     try {
-      secilen = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
-        // Telefonun kendi çözücüsü küçültür: 50 MP fotoğraf Dart'a
-        // tam boy gelmez (bkz. pubspec notu).
-        maxWidth: calismaUzunKenar.toDouble(),
-        maxHeight: calismaUzunKenar.toDouble(),
-        imageQuality: 95,
-        requestFullMetadata: false,
-      );
+      bayt = kamera ? await alici.kameradanAl() : await alici.galeridenAl();
     } on PlatformException catch (e) {
-      _mesaj('Galeri açılamadı: ${e.message ?? e.code}', hata: true);
+      _mesaj('${kamera ? 'Kamera' : 'Galeri'} açılamadı: ${e.message ?? e.code}', hata: true);
       return;
     }
-    if (secilen == null || !mounted) return;
-
-    setState(() => _mesgul = true);
-    CalismaGoruntusu calisma;
-    try {
-      calisma = await calismaGoruntusuAc(await secilen.readAsBytes());
-    } catch (e) {
-      if (mounted) setState(() => _mesgul = false);
-      _mesaj(e is FotoIslemeHatasi ? e.mesaj : 'Fotoğraf açılamadı: $e', hata: true);
-      return;
-    }
-    if (!mounted) return;
-    setState(() => _mesgul = false);
-
-    final kaydedildi = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => FotoHizalamaEkrani(
-          ogrenci: o,
-          sinifAdi: widget.sinif.name,
-          calisma: calisma,
-          kaynak: FotoKaynagi.dosya,
-          mevcutFotoVar: mevcutVar,
-        ),
-      ),
+    if (bayt == null || !mounted) return;
+    final kaydedildi = await fotoyuHizalaVeKaydet(
+      context,
+      bayt: bayt,
+      ogrenci: o,
+      sinifAdi: widget.sinif.name,
+      kaynak: kamera ? FotoKaynagi.kamera : FotoKaynagi.dosya,
+      mevcutFotoVar: mevcutVar,
+      mesgul: (m) {
+        if (mounted) setState(() => _mesgul = m);
+      },
     );
-    if (kaydedildi == true) {
+    if (kaydedildi) {
       _mesaj('${o.schoolNumber} — ${o.firstName} ${o.lastName}: fotoğraf kaydedildi.');
     }
   }
@@ -495,6 +488,62 @@ class _SinifFotoEkraniState extends ConsumerState<SinifFotoEkrani> {
     } catch (e) {
       _mesaj('Silinemedi: $e', hata: true);
     }
+  }
+
+  /// Seri çekim: süren oturuma devam, fotoğrafsızlar ya da tüm sınıf.
+  Future<void> _seriCekim() async {
+    final ogrenciler = [...(ref.read(studentListProvider(_sinifId)).valueOrNull ?? const <StudentModel>[])]
+      ..sort((a, b) => a.schoolNumber.compareTo(b.schoolNumber));
+    if (ogrenciler.isEmpty) {
+      _mesaj('Bu sınıfta öğrenci yok.');
+      return;
+    }
+    final fotolar = ref.read(sinifFotolariProvider(_sinifId)).valueOrNull ?? const {};
+    final eksik = [for (final o in ogrenciler) if (fotolar[o.id]?.hazirMi != true) o.id!];
+    final aktif = await ref.read(cekimOturumuDeposuProvider).aktif(_sinifId);
+    if (!mounted) return;
+    final gecerli = {for (final o in ogrenciler) o.id!};
+    final kalan = aktif?.$2.sayim(gecerli).kalan ?? 0;
+    final secim = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (aktif != null && (kalan > 0 || aktif.$2.sayim(gecerli).atlanan > 0))
+              ListTile(
+                leading: const Icon(Icons.play_arrow_rounded),
+                title: const Text('Kaldığın yerden devam et'),
+                subtitle: Text('$kalan öğrenci kaldı'),
+                onTap: () => Navigator.pop(ctx, 'devam'),
+              ),
+            ListTile(
+              leading: const Icon(Icons.person_add_alt_rounded),
+              title: const Text('Fotoğrafı olmayanlar'),
+              subtitle: Text('${eksik.length} öğrenci'),
+              enabled: eksik.isNotEmpty,
+              onTap: () => Navigator.pop(ctx, 'eksik'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.groups_rounded),
+              title: const Text('Tüm sınıf'),
+              subtitle: Text('${ogrenciler.length} öğrenci; mevcut fotoğraflar değiştirilir'),
+              onTap: () => Navigator.pop(ctx, 'tumu'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (secim == null || !mounted) return;
+    final sira = switch (secim) {
+      'eksik' => eksik,
+      'tumu' => [for (final o in ogrenciler) o.id!],
+      _ => null,
+    };
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => SeriCekimEkrani(sinif: widget.sinif, baslangicSirasi: sira),
+    ));
   }
 
   /// Yıl sonu temizliği: sınıfın bütün fotoğrafları. Öğrenciler kalır.
