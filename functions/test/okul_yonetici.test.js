@@ -157,3 +157,13 @@ test('listeyi moderatör de görebiliyor, liste yazmıyor', () => {
   assert.ok(g.includes('okumaYetkisi(request.auth)'));
   assert.ok(!/\.(update|set|add|delete)\(/.test(g), 'liste fonksiyonu yazıyor');
 });
+
+test('KRITIK: karar SUNUCU zaman damgasıyla yazılıyor (yeniden başvuru beklemesi)', () => {
+  // firestore.rules reddedilen öğretmenin yeniden başvurusunu
+  // `decided_ts + 24 saat` ile bekletiyor; damga yazılmazsa bekleme
+  // hiç çalışmaz (kural damgasız kararı eski kayıt sayıp serbest bırakır).
+  const kaynak = readFileSync(new URL('../index.js', import.meta.url), 'utf8');
+  assert.match(kaynak, /ref\.update\(\{ \.\.\.guncelleme, decided_ts: FieldValue\.serverTimestamp\(\) \}\)/);
+  const kural = readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8');
+  assert.match(kural, /resource\.data\.decided_ts \+ duration\.value\(24, 'h'\)/);
+});

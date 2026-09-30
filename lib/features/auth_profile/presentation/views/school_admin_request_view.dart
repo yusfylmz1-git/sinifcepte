@@ -265,9 +265,33 @@ class _SchoolAdminRequestViewState
   }
 
   Widget _buildForm(bool isDark, String schoolTitle) {
+    final onceki = _existing;
+    final acilis = onceki?.yenidenBasvuruZamani;
+    final erken = acilis != null && DateTime.now().isBefore(acilis);
+    final zaman = acilis == null ? '' : DateFormat('dd.MM.yyyy HH:mm').format(acilis.toLocal());
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Reddedilen (ya da yöneticiliği geri alınan) öğretmen: gerekçe
+        // ve yeniden başvuru zamanı. Eskiden form boş görünüyor, gönderim
+        // kural tarafından reddedilip "bağlantınızı kontrol edin"
+        // deniyordu.
+        if (onceki != null && onceki.isRejected) ...[
+          _infoBox(
+            isDark: isDark,
+            color: Colors.redAccent,
+            icon: Icons.info_outline_rounded,
+            title: 'Önceki başvurunuz sonuçlanmadı',
+            body: [
+              if ((onceki.rejectionReason ?? '').trim().isNotEmpty)
+                'Gerekçe: ${onceki.rejectionReason!.trim()}',
+              erken
+                  ? '$zaman sonrasında yeniden başvurabilirsiniz.'
+                  : 'Yeniden başvurabilirsiniz.',
+            ].join('\n'),
+          ),
+          const SizedBox(height: 14),
+        ],
         Text(
           'Okul yöneticisi, okulundaki öğretmenleri doğrular ve velilerden '
           'gelen şikâyetleri görür. Öğretmenlerin sınıf verilerine, notlarına '
@@ -340,7 +364,7 @@ class _SchoolAdminRequestViewState
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed: _submitting ? null : _submit,
+            onPressed: _submitting || erken ? null : _submit,
             icon: _submitting
                 ? const SizedBox(
                     width: 16,
@@ -351,7 +375,13 @@ class _SchoolAdminRequestViewState
                     ),
                   )
                 : const Icon(Icons.send_rounded, size: 18),
-            label: Text(_submitting ? 'Gönderiliyor...' : 'Başvuruyu Gönder'),
+            label: Text(_submitting
+                ? 'Gönderiliyor...'
+                : erken
+                    ? '$zaman sonrasında başvurulabilir'
+                    : (onceki?.isRejected ?? false)
+                        ? 'Yeniden Başvur'
+                        : 'Başvuruyu Gönder'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,

@@ -461,7 +461,10 @@ export const decideSchoolAdmin = onCall(
       k.gerekce,
       new Date().toISOString()
     );
-    await ref.update(guncelleme);
+    // decided_ts: SUNUCU zaman damgası. Kural, reddedilen öğretmenin
+    // yeniden başvurusunu buna göre 24 saat bekletiyor (decided_at metin;
+    // kural metni zamana çeviremiyor).
+    await ref.update({ ...guncelleme, decided_ts: FieldValue.serverTimestamp() });
 
     // Denetim kaydı: yayın gibi, kayıt atılamazsa karar geri alınmıyor.
     try {

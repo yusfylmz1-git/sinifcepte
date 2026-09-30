@@ -16,7 +16,7 @@ import {
   assertSucceeds,
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, getDocs, collection, setDoc, deleteDoc, updateDoc, query, where } from 'firebase/firestore';
+import { doc, getDoc, getDocs, collection, setDoc, deleteDoc, updateDoc, query, where, Timestamp } from 'firebase/firestore';
 
 const TEACHER_UID = 'teacherAhmet';
 const OTHER_TEACHER_UID = 'teacherMehmet';
@@ -2958,5 +2958,106 @@ describe('Okul panosu (school_boards) — tahta modülü', () => {
         ),
       );
     });
+  });
+});
+
+// Kullanıcı kararı (30 Eylül 2026): reddedilen öğretmen karardan 24 saat
+// sonra yeniden başvurabilir. Belge kimliği öğretmenden türediği için
+// yeniden başvuru bir GÜNCELLEME; eskiden yalnızca süper admin
+// güncelleyebiliyordu ve reddedilen öğretmen bir daha hiç başvuramıyordu.
+describe('4b. Okul yöneticiliği — yeniden başvuru (24 saat)', () => {
+  const REQ = 'req_yeniden';
+  const saatOnce = (h) => Timestamp.fromMillis(Date.now() - h * 3600 * 1000);
+
+  /** Mobil istemcinin yazdığı biçim (karar alanları null değerle). */
+  const basvuru = (ek = {}) => ({
+    id: REQ,
+    teacher_uid: TEACHER_UID,
+    school_id: 'meb_16_123',
+    status: 'pending',
+    requested_at: new Date().toISOString(),
+    decided_by_uid: null,
+    decided_at: null,
+    rejection_reason: null,
+    ...ek,
+  });
+
+  async function reddedilmis(ek = {}) {
+    await testEnv.clearFirestore();
+    await seed(async (db) => {
+      await setDoc(doc(db, 'school_admin_requests', REQ), {
+        teacher_uid: TEACHER_UID,
+        school_id: 'meb_16_123',
+        status: 'rejected',
+        decided_at: '2026-09-29T10:00:00.000Z',
+        decided_by_uid: 'superAdmin',
+        rejection_reason: 'Belge okunaklı değil',
+        ...ek,
+      });
+    });
+  }
+
+  it('KRİTİK: 24 saat geçtiyse yeniden başvurabilir', async () => {
+    await reddedilmis({ decided_ts: saatOnce(25) });
+    await assertSucceeds(setDoc(doc(teacherDb(), 'school_admin_requests', REQ), basvuru()));
+  });
+
+  it('KRİTİK: 24 saat geçmeden yeniden başvuramaz', async () => {
+    await reddedilmis({ decided_ts: saatOnce(1) });
+    await assertFails(setDoc(doc(teacherDb(), 'school_admin_requests', REQ), basvuru()));
+  });
+
+  it('damgasız eski kararda bekleme yok', async () => {
+    await reddedilmis();
+    await assertSucceeds(setDoc(doc(teacherDb(), 'school_admin_requests', REQ), basvuru()));
+  });
+
+  it('KRİTİK: yeniden başvururken kendini onaylayamaz', async () => {
+    await reddedilmis({ decided_ts: saatOnce(25) });
+    await assertFails(
+      setDoc(doc(teacherDb(), 'school_admin_requests', REQ), basvuru({ status: 'approved' })),
+    );
+  });
+
+  it('KRİTİK: karar alanlarını kendisi yazamaz', async () => {
+    await reddedilmis({ decided_ts: saatOnce(25) });
+    for (const ek of [
+      { decided_by_uid: TEACHER_UID },
+      { decided_at: '2026-09-30T10:00:00.000Z' },
+      { decided_ts: saatOnce(0) },
+      { rejection_reason: 'eski gerekçe kalsın' },
+      { revoked_at: '2026-09-30T10:00:00.000Z' },
+    ]) {
+      await assertFails(
+        setDoc(doc(teacherDb(), 'school_admin_requests', REQ), basvuru(ek)),
+      );
+    }
+  });
+
+  it('KRİTİK: başka öğretmen yeniden başvuru yazamaz', async () => {
+    await reddedilmis({ decided_ts: saatOnce(25) });
+    await assertFails(
+      setDoc(doc(otherTeacherDb(), 'school_admin_requests', REQ), basvuru()),
+    );
+    await assertFails(
+      setDoc(
+        doc(otherTeacherDb(), 'school_admin_requests', REQ),
+        basvuru({ teacher_uid: OTHER_TEACHER_UID }),
+      ),
+    );
+  });
+
+  it('bekleyen ya da onaylı başvuru öğretmence güncellenemez', async () => {
+    for (const durum of ['pending', 'approved']) {
+      await testEnv.clearFirestore();
+      await seed(async (db) => {
+        await setDoc(doc(db, 'school_admin_requests', REQ), {
+          teacher_uid: TEACHER_UID,
+          school_id: 'meb_16_123',
+          status: durum,
+        });
+      });
+      await assertFails(setDoc(doc(teacherDb(), 'school_admin_requests', REQ), basvuru()));
+    }
   });
 });

@@ -410,6 +410,32 @@ service cloud.firestore {
 
       // Başvuran kendi kararını yazamaz — yetki yükseltmeyi engeller.
       allow update, delete: if isSuper();
+
+      // Reddedilen (ya da yöneticiliği geri alınan) öğretmen, karardan
+      // 24 saat sonra YENİDEN başvurabilir (kullanıcı kararı, 30 Eylül
+      // 2026; yönetici seçimi raporu md. 6: bekleme spam'i önler).
+      //
+      // Belge kimliği öğretmenden türediği için yeniden başvuru bir
+      // GÜNCELLEME; eskiden `update` yalnızca süper admindeydi ve
+      // reddedilen öğretmen bir daha hiç başvuramıyordu (ekranda
+      // yanıltıcı "bağlantınızı kontrol edin" hatası).
+      //
+      // - yalnızca kendi belgesi, yalnızca rejected -> pending
+      // - karar alanları boş olmalı: öğretmen kendi kararını yazamaz
+      // - bekleme SUNUCU zaman damgasıyla (`decided_ts`, karar
+      //   fonksiyonu yazar); damgasız eski kararda bekleme yok
+      allow update: if request.auth != null
+        && resource.data.teacher_uid == request.auth.uid
+        && request.resource.data.teacher_uid == request.auth.uid
+        && resource.data.status == 'rejected'
+        && request.resource.data.status == 'pending'
+        && request.resource.data.get('decided_by_uid', null) == null
+        && request.resource.data.get('decided_at', null) == null
+        && request.resource.data.get('decided_ts', null) == null
+        && request.resource.data.get('rejection_reason', null) == null
+        && request.resource.data.get('revoked_at', null) == null
+        && (!(resource.data.get('decided_ts', null) is timestamp)
+            || request.time > resource.data.decided_ts + duration.value(24, 'h'));
     }
 
     // Veli şikâyetleri.

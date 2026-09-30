@@ -135,6 +135,36 @@ void main() {
       expect(rejected.canApplyForSchoolAdmin, isTrue);
       expect(rejected.isSchoolAdmin, isFalse);
     });
+
+    // Kural (firestore.rules) yeniden başvuruyu karardan 24 saat sonra
+    // açıyor; ekran düğmeyi erken açıp yanıltıcı hata göstermesin.
+    test('KRİTİK: yeniden başvuru zamanı kararın 24 saat sonrası', () {
+      final karar = DateTime.utc(2026, 9, 30, 10);
+      final r = request(status: SchoolAdminStatus.rejected).copyWith(decidedAt: karar);
+      expect(r.isRejected, isTrue);
+      expect(r.yenidenBasvuruZamani, DateTime.utc(2026, 10, 1, 10));
+    });
+
+    test('bekleyen ya da onaylı başvuruda yeniden başvuru zamanı yok', () {
+      final karar = DateTime.utc(2026, 9, 30, 10);
+      expect(request().copyWith(decidedAt: karar).yenidenBasvuruZamani, isNull);
+      expect(
+        request(status: SchoolAdminStatus.approved).copyWith(decidedAt: karar).yenidenBasvuruZamani,
+        isNull,
+      );
+      expect(request(status: SchoolAdminStatus.rejected).yenidenBasvuruZamani, isNull,
+          reason: 'karar tarihi yoksa (eski kayıt) bekleme yok — kural da öyle');
+    });
+
+    test('KRİTİK: yeniden başvuru kaydı karar alanlarını boş gönderiyor (kural bunu şart koşuyor)', () {
+      final m = request().toMap();
+      expect(m['status'], 'pending');
+      expect(m['decided_by_uid'], isNull);
+      expect(m['decided_at'], isNull);
+      expect(m['rejection_reason'], isNull);
+      expect(m.containsKey('decided_ts'), isFalse);
+      expect(m.containsKey('revoked_at'), isFalse);
+    });
   });
 
   group('Şikâyet kaydı', () {

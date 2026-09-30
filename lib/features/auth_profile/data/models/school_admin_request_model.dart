@@ -54,6 +54,19 @@ class SchoolAdminRequestModel {
 
   bool get isPending => status == SchoolAdminStatus.pending;
   bool get isApproved => status == SchoolAdminStatus.approved;
+  bool get isRejected => status == SchoolAdminStatus.rejected;
+
+  /// Reddedilen başvurudan sonra yeniden başvuru beklemesi. Asıl denetim
+  /// `firestore.rules`'ta (sunucu saatiyle); bu yalnızca ekranın
+  /// düğmeyi erken açıp yanıltıcı hata göstermemesi için.
+  static const Duration yenidenBasvuruBeklemesi = Duration(hours: 24);
+
+  /// Reddedildiyse yeniden başvurunun açılacağı an; değilse `null`.
+  DateTime? get yenidenBasvuruZamani {
+    final k = decidedAt;
+    if (!isRejected || k == null) return null;
+    return k.add(yenidenBasvuruBeklemesi);
+  }
 
   /// Okul başlığı: "Bursa / Nilüfer — Cumhuriyet Ortaokulu"
   String get fullSchoolTitle {
