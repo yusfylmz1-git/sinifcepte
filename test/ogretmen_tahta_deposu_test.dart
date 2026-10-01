@@ -19,6 +19,9 @@ class _BellekDepo extends FlutterSecureStorage {
   final Map<String, String> _veri = {};
   bool hataVer = false;
 
+  /// Yalnızca OKUMA düşer (Keystore anlık hatası); yazma çalışır.
+  bool okumaHatasi = false;
+
   @override
   Future<String?> read({
     required String key,
@@ -29,7 +32,7 @@ class _BellekDepo extends FlutterSecureStorage {
     AppleOptions? mOptions,
     WindowsOptions? wOptions,
   }) async {
-    if (hataVer) throw Exception('depo erişilemiyor');
+    if (hataVer || okumaHatasi) throw Exception('depo erişilemiyor');
     return _veri[key];
   }
 
@@ -81,7 +84,11 @@ class _BellekDepo extends FlutterSecureStorage {
   }
 
   void hamYaz(String key, String value) => _veri[key] = value;
+  String? hamOku(String key) => _veri[key];
 }
+
+const _v1 = 'ogretmen_tahta_kaydi_v1';
+const _v2 = 'ogretmen_tahta_kayitlari_v2';
 
 void main() {
   late _BellekDepo depo;
@@ -93,6 +100,7 @@ void main() {
   });
 
   const gecerliYuk = 'SCT1:meb_16_123456:AYILMAZ:A. Yılmaz:GEZDGNBVGY3TQOJQ';
+  const ikinciOkul = 'SCT1:meb_34_9:BDEMIR:B. Demir:MFRGGZDFMZTWQ2LK';
 
   group('KRİTİK: iki tarafın QR biçimi uyuşuyor', () {
     test('idarecinin ürettiği QR öğretmen tarafında ayrıştırılır', () {
@@ -168,9 +176,12 @@ void main() {
       expect(OgretmenTahtaDeposu.qrAyristir('SCT1:okul:kod:ad'), isNull);
     });
 
-    test('fazla alan reddedilir', () {
+    test('altıncı alan okul adı; yedinci alan reddedilir', () {
+      final k = OgretmenTahtaDeposu.qrAyristir('SCT1:okul:kod:ad:secret:Okul Adi');
+      expect(k!.okulAdi, 'Okul Adi');
+      expect(k.totpSecret, 'secret');
       expect(
-        OgretmenTahtaDeposu.qrAyristir('SCT1:okul:kod:ad:secret:fazla'),
+        OgretmenTahtaDeposu.qrAyristir('SCT1:okul:kod:ad:secret:okul:fazla'),
         isNull,
       );
     });
@@ -186,6 +197,7 @@ void main() {
     test('KRİTİK: boş secret reddedilir', () {
       // Secret'sız kayıt hiç kod üretemez; kaydetmek anlamsız.
       expect(OgretmenTahtaDeposu.qrAyristir('SCT1:okul:kod:ad:'), isNull);
+      expect(OgretmenTahtaDeposu.qrAyristir('SCT1:okul:kod:ad::Okul'), isNull);
     });
 
     test('boş ad kabul edilir (kod yeterli)', () {
@@ -211,8 +223,8 @@ void main() {
       expect(kaydedilen, isNotNull);
       expect(await ogretmenDepo.kayitliMi(), isTrue);
 
-      final okunan = await ogretmenDepo.oku();
-      expect(okunan!.kod, 'AYILMAZ');
+      final okunan = (await ogretmenDepo.tumu()).single;
+      expect(okunan.kod, 'AYILMAZ');
       expect(okunan.okulId, 'meb_16_123456');
       expect(okunan.totpSecret, 'GEZDGNBVGY3TQOJQ');
     });
@@ -222,8 +234,8 @@ void main() {
         'SCT1:meb_16_1:SUKRU:Şükrü Çağlayan:GEZDGNBVGY3TQOJQ',
       );
 
-      final okunan = await ogretmenDepo.oku();
-      expect(okunan!.ad, 'Şükrü Çağlayan');
+      final okunan = (await ogretmenDepo.tumu()).single;
+      expect(okunan.ad, 'Şükrü Çağlayan');
     });
 
     test('geçersiz QR kaydedilmez', () async {
@@ -231,65 +243,144 @@ void main() {
       expect(await ogretmenDepo.kayitliMi(), isFalse);
     });
 
-    test('ikinci kayıt öncekini değiştirir', () async {
-      // Öğretmen okul değiştirdi veya secret yenilendi.
+    test('KRİTİK: başka okulun karekodu EKLENİR, öncekinin yerine geçmez', () async {
+      // İki okulda ders veren öğretmen (görevlendirme, ücretli): ilk
+      // sürümde ikinci okul birincinin üzerine yazılıyordu.
       await ogretmenDepo.qrIleKaydet(gecerliYuk);
-      await ogretmenDepo.qrIleKaydet(
-        'SCT1:meb_34_9:BDEMIR:B. Demir:MFRGGZDFMZTWQ2LK',
-      );
+      await ogretmenDepo.qrIleKaydet(ikinciOkul);
 
-      final okunan = await ogretmenDepo.oku();
-      expect(okunan!.kod, 'BDEMIR');
-      expect(okunan.okulId, 'meb_34_9');
+      final liste = await ogretmenDepo.tumu();
+      expect(liste.map((k) => k.okulId), ['meb_16_123456', 'meb_34_9']);
+      expect(liste.map((k) => k.kod), ['AYILMAZ', 'BDEMIR']);
     });
 
-    test('kayıt yokken oku null döner', () async {
-      expect(await ogretmenDepo.oku(), isNull);
+    test('KRİTİK: aynı okulun yeni karekodu o okulun kaydının yerine geçer', () async {
+      // Secret yenilendi: eski secret'la kod üretmeye devam etmemeli.
+      await ogretmenDepo.qrIleKaydet(gecerliYuk);
+      await ogretmenDepo.qrIleKaydet(ikinciOkul);
+      await ogretmenDepo.qrIleKaydet(
+        'SCT1:meb_16_123456:AYILMAZ:A. Yılmaz:KRSXG5CTMVRXEZLU',
+      );
+
+      final liste = await ogretmenDepo.tumu();
+      expect(liste, hasLength(2));
+      final ilk = liste.firstWhere((k) => k.okulId == 'meb_16_123456');
+      expect(ilk.totpSecret, 'KRSXG5CTMVRXEZLU');
+    });
+
+    test('KRİTİK: okuma hatasında yazılmaz (öbür okullar silinmesin)', () async {
+      await ogretmenDepo.qrIleKaydet(gecerliYuk);
+      await ogretmenDepo.qrIleKaydet(ikinciOkul);
+      final once = depo.hamOku(_v2);
+
+      depo.okumaHatasi = true;
+      final sonuc = await ogretmenDepo.qrIleKaydet(
+        'SCT1:meb_06_1:CKAYA:C. Kaya:GEZDGNBVGY3TQOJQ',
+      );
+      expect(sonuc, isNull);
+      expect(await ogretmenDepo.sil('meb_16_123456'), isFalse);
+      expect(depo.hamOku(_v2), once);
+    });
+
+    test('kayıt yokken liste boş', () async {
+      expect(await ogretmenDepo.tumu(), isEmpty);
       expect(await ogretmenDepo.kayitliMi(), isFalse);
     });
 
-    test('kayıt silinir', () async {
+    test('bir okul silinir, öbürü kalır', () async {
       await ogretmenDepo.qrIleKaydet(gecerliYuk);
+      await ogretmenDepo.qrIleKaydet(ikinciOkul);
 
-      expect(await ogretmenDepo.sil(), isTrue);
-      expect(await ogretmenDepo.oku(), isNull);
+      expect(await ogretmenDepo.sil('meb_16_123456'), isTrue);
+      expect((await ogretmenDepo.tumu()).single.okulId, 'meb_34_9');
+
+      expect(await ogretmenDepo.sil('meb_34_9'), isTrue);
+      expect(await ogretmenDepo.tumu(), isEmpty);
+    });
+
+    test('okul adı (Ana Program, 6. alan) saklanır ve gösterilir', () async {
+      await ogretmenDepo.qrIleKaydet(
+        'SCT1:meb_775214:YYILMAZ:Yusuf Yilmaz:KRSXG5CTMVRXEZLU:Mimar Sinan Ortaokulu',
+      );
+      final k = (await ogretmenDepo.tumu()).single;
+      expect(k.okulAdi, 'Mimar Sinan Ortaokulu');
+      expect(k.okulGorunenAdi, 'Mimar Sinan Ortaokulu');
+      expect(k.totpSecret, 'KRSXG5CTMVRXEZLU');
+    });
+
+    test('okul adı yoksa kurum kodu gösterilir', () async {
+      await ogretmenDepo.qrIleKaydet('SCT1:meb_775214:K:A:S');
+      expect((await ogretmenDepo.tumu()).single.okulGorunenAdi,
+          'Kurum kodu 775214');
+    });
+  });
+
+  group('Eski tek kayıttan taşıma', () {
+    const eskiJson = '{"okulId":"meb_16_123456","kod":"YUSUFYILMA",'
+        '"ad":"Yusuf YILMAZ","totpSecret":"GEZDGNBVGY3TQOJQ"}';
+
+    test('KRİTİK: güncellemeden önceki kayıt kaybolmuyor', () async {
+      // Telefonda kurulu öğretmen uygulama güncellenince yeniden
+      // karekod okutmak zorunda kalmamalı.
+      depo.hamYaz(_v1, eskiJson);
+
+      expect((await ogretmenDepo.tumu()).single.kod, 'YUSUFYILMA');
+      expect(depo.hamOku(_v1), isNull);
+      expect(depo.hamOku(_v2), isNotNull);
+      expect((await ogretmenDepo.tumu()).single.kod, 'YUSUFYILMA');
+    });
+
+    test('taşınan kaydın yanına ikinci okul eklenir', () async {
+      depo.hamYaz(_v1, eskiJson);
+      await ogretmenDepo.qrIleKaydet(
+        'SCT1:meb_775214:YYILMAZ:Yusuf Yilmaz:KRSXG5CTMVRXEZLU:Mimar Sinan Ortaokulu',
+      );
+      expect((await ogretmenDepo.tumu()).map((k) => k.okulId),
+          ['meb_16_123456', 'meb_775214']);
+    });
+
+    test('silinen taşınmış okul geri gelmiyor', () async {
+      depo.hamYaz(_v1, eskiJson);
+      expect(await ogretmenDepo.sil('meb_16_123456'), isTrue);
+      expect(await ogretmenDepo.tumu(), isEmpty);
     });
   });
 
   group('Bozuk kayıt', () {
     test('bozuk JSON çökmez', () async {
-      depo.hamYaz('ogretmen_tahta_kaydi_v1', '{bu json degil');
-      expect(await ogretmenDepo.oku(), isNull);
+      depo.hamYaz(_v2, '{bu json degil');
+      expect(await ogretmenDepo.tumu(), isEmpty);
+      depo.hamYaz(_v2, '');
+      depo.hamYaz(_v1, '{bu json degil');
+      expect(await ogretmenDepo.tumu(), isEmpty);
     });
 
-    test('KRİTİK: secret\'i olmayan kayıt null döner', () async {
+    test('KRİTİK: secret\'i olmayan kayıt listeye girmez', () async {
       // Kod üretilemeyeceği için kayıt işe yaramaz; "kayıtlıyım ama
       // çalışmıyor" durumundansa hiç kayıtlı olmamak iyidir.
       depo.hamYaz(
-        'ogretmen_tahta_kaydi_v1',
-        '{"okulId":"o","kod":"K","ad":"A","totpSecret":""}',
+        _v2,
+        '[{"okulId":"o","kod":"K","ad":"A","totpSecret":""},'
+            '{"okulId":"p","kod":"K","ad":"A","totpSecret":"S"}]',
       );
-      expect(await ogretmenDepo.oku(), isNull);
+      expect((await ogretmenDepo.tumu()).single.okulId, 'p');
     });
 
-    test('kodu olmayan kayıt null döner', () async {
-      depo.hamYaz(
-        'ogretmen_tahta_kaydi_v1',
-        '{"okulId":"o","kod":"","ad":"A","totpSecret":"S"}',
-      );
-      expect(await ogretmenDepo.oku(), isNull);
+    test('kodu olmayan eski kayıt taşınmaz', () async {
+      depo.hamYaz(_v1, '{"okulId":"o","kod":"","ad":"A","totpSecret":"S"}');
+      expect(await ogretmenDepo.tumu(), isEmpty);
     });
 
-    test('liste gelirse null döner', () async {
-      depo.hamYaz('ogretmen_tahta_kaydi_v1', '[]');
-      expect(await ogretmenDepo.oku(), isNull);
+    test('liste yerine nesne gelirse boş', () async {
+      depo.hamYaz(_v2, '{"okulId":"o"}');
+      expect(await ogretmenDepo.tumu(), isEmpty);
     });
 
     test('depo hatası çökmez', () async {
       depo.hataVer = true;
 
       expect(await ogretmenDepo.kayitliMi(), isFalse);
-      expect(await ogretmenDepo.oku(), isNull);
+      expect(await ogretmenDepo.tumu(), isEmpty);
       expect(await ogretmenDepo.qrIleKaydet(gecerliYuk), isNull);
     });
   });
@@ -299,24 +390,24 @@ void main() {
       // Öğretmen komşu okulun tahtasının QR'ını tararsa, sessizce
       // çalışmayan kod üretmek yerine sebep söylenmeli.
       await ogretmenDepo.qrIleKaydet(gecerliYuk);
-      final kayit = await ogretmenDepo.oku();
+      final kayit = (await ogretmenDepo.tumu()).single;
 
       final tahtaYuku = TahtaTotp.qrAyristir(
         'SC1:meb_34_999:tahta_1:nonce:29218',
       )!;
 
-      expect(tahtaYuku.ayniOkul(kayit!.okulId), isFalse);
+      expect(tahtaYuku.ayniOkul(kayit.okulId), isFalse);
     });
 
     test('kendi okulunun tahtası eşleşir', () async {
       await ogretmenDepo.qrIleKaydet(gecerliYuk);
-      final kayit = await ogretmenDepo.oku();
+      final kayit = (await ogretmenDepo.tumu()).single;
 
       final tahtaYuku = TahtaTotp.qrAyristir(
         'SC1:meb_16_123456:tahta_1:nonce:29218',
       )!;
 
-      expect(tahtaYuku.ayniOkul(kayit!.okulId), isTrue);
+      expect(tahtaYuku.ayniOkul(kayit.okulId), isTrue);
     });
   });
 }

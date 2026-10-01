@@ -50,7 +50,12 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
   final _okulKoduCtrl = TextEditingController();
 
   bool _yukleniyor = true;
-  OgretmenTahtaKaydi? _kayit;
+
+  /// Telefonda tanımlı okullar (okul başına bir kayıt).
+  List<OgretmenTahtaKaydi> _kayitlar = const [];
+
+  /// Ekrandaki kodun ait olduğu okul.
+  OgretmenTahtaKaydi? _kodKaydi;
 
   /// Buluttaki yetki kaydı (istek gönderildiyse).
   TahtaYetkiKaydi? _yetkiKaydi;
@@ -80,13 +85,27 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
     super.dispose();
   }
 
-  Future<void> _kaydiYukle() async {
-    final kayit = await _depo.oku();
+  Future<void> _listeyiYenile() async {
+    final kayitlar = await _depo.tumu();
     if (!mounted) return;
     setState(() {
-      _kayit = kayit;
+      _kayitlar = kayitlar;
       _yukleniyor = false;
     });
+  }
+
+  void _koduTemizle() {
+    _sayac?.cancel();
+    setState(() {
+      _kod = null;
+      _kalanSaniye = 0;
+      _kodKaydi = null;
+    });
+  }
+
+  Future<void> _kaydiYukle() async {
+    await _listeyiYenile();
+    if (!mounted) return;
 
     // Bulut durumu HER AÇILIŞTA soruluyor.
     //
@@ -138,8 +157,7 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
       final kayit = await _depo.qrIleKaydet(
         'SCT1:$okulId:${yetki.kod}:$guvenliAd:${yetki.totpSecret}',
       );
-      if (!mounted) return;
-      if (kayit != null) setState(() => _kayit = kayit);
+      if (kayit != null) await _listeyiYenile();
       return;
     }
 
@@ -155,16 +173,12 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
     // ağ/izin sorunu — ve ikisini ayırt edemiyoruz. Ağ hatasında
     // öğretmenin kaydını silmek, çevrimdışı bir öğretmeni ders
     // başında yetkisiz bırakırdı.
-    if (_kayit != null && yetki != null && !yetki.onayli) {
+    if (okulKaydi(_kayitlar, okulId) != null && yetki != null && !yetki.onayli) {
       debugPrint('Tahta: yetki kaldırılmış (${yetki.durum}), kayıt siliniyor');
-      await _depo.sil();
-      _sayac?.cancel();
+      await _depo.sil(okulId);
       if (!mounted) return;
-      setState(() {
-        _kayit = null;
-        _kod = null;
-        _kalanSaniye = 0;
-      });
+      if (_kodKaydi?.okulId == okulId) _koduTemizle();
+      await _listeyiYenile();
       _mesaj(
         'Tahta yetkiniz okul yöneticisi tarafından kaldırıldı.',
         hata: true,
@@ -224,28 +238,20 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Tahta Kilidi', style: AppFonts.outfit(fontSize: 17)),
-        actions: [
-          if (_kayit != null)
-            IconButton(
-              tooltip: 'Kaydı sil',
-              icon: const Icon(Icons.link_off_rounded),
-              onPressed: _kaydiSil,
-            ),
-        ],
       ),
       body: _yukleniyor
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                if (_kayit == null && _yetkiKaydi != null)
+                if (_kayitlar.isEmpty && _yetkiKaydi != null)
                   // İstek gönderilmiş: durumu göster, kurulum formunu
                   // tekrar sunma.
                   _yetkiDurumKarti(isDark)
-                else if (_kayit == null)
+                else if (_kayitlar.isEmpty)
                   _kurulumBolumu(isDark)
                 else ...[
-                  _kimlikKarti(isDark),
+                  _okullarKarti(isDark),
                   const SizedBox(height: 16),
                   if (_kod != null) _kodKarti(isDark),
                   if (_kod != null) const SizedBox(height: 16),
@@ -404,23 +410,87 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
     }
 
     _okulKoduCtrl.clear();
+    // Aynı okulun yeni tanımı: eski secret'la üretilmiş kod ekranda kalmasın.
+    if (_kodKaydi?.okulId == kayit.okulId) _koduTemizle();
     await _kaydiYukle();
     if (!mounted) return;
-    _mesaj('Kurulum tamam. Artık tahtayı açabilirsiniz.');
+    _mesaj('${kayit.okulGorunenAdi} tanımlandı. Artık o okulun tahtalarını '
+        'açabilirsiniz.');
   }
 
   // --- Kimlik ---
 
-  Widget _kimlikKarti(bool isDark) {
-    final k = _kayit!;
+  /// Tanımlı okullar. Tek okulda eskisi gibi; birden çoksa tahtanın
+  /// karekodu hangi okula aitse o okulun kaydı kullanılıyor.
+  Widget _okullarKarti(bool isDark) {
+    final tek = _kayitlar.length == 1;
     return _kart(
       isDark,
-      baslik: '✅ Tanımlı',
-      aciklama: 'Tahtada bu kodu kullanacaksınız.',
+      baslik: tek ? '✅ Tanımlı' : '✅ Tanımlı okullar',
+      aciklama: tek
+          ? 'Tahtada bu kodu kullanacaksınız.'
+          : 'Tahtanın karekodu hangi okula aitse o okulun kodu '
+              'kullanılır; seçmeniz gerekmez.',
       cocuklar: [
-        _bilgiSatiri(Icons.badge_outlined, 'Öğretmen kodu', k.kod),
-        const SizedBox(height: 6),
-        _bilgiSatiri(Icons.person_outline_rounded, 'Ad', k.ad),
+        for (final k in _kayitlar) ...[
+          _okulSatiri(k),
+          const SizedBox(height: 8),
+        ],
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => _qrOkut(kurulumMu: true),
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: Text('Başka okul ekle',
+                style: AppFonts.outfit(fontSize: 12.5)),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'İki okulda ders veriyorsanız diğer okulun idaresinin '
+          'gösterdiği karekodu okutun.',
+          style: AppFonts.outfit(
+              fontSize: 10.5, color: Colors.grey, height: 1.4),
+        ),
+      ],
+    );
+  }
+
+  Widget _okulSatiri(OgretmenTahtaKaydi k) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(top: 2),
+          child: Icon(Icons.school_outlined, size: 18, color: Colors.grey),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                k.okulGorunenAdi,
+                style: AppFonts.outfit(
+                    fontSize: 13, fontWeight: FontWeight.w600),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Öğretmen kodu: ${k.kod}'
+                '${k.ad.isEmpty ? '' : ' · ${k.ad}'}',
+                style: AppFonts.outfit(fontSize: 11.5, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          tooltip: 'Bu okulu sil',
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.link_off_rounded, size: 20),
+          onPressed: () => _kaydiSil(k),
+        ),
       ],
     );
   }
@@ -472,6 +542,16 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
                 : 'Tahtaya bu kodu girin',
             style: AppFonts.outfit(fontSize: 12, color: Colors.grey),
           ),
+          // Birden çok okulda kodun hangi okulun tahtası için olduğu
+          // görünmeli: başka okulun koduyla tahta açılmaz.
+          if (_kayitlar.length > 1 && _kodKaydi != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              '${_kodKaydi!.okulGorunenAdi} (${_kodKaydi!.kod})',
+              textAlign: TextAlign.center,
+              style: AppFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ],
           const SizedBox(height: 8),
           Text(
             // Okunurluk için 3+3: tahtada elle giriliyor.
@@ -549,13 +629,38 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
   /// QR'ın tek işi okul eşleşmesini teyit etmek; secret telefonda
   /// olduğu için kod her hâlükârda üretilebilir. Kamerası bozuk
   /// öğretmen sınıfta mahsur kalmasın.
-  void _kodUretDogrudan() {
-    final k = _kayit;
-    if (k == null) return;
-    _kodUret(k.totpSecret);
+  ///
+  /// Birden çok okul tanımlıysa hangisi için olduğu sorulur: karekod
+  /// olmadan telefon tahtanın okulunu bilemez.
+  Future<void> _kodUretDogrudan() async {
+    if (_kayitlar.isEmpty) return;
+    final k = _kayitlar.length == 1 ? _kayitlar.first : await _okulSec();
+    if (k == null || !mounted) return;
+    _kodUret(k);
   }
 
-  void _kodUret(String secret) {
+  Future<OgretmenTahtaKaydi?> _okulSec() {
+    return showDialog<OgretmenTahtaKaydi>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text('Hangi okulun tahtası?',
+            style: AppFonts.outfit(fontWeight: FontWeight.bold)),
+        children: [
+          for (final k in _kayitlar)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, k),
+              child: Text(
+                '${k.okulGorunenAdi}  ·  ${k.kod}',
+                style: AppFonts.outfit(fontSize: 13),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _kodUret(OgretmenTahtaKaydi kayit) {
+    final secret = kayit.totpSecret;
     // Boş secret SESSİZCE geçiyordu.
     //
     // `kodUret('')` istisna atmıyor: boş anahtarla geçerli görünen
@@ -583,6 +688,7 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
 
       setState(() {
         _kod = kod;
+        _kodKaydi = kayit;
         _kalanSaniye = TahtaTotp.kalanSaniye();
       });
 
@@ -625,14 +731,19 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
 
     // Tahta düğmesiyle TANIMLAMA karekodu okutulmuş olabilir
     // (bkz. `tahtaTaramasiniYorumla`): "ait değil" demek yerine söyle.
-    switch (tahtaTaramasiniYorumla(sonuc, _kayit)) {
+    switch (tahtaTaramasiniYorumla(sonuc, _kayitlar)) {
       case TahtaTaramasi.kurulumAyni:
         _mesaj(
           'Bu, telefonunuzdaki tanımın karekodu; zaten kayıtlı. Kilidi '
           'açmak için tahtanın kilit ekranındaki karekodu okutun.',
         );
         return;
-      case TahtaTaramasi.kurulumYeni:
+      case TahtaTaramasi.kurulumEkle:
+        // Yeni okul: hiçbir kaydın yerine geçmiyor, sormaya gerek yok;
+        // mesaj ne olduğunu söylüyor.
+        await _kurulumKaydet(sonuc);
+        return;
+      case TahtaTaramasi.kurulumYenile:
         await _tanimiDegistir(sonuc);
         return;
       case TahtaTaramasi.tahta:
@@ -650,12 +761,16 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
       return;
     }
 
-    final k = _kayit!;
-    if (!yuk.ayniOkul(k.okulId)) {
+    // Tahtanın okuluna ait kayıt; öğretmen okul seçmiyor.
+    final k = tahtaIcinKayit(yuk, _kayitlar);
+    if (k == null) {
       // Sessizce çalışmayan kod vermek yerine sebebi söyle.
       _mesaj(
-        'Bu tahta başka bir okula ait. Kendi okulunuzun tahtasında '
-        'deneyin.',
+        _kayitlar.length == 1
+            ? 'Bu tahta başka bir okula ait. Kendi okulunuzun tahtasında '
+                'deneyin.'
+            : 'Bu tahta, telefonunuzda tanımlı okullardan birine ait '
+                'değil.',
         hata: true,
       );
       return;
@@ -666,7 +781,7 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
     // Ağ denemesi başarısız olursa öğretmen ekrandaki kodu elle
     // girecek. Önce ağı deneyip sonra kod üretmek, başarısızlıkta
     // ekranı boş bırakır ve öğretmen sınıfta beklerdi.
-    _kodUret(k.totpSecret);
+    _kodUret(k);
 
     // Tahta ağdan açılabiliyorsa dene — öğretmen hiçbir şey yazmasın.
     //
@@ -727,13 +842,13 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
     _mesaj(sonuc.kullaniciMesaji, hata: !sonuc.acildi);
   }
 
-  /// Tahta düğmesiyle okutulan, telefondakinden farklı tanımlama
-  /// karekodu. Sormadan yazılmıyor: eski tanımın secret'ı gidiyor ve
-  /// o kodla bu telefondan artık tahta açılamıyor.
+  /// Tahta düğmesiyle okutulan, telefonda KAYITLI bir okulun farklı
+  /// tanımlama karekodu (secret yenilendi, öğretmen yeniden eklendi).
+  /// Sormadan yazılmıyor: o okulun eski secret'ı gidiyor.
   Future<void> _tanimiDegistir(String ham) async {
     final yeni = OgretmenTahtaDeposu.qrAyristir(ham);
     if (yeni == null) return;
-    final eski = _kayit;
+    final eski = okulKaydi(_kayitlar, yeni.okulId);
 
     final onay = await showDialog<bool>(
       context: context,
@@ -742,10 +857,10 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
             style: AppFonts.outfit(fontWeight: FontWeight.bold)),
         content: Text(
           'Okuttuğunuz karekod tahtanın değil, öğretmen tanımlamanın '
-          'karekodu: ${yeni.ad} (${yeni.kod}).\n\n'
-          '${eski != null ? 'Telefondaki tanımın (${eski.kod}) yerine '
-              'kaydedilsin mi? Eski kodla bu telefondan artık tahta '
-              'açılamaz.' : 'Bu telefona kaydedilsin mi?'}',
+          'karekodu: ${yeni.okulGorunenAdi}, ${yeni.ad} (${yeni.kod}).\n\n'
+          '${eski != null ? 'Bu okul için telefondaki tanımın (${eski.kod}) '
+              'yerine kaydedilsin mi? Eski tanımla bu telefondan o okulun '
+              'tahtaları artık açılamaz. Diğer okullarınız etkilenmez.' : 'Bu telefona kaydedilsin mi?'}',
           style: AppFonts.outfit(fontSize: 12.5, height: 1.45),
         ),
         actions: [
@@ -763,24 +878,21 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
 
     if (onay != true || !mounted) return;
 
-    // Eski secret'la üretilmiş kod ekranda kalmasın.
-    _sayac?.cancel();
-    setState(() {
-      _kod = null;
-      _kalanSaniye = 0;
-    });
+    // Eski secret'la üretilmiş kod ekranda kalmasın (`_kurulumKaydet`).
     await _kurulumKaydet(ham);
   }
 
-  Future<void> _kaydiSil() async {
+  /// Bir okulun kaydını siler; diğer okullar kalır.
+  Future<void> _kaydiSil(OgretmenTahtaKaydi k) async {
     final onay = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Kayıt silinsin mi?',
+        title: Text('Bu okul silinsin mi?',
             style: AppFonts.outfit(fontWeight: FontWeight.bold)),
         content: Text(
-          'Bu telefon artık tahtayı açamaz. Yeniden kurmak için '
-          'yöneticiden QR istemeniz gerekir.',
+          '${k.okulGorunenAdi}: bu telefon o okulun tahtalarını artık '
+          'açamaz. Yeniden eklemek için okul idaresinden karekod '
+          'istemeniz gerekir.',
           style: AppFonts.outfit(fontSize: 12.5, height: 1.45),
         ),
         actions: [
@@ -799,13 +911,13 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
 
     if (onay != true) return;
 
-    await _depo.sil();
-    _sayac?.cancel();
+    final silindi = await _depo.sil(k.okulId);
     if (!mounted) return;
-    setState(() {
-      _kod = null;
-      _kalanSaniye = 0;
-    });
+    if (!silindi) {
+      _mesaj('Kayıt silinemedi. Tekrar deneyin.', hata: true);
+      return;
+    }
+    if (_kodKaydi?.okulId == k.okulId) _koduTemizle();
     await _kaydiYukle();
   }
 

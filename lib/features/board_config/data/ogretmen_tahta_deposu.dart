@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// Öğretmenin kendi tahta açma bilgisi (öğretmen tarafı).
+/// Öğretmenin kendi tahta açma bilgileri (öğretmen tarafı).
 ///
 /// ## İdareci tarafından farklı
 ///
@@ -11,12 +11,23 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// öğretmenlerini tutar. Bu sınıf öğretmenin telefonunda **yalnızca
 /// kendisini** tutar: kod, ad, okul ve TOTP secret'ı.
 ///
+/// ## Okul başına bir kayıt
+///
+/// İlk sürüm tek kayıt tutuyordu: ikinci okulun karekodu birincisinin
+/// üzerine yazılıyordu. Görevlendirme, ücretli öğretmenlik ya da iki
+/// okulda ders veren branş öğretmeni yaygın; ikinci okula kaydolan
+/// öğretmen birincinin tahtalarını açamaz oluyordu (1 Ekim 2026).
+///
+/// Artık her okul (`okulId`) için bir kayıt var. Tahtanın karekodu
+/// okulu taşıdığı için telefon doğru kaydı kendisi seçiyor. Aynı okulun
+/// yeni karekodu (secret yenilendi, öğretmen yeniden eklendi) o okulun
+/// kaydının yerine geçiyor.
+///
 /// ## Secret nereden geliyor
 ///
-/// İdareci öğretmeni ekler, uygulama secret üretir ve bir QR gösterir
-/// (`SCT1:{okulId}:{kod}:{ad}:{secret}`). Öğretmen o QR'ı kendi
-/// telefonunda okutur ve bu depoya kaydeder. Google Authenticator
-/// mantığı.
+/// İdareci öğretmeni ekler, Ana Program secret üretir ve bir karekod
+/// gösterir (`SCT1:{okulId}:{kod}:{ad}:{secret}[:{okulAdi}]`). Öğretmen
+/// onu kendi telefonunda okutur. Google Authenticator mantığı.
 ///
 /// ## Neden güvenli depo
 ///
@@ -34,7 +45,9 @@ class OgretmenTahtaDeposu {
 
   final FlutterSecureStorage _depo;
 
-  static const String _kayit = 'ogretmen_tahta_kaydi_v1';
+  /// Tek kayıtlı eski biçim; ilk okumada listeye taşınıyor.
+  static const String _eskiKayit = 'ogretmen_tahta_kaydi_v1';
+  static const String _kayitlar = 'ogretmen_tahta_kayitlari_v2';
 
   /// Kurulum QR yükünün öneki.
   ///
@@ -43,48 +56,38 @@ class OgretmenTahtaDeposu {
   /// anlamsız hata görmek yerine ne yapması gerektiğini duymalı.
   static const String kurulumOneki = 'SCT1';
 
-  /// Kayıtlı bilgi var mı?
-  Future<bool> kayitliMi() async {
+  /// En az bir okul kayıtlı mı?
+  Future<bool> kayitliMi() async => (await tumu()).isNotEmpty;
+
+  /// Kayıtlı okullar (eklenme sırasıyla). Okunamazsa boş liste.
+  Future<List<OgretmenTahtaKaydi>> tumu() async {
     try {
-      return await _depo.containsKey(key: _kayit);
+      return await _oku();
     } catch (e, stackTrace) {
-      debugPrint('kayitliMi hatası: $e\n$stackTrace');
-      return false;
+      debugPrint('Öğretmen tahta kayıtları okuma hatası: $e\n$stackTrace');
+      return const [];
     }
   }
 
-  /// Kayıtlı bilgiyi okur; yoksa `null`.
-  Future<OgretmenTahtaKaydi?> oku() async {
-    try {
-      final ham = await _depo.read(key: _kayit);
-      if (ham == null || ham.isEmpty) return null;
-
-      final cozulen = jsonDecode(ham);
-      if (cozulen is! Map<String, dynamic>) return null;
-
-      final kayit = OgretmenTahtaKaydi.fromJson(cozulen);
-      // Secret'ı olmayan kayıt işe yaramaz: kod üretilemez.
-      if (kayit.totpSecret.isEmpty || kayit.kod.isEmpty) return null;
-      return kayit;
-    } catch (e, stackTrace) {
-      debugPrint('Öğretmen tahta kaydı okuma hatası: $e\n$stackTrace');
-      return null;
-    }
-  }
-
-  /// Kurulum QR yükünü ayrıştırıp kaydeder.
+  /// Kurulum QR yükünü ayrıştırıp kaydeder; o okulun eski kaydının
+  /// yerine geçer, başka okulların kayıtlarına dokunmaz.
   ///
-  /// Biçim: `SCT1:{okulId}:{kod}:{ad}:{secret}`
-  ///
-  /// Geçersizse `null` döner — çağıran taraf kullanıcıya sebebini
-  /// söylemeli. Sessizce başarısız olmak, öğretmenin defalarca aynı
-  /// QR'ı okutmasına yol açar.
+  /// Geçersizse ya da yazılamazsa `null` döner — çağıran taraf
+  /// kullanıcıya sebebini söylemeli.
   Future<OgretmenTahtaKaydi?> qrIleKaydet(String hamYuk) async {
     final kayit = qrAyristir(hamYuk);
     if (kayit == null) return null;
 
     try {
-      await _depo.write(key: _kayit, value: jsonEncode(kayit.toJson()));
+      // Okuma HATASINDA yazılmıyor: boş liste sanıp tek kayıtla
+      // yazmak, öbür okulların kayıtlarını silerdi.
+      final liste = await _oku();
+      final yeni = [
+        for (final k in liste)
+          if (k.okulId != kayit.okulId) k,
+        kayit,
+      ];
+      await _yaz(yeni);
       return kayit;
     } catch (e, stackTrace) {
       debugPrint('Öğretmen tahta kaydı yazma hatası: $e\n$stackTrace');
@@ -92,19 +95,97 @@ class OgretmenTahtaDeposu {
     }
   }
 
+  /// Bir okulun kaydını siler (öğretmen o okuldan ayrıldı).
+  Future<bool> sil(String okulId) async {
+    try {
+      final liste = await _oku();
+      await _yaz([
+        for (final k in liste)
+          if (k.okulId != okulId) k,
+      ]);
+      return true;
+    } catch (e, stackTrace) {
+      debugPrint('Öğretmen tahta kaydı silme hatası: $e\n$stackTrace');
+      return false;
+    }
+  }
+
+  /// Depo hatası ATAR (çağıran ayırt edebilsin); bozuk içerik boş sayılır.
+  Future<List<OgretmenTahtaKaydi>> _oku() async {
+    final ham = await _depo.read(key: _kayitlar);
+    if (ham != null && ham.isNotEmpty) return _listeCoz(ham);
+
+    // Eski tek kayıt: listeye taşı. Taşıma yazılamasa da kayıt
+    // döndürülüyor — öğretmen derse girebilmeli; bir sonraki okumada
+    // yeniden denenir.
+    final eski = await _depo.read(key: _eskiKayit);
+    final kayit = eski == null ? null : _tekCoz(eski);
+    if (kayit == null) return const [];
+    try {
+      await _depo.write(key: _kayitlar, value: jsonEncode([kayit.toJson()]));
+      await _depo.delete(key: _eskiKayit);
+    } catch (e, stackTrace) {
+      debugPrint('Eski tahta kaydı taşınamadı: $e\n$stackTrace');
+    }
+    return [kayit];
+  }
+
+  Future<void> _yaz(List<OgretmenTahtaKaydi> liste) async {
+    if (liste.isEmpty) {
+      await _depo.delete(key: _kayitlar);
+    } else {
+      await _depo.write(
+        key: _kayitlar,
+        value: jsonEncode([for (final k in liste) k.toJson()]),
+      );
+    }
+    // Taşınmamış eski kayıt silinen okulu geri getirmesin.
+    await _depo.delete(key: _eskiKayit);
+  }
+
+  static List<OgretmenTahtaKaydi> _listeCoz(String ham) {
+    try {
+      final cozulen = jsonDecode(ham);
+      if (cozulen is! List) return const [];
+      final sonuc = <String, OgretmenTahtaKaydi>{};
+      for (final e in cozulen) {
+        if (e is! Map<String, dynamic>) continue;
+        final k = OgretmenTahtaKaydi.fromJson(e);
+        if (k.gecerli) sonuc[k.okulId] = k;
+      }
+      return sonuc.values.toList();
+    } catch (e, stackTrace) {
+      debugPrint('Bozuk tahta kayıt listesi: $e\n$stackTrace');
+      return const [];
+    }
+  }
+
+  static OgretmenTahtaKaydi? _tekCoz(String ham) {
+    try {
+      final cozulen = jsonDecode(ham);
+      if (cozulen is! Map<String, dynamic>) return null;
+      final k = OgretmenTahtaKaydi.fromJson(cozulen);
+      return k.gecerli ? k : null;
+    } catch (e, stackTrace) {
+      debugPrint('Bozuk eski tahta kaydı: $e\n$stackTrace');
+      return null;
+    }
+  }
+
   /// Kurulum yükünü ayrıştırır (kaydetmez).
   ///
-  /// Ayrı metot: arayüz önce ayrıştırıp kullanıcıya "şu okul, şu kod —
-  /// doğru mu?" diye gösterebilir.
+  /// `SCT1:{okulId}:{kod}:{ad}:{secret}` ya da sonunda okul adıyla
+  /// (`…:{okulAdi}`, Ana Program). Okul adı yalnızca gösterim için.
   static OgretmenTahtaKaydi? qrAyristir(String hamYuk) {
     final parcalar = hamYuk.trim().split(':');
-    if (parcalar.length != 5) return null;
+    if (parcalar.length != 5 && parcalar.length != 6) return null;
     if (parcalar[0] != kurulumOneki) return null;
 
     final okulId = parcalar[1].trim();
     final kod = parcalar[2].trim();
     final ad = parcalar[3].trim();
     final secret = parcalar[4].trim();
+    final okulAdi = parcalar.length == 6 ? parcalar[5].trim() : '';
 
     if (okulId.isEmpty || kod.isEmpty || secret.isEmpty) return null;
 
@@ -113,22 +194,12 @@ class OgretmenTahtaDeposu {
       kod: kod,
       ad: ad,
       totpSecret: secret,
+      okulAdi: okulAdi,
     );
-  }
-
-  /// Kaydı siler (öğretmen okul değiştirdi, cihaz devredildi).
-  Future<bool> sil() async {
-    try {
-      await _depo.delete(key: _kayit);
-      return true;
-    } catch (e, stackTrace) {
-      debugPrint('Öğretmen tahta kaydı silme hatası: $e\n$stackTrace');
-      return false;
-    }
   }
 }
 
-/// Öğretmenin kendi tahta açma bilgisi.
+/// Öğretmenin bir okuldaki tahta açma bilgisi.
 class OgretmenTahtaKaydi {
   /// Kanonik okul kimliği. Tahtanın QR'ındaki okulla eşleşmeli.
   final String okulId;
@@ -141,12 +212,27 @@ class OgretmenTahtaKaydi {
   /// TOTP secret'ı (base32). Bu değer ekranda **gösterilmez**.
   final String totpSecret;
 
+  /// Okulun adı (ASCII'ye katlanmış); eski karekodlarda boş.
+  final String okulAdi;
+
   const OgretmenTahtaKaydi({
     required this.okulId,
     required this.kod,
     required this.ad,
     required this.totpSecret,
+    this.okulAdi = '',
   });
+
+  /// Secret'ı ya da kodu olmayan kayıt işe yaramaz: kod üretilemez.
+  bool get gecerli =>
+      okulId.isNotEmpty && kod.isNotEmpty && totpSecret.isNotEmpty;
+
+  /// Ekranda okulu anlatan ad: okul adı yoksa kurum kodu.
+  String get okulGorunenAdi {
+    if (okulAdi.isNotEmpty) return okulAdi;
+    final kurum = okulId.startsWith('meb_') ? okulId.substring(4) : okulId;
+    return 'Kurum kodu $kurum';
+  }
 
   factory OgretmenTahtaKaydi.fromJson(Map<String, dynamic> j) =>
       OgretmenTahtaKaydi(
@@ -154,6 +240,7 @@ class OgretmenTahtaKaydi {
         kod: (j['kod'] as String?) ?? '',
         ad: (j['ad'] as String?) ?? '',
         totpSecret: (j['totpSecret'] as String?) ?? '',
+        okulAdi: (j['okulAdi'] as String?) ?? '',
       );
 
   Map<String, Object?> toJson() => {
@@ -161,5 +248,6 @@ class OgretmenTahtaKaydi {
         'kod': kod,
         'ad': ad,
         'totpSecret': totpSecret,
+        'okulAdi': okulAdi,
       };
 }
