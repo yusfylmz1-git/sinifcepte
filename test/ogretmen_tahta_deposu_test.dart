@@ -346,6 +346,28 @@ void main() {
     });
   });
 
+  group('Son tahta (telefondan kilitleme)', () {
+    test('KRİTİK: kaydedilip geri okunuyor', () async {
+      final t = SonTahta(
+        okulId: 'meb_775214', tahtaId: 'tahta_5A', ip: '192.168.1.182',
+        port: 8443, zaman: DateTime(2026, 10, 1, 21, 30),
+      );
+      await ogretmenDepo.sonTahtaKaydet(t);
+      final okunan = (await ogretmenDepo.sonTahta())!;
+      expect(okunan.kilitlemeAdresi, 'http://192.168.1.182:8443/kilitle');
+      expect(okunan.okulId, 'meb_775214');
+      expect(okunan.zaman, DateTime(2026, 10, 1, 21, 30));
+    });
+
+    test('yoksa ya da bozuksa null, çökmüyor', () async {
+      expect(await ogretmenDepo.sonTahta(), isNull);
+      depo.hamYaz('son_tahta_v1', '{bozuk');
+      expect(await ogretmenDepo.sonTahta(), isNull);
+      depo.hataVer = true;
+      expect(await ogretmenDepo.sonTahta(), isNull);
+    });
+  });
+
   group('Bozuk kayıt', () {
     test('bozuk JSON çökmez', () async {
       depo.hamYaz(_v2, '{bu json degil');

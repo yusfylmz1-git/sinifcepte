@@ -57,6 +57,10 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
   /// Ekrandaki kodun ait olduğu okul.
   OgretmenTahtaKaydi? _kodKaydi;
 
+  /// Son okutulan, ağdan ulaşılabilen tahta (telefondan kilitleme).
+  SonTahta? _sonTahta;
+  bool _kilitleniyor = false;
+
   /// Buluttaki yetki kaydı (istek gönderildiyse).
   TahtaYetkiKaydi? _yetkiKaydi;
   bool _yetkiIsliyor = false;
@@ -87,9 +91,11 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
 
   Future<void> _listeyiYenile() async {
     final kayitlar = await _depo.tumu();
+    final sonTahta = await _depo.sonTahta();
     if (!mounted) return;
     setState(() {
       _kayitlar = kayitlar;
+      _sonTahta = sonTahta;
       _yukleniyor = false;
     });
   }
@@ -257,6 +263,11 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
                   if (_kod != null) const SizedBox(height: 16),
                   _acmaBolumu(isDark),
                   const SizedBox(height: 16),
+                  if (telefondanKilitlenebilir(
+                      _sonTahta, _kayitlar, DateTime.now())) ...[
+                    _kilitlemeKarti(isDark),
+                    const SizedBox(height: 16),
+                  ],
                   _yardimKarti(isDark),
                 ],
                 const SizedBox(height: 32),
@@ -624,6 +635,58 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
     );
   }
 
+  /// Son açılan tahtayı telefondan kilitleme (1 Ekim 2026, kullanıcı
+  /// kararı). Tahtadaki "Kilitle" düğmesi de aynı işi yapıyor.
+  Widget _kilitlemeKarti(bool isDark) {
+    final tahta = _sonTahta!;
+    return _kart(
+      isDark,
+      baslik: '🔒 Tahtayı Kilitle',
+      aciklama: 'Ders bitince tahtayı buradan kilitleyebilirsiniz. '
+          'Tahtanın sağ alt köşesindeki "Kilitle" düğmesi de aynı işi '
+          'yapar.',
+      cocuklar: [
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _kilitleniyor ? null : _tahtayiKilitle,
+            icon: _kilitleniyor
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.lock_outline_rounded, size: 18),
+            label: Text('Tahtayı kilitle (${tahta.gorunenAd})',
+                style: AppFonts.outfit(fontSize: 13)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _tahtayiKilitle() async {
+    final tahta = _sonTahta;
+    if (tahta == null) return;
+    final k = okulKaydi(_kayitlar, tahta.okulId);
+    if (k == null || k.totpSecret.trim().isEmpty) {
+      _mesaj("Tahta kaydınız okunamıyor. Kurulum QR'ını yeniden okutun.",
+          hata: true);
+      return;
+    }
+
+    setState(() => _kilitleniyor = true);
+    final acici = TahtaAgAcici();
+    final sonuc = await acici.kilitle(
+      adres: tahta.kilitlemeAdresi,
+      kod: TahtaTotp.kodUret(k.totpSecret),
+    );
+    acici.kapat();
+    if (!mounted) return;
+    setState(() => _kilitleniyor = false);
+    _mesaj(sonuc.kullaniciMesaji, hata: !sonuc.basarili);
+  }
+
   /// QR olmadan kod üretir.
   ///
   /// QR'ın tek işi okul eşleşmesini teyit etmek; secret telefonda
@@ -782,6 +845,21 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
     // girecek. Önce ağı deneyip sonra kod üretmek, başarısızlıkta
     // ekranı boş bırakır ve öğretmen sınıfta beklerdi.
     _kodUret(k);
+
+    // Telefondan kilitleme için adres hatırlanıyor: kilit açıkken
+    // tahtada karekod görünmüyor (1 Ekim 2026).
+    if (yuk.agdanAcilabilir && yuk.tazeMi()) {
+      final son = SonTahta(
+        okulId: yuk.okulId,
+        tahtaId: yuk.tahtaId,
+        ip: yuk.ip,
+        port: yuk.port!,
+        zaman: DateTime.now(),
+      );
+      await _depo.sonTahtaKaydet(son);
+      if (!mounted) return;
+      setState(() => _sonTahta = son);
+    }
 
     // Tahta ağdan açılabiliyorsa dene — öğretmen hiçbir şey yazmasın.
     //

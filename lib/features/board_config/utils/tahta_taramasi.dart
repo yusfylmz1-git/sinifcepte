@@ -68,3 +68,20 @@ OgretmenTahtaKaydi? tahtaIcinKayit(
   }
   return null;
 }
+
+/// Telefondan kilitleme düğmesi gösterilsin mi?
+///
+/// Son okutulan tahta ağdan ulaşılabilirdi, okulu hâlâ telefonda tanımlı
+/// ve okutma yakın zamanda (aynı gün) yapıldı. 12 saatten eski adres
+/// büyük olasılıkla başka bir derse/tahtaya ait: göstermek yanlış tahtayı
+/// kilitlemeye çalışmak olurdu.
+bool telefondanKilitlenebilir(
+  SonTahta? tahta,
+  List<OgretmenTahtaKaydi> kayitlar,
+  DateTime simdi,
+) {
+  if (tahta == null || tahta.ip.isEmpty || tahta.port <= 0) return false;
+  if (okulKaydi(kayitlar, tahta.okulId) == null) return false;
+  final fark = simdi.difference(tahta.zaman);
+  return !fark.isNegative && fark < const Duration(hours: 12);
+}

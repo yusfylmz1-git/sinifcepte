@@ -3,7 +3,8 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
-/// Tahtayı yerel ağ üzerinden açar — öğretmen 6 hane yazmadan.
+/// Tahtayı yerel ağ üzerinden açar ya da kilitler — öğretmen 6 hane
+/// yazmadan.
 ///
 /// ## Neden var
 ///
@@ -12,6 +13,11 @@ import 'package:flutter/foundation.dart';
 ///
 /// QR okutulunca telefon tahtanın adresini öğreniyor ve kodu doğrudan
 /// gönderiyor. Öğretmen hiçbir şey yazmıyor.
+///
+/// Kilitleme (1 Ekim 2026, kullanıcı kararı): ders bitince öğretmen
+/// telefondan da kilitleyebiliyor. Aynı gövde (telefon kodu): tahta
+/// kodsuz kilitleme isteğini reddediyor, yoksa aynı ağdaki bir öğrenci
+/// dersin ortasında tahtayı tekrar tekrar kilitleyebilirdi.
 ///
 /// ## Bulut yok
 ///
@@ -29,8 +35,8 @@ import 'package:flutter/foundation.dart';
 /// - Misafir ağı ile tahta ağı ayrı
 /// - Tahtanın IP'si DHCP ile değişmiş ve QR bayatlamış
 ///
-/// Hepsinde çağıran taraf **6 hane yoluna** düşmeli; ekran kodu
-/// gösterip öğretmenin elle girmesini istemeli.
+/// Açmada çağıran taraf **6 hane yoluna** düşmeli; kilitlemede tahtadaki
+/// "Kilitle" düğmesi aynı işi yapıyor.
 class TahtaAgAcici {
   TahtaAgAcici({HttpClient? istemci, Duration? zamanAsimi})
       : _istemci = istemci ?? HttpClient(),
@@ -45,7 +51,7 @@ class TahtaAgAcici {
   /// bir isteğin fazlasıyla üstünde.
   final Duration _zamanAsimi;
 
-  /// Kodu tahtaya gönderir.
+  /// Kodu tahtaya gönderip kilidi açar.
   ///
   /// Dönen sonuç üç durumu ayırıyor: açıldı, tahta reddetti, ulaşılamadı.
   /// Üçü farklı mesaj gerektiriyor — "ulaşılamadı" durumunda öğretmene
@@ -53,12 +59,26 @@ class TahtaAgAcici {
   Future<AgAcmaSonucu> ac({
     required String adres,
     required String kod,
+  }) =>
+      _gonder(adres: adres, kod: kod, islem: AgIslem.ac);
+
+  /// Tahtayı kilitler (`POST /kilitle`, tahta 0.7.1+). Gövde açmayla aynı.
+  Future<AgAcmaSonucu> kilitle({
+    required String adres,
+    required String kod,
+  }) =>
+      _gonder(adres: adres, kod: kod, islem: AgIslem.kilitle);
+
+  Future<AgAcmaSonucu> _gonder({
+    required String adres,
+    required String kod,
+    required AgIslem islem,
   }) async {
     Uri uri;
     try {
       uri = Uri.parse(adres);
     } on FormatException {
-      return const AgAcmaSonucu._(durum: AgAcmaDurumu.ulasilamadi);
+      return AgAcmaSonucu._(durum: AgAcmaDurumu.ulasilamadi, islem: islem);
     }
 
     try {
@@ -93,9 +113,19 @@ class TahtaAgAcici {
           .join()
           .timeout(_zamanAsimi);
 
+      // Eski tahta (0.7.0 ve öncesi) `/kilitle` bilmiyor: 404.
+      if (yanit.statusCode == 404 && islem == AgIslem.kilitle) {
+        return AgAcmaSonucu._(
+          durum: AgAcmaDurumu.reddedildi,
+          islem: islem,
+          mesaj: 'Bu tahtanın yazılımı telefondan kilitlemeyi henüz '
+              'desteklemiyor; okul idaresi tahtayı güncellemeli.',
+        );
+      }
+
       if (yanit.statusCode != 200) {
         debugPrint('Tahta ${yanit.statusCode} döndü');
-        return const AgAcmaSonucu._(durum: AgAcmaDurumu.reddedildi);
+        return AgAcmaSonucu._(durum: AgAcmaDurumu.reddedildi, islem: islem);
       }
 
       final veri = jsonDecode(govde) as Map<String, dynamic>;
@@ -104,6 +134,7 @@ class TahtaAgAcici {
 
       return AgAcmaSonucu._(
         durum: tamam ? AgAcmaDurumu.acildi : AgAcmaDurumu.reddedildi,
+        islem: islem,
         mesaj: mesaj,
       );
     } catch (e) {
@@ -113,15 +144,18 @@ class TahtaAgAcici {
       // `debugPrint` release'de susuyor ama bu bilinçli: sahada
       // öğretmenin göreceği şey mesaj, günlük değil.
       debugPrint('Tahtaya ağdan ulaşılamadı: $e');
-      return const AgAcmaSonucu._(durum: AgAcmaDurumu.ulasilamadi);
+      return AgAcmaSonucu._(durum: AgAcmaDurumu.ulasilamadi, islem: islem);
     }
   }
 
   void kapat() => _istemci.close(force: true);
 }
 
+/// İsteğin türü: mesajlar buna göre seçiliyor.
+enum AgIslem { ac, kilitle }
+
 enum AgAcmaDurumu {
-  /// Tahta kodu kabul etti, kilit açıldı.
+  /// Tahta kodu kabul etti (açıldı ya da kilitlendi).
   acildi,
 
   /// Tahtaya ulaşıldı ama kod kabul edilmedi.
@@ -138,20 +172,42 @@ enum AgAcmaDurumu {
 }
 
 class AgAcmaSonucu {
-  const AgAcmaSonucu._({required this.durum, this.mesaj = ''});
+  const AgAcmaSonucu._({
+    required this.durum,
+    this.islem = AgIslem.ac,
+    this.mesaj = '',
+  });
 
   final AgAcmaDurumu durum;
+  final AgIslem islem;
 
   /// Tahtanın döndüğü mesaj ("Hoş geldiniz, ..." gibi).
   final String mesaj;
 
   bool get acildi => durum == AgAcmaDurumu.acildi;
 
+  /// İstek tahtada kabul edildi mi (açma ya da kilitleme)?
+  bool get basarili => durum == AgAcmaDurumu.acildi;
+
   /// Öğretmene gösterilecek metin.
   ///
   /// Üç durum ayrı mesaj alıyor: "ulaşılamadı" durumunda kodu
   /// suçlamak yanlış yönlendirme olurdu.
   String get kullaniciMesaji {
+    if (islem == AgIslem.kilitle) {
+      switch (durum) {
+        case AgAcmaDurumu.acildi:
+          return mesaj.isEmpty ? 'Tahta kilitlendi.' : mesaj;
+        case AgAcmaDurumu.reddedildi:
+          return mesaj.isEmpty
+              ? 'Tahta kilitleme isteğini kabul etmedi. Tahtadaki '
+                  '"Kilitle" düğmesini kullanın.'
+              : mesaj;
+        case AgAcmaDurumu.ulasilamadi:
+          return 'Tahtaya ağdan ulaşılamadı. Tahtadaki "Kilitle" '
+              'düğmesini kullanın.';
+      }
+    }
     switch (durum) {
       case AgAcmaDurumu.acildi:
         return mesaj.isEmpty ? 'Tahta açıldı.' : mesaj;

@@ -330,6 +330,9 @@ class TahtaQrYuku {
   /// Açma isteğinin gideceği adres.
   String get acmaAdresi => 'http://$ip:$port/ac';
 
+  /// Kilitleme isteğinin gideceği adres (tahta 0.7.1+).
+  String get kilitlemeAdresi => 'http://$ip:$port/kilitle';
+
   /// Öğretmenin okulu tahtanın okuluyla aynı mı?
   ///
   /// Farklıysa kod üretilmemeli: başka okulun tahtasına ait QR

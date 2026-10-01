@@ -94,9 +94,35 @@ void main() {
       expect(tahtaIcinKayit(yuk, [birinci, ikinci]), isNull);
     });
 
+    test('KRITIK: telefondan kilitleme yalnız tanımlı okulun yakın tarihli tahtasında', () {
+      final simdi = DateTime(2026, 10, 1, 21, 30);
+      SonTahta tahta({String okul = 'meb_775214', Duration once = Duration.zero,
+              String ip = '192.168.1.182'}) =>
+          SonTahta(okulId: okul, tahtaId: 'tahta_5A', ip: ip, port: 8443,
+              zaman: simdi.subtract(once));
+
+      expect(telefondanKilitlenebilir(tahta(), [ikinci], simdi), isTrue);
+      expect(telefondanKilitlenebilir(null, [ikinci], simdi), isFalse);
+      // Okul telefondan silinmiş.
+      expect(telefondanKilitlenebilir(tahta(), [birinci], simdi), isFalse);
+      // Dünkü tahta: başka ders, başka sınıf olabilir.
+      expect(telefondanKilitlenebilir(tahta(once: const Duration(hours: 13)),
+          [ikinci], simdi), isFalse);
+      expect(telefondanKilitlenebilir(tahta(ip: ''), [ikinci], simdi), isFalse);
+    });
+
+    test('son tahtanın görünen adı', () {
+      SonTahta t(String id) => SonTahta(okulId: 'o', tahtaId: id, ip: '1.1.1.1',
+          port: 1, zaman: DateTime(2026));
+      expect(t('tahta_5A').gorunenAd, '5A');
+      expect(t('tahta').gorunenAd, 'tahta');
+      expect(t('tahta_5A').kilitlemeAdresi, 'http://1.1.1.1:1/kilitle');
+    });
+
     test('okulKaydi okul kimliğiyle bulur', () {
       expect(okulKaydi([birinci, ikinci], 'meb_775214'), same(ikinci));
       expect(okulKaydi([birinci], 'meb_775214'), isNull);
     });
   });
 }
+

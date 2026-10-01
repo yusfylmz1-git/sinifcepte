@@ -319,4 +319,79 @@ void main() {
       expect(int.parse(uzunluk!), utf8.encode(govde!).length);
     });
   });
+
+  group('Kilitleme — telefondan (tahta 0.7.1+)', () {
+    /// Yolu ve gövdeyi kaydeden sunucu.
+    Future<(HttpServer, List<String>, List<Map<String, dynamic>>)> kaydeden({
+      required int durumKodu,
+      required Object govde,
+    }) async {
+      final sunucu = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      final yollar = <String>[];
+      final govdeler = <Map<String, dynamic>>[];
+      unawaited(() async {
+        await for (final istek in sunucu) {
+          yollar.add(istek.uri.path);
+          final ham = await utf8.decoder.bind(istek).join();
+          govdeler.add(jsonDecode(ham) as Map<String, dynamic>);
+          istek.response.statusCode = durumKodu;
+          istek.response.headers.contentType = ContentType.json;
+          istek.response.write(govde is String ? govde : jsonEncode(govde));
+          await istek.response.close();
+        }
+      }());
+      return (sunucu, yollar, govdeler);
+    }
+
+    test('KRİTİK: /kilitle yoluna telefon koduyla gidiyor', () async {
+      final (sunucu, yollar, govdeler) = await kaydeden(
+        durumKodu: 200,
+        govde: {'tamam': true, 'mesaj': 'Tahta kilitlendi.'},
+      );
+      final acici = TahtaAgAcici();
+      final sonuc = await acici.kilitle(
+        adres: 'http://127.0.0.1:${sunucu.port}/kilitle',
+        kod: '246810',
+      );
+      acici.kapat();
+      await sunucu.close(force: true);
+
+      expect(yollar, ['/kilitle']);
+      expect(govdeler.single['kod'], '246810');
+      expect(sonuc.basarili, isTrue);
+      expect(sonuc.kullaniciMesaji, 'Tahta kilitlendi.');
+    });
+
+    test('eski tahta (404) için yazılım güncellenmeli diyor', () async {
+      final (sunucu, _, _) = await kaydeden(durumKodu: 404, govde: {'tamam': false});
+      final acici = TahtaAgAcici();
+      final sonuc = await acici.kilitle(
+        adres: 'http://127.0.0.1:${sunucu.port}/kilitle',
+        kod: '246810',
+      );
+      acici.kapat();
+      await sunucu.close(force: true);
+
+      expect(sonuc.basarili, isFalse);
+      expect(sonuc.kullaniciMesaji, contains('güncellemeli'));
+    });
+
+    test('KRİTİK: ulaşılamazsa tahtadaki Kilitle düğmesine yönlendiriyor', () async {
+      final sunucu = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      final port = sunucu.port;
+      await sunucu.close(force: true);
+
+      final acici = TahtaAgAcici(zamanAsimi: const Duration(seconds: 1));
+      final sonuc = await acici.kilitle(
+        adres: 'http://127.0.0.1:$port/kilitle',
+        kod: '246810',
+      );
+      acici.kapat();
+
+      expect(sonuc.durum, AgAcmaDurumu.ulasilamadi);
+      expect(sonuc.kullaniciMesaji, contains('"Kilitle"'));
+      // Açma mesajı ("kodu elle girin") kilitlemede yanlış olurdu.
+      expect(sonuc.kullaniciMesaji, isNot(contains('elle girin')));
+    });
+  });
 }

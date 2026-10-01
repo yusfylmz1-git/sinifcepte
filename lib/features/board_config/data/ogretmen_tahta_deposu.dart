@@ -110,6 +110,33 @@ class OgretmenTahtaDeposu {
     }
   }
 
+  static const String _sonTahta = 'son_tahta_v1';
+
+  /// Son okutulan, ağdan ulaşılabilen tahta: telefondan kilitlemek için.
+  ///
+  /// Kilit açıkken tahtada karekod görünmüyor; telefon tahtanın adresini
+  /// açarken okuttuğu karekoddan hatırlamak zorunda (1 Ekim 2026).
+  Future<void> sonTahtaKaydet(SonTahta tahta) async {
+    try {
+      await _depo.write(key: _sonTahta, value: jsonEncode(tahta.toJson()));
+    } catch (e, stackTrace) {
+      debugPrint('Son tahta yazılamadı: $e\n$stackTrace');
+    }
+  }
+
+  Future<SonTahta?> sonTahta() async {
+    try {
+      final ham = await _depo.read(key: _sonTahta);
+      if (ham == null || ham.isEmpty) return null;
+      final cozulen = jsonDecode(ham);
+      if (cozulen is! Map<String, dynamic>) return null;
+      return SonTahta.fromJson(cozulen);
+    } catch (e, stackTrace) {
+      debugPrint('Son tahta okunamadı: $e\n$stackTrace');
+      return null;
+    }
+  }
+
   /// Depo hatası ATAR (çağıran ayırt edebilsin); bozuk içerik boş sayılır.
   Future<List<OgretmenTahtaKaydi>> _oku() async {
     final ham = await _depo.read(key: _kayitlar);
@@ -249,5 +276,49 @@ class OgretmenTahtaKaydi {
         'ad': ad,
         'totpSecret': totpSecret,
         'okulAdi': okulAdi,
+      };
+}
+
+/// Telefonun son okuttuğu, ağdan ulaşılabilen tahta.
+class SonTahta {
+  final String okulId;
+
+  /// Karekoddaki tahta kimliği (`tahta_5A`).
+  final String tahtaId;
+  final String ip;
+  final int port;
+  final DateTime zaman;
+
+  const SonTahta({
+    required this.okulId,
+    required this.tahtaId,
+    required this.ip,
+    required this.port,
+    required this.zaman,
+  });
+
+  String get kilitlemeAdresi => 'http://$ip:$port/kilitle';
+
+  /// Ekranda: `tahta_5A` → `5A`; sınıfsız tahta → `tahta`.
+  String get gorunenAd {
+    final ad = tahtaId.startsWith('tahta_') ? tahtaId.substring(6) : tahtaId;
+    return ad.isEmpty ? 'tahta' : ad;
+  }
+
+  factory SonTahta.fromJson(Map<String, dynamic> j) => SonTahta(
+        okulId: (j['okulId'] as String?) ?? '',
+        tahtaId: (j['tahtaId'] as String?) ?? '',
+        ip: (j['ip'] as String?) ?? '',
+        port: (j['port'] as num?)?.toInt() ?? 0,
+        zaman: DateTime.tryParse((j['zaman'] as String?) ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+      );
+
+  Map<String, Object?> toJson() => {
+        'okulId': okulId,
+        'tahtaId': tahtaId,
+        'ip': ip,
+        'port': port,
+        'zaman': zaman.toIso8601String(),
       };
 }
