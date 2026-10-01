@@ -13,6 +13,7 @@ import '../data/tahta_ag_acici.dart';
 import '../data/tahta_ogretmen_deposu.dart';
 import '../data/tahta_yetki_deposu.dart';
 import '../tahta_ozellikleri.dart';
+import '../utils/tahta_taramasi.dart';
 import '../utils/tahta_totp.dart';
 
 /// Öğretmenin tahta kilidini açtığı ekran.
@@ -622,6 +623,23 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
       return;
     }
 
+    // Tahta düğmesiyle TANIMLAMA karekodu okutulmuş olabilir
+    // (bkz. `tahtaTaramasiniYorumla`): "ait değil" demek yerine söyle.
+    switch (tahtaTaramasiniYorumla(sonuc, _kayit)) {
+      case TahtaTaramasi.kurulumAyni:
+        _mesaj(
+          'Bu, telefonunuzdaki tanımın karekodu; zaten kayıtlı. Kilidi '
+          'açmak için tahtanın kilit ekranındaki karekodu okutun.',
+        );
+        return;
+      case TahtaTaramasi.kurulumYeni:
+        await _tanimiDegistir(sonuc);
+        return;
+      case TahtaTaramasi.tahta:
+      case TahtaTaramasi.tanimsiz:
+        break;
+    }
+
     // Tahtanın QR'ı: okul eşleşmesini teyit et.
     final yuk = TahtaTotp.qrAyristir(sonuc);
     if (yuk == null) {
@@ -707,6 +725,51 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
     setState(() => _agDeniyor = false);
 
     _mesaj(sonuc.kullaniciMesaji, hata: !sonuc.acildi);
+  }
+
+  /// Tahta düğmesiyle okutulan, telefondakinden farklı tanımlama
+  /// karekodu. Sormadan yazılmıyor: eski tanımın secret'ı gidiyor ve
+  /// o kodla bu telefondan artık tahta açılamıyor.
+  Future<void> _tanimiDegistir(String ham) async {
+    final yeni = OgretmenTahtaDeposu.qrAyristir(ham);
+    if (yeni == null) return;
+    final eski = _kayit;
+
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Öğretmen tanımlama karekodu',
+            style: AppFonts.outfit(fontWeight: FontWeight.bold)),
+        content: Text(
+          'Okuttuğunuz karekod tahtanın değil, öğretmen tanımlamanın '
+          'karekodu: ${yeni.ad} (${yeni.kod}).\n\n'
+          '${eski != null ? 'Telefondaki tanımın (${eski.kod}) yerine '
+              'kaydedilsin mi? Eski kodla bu telefondan artık tahta '
+              'açılamaz.' : 'Bu telefona kaydedilsin mi?'}',
+          style: AppFonts.outfit(fontSize: 12.5, height: 1.45),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Kaydet'),
+          ),
+        ],
+      ),
+    );
+
+    if (onay != true || !mounted) return;
+
+    // Eski secret'la üretilmiş kod ekranda kalmasın.
+    _sayac?.cancel();
+    setState(() {
+      _kod = null;
+      _kalanSaniye = 0;
+    });
+    await _kurulumKaydet(ham);
   }
 
   Future<void> _kaydiSil() async {
