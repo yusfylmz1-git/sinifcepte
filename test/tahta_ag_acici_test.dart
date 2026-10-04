@@ -394,4 +394,66 @@ void main() {
       expect(sonuc.kullaniciMesaji, isNot(contains('elle girin')));
     });
   });
+
+  // Saha bilgisi (4 Ekim 2026): öğretmenler okul ağına hiç bağlanmıyor,
+  // mobil veri kullanıyor. Her karekodda 4 sn bekleyip kırmızı
+  // "ulaşılamadı" göstermek sistemi bozuk gösteriyordu.
+  group('Mobil veri — ağ hiç denenmiyor', () {
+    test('KRİTİK: yerel ağ yoksa beklemeden yerelAgYok dönüyor', () async {
+      // Yönlendirilemeyen adres: denenseydi zaman aşımına kadar beklerdi.
+      final acici = TahtaAgAcici(
+        zamanAsimi: const Duration(seconds: 3),
+        yerelAgKontrol: () async => false,
+      );
+      final saat = Stopwatch()..start();
+      final sonuc = await acici.ac(adres: 'http://10.255.255.1:8443/ac', kod: '123456');
+      acici.kapat();
+
+      expect(sonuc.durum, AgAcmaDurumu.yerelAgYok);
+      expect(saat.elapsed, lessThan(const Duration(milliseconds: 500)));
+      expect(sonuc.acildi, isFalse);
+    });
+
+    test('yerel ağ varsa yine deneniyor', () async {
+      var soruldu = false;
+      final acici = TahtaAgAcici(
+        zamanAsimi: const Duration(milliseconds: 300),
+        yerelAgKontrol: () async => soruldu = true,
+      );
+      final sonuc = await acici.ac(adres: 'http://10.255.255.1:8443/ac', kod: '123456');
+      acici.kapat();
+
+      expect(soruldu, isTrue);
+      expect(sonuc.durum, AgAcmaDurumu.ulasilamadi);
+    });
+
+    test('aynı cihazdaki adres ağ denetiminden etkilenmiyor', () async {
+      final sunucu = await _sunucuAc(durumKodu: 200, govde: {'tamam': true});
+      final acici = TahtaAgAcici(yerelAgKontrol: () async => false);
+      final sonuc = await acici.ac(adres: _adres(sunucu), kod: '123456');
+      acici.kapat();
+      await sunucu.close(force: true);
+
+      expect(sonuc.acildi, isTrue);
+    });
+
+    test('KRİTİK: kilitlemede mobil veri açıkça söyleniyor', () async {
+      final acici = TahtaAgAcici(yerelAgKontrol: () async => false);
+      final sonuc = await acici.kilitle(adres: 'http://10.255.255.1:8443/kilitle', kod: '123456');
+      acici.kapat();
+
+      expect(sonuc.durum, AgAcmaDurumu.yerelAgYok);
+      expect(sonuc.kullaniciMesaji, contains('mobil veri'));
+      expect(sonuc.kullaniciMesaji, contains('"Kilitle"'));
+    });
+
+    test('arayüz adları: Wi-Fi/kablo/erişim noktası evet, hücresel/VPN hayır', () {
+      for (final ad in ['wlan0', 'swlan0', 'eth0', 'en0', 'ap0', 'bridge100', 'p2p-wlan0-0']) {
+        expect(TahtaAgAcici.yerelAgArayuzuMu(ad), isTrue, reason: ad);
+      }
+      for (final ad in ['rmnet_data0', 'ccmni0', 'pdp_ip0', 'tun0', 'dummy0', 'v4-rmnet_data0', 'lo']) {
+        expect(TahtaAgAcici.yerelAgArayuzuMu(ad), isFalse, reason: ad);
+      }
+    });
+  });
 }

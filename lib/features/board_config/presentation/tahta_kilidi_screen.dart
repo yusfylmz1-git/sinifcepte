@@ -896,6 +896,10 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
       return;
     }
 
+    // Yalnız mobil verideyse deneme bile: öğretmenler okul ağına
+    // bağlanmıyor (4 Ekim 2026). Kod ekranda, uyarı da yok.
+    if (!await TahtaAgAcici.yerelAgVarMi()) return;
+
     await _agdanAc(yuk, kod);
   }
 
@@ -917,7 +921,11 @@ class _TahtaKilidiScreenState extends ConsumerState<TahtaKilidiScreen> {
     if (!mounted) return;
     setState(() => _agDeniyor = false);
 
-    _mesaj(sonuc.kullaniciMesaji, hata: !sonuc.acildi);
+    if (sonuc.durum == AgAcmaDurumu.yerelAgYok) return;
+    // "Ulaşılamadı" hata değil, olağan yedek yol: kırmızı gösterilmez.
+    // Kırmızı yalnız tahta kodu REDDETTİYSE.
+    _mesaj(sonuc.kullaniciMesaji,
+        hata: sonuc.durum == AgAcmaDurumu.reddedildi);
   }
 
   /// Tahta düğmesiyle okutulan, telefonda KAYITLI bir okulun farklı

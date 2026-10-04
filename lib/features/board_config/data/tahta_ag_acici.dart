@@ -38,11 +38,53 @@ import 'package:flutter/foundation.dart';
 /// Açmada çağıran taraf **6 hane yoluna** düşmeli; kilitlemede tahtadaki
 /// "Kilitle" düğmesi aynı işi yapıyor.
 class TahtaAgAcici {
-  TahtaAgAcici({HttpClient? istemci, Duration? zamanAsimi})
-      : _istemci = istemci ?? HttpClient(),
-        _zamanAsimi = zamanAsimi ?? const Duration(seconds: 4);
+  TahtaAgAcici({
+    HttpClient? istemci,
+    Duration? zamanAsimi,
+    Future<bool> Function()? yerelAgKontrol,
+  })  : _istemci = istemci ?? HttpClient(),
+        _zamanAsimi = zamanAsimi ?? const Duration(seconds: 4),
+        _yerelAgKontrol = yerelAgKontrol ?? yerelAgVarMi;
 
   final HttpClient _istemci;
+
+  /// Telefon yerel bir ağda mı (testte değiştirilebilir).
+  final Future<bool> Function() _yerelAgKontrol;
+
+  /// Telefon Wi-Fi'de (ya da kabloyla) bir yerel ağda mı?
+  ///
+  /// ## Neden (4 Ekim 2026, saha bilgisi)
+  ///
+  /// Kullanıcı: *"Öğretmenler okul ağına hiç bağlanmıyor, kendi
+  /// internetlerini kullanıyor."* Yalnız mobil verideki telefon tahtanın
+  /// okul ağındaki adresine ulaşamaz. Yine de deneniyordu: her karekod
+  /// okutuşunda 4 saniye "gönderiliyor", ardından kırmızı "ulaşılamadı"
+  /// — sistem bozukmuş gibi görünüyordu. Kod zaten ekranda.
+  ///
+  /// Arayüz adına bakılıyor; paket eklemeden. Bilinmiyorsa `true`
+  /// (denemenin zararı yalnız birkaç saniye). Masaüstünde hep `true`.
+  static Future<bool> yerelAgVarMi() async {
+    if (!(Platform.isAndroid || Platform.isIOS)) return true;
+    try {
+      final arayuzler =
+          await NetworkInterface.list(type: InternetAddressType.IPv4);
+      return arayuzler.any((a) => yerelAgArayuzuMu(a.name));
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// Arayüz adı bir yerel ağ mı: Wi-Fi (`wlan0`, iOS `en0`), kablo
+  /// (`eth0`), telefonun ya da tahtanın erişim noktası (`ap0`, `swlan0`,
+  /// `bridge100`). Hücresel (`rmnet_data0`, `ccmni0`, `pdp_ip0`) ve VPN
+  /// (`tun0`) değil.
+  static bool yerelAgArayuzuMu(String ad) {
+    final a = ad.toLowerCase();
+    const yerel = [
+      'wlan', 'swlan', 'wifi', 'wi-fi', 'eth', 'en', 'ap', 'bridge', 'p2p',
+    ];
+    return yerel.any(a.startsWith);
+  }
 
   /// Ağ beklemesi için üst sınır.
   ///
@@ -79,6 +121,13 @@ class TahtaAgAcici {
       uri = Uri.parse(adres);
     } on FormatException {
       return AgAcmaSonucu._(durum: AgAcmaDurumu.ulasilamadi, islem: islem);
+    }
+
+    // Mobil verideyse hiç deneme: 4 sn bekletip hata göstermesin.
+    // Aynı cihazdaki adres (test, masaüstü deneme) ağdan bağımsız.
+    final ayniCihaz = uri.host == '127.0.0.1' || uri.host == 'localhost';
+    if (!ayniCihaz && !await _yerelAgKontrol()) {
+      return AgAcmaSonucu._(durum: AgAcmaDurumu.yerelAgYok, islem: islem);
     }
 
     try {
@@ -169,6 +218,10 @@ enum AgAcmaDurumu {
   /// Wi-Fi kapalı, AP izolasyonu, yanlış IP, tahta kapalı. Öğretmene
   /// "kod yanlış" DEMEMELİ — 6 hane yolu önerilmeli.
   ulasilamadi,
+
+  /// Telefon yalnız mobil veride: hiç denenmedi (öğretmenlerin olağan
+  /// hâli). Açmada uyarı gösterilmez, kod zaten ekranda.
+  yerelAgYok,
 }
 
 class AgAcmaSonucu {
@@ -206,6 +259,9 @@ class AgAcmaSonucu {
         case AgAcmaDurumu.ulasilamadi:
           return 'Tahtaya ağdan ulaşılamadı. Tahtadaki "Kilitle" '
               'düğmesini kullanın.';
+        case AgAcmaDurumu.yerelAgYok:
+          return 'Telefonunuz okulun ağında değil (mobil veri). '
+              'Tahtadaki "Kilitle" düğmesini kullanın.';
       }
     }
     switch (durum) {
@@ -218,6 +274,8 @@ class AgAcmaSonucu {
       case AgAcmaDurumu.ulasilamadi:
         return 'Tahtaya ağdan ulaşılamadı. Aşağıdaki kodu tahtaya '
             'elle girin.';
+      case AgAcmaDurumu.yerelAgYok:
+        return 'Aşağıdaki kodu tahtaya girin.';
     }
   }
 }
