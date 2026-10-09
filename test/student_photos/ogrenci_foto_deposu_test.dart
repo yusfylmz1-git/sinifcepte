@@ -89,10 +89,12 @@ void main() {
   }
 
   group('şema', () {
-    test('KRITIK: veritabanı sürümü 28 ve tablolar kurulu', () async {
+    test('KRITIK: veritabanı sürümü en az 28 ve tablolar kurulu', () async {
       final d = await db();
       final v = (await d.rawQuery('PRAGMA user_version')).first.values.first;
-      expect(v, 28, reason: 'yeni tablo sürüm artmadan cihaza inmez');
+      // Tam eşitlik değil: sonraki tablolar (29: artı-eksi) sürümü yine
+      // artırır; korunan şey 28'in altına düşmemesi.
+      expect(v as int, greaterThanOrEqualTo(28), reason: 'yeni tablo sürüm artmadan cihaza inmez');
       final adlar = (await d.rawQuery(
               "SELECT name FROM sqlite_master WHERE type IN ('table','trigger','index')"))
           .map((r) => r['name'])

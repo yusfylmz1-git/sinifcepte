@@ -10,6 +10,7 @@ import '../../providers/classroom_participation_provider.dart';
 import '../../utils/participation_pdf_generator.dart';
 import '../widgets/compact_student_participation_grid.dart';
 import '../widgets/participation_batch_toolbar.dart';
+import 'arti_eksi_listesi_view.dart';
 import 'class_lesson_history_view.dart';
 import '../widgets/random_student_picker_modal.dart';
 import '../widgets/participation_cumulative_reports_modal.dart';
@@ -760,6 +761,59 @@ class _ClassroomParticipationViewState
                             ),
                           ),
                         ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              // ± Artı-eksi listesi (9 Ekim 2026): öğretmenler her derste
+              // görebildikleri, eklendikçe güncellenen bir liste istedi.
+              InkWell(
+                onTap: () {
+                  final session = ref
+                      .read(currentParticipationSessionProvider)
+                      .valueOrNull;
+                  if (session != null && session.evaluations.isNotEmpty) {
+                    ArtiEksiListesiView.open(context, session);
+                  }
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  height: 34,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(
+                      0xFF059669,
+                    ).withValues(alpha: isDark ? 0.25 : 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(
+                        0xFF059669,
+                      ).withValues(alpha: isDark ? 0.5 : 0.4),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '±',
+                        style: AppFonts.outfit(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFF059669),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Artı-Eksi',
+                        style: AppFonts.outfit(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: isDark
+                              ? const Color(0xFFA7F3D0)
+                              : const Color(0xFF047857),
+                        ),
+                      ),
                     ],
                   ),
                 ),
