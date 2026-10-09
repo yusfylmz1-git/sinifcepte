@@ -1,6 +1,28 @@
 import 'dart:convert';
+import 'dart:math';
 
 import '../../../../core/utils/name_formatter.dart';
+
+/// Kura: **en az söz almış** öğrenciler arasından rastgele seçer.
+///
+/// Tek uygulama burada; sağlayıcı ve kura penceresi bunu çağırır. Eskiden
+/// iki ayrı kopya vardı ve testler üçüncü bir kopyayı sınıyordu: test "sıra
+/// ilerliyor" derken pencere seçilene söz hakkı vermediği için aynı öğrenci
+/// art arda çıkabiliyordu (9 Ekim 2026).
+///
+/// Devamsızlık takibindeki öğrenci sınıfta değil; kuraya girseydi hiç söz
+/// almadığı için her seferinde öne çıkardı. Herkes takipteyse yine seçilir.
+StudentParticipationEvaluation? adilKuraSec(
+  List<StudentParticipationEvaluation> liste,
+  Random rng,
+) {
+  final sinifta = liste.where((e) => !e.isAbsent).toList();
+  final aday = sinifta.isNotEmpty ? sinifta : liste;
+  if (aday.isEmpty) return null;
+  final enAz = aday.map((e) => e.speakingTurns).reduce(min);
+  final havuz = aday.where((e) => e.speakingTurns == enAz).toList();
+  return havuz[rng.nextInt(havuz.length)];
+}
 
 /// SınıfCepte - Ödev Değerlendirme Durumu
 enum HomeworkStatus {

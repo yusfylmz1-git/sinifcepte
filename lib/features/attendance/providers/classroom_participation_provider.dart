@@ -462,17 +462,18 @@ class ClassroomParticipationNotifier
   /// en az konuşanlarla sınırlanır, aralarından rastgele seçilir.
   StudentParticipationEvaluation? pickFairStudent({Random? rng}) {
     final current = state.valueOrNull;
-    if (current == null || current.evaluations.isEmpty) return null;
+    if (current == null) return null;
+    return adilKuraSec(current.evaluations, rng ?? Random());
+  }
 
-    final enAz = current.evaluations
-        .map((e) => e.speakingTurns)
-        .reduce((a, b) => a < b ? a : b);
-
-    final havuz =
-        current.evaluations.where((e) => e.speakingTurns == enAz).toList();
-
-    final r = rng ?? Random();
-    return havuz[r.nextInt(havuz.length)];
+  /// Kura çeker ve seçilene söz hakkı verir (kartta ⭐ olarak görünür).
+  ///
+  /// Kullanıcı kararı (9 Ekim 2026): kurayla seçilen öğrenci söz hakkı
+  /// almıştır. Verilmeseydi bir sonraki kura aynı öğrenciyi yine seçebilirdi.
+  StudentParticipationEvaluation? kuraCek({Random? rng}) {
+    final secilen = pickFairStudent(rng: rng);
+    if (secilen != null) addSpeakingTurn(secilen.studentId);
+    return secilen;
   }
 
   void toggleTag(int studentId, String tag) {

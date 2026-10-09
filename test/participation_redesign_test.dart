@@ -91,16 +91,13 @@ void main() {
   });
 
   group('B — "Sirada kim?" gercekten adaletli', () {
-    /// Saglayicidaki `pickFairStudent` ile ayni mantik.
+    /// Uygulamanin kullandigi fonksiyonun KENDISI (eskiden burada bir
+    /// kopyasi vardi; bkz. `adilKuraSec`).
     StudentParticipationEvaluation adilSec(
       List<StudentParticipationEvaluation> liste,
       Random rng,
-    ) {
-      final enAz =
-          liste.map((e) => e.speakingTurns).reduce((a, b) => a < b ? a : b);
-      final havuz = liste.where((e) => e.speakingTurns == enAz).toList();
-      return havuz[rng.nextInt(havuz.length)];
-    }
+    ) =>
+        adilKuraSec(liste, rng)!;
 
     test('KRITIK: hic konusmayan varken cok konusan secilmez', () {
       final liste = [

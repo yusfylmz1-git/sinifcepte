@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,7 +37,9 @@ class _RandomStudentPickerModalState extends ConsumerState<RandomStudentPickerMo
   late AnimationController _animController;
   late Animation<double> _scaleAnimation;
   StudentParticipationEvaluation? _selectedStudent;
-  final Random _rnd = Random();
+
+  /// Seçilene verilen söz hakkı geri alındı mı (öğrenci sınıfta değilse).
+  bool _geriAlindi = false;
 
   @override
   void initState() {
@@ -52,7 +53,11 @@ class _RandomStudentPickerModalState extends ConsumerState<RandomStudentPickerMo
       curve: Curves.elasticOut,
     );
 
-    _pickRandomStudent();
+    // Kura söz hakkı yazar (sağlayıcıyı değiştirir); çizim sırasında
+    // sağlayıcı değiştirilemediği için ilk kare çizildikten sonra.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _kuraCek();
+    });
   }
 
   @override
@@ -61,36 +66,29 @@ class _RandomStudentPickerModalState extends ConsumerState<RandomStudentPickerMo
     super.dispose();
   }
 
-  /// Sırada kim var?
+  /// Sırada kim var? **En az söz almış** öğrenciler arasından seçer ve
+  /// seçilene söz hakkı verir (kullanıcı kararı, 9 Ekim 2026).
   ///
-  /// **En az söz almış** öğrenciler arasından seçer.
-  ///
-  /// Bu modal kendini "Adaletli Kura" diye tanıtıyordu ama kod saf
-  /// `_rnd.nextInt(list.length)` idi: aynı öğrenci üst üste üç kez
-  /// çıkabiliyor, bir öğrenci hiç çıkmayabiliyordu. Bu adalet değil,
-  /// sadece rastgelelikti.
-  ///
-  /// Öğretmenin gerçek derdi "kime söz vermedim" — bu yüzden havuz
-  /// en az konuşanlarla sınırlanır, aralarından rastgele seçilir.
-  void _pickRandomStudent() {
-    final current =
-        ref.read(currentParticipationSessionProvider).valueOrNull ??
-            widget.session;
-    final list = current.evaluations;
-    if (list.isEmpty) return;
+  /// Eskiden seçilene söz hakkı verilmiyordu: "Başka Öğrenci" aynı
+  /// öğrenciyi yine çıkarabiliyordu ve kartta söz aldığı görünmüyordu.
+  void _kuraCek() {
+    final secilen = ref.read(currentParticipationSessionProvider.notifier).kuraCek();
+    if (secilen == null) return;
 
     HapticFeedback.mediumImpact();
     _animController.reset();
-
-    final enAz =
-        list.map((e) => e.speakingTurns).reduce((a, b) => a < b ? a : b);
-    final havuz = list.where((e) => e.speakingTurns == enAz).toList();
-
     setState(() {
-      _selectedStudent = havuz[_rnd.nextInt(havuz.length)];
+      _selectedStudent = secilen;
+      _geriAlindi = false;
     });
-
     _animController.forward();
+  }
+
+  /// Seçilen öğrenci söz almadıysa (sınıfta yok, cevap vermedi).
+  void _sozHakkiniGeriAl(int studentId) {
+    HapticFeedback.lightImpact();
+    ref.read(currentParticipationSessionProvider.notifier).removeSpeakingTurn(studentId);
+    setState(() => _geriAlindi = true);
   }
 
   @override
@@ -236,7 +234,37 @@ class _RandomStudentPickerModalState extends ConsumerState<RandomStudentPickerMo
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    _geriAlindi
+                        ? 'Söz hakkı geri alındı'
+                        : '⭐ Söz hakkı verildi (bu derste ${currentStudent.speakingTurns}.)',
+                    textAlign: TextAlign.center,
+                    style: AppFonts.outfit(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: _geriAlindi
+                          ? (isDark ? Colors.white54 : Colors.black45)
+                          : const Color(0xFFD97706),
+                    ),
+                  ),
+                ),
+                if (!_geriAlindi)
+                  TextButton(
+                    onPressed: () => _sozHakkiniGeriAl(currentStudent.studentId),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: const Size(0, 32),
+                    ),
+                    child: const Text('Geri al'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
 
             // Hızlı Puanlama (3 Yıldız Butonları)
             Text(
@@ -305,7 +333,7 @@ class _RandomStudentPickerModalState extends ConsumerState<RandomStudentPickerMo
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: _pickRandomStudent,
+                    onPressed: _kuraCek,
                     icon: const Icon(Icons.casino_rounded, size: 17, color: Color(0xFF8B5CF6)),
                     label: Text(
                       'Başka Öğrenci',
