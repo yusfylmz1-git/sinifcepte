@@ -66,13 +66,6 @@ class _SinifFotoEkraniState extends ConsumerState<SinifFotoEkrani> {
             onPressed: _seriCekim,
           ),
           IconButton(
-            tooltip: 'Dışa aktar',
-            icon: const Icon(Icons.ios_share_rounded),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => DisaAktarimEkrani(baslangicSinifId: _sinifId)),
-            ),
-          ),
-          IconButton(
             tooltip: _izgara ? 'Liste görünümü' : 'Fotoğraf ızgarası',
             icon: Icon(_izgara ? Icons.view_list_rounded : Icons.grid_view_rounded),
             onPressed: () => setState(() => _izgara = !_izgara),
@@ -119,6 +112,9 @@ class _SinifFotoEkraniState extends ConsumerState<SinifFotoEkrani> {
                   _OzetSeridi(
                     hazir: sayim[_Suzgec.hazir]! + sayim[_Suzgec.inceleme]!,
                     toplam: sirali.length,
+                    onGonder: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => DisaAktarimEkrani(baslangicSinifId: _sinifId)),
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -609,20 +605,38 @@ class _SinifFotoEkraniState extends ConsumerState<SinifFotoEkrani> {
 }
 
 class _OzetSeridi extends StatelessWidget {
-  const _OzetSeridi({required this.hazir, required this.toplam});
+  const _OzetSeridi({required this.hazir, required this.toplam, required this.onGonder});
   final int hazir;
   final int toplam;
 
+  /// Toplu gönderim (ZIP, PDF albüm). Yazılı düğme; simge bulunamadı.
+  final VoidCallback onGonder;
+
   @override
   Widget build(BuildContext context) {
+    // Düğme sayının yanında, çubuk tam genişlikte altta: üçü tek satırda
+    // dar telefonda (320 dp) taşıyordu.
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(16, 4, 8, 0),
+      child: Column(
         children: [
-          Text('$hazir/$toplam hazır',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(width: 12),
-          Expanded(
+          Row(
+            children: [
+              Expanded(
+                child: Text('$hazir/$toplam hazır',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+              TextButton.icon(
+                onPressed: onGonder,
+                icon: const Icon(Icons.folder_zip_outlined),
+                label: const Text('ZIP gönder'),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(

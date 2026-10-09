@@ -47,18 +47,7 @@ class _EokulFotoMerkeziEkraniState extends ConsumerState<EokulFotoMerkeziEkrani>
     final ozetler = ref.watch(sinifFotoOzetleriProvider).valueOrNull ?? const {};
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('e-Okul foto'),
-        actions: [
-          IconButton(
-            tooltip: 'Dışa aktar (ZIP, PDF albüm, kontrol listesi)',
-            icon: const Icon(Icons.ios_share_rounded),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const DisaAktarimEkrani()),
-            ),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('e-Okul foto')),
       body: siniflarA.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Sınıflar yüklenemedi: $e')),
@@ -71,6 +60,19 @@ class _EokulFotoMerkeziEkraniState extends ConsumerState<EokulFotoMerkeziEkrani>
             padding: const EdgeInsets.all(16),
             children: [
               const _BilgiKarti(),
+              // Yazılı düğme, simge değil (9 Ekim 2026): yalnızca sağ üstte
+              // simgeyken uygulamanın sahibi bile toplu gönderimi bulamadı.
+              if (sirali.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, bottom: 4),
+                  child: FilledButton.tonalIcon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const DisaAktarimEkrani()),
+                    ),
+                    icon: const Icon(Icons.folder_zip_outlined),
+                    label: const Text('Toplu gönder (ZIP, PDF albüm)'),
+                  ),
+                ),
               SwitchListTile(
                 value: ref.watch(fotolariGosterProvider),
                 onChanged: (v) => ref.read(fotolariGosterProvider.notifier).ayarla(v),
@@ -112,8 +114,10 @@ class _BilgiKarti extends StatelessWidget {
               children: [
                 Icon(Icons.badge_outlined, color: AppColors.primary),
                 SizedBox(width: 8),
-                Text('e-Okul öğrenci fotoğrafı',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                Expanded(
+                  child: Text('e-Okul öğrenci fotoğrafı',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                ),
               ],
             ),
             const SizedBox(height: 8),

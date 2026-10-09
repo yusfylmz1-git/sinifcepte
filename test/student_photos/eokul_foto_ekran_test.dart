@@ -127,6 +127,55 @@ void main() {
     });
   });
 
+  // 9 Ekim 2026: toplu gönderim yalnızca sağ üstte bir simgeydi; telefonda
+  // deneyen kişi "ZIP ile gönderme seçeneği yok" dedi. Yazılı düğme olmalı.
+  group('toplu gönderim yazılı düğmeyle bulunuyor', () {
+    testWidgets('KRITIK: giriş ekranında "Toplu gönder" tüm sınıflarla dışa aktarmayı açıyor',
+        (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(sahne(const EokulFotoMerkeziEkrani()));
+      await bekleKadar(tester, () => find.textContaining('Toplu gönder').evaluate().isNotEmpty);
+
+      await tester.tap(find.text('Toplu gönder (ZIP, PDF albüm)'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      final ekran = tester.widget<DisaAktarimEkrani>(find.byType(DisaAktarimEkrani));
+      expect(ekran.baslangicSinifId, isNull, reason: 'bütün sınıflar seçili başlar');
+      await bekle(tester);
+    });
+
+    testWidgets('KRITIK: sınıf ekranında "ZIP gönder" o sınıfla dışa aktarmayı açıyor', (tester) async {
+      await tester.pumpWidget(sahne(SinifFotoEkrani(sinif: sinif)));
+      await bekleKadar(tester, () => find.textContaining('/2 hazır').evaluate().isNotEmpty);
+      await bekle(tester, 4);
+
+      await tester.tap(find.text('ZIP gönder'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      final ekran = tester.widget<DisaAktarimEkrani>(find.byType(DisaAktarimEkrani));
+      expect(ekran.baslangicSinifId, sinifId);
+      await bekle(tester);
+    });
+
+    testWidgets('dar telefonda (320 dp) iki ekran da taşmıyor', (tester) async {
+      tester.view.physicalSize = const Size(640, 1400);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(sahne(SinifFotoEkrani(sinif: sinif)));
+      await bekleKadar(tester, () => find.textContaining('/2 hazır').evaluate().isNotEmpty);
+      await bekle(tester, 4);
+      expect(tester.takeException(), isNull);
+      expect(find.text('ZIP gönder'), findsOneWidget);
+
+      await tester.pumpWidget(sahne(const EokulFotoMerkeziEkrani()));
+      await bekleKadar(tester, () => find.textContaining('Toplu gönder').evaluate().isNotEmpty);
+      await bekle(tester, 4);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('sınıf ekranı', () {
     testWidgets('KRITIK: sayım, numara sırası, durum etiketi, süzgeç ve arama', (tester) async {
       await tester.runAsync(() => depo().kaydet(
