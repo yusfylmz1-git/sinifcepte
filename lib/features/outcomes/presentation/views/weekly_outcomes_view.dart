@@ -1389,6 +1389,10 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
               // CAROUSEL VIEW (PageView)
               if (isCarousel) {
                 return PageView.builder(
+                  // Ders başına ayrı: ders dışarıdan (ana sayfadaki "Günün
+                  // dersleri") değişince yeni ders eskisinin kaldığı sayfayı
+                  // devralmasın, bu haftadan (`initialPage`) açılsın.
+                  key: ValueKey('kazanim_${grade}_${subject['subject_code']}_${subject['publisher']}'),
                   controller: _pageController,
                   physics: const BouncingScrollPhysics(),
                   itemCount: outcomes.length,

@@ -17,6 +17,7 @@ import '../../exam_operations/presentation/views/exam_tracking_view.dart';
 import '../../exam_operations/providers/exam_tracking_provider.dart';
 import '../../outcomes/presentation/views/weekly_outcomes_view.dart';
 import '../../outcomes/providers/outcomes_provider.dart';
+import '../../outcomes/utils/kazanim_ders_eslestirici.dart';
 import '../../schedule/models/lesson_model.dart';
 import '../../schedule/models/schedule_settings.dart';
 import '../../schedule/providers/schedule_provider.dart';
@@ -1821,22 +1822,35 @@ class DashboardScreen extends ConsumerWidget {
   }
 
 
-  void _openOutcomeForLesson(BuildContext context, WidgetRef ref, LessonModel lesson) {
+  /// Derse dokununca o dersin kazanımları, bu haftada açılır.
+  ///
+  /// Eskiden ders KODU yerine ders ADI gönderiliyordu; hiçbir kazanım
+  /// gelmiyor ve yalnız "40. hafta: Yaz Tatili" kartı açılıyordu (9 Ekim
+  /// 2026). Ad artık veritabanındaki derse çevriliyor; bulunamazsa o sınıfın
+  /// ders seçimi açılır, boş liste değil.
+  Future<void> _openOutcomeForLesson(BuildContext context, WidgetRef ref, LessonModel lesson) async {
     try {
-      final match = RegExp(r'^(\d+)').firstMatch(lesson.className);
+      final match = RegExp(r'^(\d+)').firstMatch(lesson.className.trim());
       final grade = match != null ? int.tryParse(match.group(1)!) : null;
-
-      if (grade != null) {
-        ref.read(selectedGradeProvider.notifier).state = grade;
-        ref.read(selectedSubjectProvider.notifier).state = {
-          'subject_code': lesson.lessonName,
-          'subject_name': lesson.lessonName,
-          'publisher': 'MEB Yayınları',
-        };
-        ref.read(isFavoritesModeProvider.notifier).state = false;
-        onNavigateTab?.call(2); // Kazanımlar Sekmesine (Tab 2) Geçiş Yap
-      } else {
+      if (grade == null) {
         onNavigateTab?.call(2);
+        return;
+      }
+
+      final dersler = await ref.read(availableSubjectsForGradeProvider(grade).future);
+      final ders = kazanimDersiBul(dersler, lesson.lessonName);
+
+      ref.read(selectedGradeProvider.notifier).state = grade;
+      ref.read(selectedSubjectProvider.notifier).state = ders;
+      ref.read(isFavoritesModeProvider.notifier).state = false;
+      onNavigateTab?.call(2); // Kazanımlar sekmesi
+
+      if (ders == null && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+            '"${lesson.lessonName}" kazanım listesinde bulunamadı; $grade. sınıf derslerinden seçin.',
+          ),
+        ));
       }
     } catch (e, stackTrace) {
       debugPrint('DashboardScreen._openOutcomeForLesson error: $e\n$stackTrace');
