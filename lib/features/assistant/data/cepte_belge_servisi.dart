@@ -97,9 +97,14 @@ class CepteBelgeServisi {
   /// Niyetten plan listesi kurar.
   ///
   /// [ayrintili] günlük plan içindir (öğretme-öğrenme süreci dolu gelir).
+  ///
+  /// [yayinci]: lisede okul türü (Anadolu / Fen / Sosyal Bilimler Lisesi).
+  /// Birden çok plan varken sorulur, cevap buraya gelir. Eskiden cevap
+  /// yeni bir cümle olarak gönderiliyor ve anlaşılmıyordu.
   Future<CepteBelgeSonucu> planHazirla(
     CepteNiyet niyet, {
     required bool ayrintili,
+    String? yayinci,
   }) async {
     final sinif = niyet.sinif;
     final kod = niyet.dersKodu;
@@ -123,6 +128,7 @@ class CepteBelgeServisi {
     final dersler = await dersleriGetir(sinif);
     final eslesenler = dersler
         .where((d) => trFold('${d['subject_code']}') == trFold(kod))
+        .where((d) => yayinci == null || '${d['publisher'] ?? ''}'.trim() == yayinci.trim())
         .toList();
 
     if (eslesenler.isEmpty) {

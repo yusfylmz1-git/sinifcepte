@@ -229,7 +229,7 @@ class AppDrawer extends ConsumerWidget {
                       subtitle: 'Ücretsiz yerel dosya yedekleme',
                       onTap: () {
                         Navigator.of(context).pop();
-                        _showBackupDialog(context);
+                        showBackupDialog(context);
                       },
                     ),
                     const SizedBox(height: 6),
@@ -364,7 +364,8 @@ class AppDrawer extends ConsumerWidget {
   }
 
 
-  void _showBackupDialog(BuildContext context) {
+  /// Veri yedekleme penceresi. Cepte araması da açar ("yedek").
+  static void showBackupDialog(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showDialog(

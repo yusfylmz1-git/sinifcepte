@@ -40,6 +40,28 @@ enum CepteEkran {
   nobetciListesi,
   ogrenciListesi,
   ogretmenKadrosu,
+
+  // Arama (9 Ekim 2026) ile eklenenler; anahtarları `cepte_katalog.dart`.
+  dersSaatleri,
+  donemSonuRaporlari,
+  karneGorusleri,
+  yillikPlanlar,
+  gunlukPlanlar,
+  sinavTakvimi,
+  projeOdev,
+  quizSozlu,
+  sinavAnalizleri,
+  ozelEgitim,
+  siniflarim,
+  calismaTakvimi,
+  eokulFoto,
+  tahtaKilidi,
+  veriYedekleme,
+  geriYukleme,
+  ayarlar,
+  profil,
+  profilBilgileri,
+  topluDuyuru,
 }
 
 /// Bir cümleden çıkarılan iş.

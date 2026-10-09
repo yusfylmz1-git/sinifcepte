@@ -145,6 +145,35 @@ void main() {
       expect(sonuc.secenekler, contains('Fen Lisesi'));
     });
 
+    test('KRITIK: sorulan okul türü cevaplanınca O planı hazırlar', () async {
+      // Eskiden cevap ("Fen Lisesi") yeni bir cümle olarak gönderiliyor
+      // ve anlaşılmıyordu: soru hiç cevaplanamıyordu (9 Ekim 2026).
+      String? istenen;
+      final s = CepteBelgeServisi(
+        dersleriGetir: (_) async => [
+          {'subject_code': 'FIZIK', 'subject_name': 'Fizik', 'publisher': 'Anadolu Lisesi'},
+          {'subject_code': 'FIZIK', 'subject_name': 'Fizik', 'publisher': 'Fen Lisesi'},
+        ],
+        kazanimlariGetir: ({
+          required int gradeLevel,
+          required String subjectCode,
+          required String publisher,
+        }) async {
+          istenen = publisher;
+          return haftalar(35);
+        },
+        takvimdenTarih: takvim,
+      );
+      final sonuc = await s.planHazirla(
+        CepteCozumleyici.coz('9. sınıf fizik yıllık plan'),
+        ayrintili: false,
+        yayinci: 'Fen Lisesi',
+      );
+      expect(sonuc.basarili, isTrue);
+      expect(sonuc.publisher, 'Fen Lisesi');
+      expect(istenen, 'Fen Lisesi');
+    });
+
     test('KRITIK: veri yoksa uydurma plan uretilmez', () async {
       final sonuc = await servis(kazanimlar: const []).planHazirla(
         CepteCozumleyici.coz('5. sınıf türkçe yıllık plan'),

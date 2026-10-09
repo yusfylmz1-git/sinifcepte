@@ -5,7 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../academic_calendar/data/models/academic_calendar_event_model.dart';
 import '../../academic_calendar/providers/academic_calendar_provider.dart';
 import '../../academic_calendar/screens/academic_calendar_screen.dart';
-import '../../assistant/presentation/views/cepte_sohbet_view.dart';
+import '../../assistant/presentation/views/cepte_arama_view.dart';
 import '../../documents/presentation/views/other_documents_view.dart';
 import '../../attendance/presentation/views/classroom_participation_view.dart';
 import '../../attendance/providers/classroom_participation_provider.dart';
@@ -90,6 +90,12 @@ class DashboardScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // 0. ARAMA (Cepte). Kullanıcı kararı (9 Ekim 2026): en
+                // üstte. Eskiden Cepte kutucuklar arasında bir taneydi ve
+                // bulunmuyordu.
+                _aramaKutusu(context, isDark),
+                const SizedBox(height: 12),
+
                 // 1. DİNAMİK KARŞILAMA VE GÜN BİLGİSİ HERO ALANI
                 _buildModernGreetingHero(
                   context: context,
@@ -685,7 +691,7 @@ class DashboardScreen extends ConsumerWidget {
         'icon': Icons.auto_awesome_rounded,
         'gradient': [const Color(0xFF0284C7), const Color(0xFF06B6D4)],
         'accent': const Color(0xFF0EA5E9),
-        'target': const CepteSohbetView(),
+        'target': const CepteAramaView(),
       },
       {
         'title': 'Sınav İşlemleri',
@@ -1821,6 +1827,56 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
+
+  /// Ana sayfanın tepesindeki arama kutusu; dokununca Cepte açılır.
+  Widget _aramaKutusu(BuildContext context, bool isDark) {
+    return Material(
+      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        key: const Key('ana_sayfa_arama'),
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const CepteAramaView()),
+        ),
+        child: Container(
+          height: 50,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+            ),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.search_rounded, color: AppColors.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Ne arıyorsunuz? Ekran, belge, öğrenci…',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppFonts.outfit(
+                    fontSize: 14,
+                    color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                  ),
+                ),
+              ),
+              Text(
+                'Cepte',
+                style: AppFonts.outfit(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   /// Derse dokununca o dersin kazanımları, bu haftada açılır.
   ///
