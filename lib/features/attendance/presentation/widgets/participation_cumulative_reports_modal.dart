@@ -1109,6 +1109,23 @@ class _ParticipationCumulativeReportsModalState
                           ),
                         );
                       }),
+                      // Artı-eksi listesi; hiç verilmediyse yer kaplamaz.
+                      Builder(builder: (_) {
+                        final arti = (studentMap['plusCount'] as int?) ?? 0;
+                        final eksi = (studentMap['minusCount'] as int?) ?? 0;
+                        if (arti + eksi == 0) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: Text(
+                            '+$arti −$eksi',
+                            style: AppFonts.outfit(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.white70 : const Color(0xFF334155),
+                            ),
+                          ),
+                        );
+                      }),
                       const SizedBox(width: 8),
                       Text(
                         'Ödev: %${((studentMap['homeworkRate'] as num?)?.toDouble() ?? 0.0).toStringAsFixed(0)}',

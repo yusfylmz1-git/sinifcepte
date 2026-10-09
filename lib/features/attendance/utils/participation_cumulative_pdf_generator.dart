@@ -19,6 +19,14 @@ class ParticipationCumulativePdfGenerator {
     return noEmoji.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
+  /// Artı-eksi listesinin toplamı: `+5 / -2`.
+  ///
+  /// PDF'te ASCII eksi: Unicode "−" (U+2212) her yazı tipinde yok; çizilemezse
+  /// kutu çıkar ve "-2" ile "2" karışır.
+  @visibleForTesting
+  static String artiEksiMetni(Map<String, dynamic> s) =>
+      '+${s['plusCount'] ?? 0} / -${s['minusCount'] ?? 0}';
+
   /// Öğrencinin başarı ve katılım istatistiğine göre pedagojik, gerçekçi geri bildirim üretir
   static String _generateSmartFeedback({
     required double hwRate,
@@ -76,6 +84,8 @@ class ParticipationCumulativePdfGenerator {
     final avgHwRate = (reportData['classAverageHwRate'] as num?)?.toDouble() ?? 100.0;
     final avgMatRate = (reportData['classAverageMatRate'] as num?)?.toDouble() ?? 100.0;
     final totalStars = reportData['classTotalStars'] as int? ?? 0;
+    final totalPlus = reportData['classTotalPlus'] as int? ?? 0;
+    final totalMinus = reportData['classTotalMinus'] as int? ?? 0;
     final students = (reportData['students'] as List<dynamic>? ?? []);
 
     final teacher = _cleanText(teacherName.isNotEmpty ? teacherName : 'Ders Öğretmeni');
@@ -141,6 +151,8 @@ class ParticipationCumulativePdfGenerator {
                       pw.Text('Araç-Gereç / Kitap Uyumu: %${avgMatRate.toStringAsFixed(1)}', style: pw.TextStyle(fontSize: 8.5)),
                       pw.SizedBox(height: 2),
                       pw.Text('Toplam Katılım Yıldızı Puanı: $totalStars', style: pw.TextStyle(fontSize: 8.5)),
+                      pw.SizedBox(height: 2),
+                      pw.Text('Artı-Eksi Listesi: $totalPlus artı / $totalMinus eksi', style: pw.TextStyle(fontSize: 8.5)),
                     ],
                   ),
                 ),
@@ -160,7 +172,8 @@ class ParticipationCumulativePdfGenerator {
                 5: pw.FixedColumnWidth(44), // Ödev %
                 6: pw.FixedColumnWidth(44), // Materyal %
                 7: pw.FixedColumnWidth(48), // Yıldız Ort.
-                8: pw.FlexColumnWidth(3.0), // Öne Çıkan Davranışlar / Görüş
+                8: pw.FixedColumnWidth(44), // Artı / Eksi
+                9: pw.FlexColumnWidth(3.0), // Öne Çıkan Davranışlar / Görüş
               },
               children: [
                 // Başlık
@@ -175,6 +188,7 @@ class ParticipationCumulativePdfGenerator {
                     _buildHeaderCell('Ödev %', align: pw.TextAlign.center),
                     _buildHeaderCell('Materyal %', align: pw.TextAlign.center),
                     _buildHeaderCell('Katılım (Ort.)', align: pw.TextAlign.center),
+                    _buildHeaderCell('Artı / Eksi', align: pw.TextAlign.center),
                     _buildHeaderCell('Öne Çıkan Davranış & Görüş'),
                   ],
                 ),
@@ -217,6 +231,7 @@ class ParticipationCumulativePdfGenerator {
                         _buildCell('%${hwRateNum.toStringAsFixed(0)}', align: pw.TextAlign.center),
                         _buildCell('%${matRateNum.toStringAsFixed(0)}', align: pw.TextAlign.center),
                         _buildCell('${avgStarsNum.toStringAsFixed(1)} / 3.0', align: pw.TextAlign.center),
+                        _buildCell(artiEksiMetni(s), align: pw.TextAlign.center),
                         _buildCell(feedbackStr),
                       ],
                     );
@@ -310,7 +325,8 @@ class ParticipationCumulativePdfGenerator {
                 3: pw.FixedColumnWidth(56), // Ödev Durumu
                 4: pw.FixedColumnWidth(54), // Materyal
                 5: pw.FixedColumnWidth(52), // Katılım
-                6: pw.FlexColumnWidth(3.8), // Veliye İletilecek Özet Görüş & Not
+                6: pw.FixedColumnWidth(44), // Artı / Eksi
+                7: pw.FlexColumnWidth(3.8), // Veliye İletilecek Özet Görüş & Not
               },
               children: [
                 pw.TableRow(
@@ -322,6 +338,7 @@ class ParticipationCumulativePdfGenerator {
                     _buildHeaderCell('Ödev Başarısı', align: pw.TextAlign.center),
                     _buildHeaderCell('Araç-Gereç', align: pw.TextAlign.center),
                     _buildHeaderCell('Katılım (Ort.)', align: pw.TextAlign.center),
+                    _buildHeaderCell('Artı / Eksi', align: pw.TextAlign.center),
                     _buildHeaderCell('Veliye İletilecek Özet Bilgi & Öneri'),
                   ],
                 ),
@@ -360,6 +377,7 @@ class ParticipationCumulativePdfGenerator {
                         _buildCell(hwSummary, align: pw.TextAlign.center),
                         _buildCell('%${matRateNum.toStringAsFixed(0)}', align: pw.TextAlign.center),
                         _buildCell('${avgStarsNum.toStringAsFixed(1)} / 3.0', align: pw.TextAlign.center),
+                        _buildCell(artiEksiMetni(s), align: pw.TextAlign.center),
                         _buildCell(tipStr),
                       ],
                     );
@@ -490,6 +508,20 @@ class ParticipationCumulativePdfGenerator {
                     pw.Text('Derse Katılım Ortalaması: $avgStars / 3.0 Puan', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.amber900)),
                     pw.Text('Toplam Yıldız Puanı: $totalStars', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.amber900)),
                   ],
+                ),
+              ),
+              pw.SizedBox(height: 8),
+              pw.Container(
+                width: double.infinity,
+                padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: pw.BoxDecoration(
+                  color: PdfColors.grey100,
+                  borderRadius: pw.BorderRadius.circular(6),
+                  border: pw.Border.all(color: PdfColors.grey400),
+                ),
+                child: pw.Text(
+                  'Artı-Eksi Listesi: ${studentData['plusCount'] ?? 0} artı / ${studentData['minusCount'] ?? 0} eksi',
+                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.blueGrey800),
                 ),
               ),
               pw.SizedBox(height: 18),

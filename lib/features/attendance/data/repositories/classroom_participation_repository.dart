@@ -436,6 +436,12 @@ class ClassroomParticipationRepository {
         }
       }
 
+      // Arti-eksi listesi (9 Ekim 2026): oturumlarla AYNI tarih
+      // araliginda. Kullanici: "donem sonu PDF'lerinde olmasi onemli".
+      final artiEksi = await _artiEksiSayilari(db, classId, startDate, endDate);
+      int totalClassPlus = 0;
+      int totalClassMinus = 0;
+
       final List<Map<String, dynamic>> studentReports = [];
       double totalClassHwRateSum = 0;
       double totalClassMatRateSum = 0;
@@ -520,6 +526,9 @@ class ClassroomParticipationRepository {
         totalClassHwRateSum += hwRate;
         totalClassMatRateSum += matRate;
         totalClassStars += stars;
+        final (arti, eksi) = artiEksi[studentId] ?? (0, 0);
+        totalClassPlus += arti;
+        totalClassMinus += eksi;
 
         studentReports.add({
           'studentId': studentId,
@@ -542,6 +551,8 @@ class ClassroomParticipationRepository {
           // "%100 (20 ders)" ayni sey degil.
           'homeworkMarkedLessons': hwMarked,
           'materialsMarkedLessons': matMarked,
+          'plusCount': arti,
+          'minusCount': eksi,
           'tags': tags,
           'notes': notes,
         });
@@ -573,12 +584,45 @@ class ClassroomParticipationRepository {
         'classTotalStars': totalClassStars,
         'classTotalSpeakingTurns': classTotalSpeaking,
         'silentStudentCount': silentCount,
+        'classTotalPlus': totalClassPlus,
+        'classTotalMinus': totalClassMinus,
         'students': studentReports,
       };
     } catch (e, stackTrace) {
       debugPrint('getClassCumulativeReportData hatası: $e\n$stackTrace');
       rethrow;
     }
+  }
+
+  /// Öğrenci başına (artı, eksi) sayısı; tarih süzgeci raporla aynı.
+  static Future<Map<int, (int, int)>> _artiEksiSayilari(
+    Database db,
+    int classId,
+    String? startDate,
+    String? endDate,
+  ) async {
+    var where = 'class_id = ?';
+    final args = <dynamic>[classId];
+    if (startDate != null) {
+      where += ' AND tarih >= ?';
+      args.add(startDate);
+    }
+    if (endDate != null) {
+      where += ' AND tarih <= ?';
+      args.add(endDate);
+    }
+    final satirlar = await db.rawQuery('''
+      SELECT student_id,
+             SUM(CASE WHEN deger = 1 THEN 1 ELSE 0 END) AS arti,
+             SUM(CASE WHEN deger = -1 THEN 1 ELSE 0 END) AS eksi
+      FROM arti_eksi_kayitlari
+      WHERE $where
+      GROUP BY student_id
+    ''', args);
+    return {
+      for (final r in satirlar)
+        r['student_id'] as int: ((r['arti'] as int?) ?? 0, (r['eksi'] as int?) ?? 0),
+    };
   }
 
   /// Sınıfın geçmiş değerlendirme oturumlarını listeler
