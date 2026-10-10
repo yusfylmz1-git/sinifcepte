@@ -79,9 +79,9 @@ void main() {
     await tester.enterText(find.byKey(const Key('cepte_arama')), 'zzqx');
     await tester.pump();
     expect(find.textContaining('bir şey bulamadım'), findsOneWidget);
-    await tester.tap(find.text('yoklama'));
+    await tester.tap(find.text('oturma planı'));
     await tester.pump();
-    expect(find.text('Devamsızlık takibi · 5-A'), findsOneWidget);
+    expect(find.text('Oturma planı · 5-A'), findsOneWidget);
   });
 
   testWidgets('KRITIK: eksik bilgide Cepte sorar; cevaplanınca plan hazır, PDF önizlemeden', (tester) async {

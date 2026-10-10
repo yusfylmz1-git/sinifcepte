@@ -285,7 +285,7 @@ class _CepteAramaViewState extends ConsumerState<CepteAramaView> {
             if (sonuclar.isNotEmpty) _ac(sonuclar.first);
           },
           decoration: InputDecoration(
-            hintText: 'Ne arıyorsunuz? Örn: kroki, 23 nisan, Ali',
+            hintText: 'Ne arıyorsunuz? Örn: kazanım, oturma planı, zümre',
             border: InputBorder.none,
             suffixIcon: _sorgu.isEmpty
                 ? null
@@ -335,7 +335,7 @@ class _CepteAramaViewState extends ConsumerState<CepteAramaView> {
           _Balon(
             metin: '"${_sorgu.trim()}" için bir şey bulamadım. Şöyle yazabilirsiniz:',
             secenekler: [
-              for (final o in _ornekler) (o, () => _yaz(o)),
+              for (final o in cepteOrnekAramalar) (o, () => _yaz(o)),
             ],
           ),
           isDark,
@@ -361,14 +361,6 @@ class _CepteAramaViewState extends ConsumerState<CepteAramaView> {
     ];
   }
 
-  static const _ornekler = [
-    'kroki',
-    'yoklama',
-    '23 nisan',
-    'veli toplantısı',
-    'karne yorumu',
-    '5. sınıf türkçe yıllık plan',
-  ];
 
   List<Widget> _bosEkran(List<CepteHedef> katalog, bool isDark) {
     final kimlik = {for (final h in katalog) h.id: h};
@@ -381,7 +373,7 @@ class _CepteAramaViewState extends ConsumerState<CepteAramaView> {
         _Balon(
           metin: 'Merhaba${ad.isEmpty ? '' : ' $ad'} Hocam 👋\n'
               'Ne arıyorsanız yazın: ekran, belge, sınıf, öğrenci, belirli gün, kulüp, kazanım.',
-          secenekler: [for (final o in _ornekler) (o, () => _yaz(o))],
+          secenekler: [for (final o in cepteOrnekAramalar) (o, () => _yaz(o))],
         ),
         isDark,
       ),

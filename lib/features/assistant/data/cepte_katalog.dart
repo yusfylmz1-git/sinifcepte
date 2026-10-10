@@ -12,6 +12,20 @@ library;
 import 'cepte_arama.dart';
 import 'cepte_niyet.dart';
 
+/// Boş ekranda ve "bulamadım" cevabında gösterilen örnek aramalar.
+///
+/// Kullanıcı seçti (10 Ekim 2026): öğretmenin aklına ilk gelen sözler.
+/// "kroki" gibi az kullanılan eş anlamlılar örnek değil, yalnız anahtar.
+const List<String> cepteOrnekAramalar = [
+  'kazanım',
+  'veli',
+  'oturma planı',
+  'yıllık plan',
+  'günlük plan',
+  'zümre',
+  'ŞÖK',
+];
+
 CepteHedef _ekran(
   CepteEkran ekran,
   String baslik,

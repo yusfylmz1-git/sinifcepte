@@ -103,6 +103,23 @@ void main() {
     }
   });
 
+  test('KRITIK: ekrandaki her örnek arama doğru yere gidiyor', () {
+    // Kullanıcının seçtiği örnekler (10 Ekim 2026); çipe dokununca aranır.
+    const beklenen = {
+      'kazanım': 'ekran:kazanimlar',
+      'veli': 'sinif:veliPaneli:',
+      'oturma planı': 'sinif:oturmaPlani:',
+      'yıllık plan': 'ekran:yillikPlanlar',
+      'günlük plan': 'ekran:gunlukPlanlar',
+      'zümre': 'ekran:kurulTutanaklari',
+      'ŞÖK': 'ekran:kurulTutanaklari',
+    };
+    expect(cepteOrnekAramalar.toSet(), beklenen.keys.toSet());
+    for (final e in beklenen.entries) {
+      expect(ilk(e.key), startsWith(e.value), reason: e.key);
+    }
+  });
+
   test('KRITIK: "5-A" yazınca o sınıfın ekranları, önce sınıfın kendisi', () {
     final s = ara('5-A');
     expect(s.first, 'sinif:sinifim:1');
