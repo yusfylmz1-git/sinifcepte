@@ -2,14 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../../data/models/student_model.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../../shared/widgets/glass_card.dart';
 import '../../../auth_profile/providers/teacher_profile_provider.dart';
-import '../../../classes/providers/class_provider.dart';
-import '../../../classes/providers/student_provider.dart';
 import '../../data/council_minutes.dart';
-import '../widgets/council_minutes_editor_modal.dart';
+import 'council_minutes_view.dart';
 
 /// Evraklarım: kurul tutanak taslakları.
 class DocumentsHubView extends ConsumerWidget {
@@ -19,25 +16,8 @@ class DocumentsHubView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final profile = ref.watch(teacherProfileProvider);
-    final classes = ref.watch(classListProvider).valueOrNull ?? const [];
-    final homeroom = classes.where((c) => c.isHomeroom).firstOrNull ??
-        (classes.isEmpty ? null : classes.first);
-
-    Future<void> openCouncil(CouncilKind kind) async {
-      final selected = homeroom;
-      // Tip acikca yazilmali: `const []` tek basina `List<dynamic>`
-      // uretiyor ve modal `List<StudentModel>` bekliyor.
-      final students = selected?.id == null
-          ? const <StudentModel>[]
-          : (ref.read(studentListProvider(selected!.id!)).valueOrNull ??
-              const <StudentModel>[]);
-      await CouncilMinutesEditorModal.show(
-        context,
-        kind: kind,
-        classModel: selected,
-        students: students,
-      );
-    }
+    // Tam sayfa: önce kısa form, sonra "hazırlandı" ekranı (10 Ekim 2026).
+    Future<void> openCouncil(CouncilKind kind) => CouncilMinutesView.open(context, kind);
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : Colors.white,

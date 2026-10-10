@@ -66,8 +66,8 @@ void main() {
       'geri yükle': 'ekran:geriYukleme',
       'veli toplantısı': 'ekran:donemSonuRaporlari',
       'karne yorumu': 'ekran:karneGorusleri',
-      'zümre': 'ekran:kurulTutanaklari',
-      'şök': 'ekran:kurulTutanaklari',
+      'zümre': 'ekran:zumreTutanagi',
+      'şök': 'ekran:sokTutanagi',
       'sözlü notu': 'ekran:quizSozlu',
       'sınav tarihi': 'ekran:sinavTakvimi',
       'takvim': 'ekran:calismaTakvimi',
@@ -111,8 +111,8 @@ void main() {
       'oturma planı': 'sinif:oturmaPlani:',
       'yıllık plan': 'ekran:yillikPlanlar',
       'günlük plan': 'ekran:gunlukPlanlar',
-      'zümre': 'ekran:kurulTutanaklari',
-      'ŞÖK': 'ekran:kurulTutanaklari',
+      'zümre': 'ekran:zumreTutanagi',
+      'ŞÖK': 'ekran:sokTutanagi',
     };
     expect(cepteOrnekAramalar.toSet(), beklenen.keys.toSet());
     for (final e in beklenen.entries) {

@@ -89,8 +89,15 @@ List<CepteHedef> cepteEkranHedefleri() => [
         'kulüp', 'sosyal kulüp', 'ek-4', 'ek 4', 'kulüp planı', 'kulüp üyeleri',
         'faaliyet raporu', 'toplum hizmeti',
       ]),
+      _ekran(CepteEkran.zumreTutanagi, 'Zümre tutanağı', 'Belgeler › Kurul tutanakları', [
+        'zümre', 'zümre toplantısı', 'zümre öğretmenler kurulu', 'zümre tutanağı',
+        'sene başı zümre', 'dönem sonu zümre',
+      ], oncelik: 2),
+      _ekran(CepteEkran.sokTutanagi, 'ŞÖK tutanağı', 'Belgeler › Kurul tutanakları', [
+        'şök', 'şube öğretmenler kurulu', 'şube kurulu', 'şök tutanağı',
+        'sınıf geçme kurulu',
+      ], oncelik: 2),
       _ekran(CepteEkran.kurulTutanaklari, 'Kurul tutanakları', 'Belgeler › Kurul tutanakları', [
-        'zümre', 'zümre toplantısı', 'şök', 'şube öğretmenler kurulu',
         'öğretmenler kurulu', 'tutanak', 'kurul', 'toplantı tutanağı',
       ], oncelik: 1),
       _ekran(CepteEkran.ogretmenDosyasi, 'Öğretmen dosyası', 'Belgeler › Öğretmen dosyası', [

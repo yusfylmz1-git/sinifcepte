@@ -30,6 +30,8 @@ import '../../clubs/presentation/views/club_detail_view.dart';
 import '../../documents/data/special_days_repository.dart';
 import '../../documents/presentation/views/annual_plans_view.dart';
 import '../../documents/presentation/views/daily_plans_view.dart';
+import '../../documents/data/council_minutes.dart';
+import '../../documents/presentation/views/council_minutes_view.dart';
 import '../../documents/presentation/views/documents_hub_view.dart';
 import '../../documents/presentation/views/other_documents_view.dart';
 import '../../documents/presentation/views/special_days_view.dart';
@@ -144,6 +146,8 @@ Future<void> _ekranAc(BuildContext context, WidgetRef ref, CepteEkran ekran) asy
     CepteEkran.eokulFoto => const EokulFotoMerkeziEkrani(),
     CepteEkran.tahtaKilidi => const TahtaKilidiScreen(),
     CepteEkran.topluDuyuru => const BulkAnnouncementScreen(),
+    CepteEkran.zumreTutanagi => const CouncilMinutesView(kind: CouncilKind.zumre),
+    CepteEkran.sokTutanagi => const CouncilMinutesView(kind: CouncilKind.sok),
     CepteEkran.geriYukleme => const GeriYuklemeEkrani(),
     CepteEkran.ayarlar => const SettingsScreen(),
     CepteEkran.profilBilgileri => const TeacherProfileSetupView(),

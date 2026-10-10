@@ -62,6 +62,8 @@ enum CepteEkran {
   profil,
   profilBilgileri,
   topluDuyuru,
+  zumreTutanagi,
+  sokTutanagi,
 }
 
 /// Bir cümleden çıkarılan iş.
