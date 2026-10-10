@@ -108,7 +108,14 @@ class _CouncilMinutesViewState extends ConsumerState<CouncilMinutesView> {
       teacherBranch: _branch,
     );
     setState(() {
-      _agenda = CouncilMinutes.buildAgenda(kind: widget.kind, period: _period, grade: _grade);
+      _agenda = CouncilMinutes.buildAgenda(
+        kind: widget.kind,
+        period: _period,
+        grade: _grade,
+        // Kademeye özgü maddeler (ilkokulda gözlem formları, lisede önleme
+        // komisyonu, ortaokulda sınıf geçme) yalnız o kademede gelir.
+        level: CouncilMinutes.levelFrom(grade: _grade, schoolType: _profile.schoolType, branch: _branch),
+      );
       _attendees = attendees;
       _baskan = attendees.where((a) => a.isChair).firstOrNull?.name ?? _profile.fullName;
       _hazir = true;
@@ -647,7 +654,14 @@ class _GundemSayfasiState extends State<_GundemSayfasi> {
           child: ListTile(
             title: Text(_agenda[i].text, style: const TextStyle(fontWeight: FontWeight.w600)),
             subtitle: Text(_agenda[i].decision, maxLines: 2, overflow: TextOverflow.ellipsis),
-            trailing: const Icon(Icons.edit_outlined, size: 18),
+            // Yönerge maddesi silinmez; yalnız sonradan eklenen madde.
+            trailing: _agenda[i].required
+                ? const Icon(Icons.edit_outlined, size: 18)
+                : IconButton(
+                    tooltip: 'Maddeyi sil',
+                    icon: const Icon(Icons.delete_outline_rounded),
+                    onPressed: () => _kaydet(CouncilMinutes.removeAt(_agenda, i)),
+                  ),
             onTap: () => _duzenle(i),
           ),
         ),

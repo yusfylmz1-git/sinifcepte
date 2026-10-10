@@ -19,6 +19,10 @@ enum CouncilKind {
   sok,
 }
 
+/// Kademe: yönerge kademeye özgü maddeleri yalnız o kademede ister
+/// ("maddelerden ilgili görülenler gündeme alınır").
+enum CouncilLevel { ilkokul, ortaokul, ortaogretim, bilinmiyor }
+
 /// Yönergedeki üç olağan toplantı.
 enum CouncilPeriod {
   yearStart,
@@ -297,14 +301,35 @@ class CouncilMinutes {
     return 'Öğretmenler odası';
   }
 
+  /// Kademe: önce sınıf seviyesi, sonra okul türü, sonra branş.
+  static CouncilLevel levelFrom({int? grade, String? schoolType, String? branch}) {
+    if (grade != null) {
+      if (grade <= 4) return CouncilLevel.ilkokul;
+      if (grade <= 8) return CouncilLevel.ortaokul;
+      return CouncilLevel.ortaogretim;
+    }
+    final t = trFold(schoolType ?? '');
+    if (t.contains('ilkokul') || t.contains('okul oncesi') || t.contains('anaokul')) {
+      return CouncilLevel.ilkokul;
+    }
+    if (t.contains('ortaokul')) return CouncilLevel.ortaokul;
+    if (t.contains('lise') || t.contains('mesleki') || t.contains('meslek')) {
+      return CouncilLevel.ortaogretim;
+    }
+    if (branch != null && isClassroomTeacher(branch)) return CouncilLevel.ilkokul;
+    return CouncilLevel.bilinmiyor;
+  }
+
   static List<CouncilAgendaItem> buildAgenda({
     required CouncilKind kind,
     required CouncilPeriod period,
     int? grade,
+    CouncilLevel? level,
   }) {
+    final kademe = level ?? levelFrom(grade: grade);
     final items = kind == CouncilKind.zumre
-        ? _zumreAgenda(period)
-        : _sokAgenda(period, grade);
+        ? _zumreAgenda(period, kademe)
+        : _sokAgenda(period, kademe);
     return [
       for (var i = 0; i < items.length; i++)
         CouncilAgendaItem(
@@ -344,199 +369,292 @@ class CouncilMinutes {
     return '$n. $stripped';
   }
 
-  static List<(String, String)> _zumreAgenda(CouncilPeriod period) {
+  // ---------------------------------------------------------------------------
+  // GÜNDEMLER — Türkiye Yüzyılı Maarif Modeli (10 Ekim 2026)
+  //
+  // Kaynaklar (metin bunlardan, uydurma yok):
+  // * Eğitim Kurulları ve Zümreleri Yönergesi, 21/01/2025 değişikliğiyle:
+  //   zümre m.12/8 (a)–(v), şube öğretmenler kurulu m.10/8 (a)–(l).
+  //   2025 eki: okul temelli faaliyetler (ç), farklılaştırılmış uygulamalar
+  //   (zenginleştirme ve destekleme) (d), bütüncül gelişim (t).
+  // * TYMM Öğretim Programları Ortak Metni 2025: öğrenme çıktıları ve süreç
+  //   bileşenleri, kavramsal beceriler, alan becerileri, eğilimler,
+  //   programlar arası bileşenler (sosyal-duygusal öğrenme becerileri,
+  //   Erdem-Değer-Eylem Çerçevesi, okuryazarlık becerileri), öğrenme
+  //   kanıtları, farklılaştırma, okul temelli planlama (zümre kararlaştırır,
+  //   yıllık plana yazılır, etkisi değerlendirilir), öğretmen yansıtmaları
+  //   (zümre ve ŞÖK raporları veri kaynağıdır).
+  //
+  // Yönerge "maddelerden ilgili görülenler gündeme alınır" diyor: kademeye
+  // özgü maddeler ([CouncilLevel]) yalnız o kademede gelir. Bent harfleri
+  // yorumlarda; teftişte hangi maddeye dayandığı izlenebilsin.
+  // ---------------------------------------------------------------------------
+
+  static const _acilis = (
+    'Açılış, yoklama ve gündemin okunması.',
+    'Toplantı açıldı; yoklama yapıldı. Gündemin görüşülmesine karar verildi.',
+  );
+
+  static const _kapanis = (
+    'Dilek, temenniler ve kapanış.',
+    'Gündem maddeleri görüşüldü; tutanağın yazılarak imzaya açılmasına karar verildi.',
+  );
+
+  static List<(String, String)> _zumreAgenda(CouncilPeriod period, CouncilLevel level) {
+    final ilkokul = level == CouncilLevel.ilkokul;
+    final sinavli = level == CouncilLevel.ortaokul || level == CouncilLevel.ortaogretim;
     switch (period) {
       case CouncilPeriod.yearStart:
-        return const [
-          (
-            'Açılış, yoklama ve gündemin okunması.',
-            'Toplantı açıldı; yoklama yapıldı. Gündemin görüşülmesine karar verildi.',
-          ),
+        return [
+          _acilis,
+          // (a)
           (
             'Bir önceki toplantıda alınan kararların ve sonuçlarının değerlendirilmesi.',
-            'Önceki kararların sonuçları değerlendirildi; izlemeye devam edilmesine karar verildi.',
+            'Önceki kararların sonuçları değerlendirildi; uygulanmayan kararların bu yıl izlenmesine karar verildi.',
           ),
+          // (b) (c)
           (
-            'Planlamaların mevzuat, okulun kuruluş amacı ve öğretim programına uygun yapılması.',
-            'Yıllık ve ders planlarının yürürlükteki programa göre hazırlanmasına karar verildi.',
+            'Planlamaların eğitim-öğretim mevzuatına, okulun kuruluş amacına ve Türkiye Yüzyılı Maarif Modeli öğretim programına uygun yapılması; yıllık planların öğrenme çıktıları, süreç bileşenleri ve ünite/tema süreleri esas alınarak hazırlanması.',
+            'Yıllık planların öğretim programındaki öğrenme çıktıları, süreç bileşenleri ve ünite/tema süreleri esas alınarak, çevre özellikleri de dikkate alınarak hazırlanmasına karar verildi.',
           ),
+          // (c)
           (
-            'Atatürkçülük konularının planlanması; öğretim programlarının incelenmesi; yıllık ve ders planlarında konu ve kazanım ağırlıklarının dikkate alınması.',
-            'Atatürkçülük konularının ilgili kazanımlarla birlikte işlenmesine karar verildi.',
+            'Atatürkçülükle ilgili konuların ilgili öğrenme çıktılarıyla ilişkilendirilerek planlanması.',
+            'Atatürkçülükle ilgili konuların ilgili öğrenme çıktılarıyla ve belirli gün ve haftalarla ilişkilendirilerek işlenmesine karar verildi.',
           ),
+          // (ç) + Ortak Metin 1.4.10
           (
-            'Derslerin işlenişinde uygulanacak öğretim yöntem ve tekniklerinin belirlenmesi.',
-            'Derslerde öğrenci merkezli yöntem ve tekniklerin kullanılmasına karar verildi.',
+            'Okul temelli planlama: ders kapsamında yapılacak araştırma-gözlem, proje, yerel çalışma, okuma ve sosyal etkinliklerin belirlenmesi.',
+            'Okul temelli planlamaya ayrılan sürede yürütülecek çalışmaların zümrece belirlenerek yıllık plana işlenmesine karar verildi.',
           ),
+          // (ç) (p) (r) (t) + Ortak Metin 1.4.1–1.4.4
           (
-            'Özel eğitim ihtiyacı olan öğrenciler için BEP ve ders planlarının görüşülmesi.',
-            'BEP\'i bulunan öğrenciler için planların zümrece izlenmesine karar verildi.',
+            'Öğrenme-öğretme yaşantılarında kullanılacak yöntem ve tekniklerin; kavramsal beceriler, alan becerileri, eğilimler ve programlar arası bileşenler (sosyal-duygusal öğrenme becerileri, Erdem-Değer-Eylem Çerçevesi, okuryazarlık becerileri) dikkate alınarak belirlenmesi.',
+            'Derslerin beceri temelli yürütülmesine; eğilimler, sosyal-duygusal öğrenme becerileri, değerler ve okuryazarlık becerilerinin öğrenme çıktılarıyla ilişkilendirilerek öğrenme-öğretme uygulamalarına yansıtılmasına karar verildi.',
           ),
+          // (d) + Ortak Metin 1.4.9
           (
-            'Diğer zümre ve alan öğretmenleriyle iş birliği esaslarının belirlenmesi.',
-            'Ortak sınav, proje ve etkinliklerde zümreler arası iş birliği yapılmasına karar verildi.',
+            'Farklılaştırılmış uygulamalar: hazırbulunuşluğa göre zenginleştirme ve destekleme çalışmaları; özel eğitim ihtiyacı olan öğrenciler için BEP ve ders planlarının görüşülmesi.',
+            'Ön değerlendirme sonuçlarına göre zenginleştirme ve destekleme etkinliklerinin planlanmasına; BEP\'i bulunan öğrencilerin planlarının zümrece izlenmesine karar verildi.',
           ),
+          // (ı) (i) (k) (l) (n) (ö) + Ortak Metin 1.4.7
           (
-            'Ders kitabı, materyal ve eğitim ortamlarının değerlendirilmesi.',
-            'Ders kitabı ve materyallerin programa uygun kullanılmasına karar verildi.',
+            'Ölçme ve değerlendirme: süreç odaklı değerlendirme ve öğrenme kanıtları; ${sinavli ? 'ortak yazılı ve uygulamalı sınavların konu-soru dağılım tablosu ve dereceli puanlama anahtarıyla hazırlanması; ' : ''}proje ve performans çalışmalarının belirlenmesi (sınıf-ders düzeyine uymayan hususta karar alınmaz, madde silinmez).',
+            'Ölçme ve değerlendirmenin mevzuata uygun, süreç odaklı ve birden fazla öğrenme kanıtına dayalı yürütülmesine${sinavli ? '; ortak sınavların konu-soru dağılım tablosu ve dereceli puanlama anahtarıyla hazırlanmasına' : ''} karar verildi.',
           ),
+          // (v) — yalnız okul öncesi ve ilkokul
+          if (ilkokul)
+            (
+              'Öğrencilerin akademik ve sosyal gelişiminin gözlem formları, oyun temelli değerlendirmeler ve görev temelli ölçme araçlarıyla izlenmesinin planlanması.',
+              'Öğrenci gelişiminin gözlem formları ve oyun temelli değerlendirmelerle ders yılı boyunca izlenmesine karar verildi.',
+            ),
+          // (e) (ş)
           (
-            'Ölçme ve değerlendirme esasları ile sınav sayısı, zamanı, türü ve yazılı-uygulamalı olma şeklinin tespiti (sınıf-ders düzeyine uymayan hususta karar alınmaz, madde silinmez).',
-            'Ölçme-değerlendirmenin mevzuattaki sınırlara göre uygulanmasına karar verildi.',
+            'Disiplinler arası ortak çalışmalar ve diğer zümrelerle iş birliği; zümre üyeleri arasında ders ziyareti ve geri bildirim.',
+            'Disiplinler arası ortak çalışmaların takvime bağlanmasına; zümre üyelerinin oy birliğiyle yıl içinde en az bir ders ziyareti yapılmasına ve geri bildirimlerin zümrede değerlendirilmesine karar verildi.',
           ),
+          // (ğ) (h) (ü)
           (
-            'Öğrenci başarı, devam-devamsızlık durumları ve alınacak önlemler.',
-            'Başarısı ve devamı riskli öğrenciler için veli ve rehberlik iş birliği yapılmasına karar verildi.',
+            'Ders kitabı, araç-gereç ve öğretim materyalleri; laboratuvar, kütüphane, atölye gibi ortamların ve okul dışı öğrenme ortamlarının (gezi, gözlem) kullanımının planlanması.',
+            'İhtiyaç duyulan materyallerin idareye bildirilmesine; okul içi ve okul dışı öğrenme ortamlarının yıllık plana göre kullanılmasına karar verildi.',
           ),
+          // (g) (u)
           (
-            'Dilek, temenniler ve kapanış.',
-            'Gündem maddeleri görüşüldü; tutanağın yazılarak imzaya açılmasına karar verildi.',
+            'Sosyal sorumluluk, girişimcilik ve araştırma-tasarım çalışmalarının ders kapsamında planlanması.',
+            'Ders kapsamında yürütülecek sosyal sorumluluk ve girişimcilik çalışmalarının zümrece belirlenmesine karar verildi.',
           ),
+          // (f) (j)
+          (
+            'Alandaki akademik ve teknolojik gelişmelerin, ulusal ve uluslararası sınav ve yarışma raporlarının izlenmesi.',
+            'Alan yayınlarının ve sınav-yarışma raporlarının izlenerek sonuçlarının derslere yansıtılmasına karar verildi.',
+          ),
+          // (s) — Ortaöğretim Kurumları Yönetmeliği 59/A
+          if (level == CouncilLevel.ortaogretim)
+            (
+              'Sınıf tekrarı riski olan öğrencilere yönelik önleme, müdahale ve yönlendirme komisyonunda yürütülecek çalışmaların planlanması.',
+              'Riskli öğrenciler için önleme, müdahale ve yönlendirme çalışmalarının komisyonla iş birliği içinde planlanmasına karar verildi.',
+            ),
+          // (m)
+          (
+            'İş sağlığı ve güvenliği tedbirlerinin değerlendirilmesi.',
+            'Ders ve uygulama ortamlarında iş sağlığı ve güvenliği tedbirlerine uyulmasına karar verildi.',
+          ),
+          _kapanis,
         ];
       case CouncilPeriod.secondTerm:
-        return const [
+        return [
+          _acilis,
           (
-            'Açılış, yoklama ve gündemin okunması.',
-            'Toplantı açıldı; yoklama yapıldı. Gündemin görüşülmesine karar verildi.',
-          ),
-          (
-            'Bir önceki toplantıda alınan kararların sonuçlarının değerlendirilmesi (işlenmemiş karar bırakılmaz).',
+            'Birinci dönem kararlarının sonuçlarının değerlendirilmesi (işlenmemiş karar bırakılmaz).',
             'Birinci dönem kararlarının sonuçları tek tek değerlendirildi; tamamlanmayan işlerin ikinci dönemde bitirilmesine karar verildi.',
           ),
           (
-            'Birinci dönem öğretim programı uygulanmasının ve kalan kazanımların planlanması.',
-            'Kalan kazanımların ikinci dönem takvimine göre tamamlanmasına karar verildi.',
+            'Birinci dönem öğretim programının uygulanması: öğrenme çıktılarına ulaşma durumu ve kalan konuların planlanması.',
+            'Ulaşılamayan öğrenme çıktılarının gerekçeleriyle belirlenerek ikinci dönem planına alınmasına karar verildi.',
+          ),
+          // (ı)
+          (
+            'Birinci dönem ölçme-değerlendirme ${sinavli ? 've ortak sınav analizleri' : 'sonuçları'}; eksik öğrenme çıktıları için eylem planı.',
+            'Analizlerde eksikliği görülen öğrenme çıktıları için destekleme eylem planının hazırlanıp uygulanmasına ve izlenmesine karar verildi.',
+          ),
+          // Ortak Metin 1.4.10
+          (
+            'Okul temelli planlama çalışmalarının birinci dönem değerlendirmesi ve ikinci dönem planı.',
+            'Okul temelli planlama çalışmalarının etkisi değerlendirildi; ikinci dönem çalışmalarının yıllık plana göre sürdürülmesine karar verildi.',
+          ),
+          // (d)
+          (
+            'Zenginleştirme, destekleme ve BEP uygulamalarının gözden geçirilmesi.',
+            'Zenginleştirme ve destekleme uygulamalarının sürdürülmesine; BEP hedeflerinin gerektiğinde güncellenmesine karar verildi.',
+          ),
+          // (e) + Ortak Metin 1.4.13
+          (
+            'Ders ziyaretleri ve öğretmen yansıtmaları: öğretim programının uygulanmasında güçlü ve iyileştirilmesi gereken yönler.',
+            'Ders ziyareti geri bildirimleri ve öğretmen yansıtmaları değerlendirildi; iyileştirme önerilerinin ikinci dönemde uygulanmasına karar verildi.',
           ),
           (
-            'Birinci dönem ölçme-değerlendirme sonuçları ve ikinci dönem sınav planı.',
-            'İkinci dönem yazılı/uygulama takviminin zümrece ortak uygulanmasına karar verildi.',
+            'İkinci dönem ${sinavli ? 'ortak sınav, ' : ''}proje ve performans çalışmalarının planlanması.',
+            'İkinci dönem ölçme-değerlendirme takviminin zümrece ortak uygulanmasına karar verildi.',
           ),
+          // (ş) (u)
           (
-            'Özel eğitim ihtiyacı olan öğrenciler için BEP uygulamalarının gözden geçirilmesi.',
-            'BEP uygulamalarının ikinci dönemde izlenmesine ve gerektiğinde güncellenmesine karar verildi.',
+            'Disiplinler arası ortak çalışmalar ve sosyal sorumluluk etkinliklerinin ikinci dönem takvimi.',
+            'Ortak çalışma ve etkinlik takviminin uygulanmasına karar verildi.',
           ),
-          (
-            'Başarısı düşük öğrenciler için alınacak destekleyici önlemler.',
-            'Eksik kazanımlar için ek çalışma ve veli bilgilendirmesi yapılmasına karar verildi.',
-          ),
-          (
-            'Zümreler arası iş birliği ve ortak etkinliklerin ikinci dönem planı.',
-            'Ortak etkinlik takviminin uygulanmasına karar verildi.',
-          ),
-          (
-            'Dilek, temenniler ve kapanış.',
-            'Gündem maddeleri görüşüldü; tutanağın yazılarak imzaya açılmasına karar verildi.',
-          ),
+          _kapanis,
         ];
       case CouncilPeriod.yearEnd:
-        return const [
-          (
-            'Açılış, yoklama ve gündemin okunması.',
-            'Toplantı açıldı; yoklama yapıldı. Gündemin görüşülmesine karar verildi.',
-          ),
+        return [
+          _acilis,
+          // m.12/4: ders yılı sonunda yıl boyunca alınan kararlar değerlendirilir
           (
             'Eğitim-öğretim yılı boyunca alınan tüm kararların ve sonuçlarının değerlendirilmesi (işlenmemiş karar bırakılmaz).',
-            'Yıl içi kararların sonuçları değerlendirildi; tamamlanan ve tamamlanamayan hususlar tutanağa işlenmesine karar verildi.',
+            'Yıl içi kararların sonuçları değerlendirildi; tamamlanan ve tamamlanamayan hususların tutanağa işlenmesine karar verildi.',
           ),
           (
-            'Öğretim programının yıllık gerçekleşme durumu ve kazanım tamamlama.',
-            'İşlenemeyen kazanımların gerekçeleriyle birlikte kayda geçirilmesine karar verildi.',
+            'Öğretim programının yıllık uygulanması: öğrenme çıktılarına ulaşma durumu ve ulaşılamayanların gerekçeleri.',
+            'Ulaşılamayan öğrenme çıktılarının gerekçeleriyle kayda geçirilmesine ve gelecek yılın planlamasında dikkate alınmasına karar verildi.',
           ),
           (
-            'Yıl sonu başarı, devam-devamsızlık ve ölçme-değerlendirme sonuçlarının değerlendirilmesi.',
-            'Sonuçların bir sonraki yılın planlamasında esas alınmasına karar verildi.',
+            'Yıl sonu başarı, ölçme-değerlendirme ve sınav analizi sonuçlarının değerlendirilmesi.',
+            'Sonuçların bir sonraki yılın planlamasında ve destekleme çalışmalarında esas alınmasına karar verildi.',
+          ),
+          // Ortak Metin 1.4.10: etkisine yönelik değerlendirme beklenir
+          (
+            'Okul temelli planlama çalışmalarının yıllık değerlendirmesi (ihtiyaç, uygulama ve etki).',
+            'Okul temelli planlama çalışmalarının etkisi değerlendirildi; gelecek yıl için önerilerin sene başı toplantısında görüşülmesine karar verildi.',
+          ),
+          // Ortak Metin 1.4.13
+          (
+            'Öğretmen yansıtmaları: öğretim programının ve öğretim sürecinin güçlü ve iyileştirilmesi gereken yönleri.',
+            'Öğretmen yansıtmaları kayda geçirildi; iyileştirme önerilerinin gelecek yıl planlamasında dikkate alınmasına karar verildi.',
           ),
           (
-            'Ders kitabı, materyal ve ortamların yıl sonu envanteri.',
+            'Ders kitabı, materyal ve öğrenme ortamlarının yıl sonu durumu ile gelecek yıl ihtiyaçları.',
             'Eksik ve yıpranan materyallerin idareye bildirilmesine karar verildi.',
+          ),
+          // m.12/1: haziran toplantısında 2 yıllığına başkan ve yedek başkan
+          (
+            'Zümre başkanı ve yedek başkanın seçimi (görev süresi biten zümrelerde; eylülden itibaren iki yıl için).',
+            'Zümre başkanı ve yedek başkanın seçilerek eğitim kurumu yönetimine bildirilmesine karar verildi.',
           ),
           (
             'Bir sonraki eğitim-öğretim yılına ilişkin ön planlama.',
             'Gelecek yıl zümre planının sene başı toplantısında bu değerlendirmeye göre hazırlanmasına karar verildi.',
           ),
-          (
-            'Dilek, temenniler ve kapanış.',
-            'Gündem maddeleri görüşüldü; tutanağın yazılarak imzaya açılmasına karar verildi.',
-          ),
+          _kapanis,
         ];
     }
   }
 
-  static List<(String, String)> _sokAgenda(CouncilPeriod period, int? grade) {
-    final includePromotion = grade == null || grade >= 5;
+  static List<(String, String)> _sokAgenda(CouncilPeriod period, CouncilLevel level) {
     switch (period) {
       case CouncilPeriod.yearStart:
         return [
-          (
-            'Açılış, yoklama ve gündemin okunması.',
-            'Toplantı açıldı; yoklama yapıldı. Gündemin görüşülmesine karar verildi.',
-          ),
+          _acilis,
+          // (a)
           (
             'Bir önceki toplantıda alınan kararların değerlendirilmesi.',
             'Önceki kararların sonuçları değerlendirildi; izlemeye devam edilmesine karar verildi.',
           ),
+          // (b) + Ortak Metin 1.4.8.2 ön değerlendirme
           (
-            'Öğrencilerin başarı durumlarının incelenmesi ve başarıyı artırıcı önlemlerin alınması.',
-            'Şube başarı durumunun branş öğretmenlerince izlenmesine ve gereken öğrenciler için önlem alınmasına karar verildi.',
+            'Öğrencilerin başarı durumlarının ve ön değerlendirme sonuçlarının incelenmesi; başarıyı artırıcı önlemlerin alınması.',
+            'Desteklemeye ihtiyaç duyan öğrenciler için destekleme, ileri düzeydeki öğrenciler için zenginleştirme çalışmalarının branş öğretmenlerince yürütülmesine karar verildi.',
           ),
+          // (c)
           (
-            'Derslerin öğretim programlarıyla uyumlu olarak yürütülmesi.',
-            'Derslerin program ve yıllık plana uygun işlenmesine karar verildi.',
+            'Derslerin Türkiye Yüzyılı Maarif Modeli öğretim programlarıyla uyumlu olarak yürütülmesi.',
+            'Derslerin öğretim programı ve yıllık plana uygun, beceri temelli işlenmesine karar verildi.',
           ),
+          // (d)
           (
-            'Kaynaştırma/bütünleştirme yoluyla eğitimine devam eden öğrenciler için alınacak tedbirler.',
+            'Kaynaştırma/bütünleştirme yoluyla eğitimine devam eden öğrencilerin başarısının artırılması için alınacak tedbirler.',
             'İlgili öğrenciler için BEP ve destek eğitim odası süreçlerinin izlenmesine karar verildi.',
           ),
+          // (i) (j)
           (
-            'Öğrencilerin kişilik, beslenme, sağlık, sosyal ilişkiler ve ailenin ekonomik durumu ile alınacak önlemler (ayrıntı ekteki değerlendirme ızgarasına yazılır).',
+            'Öğrencilerin kişilik ve sosyal gelişimlerinin desteklenmesi, sağlıklarının korunması ve dengeli beslenmeleri (ayrıntı ekteki değerlendirme ızgarasına yazılır).',
             'Değerlendirme ızgarasının doldurularak rehberlik servisi ve idare ile paylaşılmasına karar verildi.',
           ),
+          // (k) + Erdem-Değer-Eylem Çerçevesi
           (
-            'Veli iletişimi ve okul-aile iş birliği.',
+            'Değerler eğitimi çalışmaları (Erdem-Değer-Eylem Çerçevesi).',
+            'Değerler eğitiminin derslerde örtük olarak ve şube etkinlikleriyle yürütülmesine karar verildi.',
+          ),
+          // (ğ) (ı)
+          (
+            'Bilimsel, sosyal, kültürel, sanatsal ve sportif etkinlikler, geziler, öğrenci kulüpleri, sosyal sorumluluk ve girişimcilik çalışmaları.',
+            'Şubenin yıl içi etkinlik ve sosyal sorumluluk çalışmalarının planlanmasına karar verildi.',
+          ),
+          // (f)
+          (
+            'Okul-çevre ve okul-aile iş birliği; veli iletişimi.',
             'Riskli durumlarda veli görüşmesinin şube rehber öğretmenince planlanmasına karar verildi.',
           ),
+          // (e) (l)
           (
-            'Dilek, temenniler ve kapanış.',
-            'Gündem maddeleri görüşüldü; tutanağın yazılarak imzaya açılmasına karar verildi.',
+            'Eğitim kaynakları, atölye, laboratuvar ve diğer birimlerden güvenli yararlanma; iş sağlığı ve güvenliği.',
+            'Öğrenme ortamlarının güvenli kullanımına ve iş sağlığı ve güvenliği tedbirlerine uyulmasına karar verildi.',
           ),
+          _kapanis,
         ];
       case CouncilPeriod.secondTerm:
         return [
-          (
-            'Açılış, yoklama ve gündemin okunması.',
-            'Toplantı açıldı; yoklama yapıldı. Gündemin görüşülmesine karar verildi.',
-          ),
+          _acilis,
           (
             'Birinci dönem kararlarının sonuçlarının değerlendirilmesi (işlenmemiş karar bırakılmaz).',
             'Birinci dönem kararlarının sonuçları değerlendirildi; süren işlerin tamamlanmasına karar verildi.',
           ),
           (
-            'Birinci dönem başarı, devam ve davranış durumlarının incelenmesi.',
-            'Başarısı ve devamı riskli öğrenciler için ikinci dönem destek planı uygulanmasına karar verildi.',
+            'Birinci dönem başarı, devam ve davranış durumlarının incelenmesi; başarıyı artırıcı önlemler.',
+            'Başarısı ve devamı riskli öğrenciler için ikinci dönem destekleme planının uygulanmasına karar verildi.',
+          ),
+          (
+            'Derslerin öğretim programlarıyla uyumlu yürütülmesi; destekleme ve zenginleştirme uygulamalarının sonuçları.',
+            'Destekleme ve zenginleştirme uygulamalarının ikinci dönemde sürdürülmesine karar verildi.',
           ),
           (
             'Kaynaştırma/bütünleştirme öğrencilerinin ikinci dönem izlemi.',
             'BEP hedeflerinin ikinci dönemde gözden geçirilmesine karar verildi.',
           ),
           (
-            'Kişilik, beslenme, sağlık, sosyal ilişki ve ekonomik durum değerlendirmesinin güncellenmesi (ızgara ekte).',
-            'İzgaranın güncellenerek rehberlik servisine iletilmesine karar verildi.',
+            'Kişilik ve sosyal gelişim, sağlık ve beslenme değerlendirmesinin güncellenmesi (ızgara ekte).',
+            'Izgaranın güncellenerek rehberlik servisine iletilmesine karar verildi.',
           ),
           (
-            'Veli görüşmeleri ve alınacak ortak önlemler.',
+            'Değerler eğitimi ve sosyal etkinliklerin ikinci dönem planı.',
+            'İkinci dönem değerler eğitimi ve etkinlik planının uygulanmasına karar verildi.',
+          ),
+          (
+            'Veli görüşmeleri ve okul-aile iş birliği.',
             'Gerekli velilerle ikinci dönem görüşme takvimi oluşturulmasına karar verildi.',
           ),
-          (
-            'Dilek, temenniler ve kapanış.',
-            'Gündem maddeleri görüşüldü; tutanağın yazılarak imzaya açılmasına karar verildi.',
-          ),
+          _kapanis,
         ];
       case CouncilPeriod.yearEnd:
         return [
-          (
-            'Açılış, yoklama ve gündemin okunması.',
-            'Toplantı açıldı; yoklama yapıldı. Gündemin görüşülmesine karar verildi.',
-          ),
+          _acilis,
           (
             'Yıl boyunca alınan kararların ve sonuçlarının değerlendirilmesi (işlenmemiş karar bırakılmaz).',
             'Yıl içi kararların sonuçları değerlendirildi; tutanağa işlenmesine karar verildi.',
@@ -545,23 +663,21 @@ class CouncilMinutes {
             'Öğrencilerin yıl sonu başarı, devam ve davranış durumlarının incelenmesi.',
             'Şube yıl sonu durumunun branş görüşleriyle birlikte kayda geçirilmesine karar verildi.',
           ),
-          if (includePromotion)
+          // (ç) — yalnız ortaokul ve imam hatip ortaokulu
+          if (level == CouncilLevel.ortaokul)
             (
-              'Ortaokul ve imam hatip ortaokullarında sınıf geçme ve sınıf tekrarı durumları (ilgili kademede; EK-5 ve e-Okul süreci ayrıca yürütülür).',
+              'Ortaokul ve imam hatip ortaokullarında öğrencilerin sınıf geçme ve sınıf tekrarı durumları (EK-5 ve e-Okul süreci ayrıca yürütülür).',
               'Mevzuata giren öğrencilerin durumunun şube kurulunca değerlendirilerek e-Okul işlemlerinin idarece tamamlanmasına karar verildi.',
             ),
           (
             'Kaynaştırma/bütünleştirme öğrencilerinin yıl sonu değerlendirmesi.',
-            'BEP yıl sonu değerlendirmenin rehberlik servisiyle paylaşılmasına karar verildi.',
+            'BEP yıl sonu değerlendirmesinin rehberlik servisiyle paylaşılmasına karar verildi.',
           ),
           (
-            'Kişilik, beslenme, sağlık, sosyal ilişki ve ekonomik durum yıl sonu ızgarası (ekte).',
-            'İzgaranın doldurularak kurul dosyasında saklanmasına karar verildi.',
+            'Kişilik ve sosyal gelişim, sağlık ve beslenme yıl sonu ızgarası (ekte).',
+            'Izgaranın doldurularak kurul dosyasında saklanmasına karar verildi.',
           ),
-          (
-            'Dilek, temenniler ve kapanış.',
-            'Gündem maddeleri görüşüldü; tutanağın yazılarak imzaya açılmasına karar verildi.',
-          ),
+          _kapanis,
         ];
     }
   }

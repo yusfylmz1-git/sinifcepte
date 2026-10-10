@@ -204,4 +204,103 @@ void main() {
       expect(got.single.isChair, isTrue);
     });
   });
+
+  // Türkiye Yüzyılı Maarif Modeli (10 Ekim 2026). Kaynak: Eğitim Kurulları
+  // ve Zümreleri Yönergesi (21/01/2025 değişikliğiyle) m.10/8, m.12/8 ve
+  // TYMM Öğretim Programları Ortak Metni 2025.
+  group('Maarif Modeli gündemi', () {
+    String metin(CouncilKind k, CouncilPeriod p, CouncilLevel l) => CouncilMinutes.buildAgenda(
+          kind: k,
+          period: p,
+          level: l,
+        ).map((i) => '${i.text} ${i.decision}').join(' ').toLowerCase();
+
+    test('KRITIK: zümre sene başı Maarif kavramlarını taşıyor', () {
+      final t = metin(CouncilKind.zumre, CouncilPeriod.yearStart, CouncilLevel.ortaokul);
+      for (final k in [
+        'türkiye yüzyılı maarif modeli',
+        'öğrenme çıktıları',
+        'süreç bileşenleri',
+        'okul temelli planlama', // ortak metin 1.4.10: zümre kararlaştırır
+        'zenginleştirme ve destekleme', // m.12/8-d (2025 eki)
+        'eğilimler',
+        'okuryazarlık becerileri',
+        'sosyal-duygusal öğrenme becerileri',
+        'disiplinler arası',
+        'ders ziyareti', // m.12/8-e
+        'öğrenme kanıtları',
+        'dereceli puanlama anahtarı', // m.12/8-i
+      ]) {
+        expect(t, contains(k), reason: k);
+      }
+    });
+
+    test('KRITIK: eski "kazanım" dili kalmadı (Maarif: öğrenme çıktısı)', () {
+      for (final k in CouncilKind.values) {
+        for (final p in CouncilPeriod.values) {
+          for (final l in CouncilLevel.values) {
+            expect(metin(k, p, l), isNot(contains('kazanım')), reason: '$k $p $l');
+          }
+        }
+      }
+    });
+
+    test('2. dönem ve yıl sonu öğretmen yansıtmaları ve okul temelli planlamanın değerlendirmesi', () {
+      for (final p in [CouncilPeriod.secondTerm, CouncilPeriod.yearEnd]) {
+        final t = metin(CouncilKind.zumre, p, CouncilLevel.ortaokul);
+        expect(t, contains('öğretmen yansıtmaları'), reason: '$p');
+        expect(t, contains('okul temelli planlama'), reason: '$p');
+      }
+    });
+
+    test('zümre yıl sonunda başkan ve yedek başkan seçimi (m.12/1, haziran)', () {
+      expect(metin(CouncilKind.zumre, CouncilPeriod.yearEnd, CouncilLevel.ortaokul),
+          contains('yedek başkan'));
+    });
+
+    test('KRITIK: kademeye özgü maddeler yalnız o kademede', () {
+      final ilk = metin(CouncilKind.zumre, CouncilPeriod.yearStart, CouncilLevel.ilkokul);
+      final lise = metin(CouncilKind.zumre, CouncilPeriod.yearStart, CouncilLevel.ortaogretim);
+      expect(ilk, contains('gözlem formları')); // m.12/8-v
+      expect(ilk, isNot(contains('önleme, müdahale')));
+      expect(ilk, isNot(contains('ortak yazılı')), reason: 'ilkokulda ortak yazılı sınav maddesi yok');
+      expect(lise, contains('önleme, müdahale ve yönlendirme')); // m.12/8-s
+      expect(lise, isNot(contains('gözlem formları')));
+    });
+
+    test('KRITIK: ŞÖK sınıf geçme maddesi yalnız ortaokulda (m.10/8-ç)', () {
+      expect(metin(CouncilKind.sok, CouncilPeriod.yearEnd, CouncilLevel.ortaokul), contains('sınıf geçme'));
+      expect(metin(CouncilKind.sok, CouncilPeriod.yearEnd, CouncilLevel.ortaogretim),
+          isNot(contains('sınıf geçme')), reason: 'eskiden lisede de çıkıyordu');
+    });
+
+    test('ŞÖK değerler eğitimi ve ön değerlendirme', () {
+      final t = metin(CouncilKind.sok, CouncilPeriod.yearStart, CouncilLevel.ortaokul);
+      expect(t, contains('erdem-değer-eylem'));
+      expect(t, contains('ön değerlendirme'));
+    });
+
+    test('her karar cümlesi "karar verildi." ile bitiyor', () {
+      for (final k in CouncilKind.values) {
+        for (final p in CouncilPeriod.values) {
+          for (final l in CouncilLevel.values) {
+            for (final i in CouncilMinutes.buildAgenda(kind: k, period: p, level: l)) {
+              expect(i.decision.trim(), endsWith('karar verildi.'), reason: i.text);
+            }
+          }
+        }
+      }
+    });
+
+    test('kademe: sınıf seviyesi, okul türü, branş', () {
+      expect(CouncilMinutes.levelFrom(grade: 3), CouncilLevel.ilkokul);
+      expect(CouncilMinutes.levelFrom(grade: 7), CouncilLevel.ortaokul);
+      expect(CouncilMinutes.levelFrom(grade: 10), CouncilLevel.ortaogretim);
+      expect(CouncilMinutes.levelFrom(schoolType: 'Anadolu Lisesi'), CouncilLevel.ortaogretim);
+      expect(CouncilMinutes.levelFrom(schoolType: 'İmam Hatip Ortaokulu'), CouncilLevel.ortaokul);
+      expect(CouncilMinutes.levelFrom(schoolType: 'İLKOKUL'), CouncilLevel.ilkokul);
+      expect(CouncilMinutes.levelFrom(branch: 'Sınıf Öğretmeni'), CouncilLevel.ilkokul);
+      expect(CouncilMinutes.levelFrom(), CouncilLevel.bilinmiyor);
+    });
+  });
 }
