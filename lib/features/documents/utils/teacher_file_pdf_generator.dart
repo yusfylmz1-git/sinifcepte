@@ -9,6 +9,7 @@ import '../../../core/utils/name_formatter.dart';
 import '../../auth_profile/data/models/teacher_profile_model.dart';
 import '../data/teacher_file_model.dart';
 import '../data/teacher_file_texts.dart';
+import 'turk_bayragi.dart';
 
 /// Öğretmen ders yılı dosyası — teftişte sunulan resmî klasör.
 ///
@@ -18,10 +19,15 @@ import '../data/teacher_file_texts.dart';
 /// köşesi, İstiklâl Marşı, Gençliğe Hitabe ve özlük künyesi.
 ///
 /// ## Tasarım kararları
-/// **Atatürk portresi vektörel çizilir.** İnternetten indirilen bir
-/// fotoğrafın telif durumu belirsiz; uygulamaya gömülürse 30.000
-/// öğretmene dağıtılmış olur. Vektörel silüet + imza bu riski
-/// tamamen kaldırır ve dosya boyutunu da büyütmez.
+/// **Atatürk, İstiklâl Marşı ve Gençliğe Hitabe sayfaları MEB ders
+/// kitaplarının ön sayfalarıyla aynı düzende** (11 Ekim 2026): bayrak +
+/// iki sütun marş + şairin adı; üç paragraf hitabe + imza; portre +
+/// "MUSTAFA KEMAL ATATÜRK". Öğrencinin her kitapta gördüğü resmî düzen.
+///
+/// **Atatürk portresi gömülmez, çerçeve basılır.** Fotoğrafın telif
+/// durumu belirsiz; uygulamaya gömülürse binlerce öğretmene dağıtılmış
+/// olur. Vektörel silüet de denendi ve Atatürk'e benzemedi
+/// ([_portreAlani]).
 ///
 /// **Metinler [TeacherFileTexts] içinde.** İstiklâl Marşı'nın tek
 /// harfi yanlış basılırsa belge kusurlu sayılır; düzen değişikliği
@@ -437,57 +443,40 @@ class TeacherFilePdfGenerator {
   // 2. ATATÜRK KÖŞESİ
   // ==========================================================
 
+  /// Bir santimetre, PDF noktası cinsinden.
+  static const double _cm = 72 / 2.54;
+
+  /// Portre çerçevesinin iç ölçüsü: 13 x 18 cm.
+  ///
+  /// Türkiye'de standart fotoğraf baskı boyu; öğretmen okuldaki resmî
+  /// portreyi bu boyda bastırıp çerçeveye tam oturtur. MEB ders
+  /// kitabındaki portre sayfasının oranına da yakın.
+  static const double portreEniCm = 13;
+  static const double portreBoyuCm = 18;
+
   static pw.Page _ataturkKosesi() {
+    // MEB ders kitabının portre sayfası: büyük çerçeveli portre, altında
+    // kalın büyük harflerle ad. Başka yazı yok (Öğretmenlere Hitap
+    // kapakta).
     return pw.Page(
       pageFormat: PdfPageFormat.a4,
       margin: _kenar,
       build: (ctx) => _ortalanmis([
-          pw.SizedBox(height: 16),
-          // Çerçeveli portre alanı.
+          pw.SizedBox(height: 46),
           pw.Container(
-            width: 250,
-            height: 320,
+            width: portreEniCm * _cm,
+            height: portreBoyuCm * _cm,
             decoration: pw.BoxDecoration(
-              border: pw.Border.all(width: 1.4),
+              border: pw.Border.all(width: 1.2),
             ),
-            child: pw.Padding(
-              padding: const pw.EdgeInsets.all(7),
-              child: pw.Container(
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(width: 0.5),
-                ),
-                child: _portreAlani(),
-              ),
-            ),
+            child: _portreAlani(),
           ),
-          pw.SizedBox(height: 14),
-          pw.Text('GAZİ MUSTAFA KEMAL ATATÜRK',
+          pw.SizedBox(height: 16),
+          pw.Text(TeacherFileTexts.ataturkPortreAltYazisi,
               style: pw.TextStyle(
                   fontSize: 13,
                   fontWeight: pw.FontWeight.bold,
-                  letterSpacing: 0.5)),
-          pw.SizedBox(height: 2),
-          pw.Text('Türkiye Cumhuriyeti\'nin Kurucusu',
-              style: const pw.TextStyle(fontSize: 9.5)),
-          pw.SizedBox(height: 24),
-          pw.Container(
-            padding: const pw.EdgeInsets.all(14),
-            decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.6)),
-            child: pw.Column(
-              children: [
-                pw.Text(
-                  '"${TeacherFileTexts.ogretmenlereHitap}"',
-                  textAlign: pw.TextAlign.center,
-                  style: pw.TextStyle(
-                      fontSize: 12.5, fontStyle: pw.FontStyle.italic),
-                ),
-                pw.SizedBox(height: 7),
-                pw.Text(TeacherFileTexts.ogretmenlereHitapKunye,
-                    style: pw.TextStyle(
-                        fontSize: 9.5, fontWeight: pw.FontWeight.bold)),
-              ],
-            ),
-          ),
+                  letterSpacing: 0.4)),
       ]),
     );
   }
@@ -504,9 +493,10 @@ class TeacherFilePdfGenerator {
   /// fotoğrafın telif durumu belirsizdir ve uygulamaya gömülürse
   /// 30.000 öğretmene dağıtılmış olur.
   ///
-  /// Kalan doğru seçenek bu: standart 10x15 oranında, köşeleri
-  /// işaretli bir çerçeve. Öğretmen okulda zaten bulunan resmî
-  /// portreyi bastırıp yapıştırır — okullarda yapılan da budur.
+  /// Kalan doğru seçenek bu: 13 x 18 cm (standart fotoğraf baskısı),
+  /// köşeleri işaretli bir çerçeve. Öğretmen okulda zaten bulunan resmî
+  /// portreyi bastırıp yapıştırır — okullarda yapılan da budur. Yazı
+  /// soluk ve ortada: yapıştırılan fotoğraf onu tamamen örter.
   static pw.Widget _portreAlani() {
     // Köşe işareti: fotoğrafın nereye hizalanacağını gösterir.
     pw.Widget kose({required bool sol, required bool ust}) => pw.Container(
@@ -545,7 +535,7 @@ class TeacherFilePdfGenerator {
               mainAxisAlignment: pw.MainAxisAlignment.center,
               children: [
                 pw.Text(
-                  'ATATÜRK RESMİ',
+                  'ATATÜRK PORTRESİ',
                   style: pw.TextStyle(
                     fontSize: 9,
                     fontWeight: pw.FontWeight.bold,
@@ -555,7 +545,8 @@ class TeacherFilePdfGenerator {
                 ),
                 pw.SizedBox(height: 5),
                 pw.Text(
-                  '10 x 15 cm',
+                  '${portreEniCm.toStringAsFixed(0)} x '
+                  '${portreBoyuCm.toStringAsFixed(0)} cm',
                   style: const pw.TextStyle(
                       fontSize: 7.5, color: PdfColors.grey500),
                 ),
@@ -571,21 +562,25 @@ class TeacherFilePdfGenerator {
   // 3. İSTİKLÂL MARŞI
   // ==========================================================
 
+  /// İstiklâl Marşı sayfasındaki bayrağın eni (PDF noktası).
+  static const double _bayrakEni = 400;
+
   static pw.Page _istiklalMarsi() {
-    // On kıta tek sayfaya sığmalı: iki sütun, 7 punto.
+    // MEB ders kitabının ön sayfası: üstte bayrak, başlık, iki sütun
+    // (1-5 ve 6-10. kıtalar), sağ altta şairin adı. On kıta tek sayfa.
     const kitalar = TeacherFileTexts.istiklalMarsi;
     final sol = kitalar.take(5).toList();
     final sag = kitalar.skip(5).toList();
 
-    pw.Widget sutun(List<String> k, int baslangic) => pw.Column(
+    pw.Widget sutun(List<String> k) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
             for (var i = 0; i < k.length; i++) ...[
               pw.Text(
                 k[i],
-                style: const pw.TextStyle(fontSize: 9.2, height: 1.5),
+                style: const pw.TextStyle(fontSize: 9.4, height: 1.45),
               ),
-              if (i < k.length - 1) pw.SizedBox(height: 13),
+              if (i < k.length - 1) pw.SizedBox(height: 11),
             ],
           ],
         );
@@ -595,35 +590,35 @@ class TeacherFilePdfGenerator {
       margin: _kenar,
       build: (ctx) => pw.Column(
         children: [
+          pw.SizedBox(height: 8),
+          // Türk Bayrağı Tüzüğü ölçüleriyle (bkz. [TurkBayragi]).
+          pw.SvgImage(
+            svg: TurkBayragi.svg(),
+            width: _bayrakEni,
+            height: _bayrakEni / TurkBayragi.boy,
+          ),
+          pw.SizedBox(height: 20),
           pw.Text('İSTİKLÂL MARŞI',
               style: pw.TextStyle(
-                  fontSize: 16,
+                  fontSize: 15,
                   fontWeight: pw.FontWeight.bold,
-                  letterSpacing: 1.2)),
-          pw.SizedBox(height: 4),
-          pw.Container(width: 150, height: 1.2, color: PdfColors.black),
+                  letterSpacing: 1)),
           pw.SizedBox(height: 14),
-          pw.Expanded(
-            child: pw.Row(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Expanded(child: sutun(sol, 1)),
-                pw.SizedBox(width: 18),
-                pw.Expanded(child: sutun(sag, 6)),
-              ],
-            ),
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Expanded(child: sutun(sol)),
+              pw.SizedBox(width: 18),
+              pw.Expanded(child: sutun(sag)),
+            ],
           ),
-          pw.SizedBox(height: 10),
-          pw.Container(
-            width: double.infinity,
-            padding: const pw.EdgeInsets.only(top: 8),
-            decoration: const pw.BoxDecoration(
-              border: pw.Border(top: pw.BorderSide(width: 0.5)),
-            ),
+          pw.SizedBox(height: 12),
+          pw.Align(
+            alignment: pw.Alignment.centerRight,
             child: pw.Text(
               TeacherFileTexts.istiklalMarsiKunye,
-              textAlign: pw.TextAlign.center,
-              style: const pw.TextStyle(fontSize: 8, height: 1.4),
+              style: pw.TextStyle(
+                  fontSize: 10.5, fontWeight: pw.FontWeight.bold),
             ),
           ),
         ],
@@ -636,49 +631,39 @@ class TeacherFilePdfGenerator {
   // ==========================================================
 
   static pw.Page _gencligeHitabe() {
+    // MEB ders kitabının ön sayfası: ortalı başlık, iki yana yaslı üç
+    // paragraf, sağ altta imza. Metin sayfanın üst üçte birinden başlar.
     return pw.Page(
       pageFormat: PdfPageFormat.a4,
       margin: _kenar,
       build: (ctx) => pw.Column(
         children: [
-          pw.Text('ATATÜRK\'ÜN GENÇLİĞE HİTABESİ',
+          pw.SizedBox(height: 120),
+          pw.Text('GENÇLİĞE HİTABE',
               textAlign: pw.TextAlign.center,
               style: pw.TextStyle(
                   fontSize: 15,
                   fontWeight: pw.FontWeight.bold,
                   letterSpacing: 0.8)),
-          pw.SizedBox(height: 4),
-          pw.Container(width: 190, height: 1.2, color: PdfColors.black),
-          pw.SizedBox(height: 18),
-          pw.Expanded(
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                for (final p in TeacherFileTexts.gencligeHitabe) ...[
-                  pw.Text(
-                    p,
-                    textAlign: pw.TextAlign.justify,
-                    style: const pw.TextStyle(fontSize: 11.5, height: 1.7),
-                  ),
-                  pw.SizedBox(height: 12),
-                ],
-              ],
+          pw.SizedBox(height: 22),
+          for (final p in TeacherFileTexts.gencligeHitabe) ...[
+            pw.SizedBox(
+              width: double.infinity,
+              child: pw.Text(
+                p,
+                textAlign: pw.TextAlign.justify,
+                style: const pw.TextStyle(fontSize: 11.5, height: 1.6),
+              ),
             ),
-          ),
-          pw.SizedBox(height: 8),
-          pw.Container(
-            width: double.infinity,
-            padding: const pw.EdgeInsets.only(top: 8),
-            decoration: const pw.BoxDecoration(
-              border: pw.Border(top: pw.BorderSide(width: 0.5)),
-            ),
+            pw.SizedBox(height: 11),
+          ],
+          pw.SizedBox(height: 6),
+          pw.Align(
+            alignment: pw.Alignment.centerRight,
             child: pw.Text(
               TeacherFileTexts.gencligeHitabeKunye,
-              textAlign: pw.TextAlign.center,
               style: pw.TextStyle(
-                  fontSize: 9,
-                  height: 1.4,
-                  fontWeight: pw.FontWeight.bold),
+                  fontSize: 11, fontWeight: pw.FontWeight.bold),
             ),
           ),
         ],

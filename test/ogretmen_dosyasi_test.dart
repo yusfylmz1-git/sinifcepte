@@ -125,15 +125,59 @@ void main() {
       expect(TeacherFileTexts.istiklalMarsi.first,
           startsWith('Korkma, sönmez bu şafaklarda yüzen al sancak;'));
       expect(TeacherFileTexts.istiklalMarsi.last,
-          endsWith('Hakkıdır, Hakk\'a tapan, milletimin istiklâl!'));
+          endsWith('Hakkıdır Hakk\'a tapan milletimin istiklâl!'));
     });
 
     test('KRITIK: hitabe uc paragraf ve dogru kapanis', () {
       expect(TeacherFileTexts.gencligeHitabe.length, 3);
       expect(TeacherFileTexts.gencligeHitabe.last,
-          endsWith('damarlarındaki asil kanda mevcuttur!'));
+          endsWith('damarlarındaki asil kanda mevcuttur.'));
       expect(TeacherFileTexts.gencligeHitabe.first,
           startsWith('Ey Türk gençliği!'));
+    });
+  });
+
+  /// MEB ders kitabı metniyle birebirlik (11 Ekim 2026).
+  ///
+  /// Altın dosyalar iki MEB kitabının ön sayfalarından MAKİNEYLE
+  /// çıkarıldı (eba.gov.tr kur08 s. 3-4 ve MESEM 9 s. 5-6); elle
+  /// yazılmadı. Eski metin 15 dizede MEB'den ayrılıyordu ve bunu hiçbir
+  /// test yakalamıyordu: testler yalnız kıta sayısına bakıyordu.
+  group('MEB ders kitabi metni', () {
+    List<String> altin(String ad) => File('test/veri/$ad')
+        .readAsLinesSync()
+        .where((s) => s.trim().isNotEmpty)
+        .toList();
+
+    test('KRITIK: Istiklal Marsi 41 dizenin hepsi MEB ile birebir', () {
+      final meb = altin('istiklal_marsi_meb.txt');
+      final bizim = [
+        for (final kita in TeacherFileTexts.istiklalMarsi) ...kita.split('\n')
+      ];
+      expect(meb.length, 41);
+      expect(bizim.length, meb.length);
+      for (var i = 0; i < meb.length; i++) {
+        expect(bizim[i], meb[i], reason: '${i + 1}. dize MEB metninden farklı');
+      }
+    });
+
+    test('KRITIK: Genclige Hitabe uc paragraf MEB ile birebir', () {
+      final meb = altin('genclige_hitabe_meb.txt');
+      expect(meb.length, 3);
+      expect(TeacherFileTexts.gencligeHitabe, meb);
+    });
+
+    test('eski (MEB disi) imla geri gelmesin', () {
+      final tum = TeacherFileTexts.istiklalMarsi.join('\n');
+      for (final eski in const [
+        'helâl...',
+        "'Medeniyet!'",
+        'Arkadaş! Yurduma',
+        "'toprak!'",
+        'Hakkıdır, Hakk',
+      ]) {
+        expect(tum.contains(eski), isFalse, reason: 'eski imla: $eski');
+      }
     });
   });
 
@@ -144,20 +188,21 @@ void main() {
       expect(r.sayfa, 1, reason: 'marş ${r.sayfa} sayfaya taşmış');
     }, timeout: const Timeout(Duration(minutes: 2)));
 
-    test('KRITIK: on kitanin ilk misralari BASILIYOR', () async {
+    test('KRITIK: 41 dizenin HEPSI basiliyor', () async {
       final r = await uret(TeacherFileDoc.istiklalMarsi);
-      // Her kıtanın ilk mısrası belgede geçmeli: bir kıta düşerse
-      // yakalanır.
+      // Eskiden yalnız kıtaların ilk dizesine bakılıyordu; bir dize
+      // düşse yakalanmazdı.
       for (final kita in TeacherFileTexts.istiklalMarsi) {
-        final ilk = duz(kita.split('\n').first);
-        expect(r.metin.contains(ilk), isTrue,
-            reason: 'kıta basılmamış: $ilk');
+        for (final dize in kita.split('\n')) {
+          expect(r.metin.contains(duz(dize)), isTrue,
+              reason: 'dize basılmamış: $dize');
+        }
       }
     }, timeout: const Timeout(Duration(minutes: 2)));
 
-    test('sair kunyesi var', () async {
+    test('MEB duzeni: baslik ve sairin adi', () async {
       final r = await uret(TeacherFileDoc.istiklalMarsi);
-      expect(r.metin.contains('Mehmet Âkif ERSOY'), isTrue);
+      expect(r.metin.contains('Mehmet Âkif Ersoy'), isTrue);
       expect(r.metin.contains('İSTİKLÂL MARŞI'), isTrue);
     }, timeout: const Timeout(Duration(minutes: 2)));
   });
@@ -166,10 +211,29 @@ void main() {
     test('KRITIK: TEK sayfa ve tam metin', () async {
       final r = await uret(TeacherFileDoc.gencligeHitabe);
       expect(r.sayfa, 1, reason: 'hitabe ${r.sayfa} sayfaya taşmış');
+      expect(r.metin.contains('GENÇLİĞE HİTABE'), isTrue);
       expect(r.metin.contains('Ey Türk gençliği!'), isTrue);
       expect(r.metin.contains('Muhtaç olduğun kudret'), isTrue);
-      expect(r.metin.contains('ATATÜRK'), isTrue);
+      expect(r.metin.contains('Mustafa Kemal Atatürk'), isTrue);
     }, timeout: const Timeout(Duration(minutes: 2)));
+  });
+
+  group('Ataturk sayfasi', () {
+    test('MEB duzeni: portre cercevesi ve alt yazi', () async {
+      final r = await uret(TeacherFileDoc.ataturk);
+      expect(r.sayfa, 1);
+      expect(r.metin.contains('MUSTAFA KEMAL ATATÜRK'), isTrue);
+      expect(r.metin.contains('ATATÜRK PORTRESİ'), isTrue);
+      expect(r.metin.contains('13 x 18 cm'), isTrue,
+          reason: 'standart fotoğraf baskı boyu yazmalı');
+    }, timeout: const Timeout(Duration(minutes: 2)));
+
+    test('KRITIK: cerceve 13 x 18 cm (baski tam otursun)', () {
+      // 13 x 18 cm Türkiye'de standart fotoğraf baskısı; çerçeve başka
+      // boyda olursa öğretmenin bastırdığı portre oturmaz.
+      expect(TeacherFilePdfGenerator.portreEniCm, 13);
+      expect(TeacherFilePdfGenerator.portreBoyuCm, 18);
+    });
   });
 
   group('Kisisel bilgiler formu', () {

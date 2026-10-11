@@ -142,17 +142,17 @@ enum TeacherFileDoc {
   ),
   ataturk(
     'Atatürk Köşesi',
-    'Atatürk portresi ve Öğretmenlere Hitap',
+    'Portre çerçevesi (13 x 18 cm), MEB ders kitabı düzeni',
     'MEB.ÖD.02',
   ),
   istiklalMarsi(
     'İstiklâl Marşı',
-    'On kıtanın tamamı',
+    'Bayrak ve on kıtanın tamamı, MEB ders kitabı metni',
     'MEB.ÖD.03',
   ),
   gencligeHitabe(
     'Gençliğe Hitabe',
-    'Tam metin',
+    'Tam metin, MEB ders kitabı metni',
     'MEB.ÖD.04',
   ),
   kisiselBilgiler(
