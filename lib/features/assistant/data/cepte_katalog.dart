@@ -75,39 +75,39 @@ List<CepteHedef> cepteEkranHedefleri() => [
         'kazanım', 'müfredat', 'konu', 'bu hafta ne işlenecek', 'ne işleyeceğim',
         'öğrenme çıktısı', 'maarif', 'tymm', 'ünite', 'haftalık konu',
       ], oncelik: 3),
-      _ekran(CepteEkran.yillikPlanlar, 'Yıllık planlar', 'Evraklar › Yıllık planlar', [
+      _ekran(CepteEkran.yillikPlanlar, 'Yıllık planlar', 'Evraklarım › Yıllık planlar', [
         'yıllık plan', 'çerçeve plan', 'ünitelendirilmiş plan', 'yıllık ders planı',
       ], oncelik: 2),
-      _ekran(CepteEkran.gunlukPlanlar, 'Günlük planlar', 'Evraklar › Günlük planlar', [
+      _ekran(CepteEkran.gunlukPlanlar, 'Günlük planlar', 'Evraklarım › Günlük planlar', [
         'günlük plan', 'ders planı', 'işleniş planı', 'haftalık plan', 'ders işleniş',
       ], oncelik: 2),
-      _ekran(CepteEkran.belirliGunler, 'Belirli gün ve haftalar', 'Evraklar › Belirli günler', [
+      _ekran(CepteEkran.belirliGunler, 'Belirli gün ve haftalar', 'Evraklarım › Belirli günler', [
         'belirli gün', 'belirli hafta', 'pano', 'tören', 'anma', 'kutlama',
         'etkinlik planı', 'çalışma raporu', 'bugün ne var', 'yaklaşan günler',
       ], oncelik: 2),
-      _ekran(CepteEkran.sosyalKulupler, 'Sosyal kulüpler', 'Evraklar › Sosyal kulüpler', [
+      _ekran(CepteEkran.sosyalKulupler, 'Sosyal kulüpler', 'Evraklarım › Sosyal kulüpler', [
         'kulüp', 'sosyal kulüp', 'ek-4', 'ek 4', 'kulüp planı', 'kulüp üyeleri',
         'faaliyet raporu', 'toplum hizmeti',
       ]),
-      _ekran(CepteEkran.zumreTutanagi, 'Zümre tutanağı', 'Evraklar › Kurul tutanakları', [
+      _ekran(CepteEkran.zumreTutanagi, 'Zümre tutanağı', 'Evraklarım › Kurul tutanakları', [
         'zümre', 'zümre toplantısı', 'zümre öğretmenler kurulu', 'zümre tutanağı',
         'sene başı zümre', 'dönem sonu zümre',
       ], oncelik: 2),
-      _ekran(CepteEkran.sokTutanagi, 'ŞÖK tutanağı', 'Evraklar › Kurul tutanakları', [
+      _ekran(CepteEkran.sokTutanagi, 'ŞÖK tutanağı', 'Evraklarım › Kurul tutanakları', [
         'şök', 'şube öğretmenler kurulu', 'şube kurulu', 'şök tutanağı',
         'sınıf geçme kurulu',
       ], oncelik: 2),
-      _ekran(CepteEkran.kurulTutanaklari, 'Kurul tutanakları', 'Evraklar › Kurul tutanakları', [
+      _ekran(CepteEkran.kurulTutanaklari, 'Kurul tutanakları', 'Evraklarım › Kurul tutanakları', [
         'öğretmenler kurulu', 'tutanak', 'kurul', 'toplantı tutanağı',
       ], oncelik: 1),
-      _ekran(CepteEkran.ogretmenDosyasi, 'Öğretmen dosyası', 'Evraklar › Öğretmen dosyası', [
+      _ekran(CepteEkran.ogretmenDosyasi, 'Öğretmen dosyası', 'Evraklarım › Öğretmen dosyası', [
         'öğretmen dosyası', 'dosya kapağı', 'atatürk köşesi', 'istiklal marşı',
         'gençliğe hitabe', 'özlük', 'künye', 'dosya',
       ]),
-      _ekran(CepteEkran.digerEvraklar, 'Evraklar', 'Alt menü › Evraklar', [
+      _ekran(CepteEkran.digerEvraklar, 'Evraklarım', 'Alt menü › Evraklarım', [
         'evrak', 'belge', 'diğer evraklar', 'resmi yazı', 'çıktı', 'pdf',
       ]),
-      _ekran(CepteEkran.sinavIslemleri, 'Sınav işlemleri', 'Evraklar › Sınav işlemleri', [
+      _ekran(CepteEkran.sinavIslemleri, 'Sınav işlemleri', 'Evraklarım › Sınav işlemleri', [
         'sınav', 'yazılı', 'not', 'not girişi', 'notlar',
       ], oncelik: 1),
       _ekran(CepteEkran.sinavTakvimi, 'Sınav takvimi', 'Sınav işlemleri › Takvim', [
@@ -125,7 +125,7 @@ List<CepteHedef> cepteEkranHedefleri() => [
         'sınav analizi', 'soru analizi', 'kazanım analizi', 'madde analizi',
         'istatistik', 'başarı analizi', 'soru bazlı',
       ]),
-      _ekran(CepteEkran.rehberlik, 'Rehberlik', 'Evraklar › Rehberlik', [
+      _ekran(CepteEkran.rehberlik, 'Rehberlik', 'Evraklarım › Rehberlik', [
         'rehberlik', 'sınıf rehberlik', 'rehberlik planı', 'rehberlik etkinliği',
         'orgm', 'rehber öğretmen', 'rehberlik çalışması',
       ]),
@@ -145,7 +145,7 @@ List<CepteHedef> cepteEkranHedefleri() => [
         'takvim', 'tatil', 'ara tatil', 'karne günü', 'okul açılış', 'dönem başı',
         'resmi tatil', 'yarıyıl', 'yarıyıl tatili', 'bayram', 'hafta kaç',
       ]),
-      _ekran(CepteEkran.eokulFoto, 'e-Okul foto', 'Evraklar › e-Okul foto', [
+      _ekran(CepteEkran.eokulFoto, 'e-Okul foto', 'Evraklarım › e-Okul foto', [
         'e-okul foto', 'fotoğraf', 'vesikalık', 'öğrenci fotoğrafı', '133x171',
         'fotoğraf çek', 'eokul resim',
       ]),

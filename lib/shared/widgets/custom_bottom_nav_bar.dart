@@ -18,7 +18,7 @@ class NavigationTabItem {
 }
 
 /// SınıfCepte - Alt çubuk (5 sekme): Bugün · Sınıflar · Kazanımlar ·
-/// Evraklar · Ben. Sıra [AnaSekme] ile aynıdır.
+/// Evraklarım · Ben. Sıra [AnaSekme] ile aynıdır.
 ///
 /// Yalnız ana ekranda durur. Alt sayfalarda da vardı (sınav ekranları,
 /// Sınıfım); "sekme içinde sekme" hissi veriyordu, kaldırıldı (17 Ekim 2026).
@@ -51,7 +51,7 @@ class CustomBottomNavBar extends StatelessWidget {
       activeIcon: Icons.auto_stories_rounded,
     ),
     NavigationTabItem(
-      label: 'Evraklar',
+      label: 'Evraklarım',
       icon: Icons.folder_copy_outlined,
       activeIcon: Icons.folder_copy_rounded,
     ),

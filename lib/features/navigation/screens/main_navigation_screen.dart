@@ -17,7 +17,7 @@ import '../providers/navigation_provider.dart';
 
 /// SınıfCepte - Ana Navigasyon Ekranı (5 sekme, çift geri çıkış koruması).
 ///
-/// Sekmeler: Bugün · Sınıflar · Kazanımlar · Evraklar · Ben ([AnaSekme]).
+/// Sekmeler: Bugün · Sınıflar · Kazanımlar · Evraklarım · Ben ([AnaSekme]).
 /// Üç çizgili menü yok (17 Ekim 2026): içindeki her şeyin bir sekmede evi
 /// var; ana sayfa ve Cepte araması yalnız kısayol verir.
 class MainNavigationScreen extends ConsumerStatefulWidget {
@@ -61,7 +61,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
     {'title': 'SınıfCepte', 'subtitle': 'Bugün'},
     {'title': 'Sınıflarım', 'subtitle': 'Sınıflar, öğrenciler ve ders programı'},
     {'title': 'Müfredat & Kazanımlar', 'subtitle': 'MEB Maarif Yıllık Planları'},
-    {'title': 'Evraklar', 'subtitle': 'Dosya, plan, sınav ve rehberlik evrakları'},
+    {'title': 'Evraklarım', 'subtitle': 'Dosya, plan, sınav ve rehberlik evrakları'},
     {'title': 'Profilim', 'subtitle': 'Profil, yedek, ayarlar ve yardım'},
   ];
 

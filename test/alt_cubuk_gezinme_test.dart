@@ -133,11 +133,11 @@ void main() {
   group('Alt çubuk', () {
     test('KRITIK: sekme adları AnaSekme sırasıyla', () {
       final adlar = CustomBottomNavBar.tabs.map((t) => t.label).toList();
-      expect(adlar, ['Bugün', 'Sınıflar', 'Kazanımlar', 'Evraklar', 'Ben']);
+      expect(adlar, ['Bugün', 'Sınıflar', 'Kazanımlar', 'Evraklarım', 'Ben']);
       expect(adlar[AnaSekme.bugun], 'Bugün');
       expect(adlar[AnaSekme.siniflar], 'Sınıflar');
       expect(adlar[AnaSekme.kazanimlar], 'Kazanımlar');
-      expect(adlar[AnaSekme.evraklar], 'Evraklar');
+      expect(adlar[AnaSekme.evraklar], 'Evraklarım');
       expect(adlar[AnaSekme.ben], 'Ben');
     });
 
@@ -189,7 +189,7 @@ void main() {
         ),
       ));
       expect(find.text('Ders Prog.'), findsNothing);
-      await tester.tap(find.text('Evraklar'));
+      await tester.tap(find.text('Evraklarım'));
       await tester.tap(find.text('Ben'));
       await tester.tap(find.text('Sınıflar'));
       expect(secilen, [AnaSekme.evraklar, AnaSekme.ben, AnaSekme.siniflar]);
@@ -345,7 +345,7 @@ void main() {
     expect(find.text('Bugün'), findsWidgets);
 
     // Evraklar
-    await tester.tap(find.text('Evraklar').last);
+    await tester.tap(find.text('Evraklarım').last);
     await bekleKadar(tester, () => find.text('Öğretmen Dosyası').evaluate().isNotEmpty);
     expect(kap.read(navigationIndexProvider), AnaSekme.evraklar);
     expect(find.text('Öğretmen Dosyası'), findsOneWidget);
