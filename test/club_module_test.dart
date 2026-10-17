@@ -242,8 +242,10 @@ void main() {
   });
 
   group('Menu baglantisi', () {
+    // 17 Ekim 2026: "Diger Evraklar" sayfasi alt cubuktaki Evraklar
+    // sekmesi oldu.
     const digerEvraklar =
-        'lib/features/documents/presentation/views/other_documents_view.dart';
+        'lib/features/documents/presentation/views/evraklar_sekmesi.dart';
 
     test('KRITIK: kulup ekrani menuye bagli', () {
       final kod = File(digerEvraklar).readAsStringSync();

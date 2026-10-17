@@ -3,9 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
-import '../../../../shared/widgets/custom_bottom_nav_bar.dart';
 import '../../../analytics/presentation/views/exam_analysis_list_view.dart';
-import '../../../navigation/providers/navigation_provider.dart';
+import '../../../analytics/presentation/widgets/class_report_card_comments_modal.dart';
 import 'exam_tracking_view.dart';
 import 'project_tracking_view.dart';
 import 'quiz_list_view.dart';
@@ -47,11 +46,9 @@ class ExamOperationsMenuView extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : const Color(0xFFF6F8FC),
-      extendBody: true,
       appBar: const CustomAppBar(
         title: 'Sınav İşlemleri',
         showBackButton: true,
-        showDrawerButton: false,
         showProfileAvatar: false,
       ),
       body: SafeArea(
@@ -229,82 +226,98 @@ class ExamOperationsMenuView extends ConsumerWidget {
 
             const SizedBox(height: 8),
 
-            // Sınav Analizi Bilgilendirme Rozeti (Tıklanabilir)
-            Container(
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.6) : Colors.amber.shade50,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: isDark ? const Color(0xFF334155) : Colors.amber.shade300,
-                ),
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  // Once genel "Analiz & Rapor" ekranina gidiyordu;
-                  // o kart kaldirildi (bir is degil, cikti turuydu).
-                  // Artik dogrudan sinav analizine gider.
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const ExamAnalysisListView()),
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(14),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    child: Row(
-                      children: [
-                        const Text('💡', style: TextStyle(fontSize: 16)),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Soru Bazlı Sınav Analizi & MEB Raporları',
-                                style: AppFonts.outfit(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.amber.shade200 : Colors.amber.shade900,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Soru zorluk grafikleri ve resmî MEB PDF analiz raporlarına ulaşmak için dokunun.',
-                                style: AppFonts.outfit(
-                                  fontSize: 11,
-                                  color: isDark ? Colors.amber.shade100.withValues(alpha: 0.8) : Colors.amber.shade800,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 13,
-                          color: isDark ? Colors.amber.shade200 : Colors.amber.shade800,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+            // Raporlar kendi işinin yanında: soru analizi ve karne görüşü
+            // notla ilgili, burada durur. Eskiden ikisi de ayrıca üç
+            // çizgili menüdeki "Raporlar & İstatistikler" ekranından
+            // açılıyordu; karne görüşünün başka evi yoktu (17 Ekim 2026).
+            _raporSatiri(
+              isDark: isDark,
+              emoji: '💡',
+              baslik: 'Soru Bazlı Sınav Analizi & MEB Raporları',
+              aciklama:
+                  'Soru zorluk grafikleri ve resmî MEB PDF analiz raporlarına ulaşmak için dokunun.',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const ExamAnalysisListView()),
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+            _raporSatiri(
+              isDark: isDark,
+              emoji: '📝',
+              baslik: 'e-Okul Karne Görüşü',
+              aciklama:
+                  'Ders içi katılım kayıtlarından öğrenci başına karne görüşü ve katılım puanı; e-Okul\'a seri kopyalama.',
+              onTap: () => ClassReportCardCommentsModal.show(context),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: ref.watch(navigationIndexProvider),
-        onTap: (index) {
-          try {
-            ref.read(navigationIndexProvider.notifier).state = index;
-            Navigator.of(context).popUntil((route) => route.isFirst);
-          } catch (e, stackTrace) {
-            debugPrint('ExamOperationsMenuView bottom nav tap error: $e\n$stackTrace');
-          }
-        },
+    );
+  }
+
+  /// Rapor satırı (soru analizi, karne görüşü): tıklanabilir bilgi kartı.
+  Widget _raporSatiri({
+    required bool isDark,
+    required String emoji,
+    required String baslik,
+    required String aciklama,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.6) : Colors.amber.shade50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : Colors.amber.shade300,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Text(emoji, style: const TextStyle(fontSize: 16)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        baslik,
+                        style: AppFonts.outfit(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.amber.shade200 : Colors.amber.shade900,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        aciklama,
+                        style: AppFonts.outfit(
+                          fontSize: 11,
+                          color: isDark ? Colors.amber.shade100.withValues(alpha: 0.8) : Colors.amber.shade800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 13,
+                  color: isDark ? Colors.amber.shade200 : Colors.amber.shade800,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

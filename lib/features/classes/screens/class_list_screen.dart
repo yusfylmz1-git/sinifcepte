@@ -5,6 +5,7 @@ import '../../../core/utils/input_sanitizer.dart';
 import '../../../core/widgets/responsive_bottom_sheet.dart';
 import '../../../data/models/class_model.dart';
 import '../presentation/views/student_import_preview_view.dart';
+import '../../schedule/screens/schedule_screen.dart';
 import '../providers/class_provider.dart';
 import 'my_class_hub_screen.dart';
 import 'student_list_screen.dart';
@@ -578,6 +579,72 @@ class ClassListScreen extends ConsumerWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+
+            // Ders programı (17 Ekim 2026): alt çubuktaki sekmesi kalktı, evi
+            // burası. Listenin dışında durur; hiç sınıf yokken de görünür.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+              child: Material(
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                child: InkWell(
+                  key: const ValueKey('siniflar_ders_programi'),
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ScheduleScreen()),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.calendar_view_week_rounded,
+                              size: 18, color: AppColors.primary),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Ders programım',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                ),
+                              ),
+                              Text(
+                                'Haftalık program, ders saatleri ve PDF',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right_rounded,
+                            size: 18, color: isDark ? Colors.white38 : Colors.grey),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
 

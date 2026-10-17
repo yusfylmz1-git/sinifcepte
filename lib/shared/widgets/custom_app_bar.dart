@@ -7,7 +7,8 @@ import '../../features/exam_operations/presentation/views/exam_tracking_view.dar
 import '../../features/exam_operations/providers/exam_tracking_provider.dart';
 
 /// SınıfCepte - Standart Üst Bar (Distinct Top AppBar) Widget'ı
-/// Sol üstte: 3 Çizgi Menü + (Özet'te Profil Fotosu / Diğerlerinde Proje Logosu)
+/// Sol üstte: Geri düğmesi (alt sayfalarda) + (Bugün'de Profil Fotosu /
+/// Diğerlerinde Proje Logosu)
 /// En sağda: Mesaj Kutusu İkonu (yalnız [onMessageTap] verilince) + Bildirim İkonu
 ///
 /// ## Söz verip yapmayan simge yok (17 Ekim 2026)
@@ -17,12 +18,14 @@ import '../../features/exam_operations/providers/exam_tracking_provider.dart';
 /// takvimi yayında" bildirimi ekleniyordu. Artık mesaj simgesi yalnız
 /// gerçek bir hedefi varsa görünür, zilin noktası yalnız gerçek bir sınav
 /// uyarısı varken çıkar.
+///
+/// Üç çizgili menü düğmesi de yok: menü kalktı, içindeki her şeyin alt
+/// çubukta bir evi var (17 Ekim 2026).
 class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
   final String title;
   final String? subtitle;
   final List<Widget>? actions;
   final Widget? leading;
-  final bool showDrawerButton;
   final bool? showBackButton;
   final VoidCallback? onBackPressed;
   final bool showProfileAvatar; // true ise Profil Fotosu (👤), false ise Proje Logosu (🎓)
@@ -38,7 +41,6 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
     this.subtitle,
     this.actions,
     this.leading,
-    this.showDrawerButton = true,
     this.showBackButton,
     this.onBackPressed,
     this.showProfileAvatar = false,
@@ -110,7 +112,6 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
         sinavBildirimleri(ref.watch(examTrackingProvider).exams).isNotEmpty;
     final canPop = Navigator.of(context).canPop();
     final bool shouldShowBack = showBackButton ?? canPop;
-    final bool shouldShowDrawer = !shouldShowBack && showDrawerButton;
 
     return Container(
       decoration: BoxDecoration(
@@ -143,7 +144,7 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: Row(
             children: [
-              // 1. SOL ALAN (Geri Butonu veya Menü + Avatar)
+              // 1. SOL ALAN (Geri Butonu + Avatar)
               leading ??
                   Row(
                     mainAxisSize: MainAxisSize.min,
@@ -162,16 +163,6 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                           },
                           tooltip: 'Geri Dön',
                           visualDensity: VisualDensity.compact,
-                        ),
-                        const SizedBox(width: 4),
-                      ] else if (shouldShowDrawer) ...[
-                        Builder(
-                          builder: (context) => IconButton(
-                            icon: const Icon(Icons.menu_rounded, color: Colors.white, size: 24),
-                            onPressed: () => Scaffold.of(context).openDrawer(),
-                            tooltip: 'Menüyü Aç',
-                            visualDensity: VisualDensity.compact,
-                          ),
                         ),
                         const SizedBox(width: 4),
                       ],

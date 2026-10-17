@@ -23,7 +23,7 @@ class DocumentsHubView extends ConsumerWidget {
       backgroundColor: isDark ? AppColors.darkBackground : Colors.white,
       // Başlık "Evraklarım" idi ve yanıltıyordu: uygulamada otuzdan
       // fazla yerde evrak üretiliyor, bu sayfada yalnızca iki tutanak
-      // var. Artık Diğer Evraklar'ın altındaki bir alt sayfa.
+      // var. Artık Evraklar sekmesinin altındaki bir alt sayfa.
       appBar: const CustomAppBar(
         title: 'Kurul Tutanakları',
         subtitle: 'Zümre & ŞÖK',
@@ -138,9 +138,7 @@ class DocumentsHubView extends ConsumerWidget {
             const SizedBox(height: 16),
             Text(
               'Sınıfa bağlı evraklar (öğrenci listesi, nöbetçi çizelgesi, '
-              'oturma planı, veli toplantısı) Sınıfım ekranındadır; '
-              'Diğer Evraklar sayfasındaki "Sınıf Evrakları" kartından '
-              'da ulaşılır.',
+              'oturma planı, veli toplantısı) Sınıflar sekmesindedir.',
               style: TextStyle(
                 fontSize: 12,
                 height: 1.4,

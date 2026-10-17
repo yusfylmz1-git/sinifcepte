@@ -17,7 +17,11 @@ class NavigationTabItem {
   });
 }
 
-/// SınıfCepte - Ultra Modern Floating Glassmorphism & Responsive Alt Bar Menü (5 Sekmeli)
+/// SınıfCepte - Alt çubuk (5 sekme): Bugün · Sınıflar · Kazanımlar ·
+/// Evraklar · Ben. Sıra [AnaSekme] ile aynıdır.
+///
+/// Yalnız ana ekranda durur. Alt sayfalarda da vardı (sınav ekranları,
+/// Sınıfım); "sekme içinde sekme" hissi veriyordu, kaldırıldı (17 Ekim 2026).
 class CustomBottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -28,29 +32,31 @@ class CustomBottomNavBar extends StatelessWidget {
     required this.onTap,
   });
 
-  static const List<NavigationTabItem> _tabs = [
+  // Ders Programı sekmesi kalktı: bugünkü program Bugün'de görünüyor,
+  // haftalık program Sınıflar'dan açılıyor. Yerine Evraklar geldi.
+  static const List<NavigationTabItem> tabs = [
     NavigationTabItem(
-      label: 'Özet',
-      icon: Icons.grid_view_outlined,
-      activeIcon: Icons.grid_view_rounded,
+      label: 'Bugün',
+      icon: Icons.today_outlined,
+      activeIcon: Icons.today_rounded,
     ),
     NavigationTabItem(
-      label: 'Sınıf',
+      label: 'Sınıflar',
       icon: Icons.school_outlined,
       activeIcon: Icons.school_rounded,
     ),
     NavigationTabItem(
-      label: 'Kazanım',
+      label: 'Kazanımlar',
       icon: Icons.auto_stories_outlined,
       activeIcon: Icons.auto_stories_rounded,
     ),
     NavigationTabItem(
-      label: 'Ders Prog.',
-      icon: Icons.calendar_today_outlined,
-      activeIcon: Icons.calendar_month_rounded,
+      label: 'Evraklar',
+      icon: Icons.folder_copy_outlined,
+      activeIcon: Icons.folder_copy_rounded,
     ),
     NavigationTabItem(
-      label: 'Profil',
+      label: 'Ben',
       icon: Icons.person_outline_rounded,
       activeIcon: Icons.person_rounded,
     ),
@@ -91,8 +97,8 @@ class CustomBottomNavBar extends StatelessWidget {
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(_tabs.length, (index) {
-                final tab = _tabs[index];
+              children: List.generate(tabs.length, (index) {
+                final tab = tabs[index];
                 final isSelected = index == currentIndex;
 
                 return Expanded(

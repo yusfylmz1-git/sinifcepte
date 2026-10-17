@@ -15,6 +15,7 @@ import 'package:sinifcepte/data/models/class_model.dart';
 import 'package:sinifcepte/data/models/student_model.dart';
 import 'package:sinifcepte/data/repositories/class_repository.dart';
 import 'package:sinifcepte/data/repositories/student_repository.dart';
+import 'package:sinifcepte/features/documents/presentation/views/evraklar_sekmesi.dart';
 import 'package:sinifcepte/features/student_photos/data/foto_alici.dart';
 import 'package:sinifcepte/features/student_photos/data/foto_depolama.dart';
 import 'package:sinifcepte/features/student_photos/data/ogrenci_foto_deposu.dart';
@@ -27,7 +28,6 @@ import 'package:sinifcepte/features/student_photos/presentation/sinif_foto_ekran
 import 'package:sinifcepte/features/student_photos/presentation/seri_cekim_ekrani.dart';
 import 'package:sinifcepte/features/student_photos/presentation/widgets/ogrenci_foto_kucuk.dart';
 import 'package:sinifcepte/features/student_photos/providers/ogrenci_foto_providers.dart';
-import 'package:sinifcepte/shared/widgets/app_drawer.dart';
 
 /// e-Okul foto ekranları (Faz 2). Veritabanı ve dosya işlemleri gerçek;
 /// yalnızca `path_provider` yerine geçici klasör veriliyor.
@@ -101,24 +101,25 @@ void main() {
     }
   });
 
-  group('menü', () {
-    testWidgets('KRITIK: "İdari işlemler" başlığı altında "e-Okul foto" var, sayfayı açıyor',
+  // 17 Ekim 2026: üç çizgili menü kalktı; e-Okul foto'nun evi alt
+  // çubuktaki Evraklar sekmesi, idari işlerin altında.
+  group('Evraklar sekmesi', () {
+    testWidgets('KRITIK: "idari işler" başlığı altında "e-Okul Foto" var, sayfayı açıyor',
         (tester) async {
       tester.view.physicalSize = const Size(1080, 3200);
       tester.view.devicePixelRatio = 2;
       addTearDown(tester.view.reset);
-      final anahtar = GlobalKey<ScaffoldState>();
-      await tester.pumpWidget(sahne(Scaffold(key: anahtar, drawer: const AppDrawer())));
-      anahtar.currentState!.openDrawer();
+      await tester.pumpWidget(sahne(const EvraklarSekmesi()));
       await tester.pumpAndSettle();
 
-      expect(find.text('İdari işlemler'), findsOneWidget);
+      const baslik = 'Okul etkinlikleri ve idari işler';
+      expect(find.text(baslik), findsOneWidget);
       expect(find.textContaining('IDARI'), findsNothing, reason: 'Türkçe İ tuzağı');
-      final baslikY = tester.getTopLeft(find.text('İdari işlemler')).dy;
-      final dugmeY = tester.getTopLeft(find.text('e-Okul foto')).dy;
-      expect(dugmeY > baslikY, isTrue, reason: 'düğme başlığın altında');
+      final baslikY = tester.getTopLeft(find.text(baslik)).dy;
+      final dugmeY = tester.getTopLeft(find.text('e-Okul Foto')).dy;
+      expect(dugmeY > baslikY, isTrue, reason: 'kart başlığın altında');
 
-      await tester.tap(find.text('e-Okul foto'));
+      await tester.tap(find.text('e-Okul Foto'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byType(EokulFotoMerkeziEkrani), findsOneWidget);

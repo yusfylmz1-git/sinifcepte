@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/app_surumu.dart';
+import '../../../core/backup/yedek_penceresi.dart';
 import '../../../core/privacy/veri_saklama_metni.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/glass_card.dart';
@@ -14,7 +15,13 @@ import '../../board_config/presentation/tahta_kilidi_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../parent_portal/presentation/widgets/help_support_modal.dart';
 
-/// SınıfCepte - Profil Sekmesi Ekranı
+/// SınıfCepte - Ben sekmesi (profil, okul, yedek, ayarlar, yardım).
+///
+/// ## Tek yer (17 Ekim 2026)
+/// Üç çizgili menüdeki "Veri Yedekleme", "Veri Gizliliği" ve "Ayarlar"
+/// buraya toplandı; menü kalktı. Gizlilik politikası Hakkında'da.
+/// Profil kartının altındaki "Profil ve Mesleki Bilgiler" satırı da kalktı:
+/// kartın kendisiyle aynı ekranı açıyordu.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -25,6 +32,11 @@ class ProfileScreen extends ConsumerWidget {
     // Yönetici yetkisi custom claim'den gelir; yerel tercihten değil.
     final roleState = ref.watch(userRoleProvider);
 
+    void ac(Widget hedef) => Navigator.push(
+          context,
+          MaterialPageRoute<void>(builder: (_) => hedef),
+        );
+
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : Colors.white,
       body: SafeArea(
@@ -33,31 +45,11 @@ class ProfileScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Başlık
-              Text(
-                'Profilim',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: isDark
-                      ? AppColors.textPrimaryDark
-                      : AppColors.textPrimaryLight,
-                ),
-              ),
-              const SizedBox(height: 20),
-
               // Öğretmen Bilgi Kartı (Tıklanınca Düzenleme Ekranı Açılır)
               GlassCard(
                 padding: const EdgeInsets.all(20),
                 child: InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const TeacherProfileSetupView(),
-                      ),
-                    );
-                  },
+                  onTap: () => ac(const TeacherProfileSetupView()),
                   borderRadius: BorderRadius.circular(16),
                   child: Row(
                     children: [
@@ -165,70 +157,58 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
 
-              // Tercihler ve Ayarlar Başlığı
-              Text(
-                'Uygulama Tercihleri',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: isDark
-                      ? AppColors.textPrimaryDark
-                      : AppColors.textPrimaryLight,
-                ),
+              _baslik(isDark, 'Okul'),
+
+              // Tahta Kilidi: öğretmen tarafı. Okul yöneticiliği kartından
+              // ayrı: bu kart her öğretmene görünür, yöneticilik isteğe bağlı
+              // bir ek yetkidir.
+              _satir(
+                isDark,
+                ikon: Icons.desktop_windows_outlined,
+                renk: AppColors.primary,
+                baslik: 'Tahta Kilidi',
+                altBaslik: 'Etkileşimli tahtayı telefonunuzla açın',
+                onTap: () => ac(const TahtaKilidiScreen()),
               ),
               const SizedBox(height: 12),
 
-              // Profil Bilgilerini Düzenle Kartı
-              GlassCard(
-                padding: EdgeInsets.zero,
-                child: ListTile(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const TeacherProfileSetupView(),
-                      ),
-                    );
-                  },
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.person_outline_rounded,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  title: Text(
-                    'Profil ve Mesleki Bilgiler',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? AppColors.textPrimaryDark
-                          : AppColors.textPrimaryLight,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'Ad, soyad, okul, branş ve müdür ismi',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark
-                          ? AppColors.textSecondaryDark
-                          : AppColors.textSecondaryLight,
-                    ),
-                  ),
-                  trailing: Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 16,
-                    color: isDark
-                        ? AppColors.textSecondaryDark
-                        : AppColors.textSecondaryLight,
-                  ),
-                ),
+              // Okul Yöneticiliği
+              //
+              // Yönetici rolü opsiyoneldir: yöneticisi olmayan okullarda
+              // uygulamanın tamamı normal çalışır. Kart, kullanıcının
+              // durumuna göre başvuru veya panel açar.
+              _satir(
+                isDark,
+                ikon: Icons.admin_panel_settings_rounded,
+                renk: roleState.isSchoolAdmin
+                    ? const Color(0xFF10B981)
+                    : AppColors.primary,
+                baslik: roleState.isSchoolAdmin
+                    ? 'Okul Yönetim Paneli'
+                    : 'Okul Yöneticiliği Başvurusu',
+                altBaslik: roleState.isSchoolAdmin
+                    ? 'Öğretmen onayı ve veli şikâyetleri'
+                    : 'İsteğe bağlı — onay olmadan da tüm özellikler açık',
+                onTap: () {
+                  if (roleState.isSchoolAdmin) {
+                    ac(const SchoolAdminPanelView());
+                  } else {
+                    SchoolAdminRequestView.show(context);
+                  }
+                },
+              ),
+
+              _baslik(isDark, 'Veriler ve ayarlar'),
+
+              // Yedek eskiden yalnız üç çizgili menüdeydi (17 Ekim 2026).
+              _satir(
+                isDark,
+                ikon: Icons.sd_storage_rounded,
+                renk: AppColors.primary,
+                baslik: 'Yedekle ve geri yükle',
+                altBaslik: 'Sınıflar, öğrenciler ve fotoğraflar tek dosyada',
+                onTap: () => yedekPenceresiniAc(context),
               ),
               const SizedBox(height: 12),
 
@@ -236,241 +216,31 @@ class ProfileScreen extends ConsumerWidget {
               // Burada ayrıca "Karanlık Mod" anahtarı vardı; aynı ayarı ikinci
               // kapıdan değiştiriyordu ve "telefonun teması" seçeneğini
               // bilmiyordu (17 Ekim 2026).
-
-              // Genel Ayarlar Kartı
-              GlassCard(
-                padding: EdgeInsets.zero,
-                child: ListTile(
-                  onTap: () {
-                    try {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SettingsScreen(),
-                        ),
-                      );
-                    } catch (e, stackTrace) {
-                      debugPrint('Ayarlar ekranı açma hatası: $e\n$stackTrace');
-                    }
-                  },
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.accent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.settings_rounded,
-                      color: AppColors.accent,
-                    ),
-                  ),
-                  title: Text(
-                    'Ayarlar',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? AppColors.textPrimaryDark
-                          : AppColors.textPrimaryLight,
-                    ),
-                  ),
-                  subtitle: Text(
-                    // Eskiden "Veritabanı yedekleme, dışa aktarma" yazıyordu;
-                    // o ekranda yedekleme hiç yoktu.
-                    'Tema ve uygulama sürümü',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark
-                          ? AppColors.textSecondaryDark
-                          : AppColors.textSecondaryLight,
-                    ),
-                  ),
-                  trailing: Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 16,
-                    color: isDark
-                        ? AppColors.textSecondaryDark
-                        : AppColors.textSecondaryLight,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Tahta Kilidi Kartı
-              //
-              // Öğretmen tarafı: idarecinin gösterdiği kurulum QR'ı bir
-              // kez okutulur, sonra her derste tahtadaki QR okutularak
-              // (veya kamerasız cihazda doğrudan) 6 haneli kod üretilir.
-              //
-              // Okul yöneticiliği kartından ayrı: bu kart her öğretmene
-              // görünür, yöneticilik isteğe bağlı bir ek yetkidir.
-              GlassCard(
-                padding: EdgeInsets.zero,
-                child: ListTile(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const TahtaKilidiScreen(),
-                      ),
-                    );
-                  },
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      Icons.desktop_windows_outlined,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  title: Text(
-                    'Tahta Kilidi',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? AppColors.textPrimaryDark
-                          : AppColors.textPrimaryLight,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'Etkileşimli tahtayı telefonunuzla açın',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark
-                          ? AppColors.textSecondaryDark
-                          : AppColors.textSecondaryLight,
-                    ),
-                  ),
-                  trailing: Icon(
-                    Icons.chevron_right_rounded,
-                    color: isDark
-                        ? AppColors.textSecondaryDark
-                        : AppColors.textSecondaryLight,
-                  ),
-                ),
+              _satir(
+                isDark,
+                ikon: Icons.settings_rounded,
+                renk: AppColors.accent,
+                // Eskiden "Veritabanı yedekleme, dışa aktarma" yazıyordu;
+                // o ekranda yedekleme hiç yoktu.
+                baslik: 'Ayarlar',
+                altBaslik: 'Tema ve uygulama sürümü',
+                onTap: () => ac(const SettingsScreen()),
               ),
 
-              const SizedBox(height: 12),
+              _baslik(isDark, 'Yardım'),
 
-              // Okul Yöneticiliği Kartı
-              //
-              // Yönetici rolü opsiyoneldir: yöneticisi olmayan okullarda
-              // uygulamanın tamamı normal çalışır. Kart, kullanıcının
-              // durumuna göre başvuru veya panel açar.
-              GlassCard(
-                padding: EdgeInsets.zero,
-                child: ListTile(
-                  onTap: () {
-                    if (roleState.isSchoolAdmin) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const SchoolAdminPanelView(),
-                        ),
-                      );
-                    } else {
-                      SchoolAdminRequestView.show(context);
-                    }
-                  },
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: (roleState.isSchoolAdmin
-                              ? const Color(0xFF10B981)
-                              : AppColors.primary)
-                          .withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      Icons.admin_panel_settings_rounded,
-                      color: roleState.isSchoolAdmin
-                          ? const Color(0xFF10B981)
-                          : AppColors.primary,
-                    ),
-                  ),
-                  title: Text(
-                    roleState.isSchoolAdmin
-                        ? 'Okul Yönetim Paneli'
-                        : 'Okul Yöneticiliği Başvurusu',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? AppColors.textPrimaryDark
-                          : AppColors.textPrimaryLight,
-                    ),
-                  ),
-                  subtitle: Text(
-                    roleState.isSchoolAdmin
-                        ? 'Öğretmen onayı ve veli şikâyetleri'
-                        : 'İsteğe bağlı — onay olmadan da tüm özellikler açık',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark
-                          ? AppColors.textSecondaryDark
-                          : AppColors.textSecondaryLight,
-                    ),
-                  ),
-                  trailing: Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 16,
-                    color: isDark
-                        ? AppColors.textSecondaryDark
-                        : AppColors.textSecondaryLight,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Yardım ve Destek
-              //
               // `HelpSupportModal` yazılmıştı ama hiçbir yerden
               // açılmıyordu: kullanıcı takıldığında gidecek yeri yoktu.
-              GlassCard(
-                padding: EdgeInsets.zero,
-                child: ListTile(
-                  onTap: () => HelpSupportModal.show(
-                    context,
-                    userId: teacherProfile.id,
-                    userRole: 'teacher',
-                  ),
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.accent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.help_outline_rounded,
-                      color: AppColors.accent,
-                    ),
-                  ),
-                  title: Text(
-                    'Yardım ve Destek',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? AppColors.textPrimaryDark
-                          : AppColors.textPrimaryLight,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'Sık sorulanlar ve bizimle iletişim',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark
-                          ? AppColors.textSecondaryDark
-                          : AppColors.textSecondaryLight,
-                    ),
-                  ),
-                  trailing: Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 16,
-                    color: isDark
-                        ? AppColors.textSecondaryDark
-                        : AppColors.textSecondaryLight,
-                  ),
+              _satir(
+                isDark,
+                ikon: Icons.help_outline_rounded,
+                renk: AppColors.accent,
+                baslik: 'Yardım ve Destek',
+                altBaslik: 'Sık sorulanlar ve bizimle iletişim',
+                onTap: () => HelpSupportModal.show(
+                  context,
+                  userId: teacherProfile.id,
+                  userRole: 'teacher',
                 ),
               ),
               const SizedBox(height: 12),
@@ -483,54 +253,13 @@ class ProfileScreen extends ConsumerWidget {
               // verisinin ne olduğunu okuyabilmesini gerektiriyor.
               //
               // Menüyü şişirmemek için tek başlık altında toplandılar.
-              GlassCard(
-                padding: EdgeInsets.zero,
-                child: ListTile(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (_) => const AboutScreen(),
-                    ),
-                  ),
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.info_outline_rounded,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  title: Text(
-                    'Hakkında',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? AppColors.textPrimaryDark
-                          : AppColors.textPrimaryLight,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'Kullanım koşulları, gizlilik politikası ve SSS',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark
-                          ? AppColors.textSecondaryDark
-                          : AppColors.textSecondaryLight,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 16,
-                    color: isDark
-                        ? AppColors.textSecondaryDark
-                        : AppColors.textSecondaryLight,
-                  ),
-                ),
+              _satir(
+                isDark,
+                ikon: Icons.info_outline_rounded,
+                renk: AppColors.primary,
+                baslik: 'Hakkında',
+                altBaslik: 'Kullanım koşulları, gizlilik politikası ve SSS',
+                onTap: () => ac(const AboutScreen()),
               ),
               const SizedBox(height: 12),
 
@@ -576,6 +305,62 @@ class ProfileScreen extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Bölüm başlığı. toUpperCase() YOK: Dart 'i'yi 'I' yapar.
+  Widget _baslik(bool isDark, String metin) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 24, 4, 10),
+      child: Text(
+        metin,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+        ),
+      ),
+    );
+  }
+
+  /// Ben sekmesindeki tek tip satır: ikon, başlık, alt başlık, ok.
+  Widget _satir(
+    bool isDark, {
+    required IconData ikon,
+    required Color renk,
+    required String baslik,
+    required String altBaslik,
+    required VoidCallback onTap,
+  }) {
+    final ikincil =
+        isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
+    return GlassCard(
+      padding: EdgeInsets.zero,
+      child: ListTile(
+        onTap: onTap,
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: renk.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(ikon, color: renk),
+        ),
+        title: Text(
+          baslik,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+          ),
+        ),
+        subtitle: Text(
+          altBaslik,
+          style: TextStyle(fontSize: 12, color: ikincil),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: ikincil),
       ),
     );
   }

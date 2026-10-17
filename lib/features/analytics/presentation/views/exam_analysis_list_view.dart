@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
-import '../../../../shared/widgets/custom_bottom_nav_bar.dart';
-import '../../../navigation/providers/navigation_provider.dart';
 import '../../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../data/models/exam_analysis_model.dart';
 import '../../providers/exam_analysis_provider.dart';
@@ -32,11 +30,9 @@ class _ExamAnalysisListViewState extends ConsumerState<ExamAnalysisListView> {
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : const Color(0xFFF6F8FC),
-      extendBody: true,
       appBar: const CustomAppBar(
         title: 'Sınav Analizleri',
         showBackButton: true,
-        showDrawerButton: false,
         showProfileAvatar: false,
       ),
       body: SafeArea(
@@ -139,33 +135,21 @@ class _ExamAnalysisListViewState extends ConsumerState<ExamAnalysisListView> {
           ),
         ),
       ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 60),
-        child: FloatingActionButton.extended(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ExamAnalysisEditorView()),
-            );
-          },
-          backgroundColor: AppColors.primary,
-          icon: const Icon(Icons.add_chart_rounded, color: Colors.white),
-          label: Text(
-            'Yeni Sınav Analizi',
-            style: AppFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-        ),
-      ),
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: ref.watch(navigationIndexProvider),
-        onTap: (index) {
-          try {
-            ref.read(navigationIndexProvider.notifier).state = index;
-            Navigator.of(context).popUntil((route) => route.isFirst);
-          } catch (e, stackTrace) {
-            debugPrint('ExamAnalysisListView bottom nav tap error: $e\n$stackTrace');
-          }
+      // Alt çubuk kalktı (alt çubuk yalnız ana ekranda); düğmeyi onun
+      // üstüne iten 60 piksellik boşluk da kalktı.
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ExamAnalysisEditorView()),
+          );
         },
+        backgroundColor: AppColors.primary,
+        icon: const Icon(Icons.add_chart_rounded, color: Colors.white),
+        label: Text(
+          'Yeni Sınav Analizi',
+          style: AppFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
       ),
     );
   }

@@ -89,7 +89,6 @@ class _ClassLessonHistoryViewState
         title: 'İşlenen Dersler',
         subtitle: widget.className,
         showBackButton: true,
-        showDrawerButton: false,
         showProfileAvatar: false,
       ),
       body: SafeArea(

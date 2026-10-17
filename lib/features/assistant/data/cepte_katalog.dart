@@ -46,16 +46,16 @@ CepteHedef _ekran(
 
 /// Sınıf seçmeden açılan ekranlar.
 List<CepteHedef> cepteEkranHedefleri() => [
-      _ekran(CepteEkran.dersProgrami, 'Ders programım', 'Alt menü › Program', [
+      _ekran(CepteEkran.dersProgrami, 'Ders programım', 'Sınıflar › Ders programım', [
         'ders programı', 'program', 'haftalık program', 'bugünkü dersler',
         'hangi derse giriyorum', 'boş ders', 'ders ekle', 'programa ders ekle',
         'çizelge',
       ], oncelik: 3),
-      _ekran(CepteEkran.dersSaatleri, 'Ders saatleri', 'Program › Saatleri göster', [
+      _ekran(CepteEkran.dersSaatleri, 'Ders saatleri', 'Ders programım › Saatleri göster', [
         'zil saatleri', 'zil', 'ders saati', 'teneffüs', 'öğle arası',
         'ders kaçta bitiyor', 'kaçıncı ders',
       ]),
-      _ekran(CepteEkran.dersIciKatilim, 'Ders içi katılım', 'Ana sayfa › Ders içi katılım', [
+      _ekran(CepteEkran.dersIciKatilim, 'Ders içi katılım', 'Bugün › Ders içi katılım', [
         'katılım', 'söz hakkı', 'yıldız', 'kura', 'sırada kim', 'rastgele öğrenci',
         'öğrenci seç', 'ödev kontrolü', 'ödev yaptı mı', 'kitap defter',
         'araç gereç', 'artı eksi', 'performans', 'derse katılım', 'ders değerlendirme',
@@ -67,7 +67,7 @@ List<CepteHedef> cepteEkranHedefleri() => [
         'öğrenci gelişim kartı', 'gelişim raporu', 'performans raporu',
         'artı eksi raporu',
       ]),
-      _ekran(CepteEkran.karneGorusleri, 'Karne görüşleri', 'Raporlar › Karne görüşleri', [
+      _ekran(CepteEkran.karneGorusleri, 'Karne görüşleri', 'Sınav işlemleri › Karne görüşü', [
         'karne', 'karne yorumu', 'karne görüşü', 'öğretmen görüşü',
         'öğrenci hakkında görüş', 'yorum yaz',
       ]),
@@ -75,39 +75,39 @@ List<CepteHedef> cepteEkranHedefleri() => [
         'kazanım', 'müfredat', 'konu', 'bu hafta ne işlenecek', 'ne işleyeceğim',
         'öğrenme çıktısı', 'maarif', 'tymm', 'ünite', 'haftalık konu',
       ], oncelik: 3),
-      _ekran(CepteEkran.yillikPlanlar, 'Yıllık planlar', 'Belgeler › Yıllık planlar', [
+      _ekran(CepteEkran.yillikPlanlar, 'Yıllık planlar', 'Evraklar › Yıllık planlar', [
         'yıllık plan', 'çerçeve plan', 'ünitelendirilmiş plan', 'yıllık ders planı',
       ], oncelik: 2),
-      _ekran(CepteEkran.gunlukPlanlar, 'Günlük planlar', 'Belgeler › Günlük planlar', [
+      _ekran(CepteEkran.gunlukPlanlar, 'Günlük planlar', 'Evraklar › Günlük planlar', [
         'günlük plan', 'ders planı', 'işleniş planı', 'haftalık plan', 'ders işleniş',
       ], oncelik: 2),
-      _ekran(CepteEkran.belirliGunler, 'Belirli gün ve haftalar', 'Belgeler › Belirli günler', [
+      _ekran(CepteEkran.belirliGunler, 'Belirli gün ve haftalar', 'Evraklar › Belirli günler', [
         'belirli gün', 'belirli hafta', 'pano', 'tören', 'anma', 'kutlama',
         'etkinlik planı', 'çalışma raporu', 'bugün ne var', 'yaklaşan günler',
       ], oncelik: 2),
-      _ekran(CepteEkran.sosyalKulupler, 'Sosyal kulüpler', 'Belgeler › Sosyal kulüpler', [
+      _ekran(CepteEkran.sosyalKulupler, 'Sosyal kulüpler', 'Evraklar › Sosyal kulüpler', [
         'kulüp', 'sosyal kulüp', 'ek-4', 'ek 4', 'kulüp planı', 'kulüp üyeleri',
         'faaliyet raporu', 'toplum hizmeti',
       ]),
-      _ekran(CepteEkran.zumreTutanagi, 'Zümre tutanağı', 'Belgeler › Kurul tutanakları', [
+      _ekran(CepteEkran.zumreTutanagi, 'Zümre tutanağı', 'Evraklar › Kurul tutanakları', [
         'zümre', 'zümre toplantısı', 'zümre öğretmenler kurulu', 'zümre tutanağı',
         'sene başı zümre', 'dönem sonu zümre',
       ], oncelik: 2),
-      _ekran(CepteEkran.sokTutanagi, 'ŞÖK tutanağı', 'Belgeler › Kurul tutanakları', [
+      _ekran(CepteEkran.sokTutanagi, 'ŞÖK tutanağı', 'Evraklar › Kurul tutanakları', [
         'şök', 'şube öğretmenler kurulu', 'şube kurulu', 'şök tutanağı',
         'sınıf geçme kurulu',
       ], oncelik: 2),
-      _ekran(CepteEkran.kurulTutanaklari, 'Kurul tutanakları', 'Belgeler › Kurul tutanakları', [
+      _ekran(CepteEkran.kurulTutanaklari, 'Kurul tutanakları', 'Evraklar › Kurul tutanakları', [
         'öğretmenler kurulu', 'tutanak', 'kurul', 'toplantı tutanağı',
       ], oncelik: 1),
-      _ekran(CepteEkran.ogretmenDosyasi, 'Öğretmen dosyası', 'Belgeler › Öğretmen dosyası', [
+      _ekran(CepteEkran.ogretmenDosyasi, 'Öğretmen dosyası', 'Evraklar › Öğretmen dosyası', [
         'öğretmen dosyası', 'dosya kapağı', 'atatürk köşesi', 'istiklal marşı',
         'gençliğe hitabe', 'özlük', 'künye', 'dosya',
       ]),
-      _ekran(CepteEkran.digerEvraklar, 'Belgeler', 'Ana sayfa › Diğer evraklar', [
+      _ekran(CepteEkran.digerEvraklar, 'Evraklar', 'Alt menü › Evraklar', [
         'evrak', 'belge', 'diğer evraklar', 'resmi yazı', 'çıktı', 'pdf',
       ]),
-      _ekran(CepteEkran.sinavIslemleri, 'Sınav işlemleri', 'Ana sayfa › Sınav işlemleri', [
+      _ekran(CepteEkran.sinavIslemleri, 'Sınav işlemleri', 'Evraklar › Sınav işlemleri', [
         'sınav', 'yazılı', 'not', 'not girişi', 'notlar',
       ], oncelik: 1),
       _ekran(CepteEkran.sinavTakvimi, 'Sınav takvimi', 'Sınav işlemleri › Takvim', [
@@ -121,11 +121,11 @@ List<CepteHedef> cepteEkranHedefleri() => [
         'quiz', 'sözlü', 'sözlü notu', 'kısa sınav', 'performans notu',
         'ders etkinliklerine katılım notu',
       ]),
-      _ekran(CepteEkran.sinavAnalizleri, 'Sınav analizleri', 'Raporlar › Sınav analizleri', [
+      _ekran(CepteEkran.sinavAnalizleri, 'Sınav analizleri', 'Sınav işlemleri › Soru analizi', [
         'sınav analizi', 'soru analizi', 'kazanım analizi', 'madde analizi',
         'istatistik', 'başarı analizi', 'soru bazlı',
       ]),
-      _ekran(CepteEkran.rehberlik, 'Rehberlik', 'Ana sayfa › Rehberlik', [
+      _ekran(CepteEkran.rehberlik, 'Rehberlik', 'Evraklar › Rehberlik', [
         'rehberlik', 'sınıf rehberlik', 'rehberlik planı', 'rehberlik etkinliği',
         'orgm', 'rehber öğretmen', 'rehberlik çalışması',
       ]),
@@ -133,7 +133,7 @@ List<CepteHedef> cepteEkranHedefleri() => [
         'bep', 'özel eğitim', 'kaynaştırma', 'bütünleştirme', 'ram',
         'bireyselleştirilmiş eğitim', 'kaba değerlendirme',
       ]),
-      _ekran(CepteEkran.sinifim, 'Sınıfım', 'Ana sayfa › Sınıfım', [
+      _ekran(CepteEkran.sinifim, 'Sınıfım', 'Sınıflar › Sınıfım', [
         'sınıfım', 'sınıf yönetimi', 'sınıf evrakları', 'şubem', 'rehberlik sınıfım',
         'nöbetçi', 'nöbet', 'nöbetçi öğrenci', 'sınıf başkanı',
       ], oncelik: 2),
@@ -141,15 +141,15 @@ List<CepteHedef> cepteEkranHedefleri() => [
         'sınıflar', 'sınıf ekle', 'yeni sınıf', 'öğrenci ekle', 'öğrenci yükle',
         'e-okul listesi', 'öğrenci aktar', 'sınıf listesi', 'şube ekle',
       ], oncelik: 2),
-      _ekran(CepteEkran.calismaTakvimi, 'MEB çalışma takvimi', 'Menü › Çalışma takvimi', [
+      _ekran(CepteEkran.calismaTakvimi, 'MEB çalışma takvimi', 'Bugün › Tarih › Çalışma takvimi', [
         'takvim', 'tatil', 'ara tatil', 'karne günü', 'okul açılış', 'dönem başı',
         'resmi tatil', 'yarıyıl', 'yarıyıl tatili', 'bayram', 'hafta kaç',
       ]),
-      _ekran(CepteEkran.eokulFoto, 'e-Okul foto', 'Menü › e-Okul foto', [
+      _ekran(CepteEkran.eokulFoto, 'e-Okul foto', 'Evraklar › e-Okul foto', [
         'e-okul foto', 'fotoğraf', 'vesikalık', 'öğrenci fotoğrafı', '133x171',
         'fotoğraf çek', 'eokul resim',
       ]),
-      _ekran(CepteEkran.tahtaKilidi, 'Tahta kilidi', 'Profil › Tahta kilidi', [
+      _ekran(CepteEkran.tahtaKilidi, 'Tahta kilidi', 'Ben › Tahta kilidi', [
         'tahta', 'akıllı tahta', 'etkileşimli tahta', 'kilit', 'tahta şifresi',
         'tahta kodu', 'tahtayı aç', 'karekod',
       ]),
@@ -157,22 +157,22 @@ List<CepteHedef> cepteEkranHedefleri() => [
         'veli duyuru', 'toplu duyuru', 'velilere mesaj', 'velilere duyuru',
         'veli bilgilendirme',
       ]),
-      _ekran(CepteEkran.veriYedekleme, 'Veri yedekleme', 'Menü › Veri yedekleme',
+      _ekran(CepteEkran.veriYedekleme, 'Veri yedekleme', 'Ben › Yedekle ve geri yükle',
           [
         'yedek', 'yedekleme', 'yedek al', 'telefon değiştirdim', 'yeni telefon',
         'verileri aktar', 'veri taşı', 'verilerim kaybolmasın',
       ], kategori: CepteKategori.ayar),
-      _ekran(CepteEkran.geriYukleme, 'Yedekten geri yükle', 'Menü › Veri yedekleme',
+      _ekran(CepteEkran.geriYukleme, 'Yedekten geri yükle', 'Ben › Yedekle ve geri yükle',
           [
         'geri yükle', 'yedeği yükle', 'yedekten dön', 'eski verilerim',
       ], kategori: CepteKategori.ayar),
-      _ekran(CepteEkran.ayarlar, 'Ayarlar', 'Menü › Ayarlar', [
+      _ekran(CepteEkran.ayarlar, 'Ayarlar', 'Ben › Ayarlar', [
         'tema', 'karanlık mod', 'gece modu', 'koyu tema', 'bildirim', 'bildirimler',
       ], kategori: CepteKategori.ayar),
-      _ekran(CepteEkran.profil, 'Profil', 'Alt menü › Profil', [
+      _ekran(CepteEkran.profil, 'Profil', 'Alt menü › Ben', [
         'profilim', 'hesabım', 'okulum', 'çıkış yap', 'hesap',
       ], kategori: CepteKategori.ayar),
-      _ekran(CepteEkran.profilBilgileri, 'Öğretmen bilgileri', 'Profil › Öğretmen profili', [
+      _ekran(CepteEkran.profilBilgileri, 'Öğretmen bilgileri', 'Ben › Öğretmen profili', [
         'ad soyad', 'branş', 'branşım', 'okul değiştir', 'tayin', 'okul müdürü',
         'müdür adı', 'imza', 'okul adı',
       ], kategori: CepteKategori.ayar),

@@ -17,8 +17,9 @@ import 'tam_yedek.dart';
 /// 3. "Mevcut verilerin silineceğini anlıyorum" işaretlenmeden
 ///    uygulanmaz. Yarıda kalırsa önceki veri geri konur.
 ///
-/// Diyalog zinciri yerine ekran: akış çekmeceden başlıyor ve çekmecenin
-/// bağlamı kapanınca ölüyor; tazeleme için yaşayan bir `ref` gerekiyor.
+/// Diyalog zinciri yerine ekran: akış yedek penceresinden başlıyor ve
+/// pencerenin bağlamı kapanınca ölüyor; tazeleme için yaşayan bir `ref`
+/// gerekiyor.
 class GeriYuklemeEkrani extends ConsumerStatefulWidget {
   const GeriYuklemeEkrani({super.key, this.inceleyici, this.uygulayici, this.mevcutKapsam});
 

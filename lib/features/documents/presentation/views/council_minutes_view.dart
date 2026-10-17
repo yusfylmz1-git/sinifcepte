@@ -286,7 +286,6 @@ class _CouncilMinutesViewState extends ConsumerState<CouncilMinutesView> {
         title: _sok ? 'ŞÖK Tutanağı' : 'Zümre Tutanağı',
         subtitle: _hazir ? 'Tutanak hazır' : 'Maarif Modeli · Yönerge m.${_sok ? 10 : 12}',
         showProfileAvatar: false,
-        showDrawerButton: false,
         showBackButton: true,
       ),
       body: SafeArea(child: _hazir ? _sonucEkrani(isDark) : _formEkrani(isDark)),

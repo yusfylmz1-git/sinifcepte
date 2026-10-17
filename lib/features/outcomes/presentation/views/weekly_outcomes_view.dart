@@ -182,7 +182,6 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
             ? '$selectedGrade. Sınıf • ${selectedSubject['publisher']}'
             : (selectedGrade != null ? null : null),
         showBackButton: true,
-        showDrawerButton: false,
         onBackPressed: () {
           try {
             if (selectedSubject != null) {
@@ -198,7 +197,7 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
             } else if (isFavMode) {
               ref.read(isFavoritesModeProvider.notifier).state = false;
             } else {
-              ref.read(navigationIndexProvider.notifier).state = 0; // Ana Sayfaya / Özet sekmesine dön
+              ref.read(navigationIndexProvider.notifier).state = AnaSekme.bugun;
             }
           } catch (e, stackTrace) {
             debugPrint('WeeklyOutcomesView geri navigasyon hatası: $e\n$stackTrace');

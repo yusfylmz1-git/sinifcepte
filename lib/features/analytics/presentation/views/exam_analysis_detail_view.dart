@@ -119,7 +119,6 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
       appBar: CustomAppBar(
         title: '${_currentExam.className} - ${_currentExam.examTitle}',
         showBackButton: true,
-        showDrawerButton: false,
         showProfileAvatar: false,
       ),
       body: SafeArea(

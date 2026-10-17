@@ -203,7 +203,6 @@ class _ClassroomParticipationViewState
           title: 'Ders İçi Katılım',
           showProfileAvatar: false,
           showBackButton: true,
-          showDrawerButton: false,
           actions: [
             // Dönem/yıl sonu kümülatif raporlar.
             //

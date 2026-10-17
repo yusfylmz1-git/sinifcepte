@@ -83,7 +83,7 @@ class CompactStudentParticipationGrid extends ConsumerWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                'Sınıflar menüsünden öğrenci ekleyebilir veya e-Okul listesini içe aktarabilirsiniz.',
+                'Sınıflar sekmesinden öğrenci ekleyebilir veya e-Okul listesini içe aktarabilirsiniz.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12.5,

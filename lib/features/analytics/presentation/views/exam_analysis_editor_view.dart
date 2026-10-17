@@ -293,7 +293,6 @@ class _ExamAnalysisEditorViewState extends ConsumerState<ExamAnalysisEditorView>
       appBar: CustomAppBar(
         title: widget.existingExam != null ? 'Sınav Analizini Düzenle' : 'Yeni Sınav Analizi',
         showBackButton: true,
-        showDrawerButton: false,
         showProfileAvatar: false,
       ),
       body: SafeArea(

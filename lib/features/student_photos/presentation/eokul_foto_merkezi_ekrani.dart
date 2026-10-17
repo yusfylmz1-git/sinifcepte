@@ -135,7 +135,7 @@ class _BilgiKarti extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Veri yedeği (Menü > Veri Yedekleme) fotoğrafları da içerir; telefon '
+              'Veri yedeği (Ben › Yedekle ve geri yükle) fotoğrafları da içerir; telefon '
               'değişince yedekten geri yükleyin.',
               style: stil,
             ),

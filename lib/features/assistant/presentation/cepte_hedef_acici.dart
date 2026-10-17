@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/backup/geri_yukleme_akisi.dart';
+import '../../../core/backup/yedek_penceresi.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/class_model.dart';
 import '../../../data/repositories/class_repository.dart';
 import '../../../data/repositories/student_repository.dart';
-import '../../../shared/widgets/app_drawer.dart';
 import '../../academic_calendar/screens/academic_calendar_screen.dart';
-import '../../analytics/presentation/views/analytics_dashboard_view.dart';
+import '../../analytics/presentation/views/exam_analysis_list_view.dart';
 import '../../analytics/presentation/widgets/class_report_card_comments_modal.dart';
 import '../../attendance/data/models/classroom_participation_model.dart';
 import '../../attendance/presentation/views/arti_eksi_listesi_view.dart';
@@ -33,7 +33,6 @@ import '../../documents/presentation/views/daily_plans_view.dart';
 import '../../documents/data/council_minutes.dart';
 import '../../documents/presentation/views/council_minutes_view.dart';
 import '../../documents/presentation/views/documents_hub_view.dart';
-import '../../documents/presentation/views/other_documents_view.dart';
 import '../../documents/presentation/views/special_days_view.dart';
 import '../../documents/presentation/views/teacher_file_view.dart';
 import '../../documents/presentation/widgets/pano_content_sheet.dart';
@@ -47,18 +46,13 @@ import '../../navigation/providers/navigation_provider.dart';
 import '../../outcomes/providers/outcomes_provider.dart';
 import '../../parent_portal/presentation/screens/bulk_announcement_screen.dart';
 import '../../parent_portal/presentation/screens/teacher_parent_panel_screen.dart';
+import '../../schedule/screens/schedule_screen.dart';
 import '../../schedule/screens/schedule_table_preview_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../student_photos/presentation/eokul_foto_merkezi_ekrani.dart';
 import '../../student_photos/presentation/sinif_foto_ekrani.dart';
 import '../data/cepte_arama.dart';
 import '../data/cepte_niyet.dart';
-
-/// Alt menü sekmeleri (MainNavigationScreen sırası).
-const int _sekmeSiniflar = 1;
-const int _sekmeKazanimlar = 2;
-const int _sekmeProgram = 3;
-const int _sekmeProfil = 4;
 
 /// Aramadaki bir sonucu açar. Plan hazırlama ([PlanEylemi]) burada değil,
 /// Cepte ekranında soru-cevapla yürür.
@@ -87,7 +81,7 @@ Future<void> cepteHedefiAc(BuildContext context, WidgetRef ref, CepteHedef h) as
       sinifN.state = sinif;
       dersN.state = {'subject_code': dersKodu, 'subject_name': dersAdi, 'publisher': yayinci};
       favoriN.state = false;
-      _sekmeyeGec(context, ref, _sekmeKazanimlar);
+      _sekmeyeGec(context, ref, AnaSekme.kazanimlar);
     case PlanEylemi():
       // Cepte ekranı yürütür (sınıf/ders/okul türü sorulabilir).
       break;
@@ -108,24 +102,26 @@ void _sekmeyeGec(BuildContext context, WidgetRef ref, int sekme) {
 Future<void> _ekranAc(BuildContext context, WidgetRef ref, CepteEkran ekran) async {
   switch (ekran) {
     case CepteEkran.kazanimlar:
-      return _sekmeyeGec(context, ref, _sekmeKazanimlar);
-    case CepteEkran.dersProgrami:
-      return _sekmeyeGec(context, ref, _sekmeProgram);
+      return _sekmeyeGec(context, ref, AnaSekme.kazanimlar);
     case CepteEkran.siniflarim:
-      return _sekmeyeGec(context, ref, _sekmeSiniflar);
+      return _sekmeyeGec(context, ref, AnaSekme.siniflar);
+    case CepteEkran.digerEvraklar:
+      return _sekmeyeGec(context, ref, AnaSekme.evraklar);
     case CepteEkran.profil:
-      return _sekmeyeGec(context, ref, _sekmeProfil);
+      return _sekmeyeGec(context, ref, AnaSekme.ben);
     case CepteEkran.donemSonuRaporlari:
       return ParticipationCumulativeReportsModal.show(context);
     case CepteEkran.karneGorusleri:
       return ClassReportCardCommentsModal.show(context);
     case CepteEkran.veriYedekleme:
-      AppDrawer.showBackupDialog(context);
+      yedekPenceresiniAc(context);
       return;
     default:
       break;
   }
   final Widget hedef = switch (ekran) {
+    // Ders programı artık sekme değil, Sınıflar'dan açılan sayfa.
+    CepteEkran.dersProgrami => const ScheduleScreen(),
     CepteEkran.dersSaatleri => const ScheduleTablePreviewScreen(),
     CepteEkran.dersIciKatilim => const ClassroomParticipationView(),
     CepteEkran.yillikPlanlar => const AnnualPlansView(),
@@ -134,12 +130,11 @@ Future<void> _ekranAc(BuildContext context, WidgetRef ref, CepteEkran ekran) asy
     CepteEkran.sosyalKulupler => const ClubsHubScreen(),
     CepteEkran.kurulTutanaklari => const DocumentsHubView(),
     CepteEkran.ogretmenDosyasi => const TeacherFileView(),
-    CepteEkran.digerEvraklar => const OtherDocumentsView(),
     CepteEkran.sinavIslemleri => const ExamOperationsMenuView(),
     CepteEkran.sinavTakvimi => const ExamTrackingView(),
     CepteEkran.projeOdev => const ProjectTrackingView(),
     CepteEkran.quizSozlu => const QuizListView(),
-    CepteEkran.sinavAnalizleri => const AnalyticsDashboardView(),
+    CepteEkran.sinavAnalizleri => const ExamAnalysisListView(),
     CepteEkran.rehberlik => const GuidanceHubScreen(),
     CepteEkran.ozelEgitim => const SpecialEducationView(),
     CepteEkran.calismaTakvimi => const AcademicCalendarScreen(),
@@ -162,8 +157,8 @@ Future<void> _ekranAc(BuildContext context, WidgetRef ref, CepteEkran ekran) asy
       const MyClassHubScreen(),
     // Yukarıda sekme/pencere olarak açıldılar.
     CepteEkran.kazanimlar ||
-    CepteEkran.dersProgrami ||
     CepteEkran.siniflarim ||
+    CepteEkran.digerEvraklar ||
     CepteEkran.profil ||
     CepteEkran.donemSonuRaporlari ||
     CepteEkran.karneGorusleri ||

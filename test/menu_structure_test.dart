@@ -21,8 +21,10 @@ void main() {
 
   const sinifim = 'lib/features/classes/screens/my_class_hub_screen.dart';
   const anaSayfa = 'lib/features/dashboard/screens/dashboard_screen.dart';
-  const digerEvraklar =
-      'lib/features/documents/presentation/views/other_documents_view.dart';
+  // 17 Ekim 2026: "Diğer Evraklar" sayfası alt çubuktaki Evraklar
+  // sekmesi oldu (tek katalog).
+  const evraklar =
+      'lib/features/documents/presentation/views/evraklar_sekmesi.dart';
 
   group('Kopya girisler geri gelmedi', () {
     test('KRITIK: kurul tutanaklari Sinifim`da YOK', () {
@@ -45,10 +47,16 @@ void main() {
       expect(oku(anaSayfa).contains("'title': 'Analiz & Rapor'"), isFalse);
     });
 
-    test('KRITIK: yerine "Diger Evraklar" karti var', () {
+    test('KRITIK: evraklar alt cubukta; ana sayfada ikinci kapi yok', () {
+      // "Diger Evraklar" karti ana sayfadaydi; evraklar alt cubukta sekme
+      // olunca ayni ekranda ikinci kapi oldu ve kalkti.
       final kod = oku(anaSayfa);
-      expect(kod, contains("'title': 'Diğer Evraklar'"));
-      expect(kod, contains('OtherDocumentsView'));
+      expect(kod.contains("'title': 'Diğer Evraklar'"), isFalse);
+      expect(kod.contains('EvraklarSekmesi'), isFalse);
+      expect(
+        oku('lib/features/navigation/screens/main_navigation_screen.dart'),
+        contains('const EvraklarSekmesi()'),
+      );
     });
 
     test('KRITIK: kurul tutanaklari ana sayfada AYRI KART degil', () {
@@ -58,25 +66,27 @@ void main() {
       // gidiyordu; ucu de evrak.
       final kod = oku(anaSayfa);
       expect(kod.contains("'title': 'Kurullar'"), isFalse,
-          reason: 'kurul tutanaklari Diger Evraklar icinde olmali');
+          reason: 'kurul tutanaklari Evraklar sekmesinde olmali');
       expect(kod.contains("'title': 'Evraklarım'"), isFalse);
     });
 
-    test('KRITIK: kurul tutanaklari Diger Evraklar icinde', () {
+    test('KRITIK: kurul tutanaklari Evraklar sekmesinde', () {
       // Tek yerden acilir: sinifa BAGLI OLMAYAN evraklarin yani.
-      final kod = oku(digerEvraklar);
+      final kod = oku(evraklar);
       expect(kod, contains("ad: 'Kurul Tutanakları'"));
       expect(kod, contains('DocumentsHubView'));
     });
 
-    test('KRITIK: sinif evraklarina Diger Evraklar`dan kisayol var', () {
+    test('KRITIK: sinif evraklari Evraklar`da gosteriliyor, evine goturuyor', () {
       // Oturma plani, nobetci listesi gibi belgeler once "hangi
-      // sinif?" sorusunu gerektirdigi icin Sinifim'da KALIR; ama
+      // sinif?" sorusunu gerektirdigi icin Siniflar sekmesinde KALIR; ama
       // ogretmen "evrak" diye buraya baktiginda nerede olduklarini
-      // gormeli, aramak zorunda kalmamali.
-      final kod = oku(digerEvraklar);
+      // gormeli. Kart ayni ekrani ikinci kapidan ACMAZ, sekmeye goturur.
+      final kod = oku(evraklar);
       expect(kod, contains("ad: 'Sınıf Evrakları'"));
-      expect(kod, contains('MyClassHubScreen'));
+      expect(kod, contains('AnaSekme.siniflar'));
+      expect(kod.contains('MyClassHubScreen'), isFalse,
+          reason: 'Sinifim ikinci kapidan acilmamali');
     });
 
     test('ana sayfada is bazli kartlar duruyor', () {
@@ -87,16 +97,23 @@ void main() {
       // 17 Ekim 2026: "Kazanimlar" ve "Cepte" kartlari kaldirildi (tek
       // kapi kurali). Kazanimlar alt sekmede, Cepte ekranin tepesinde
       // arama kutusu olarak duruyor; ayni ekranda ikinci kapi aciyorlardi.
+      // Ayni gun "Rehberlik" ve "Diger Evraklar" da Evraklar sekmesine
+      // gecti. Kalanlar her gun derste yapilan iki is (kisayol).
       final kod = oku(anaSayfa);
       for (final baslik in [
         'Ders İçi Katılım',
         'Sınav İşlemleri',
-        'Rehberlik',
-        'Diğer Evraklar',
       ]) {
         expect(kod, contains("'title': '$baslik'"),
             reason: '$baslik karti ana sayfada olmali');
       }
+      for (final baslik in ['Rehberlik', 'Diğer Evraklar']) {
+        expect(kod.contains("'title': '$baslik'"), isFalse,
+            reason: '$baslik Evraklar sekmesinde; ana sayfada ikinci kapi');
+      }
+      final ev = oku(evraklar);
+      expect(ev, contains('GuidanceHubScreen'));
+      expect(ev, contains('ExamOperationsMenuView'));
       expect(kod, contains('CepteAramaView'),
           reason: 'Cepte arama kutusu ana sayfanin tepesinde olmali');
     });
@@ -111,6 +128,32 @@ void main() {
           reason: 'sinav analizi kendi isinin altinda olmali');
       expect(kod.contains('AnalyticsDashboardView'), isFalse,
           reason: 'kaldirilan ekrana yonlendirme kalmamali');
+    });
+
+    test('KRITIK: karne gorusu Sinav Islemleri`nden aciliyor', () {
+      // Belgede "Sinav Islemleri'ne tasindi" yaziyordu ama tasinmamisti:
+      // yalniz uc cizgili menudeki Raporlar ekranindan aciliyordu. Menu
+      // kalkinca evsiz kalacakti (17 Ekim 2026).
+      final kod =
+          oku('lib/features/exam_operations/presentation/views/'
+              'exam_operations_menu_view.dart');
+      expect(kod, contains('ClassReportCardCommentsModal.show(context)'));
+    });
+
+    test('KRITIK: Raporlar merkezi silindi, adi hicbir yerde gecmiyor', () {
+      // Uc raporun ucu de kendi isinin yaninda; merkez ikinci kapiydi.
+      expect(
+        File('lib/features/analytics/presentation/views/'
+                'analytics_dashboard_view.dart')
+            .existsSync(),
+        isFalse,
+      );
+      for (final f in Directory('lib').listSync(recursive: true)) {
+        if (f is! File || !f.path.endsWith('.dart')) continue;
+        expect(f.readAsStringSync().contains('AnalyticsDashboardView'),
+            isFalse,
+            reason: f.path);
+      }
     });
 
     test('KRITIK: kumulatif katilim raporu Katilim ekranindan aciliyor', () {

@@ -4,9 +4,7 @@ import '../../../../core/theme/app_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
-import '../../../../shared/widgets/custom_bottom_nav_bar.dart';
 import '../../../classes/providers/class_provider.dart';
-import '../../../navigation/providers/navigation_provider.dart';
 import '../../data/models/exam_model.dart';
 import '../../providers/exam_tracking_provider.dart';
 
@@ -43,11 +41,9 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : const Color(0xFFF6F8FC),
-      extendBody: true,
       appBar: CustomAppBar(
         title: 'Sınav Takvimi',
         showBackButton: true,
-        showDrawerButton: false,
         showProfileAvatar: false,
         actions: [
           IconButton(
@@ -138,17 +134,6 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
             ),
           ),
         ),
-      ),
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: ref.watch(navigationIndexProvider),
-        onTap: (index) {
-          try {
-            ref.read(navigationIndexProvider.notifier).state = index;
-            Navigator.of(context).popUntil((route) => route.isFirst);
-          } catch (e, stackTrace) {
-            debugPrint('ExamTrackingView bottom nav tap error: $e\n$stackTrace');
-          }
-        },
       ),
     );
   }

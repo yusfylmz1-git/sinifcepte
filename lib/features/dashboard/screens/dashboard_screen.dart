@@ -6,7 +6,6 @@ import '../../academic_calendar/data/models/academic_calendar_event_model.dart';
 import '../../academic_calendar/providers/academic_calendar_provider.dart';
 import '../../academic_calendar/screens/academic_calendar_screen.dart';
 import '../../assistant/presentation/views/cepte_arama_view.dart';
-import '../../documents/presentation/views/other_documents_view.dart';
 import '../../attendance/presentation/views/classroom_participation_view.dart';
 import '../../attendance/providers/classroom_participation_provider.dart';
 import '../../auth_profile/providers/teacher_profile_provider.dart';
@@ -15,14 +14,15 @@ import '../../exam_operations/data/models/exam_model.dart';
 import '../../exam_operations/presentation/views/exam_operations_menu_view.dart';
 import '../../exam_operations/presentation/views/exam_tracking_view.dart';
 import '../../exam_operations/providers/exam_tracking_provider.dart';
+import '../../navigation/providers/navigation_provider.dart';
 import '../../outcomes/providers/outcomes_provider.dart';
 import '../../outcomes/utils/kazanim_ders_eslestirici.dart';
 import '../../schedule/models/lesson_model.dart';
 import '../../schedule/models/schedule_settings.dart';
 import '../../schedule/providers/schedule_provider.dart';
+import '../../schedule/screens/schedule_screen.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../providers/activity_feed_provider.dart';
-import '../../guidance/presentation/screens/guidance_hub_screen.dart';
 
 /// SınıfCepte - Ultra Modern Öğretmen Paneli & Bento Dashboard (UI-UX-MAX)
 class DashboardScreen extends ConsumerWidget {
@@ -645,13 +645,18 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  /// 2. Öğretmen Bento Grid Modül Kartları (4 adet).
+  /// 2. Hızlı işlemler: her gün derste yapılan iki iş.
   ///
   /// ## Tek kapı kuralı (17 Ekim 2026)
   /// Burada "Kazanımlar" ve "Cepte" kartları da vardı. Kazanımlar alt
   /// sekmede zaten duruyor; Cepte bu ekranın en tepesinde arama kutusu
   /// olarak duruyor. Aynı işe aynı ekrandan iki kapı açılıyordu, ikisi de
   /// kaldırıldı.
+  ///
+  /// "Rehberlik" ve "Diğer Evraklar" kartları da kalktı: ikisinin evi artık
+  /// alt çubuktaki Evraklar sekmesi, aynı ekranda ikinci kapıydılar. Kalan
+  /// iki kart kısayoldur (Bugün kısayol verebilir); evleri Sınıflar ve
+  /// Evraklar.
   Widget _buildTeacherBentoGrid(BuildContext context, bool isDark) {
     final modules = [
       {
@@ -662,9 +667,7 @@ class DashboardScreen extends ConsumerWidget {
         'accent': const Color(0xFF10B981),
         'target': const ClassroomParticipationView(),
       },
-      // KURULLAR KARTI KALDIRILDI: kurul tutanakları Diğer Evraklar'ın
-      // içinde. Sınıftan BAĞIMSIZ evraklar orada toplanır; sınıfa BAĞLI
-      // olanlar (oturma planı, nöbetçi listesi) Sınıfım'da kalır.
+      // KURULLAR KARTI KALDIRILDI: kurul tutanakları Evraklar sekmesinde.
       {
         'title': 'Sınav İşlemleri',
         'subtitle': 'Not & Değerlendirme',
@@ -672,34 +675,6 @@ class DashboardScreen extends ConsumerWidget {
         'gradient': [const Color(0xFFD97706), const Color(0xFFF59E0B)],
         'accent': const Color(0xFFF59E0B),
         'target': const ExamOperationsMenuView(),
-      },
-      {
-        'title': 'Rehberlik',
-        'subtitle': 'BEP & Sınıf Rehberliği',
-        'icon': Icons.psychology_rounded,
-        'gradient': [const Color(0xFF7C3AED), const Color(0xFFA855F7)],
-        'accent': const Color(0xFF8B5CF6),
-        // Once Sinifim sayfasina gidiyordu; rehberlik isleri o sayfanin
-        // altindaki belge listesine gomuluydu. Ogretmen BEP'e ulasmak
-        // icin sinif secip kategoriler arasinda aramak zorundaydi.
-        'target': const GuidanceHubScreen(),
-      },
-      {
-        // "Analiz & Rapor" bir IS degil, bir cikti turuydu: ogretmen
-        // "rapor isi yapayim" diye dusunmuyor, "sinav sonucuna
-        // bakayim" diyor. Raporlar kendi islerinin altina tasindi
-        // (soru analizi + karne gorusu -> Sinav Islemleri, katilim
-        // raporu -> Ders Ici Katilim).
-        //
-        // Kartin yeri bos kalmasin diye degil: ogretmen dosyasi,
-        // sosyal kulup, belirli gun ve haftalar gibi SINIF DISI
-        // evraklar buraya gelecek.
-        'title': 'Diğer Evraklar',
-        'subtitle': 'Öğretmen Dosyası & Planlar',
-        'icon': Icons.folder_copy_rounded,
-        'gradient': [const Color(0xFFDB2777), const Color(0xFFF43F5E)],
-        'accent': const Color(0xFFEC4899),
-        'target': const OtherDocumentsView(),
       },
     ];
 
@@ -1272,6 +1247,15 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
+  /// Haftalık ders programı. Alt çubukta sekmesi yok (17 Ekim 2026); evi
+  /// Sınıflar sekmesi, burası kısayol.
+  void _dersPrograminiAc(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ScheduleScreen()),
+    );
+  }
+
   /// 4. Günün Ders Programı & Akıllı Tatil Akışı
   Widget _buildTodayScheduleTimeline({
     required BuildContext context,
@@ -1312,7 +1296,7 @@ class DashboardScreen extends ConsumerWidget {
 
     if (isSummerHoliday) {
       buttonText = 'Kazanımlar';
-      onButtonTap = () => onNavigateTab?.call(2);
+      onButtonTap = () => onNavigateTab?.call(AnaSekme.kazanimlar);
     } else if (isOfficialHoliday && todayCalendarEvent != null) {
       buttonText = 'MEB Takvimi';
       onButtonTap = () {
@@ -1323,7 +1307,7 @@ class DashboardScreen extends ConsumerWidget {
       };
     } else {
       buttonText = 'Tümünü Gör';
-      onButtonTap = () => onNavigateTab?.call(3);
+      onButtonTap = () => _dersPrograminiAc(context);
     }
 
     return Container(
@@ -1443,7 +1427,7 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                   ),
                   TextButton(
-                    onPressed: () => onNavigateTab?.call(3),
+                    onPressed: () => _dersPrograminiAc(context),
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       minimumSize: const Size(0, 30),
@@ -1565,7 +1549,7 @@ class DashboardScreen extends ConsumerWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => onNavigateTab?.call(2),
+              onPressed: () => onNavigateTab?.call(AnaSekme.kazanimlar),
               icon: const Icon(Icons.auto_stories_rounded, size: 16),
               label: const Text(
                 'Yeni Dönem Müfredatı & Kazanımları',
@@ -1779,7 +1763,7 @@ class DashboardScreen extends ConsumerWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => onNavigateTab?.call(3),
+              onPressed: () => _dersPrograminiAc(context),
               icon: const Icon(Icons.calendar_view_week_rounded, size: 16),
               label: const Text(
                 'Haftalık Ders Programını İncele',
@@ -1861,7 +1845,7 @@ class DashboardScreen extends ConsumerWidget {
       final match = RegExp(r'^(\d+)').firstMatch(lesson.className.trim());
       final grade = match != null ? int.tryParse(match.group(1)!) : null;
       if (grade == null) {
-        onNavigateTab?.call(2);
+        onNavigateTab?.call(AnaSekme.kazanimlar);
         return;
       }
 
@@ -1871,7 +1855,7 @@ class DashboardScreen extends ConsumerWidget {
       ref.read(selectedGradeProvider.notifier).state = grade;
       ref.read(selectedSubjectProvider.notifier).state = ders;
       ref.read(isFavoritesModeProvider.notifier).state = false;
-      onNavigateTab?.call(2); // Kazanımlar sekmesi
+      onNavigateTab?.call(AnaSekme.kazanimlar);
 
       if (ders == null && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -1882,7 +1866,7 @@ class DashboardScreen extends ConsumerWidget {
       }
     } catch (e, stackTrace) {
       debugPrint('DashboardScreen._openOutcomeForLesson error: $e\n$stackTrace');
-      onNavigateTab?.call(2);
+      onNavigateTab?.call(AnaSekme.kazanimlar);
     }
   }
 

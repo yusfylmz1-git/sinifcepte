@@ -21,8 +21,6 @@ import 'seating_plan_screen.dart';
 import 'absence_followup_screen.dart';
 import 'student_list_screen.dart';
 import 'parent_contacts_screen.dart';
-import '../../../shared/widgets/custom_bottom_nav_bar.dart';
-import '../../navigation/providers/navigation_provider.dart';
 import '../../attendance/presentation/widgets/participation_cumulative_reports_modal.dart';
 import '../../parent_portal/presentation/widgets/class_reference_codes_modal.dart';
 import '../../parent_portal/presentation/screens/teacher_parent_panel_screen.dart';
@@ -122,7 +120,6 @@ class _MyClassHubScreenState extends ConsumerState<MyClassHubScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : const Color(0xFFF4F7FB),
-      extendBody: true,
       appBar: CustomAppBar(
         title: 'Sınıfım',
         subtitle: 'Sınıf Yönetimi & Evrak Merkezi',
@@ -298,19 +295,6 @@ class _MyClassHubScreenState extends ConsumerState<MyClassHubScreen> {
             );
           },
         ),
-      ),
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: 1, // Sınıf sekmesi aktif
-        onTap: (index) {
-          try {
-            ref.read(navigationIndexProvider.notifier).state = index;
-            if (Navigator.of(context).canPop()) {
-              Navigator.of(context).pop();
-            }
-          } catch (e, stackTrace) {
-            debugPrint('MyClassHubScreen alt menü navigasyon hatası: $e\n$stackTrace');
-          }
-        },
       ),
     );
   }

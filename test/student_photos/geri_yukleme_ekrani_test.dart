@@ -111,9 +111,19 @@ void main() {
     expect(find.textContaining('Geri yükleme tamamlandı'), findsNothing);
   });
 
-  test('KRITIK: menüdeki yedek penceresinde geri yükleme yolu var', () {
-    final s = File('lib/shared/widgets/app_drawer.dart').readAsStringSync();
+  // 17 Ekim 2026: pencere üç çizgili menüden ayrı dosyaya taşındı; Ben
+  // sekmesi ve Cepte araması onu açar.
+  test('KRITIK: yedek penceresinde geri yükleme yolu var', () {
+    final s = File('lib/core/backup/yedek_penceresi.dart').readAsStringSync();
     expect(s, contains('GeriYuklemeEkrani()'));
     expect(s, contains('e-Okul fotoğrafları dahil'));
+  });
+
+  test('KRITIK: yedek penceresi Ben sekmesinden ve Cepte`den açılıyor', () {
+    final ben = File('lib/features/profile/screens/profile_screen.dart').readAsStringSync();
+    expect(ben, contains('yedekPenceresiniAc(context)'));
+    expect(ben, contains("'Yedekle ve geri yükle'"));
+    final cepte = File('lib/features/assistant/presentation/cepte_hedef_acici.dart').readAsStringSync();
+    expect(cepte, contains('yedekPenceresiniAc(context)'));
   });
 }
