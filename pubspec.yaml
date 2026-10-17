@@ -59,7 +59,6 @@ dependencies:
   flutter_local_notifications: ^18.0.1
   timezone: ^0.10.0
   http: ^1.2.2
-  qr_flutter: ^4.1.0
   crypto: ^3.0.6
   # e-Okul ogrenci fotografi: EXIF yonu, kirpma, tam 133x171 JPEG.
   # `pdf` paketi uzerinden zaten projedeydi (dolayli, 4.3.0); dogrudan
@@ -79,21 +78,14 @@ dependencies:
   # internetsiz calisir. Yuz tanima degil, hicbir sey saklanmaz. iOS en az
   # 15.5 istiyor (proje 13.0 idi, yukseltildi). Windows'ta yok.
   google_mlkit_face_detection: ^0.14.0
-  # Tahta yapilandirmasinin imzalanmasi (Ed25519, RFC 8032).
-  #
-  # Idarenin telefonu `okul_config.json`'i imzalar, tahtada yalnizca
-  # dogrulama anahtari durur: flash bellek kopyalansa bile gecerli
-  # yapilandirma uretilemez. `crypto` yalniz ozet (hash) veriyor,
-  # imzalama yok — bu yuzden ayri paket gerekiyor.
-  ed25519_edwards: ^0.3.2
+  # (ed25519_edwards kaldirildi, 17 Ekim 2026: tahta yapilandirmasini
+  # artik telefon degil SinifCepte Ana Program imzaliyor.)
 
-  # Imzalama anahtarinin guvenli saklanmasi.
+  # Ogretmenin tahta acma bilgisinin (TOTP secret) guvenli saklanmasi.
   #
-  # Ed25519 ozel anahtari Android Keystore / iOS Keychain icinde durur;
+  # Secret Android Keystore / iOS Keychain icinde durur;
   # `shared_preferences` bu is icin YANLIS yer olurdu (duz metin,
-  # yedeklemelere dahil). Idareciye ayrica yedek disa aktarma sunulur:
-  # telefon degisiminde anahtar kaybolursa yeni yapilandirma
-  # yayimlanamaz ve tahtalara yeni dogrulama anahtari dagitmak gerekir.
+  # yedeklemelere dahil).
   #
   # Surum 10.x'te TUTULUYOR: `file_picker` 10.3.8 (bilincli olarak
   # sabitlenmis) `win32 ^5.9.0` istiyor, `secure_storage >=11.0.0` ise

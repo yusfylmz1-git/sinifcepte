@@ -1,18 +1,12 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sinifcepte/features/board_config/data/ogretmen_tahta_deposu.dart';
-import 'package:sinifcepte/features/board_config/data/tahta_ogretmen_deposu.dart';
-import 'package:sinifcepte/features/board_config/models/okul_config_model.dart';
 import 'package:sinifcepte/features/board_config/utils/tahta_totp.dart';
 
 /// Öğretmenin kendi tahta açma bilgisi (öğretmen tarafı).
 ///
-/// ## En değerli test burada
-///
-/// `kurulum_qr_turu`: idareci tarafı QR üretiyor, öğretmen tarafı onu
-/// ayrıştırıyor ve secret'tan kod üretiliyor. İki taraf farklı sınıflar
-/// olduğu için biçim uyuşmazlığı sahada "QR okumuyor" diye görünür ve
-/// teşhisi zor olur.
+/// Karekodu üreten taraf Ana Program; biçim uyumu
+/// `tahta_kurulum_capraz_test.dart`'ta Python çıktısıyla sınanıyor.
 class _BellekDepo extends FlutterSecureStorage {
   _BellekDepo() : super();
 
@@ -102,32 +96,12 @@ void main() {
   const gecerliYuk = 'SCT1:meb_16_123456:AYILMAZ:A. Yılmaz:GEZDGNBVGY3TQOJQ';
   const ikinciOkul = 'SCT1:meb_34_9:BDEMIR:B. Demir:MFRGGZDFMZTWQ2LK';
 
-  group('KRİTİK: iki tarafın QR biçimi uyuşuyor', () {
-    test('idarecinin ürettiği QR öğretmen tarafında ayrıştırılır', () {
-      // İdareci tarafı (TahtaOgretmenDeposu) üretiyor, öğretmen tarafı
-      // (OgretmenTahtaDeposu) ayrıştırıyor. Biçim uyuşmazsa sahada
-      // "QR okumuyor" diye görünür.
-      const ogretmen = PanoOgretmeni(
-        kod: 'AYILMAZ',
-        ad: 'A. Yılmaz',
-        totpSecret: 'GEZDGNBVGY3TQOJQ',
-      );
-
-      final uretilen = TahtaOgretmenDeposu.kurulumQrYuku(
-        okulId: 'meb_16_1',
-        ogretmen: ogretmen,
-      );
-
-      final ayristirilan = OgretmenTahtaDeposu.qrAyristir(uretilen);
-
-      expect(ayristirilan, isNotNull);
-      expect(ayristirilan!.okulId, 'meb_16_1');
-      expect(ayristirilan.kod, 'AYILMAZ');
-      // Ad karekodda ASCII'ye katlanıyor (okuyucu kodlama tahmini).
-      expect(ayristirilan.ad, 'A. Yilmaz');
-      expect(ayristirilan.totpSecret, 'GEZDGNBVGY3TQOJQ');
-    });
-
+  // Kurulum karekodunun tek üreticisi artık SınıfCepte Ana Program
+  // (Python). Biçim uyumu Python'un GERÇEK çıktısıyla
+  // `tahta_kurulum_capraz_test.dart`'ta sınanıyor. Telefondaki eski
+  // üretici (idareci tarafı, `TahtaOgretmenDeposu`) 17 Ekim 2026'da
+  // telefondan tahta yönetimiyle birlikte silindi.
+  group('KRİTİK: kurulum karekodundan kod üretiliyor', () {
     test('KRİTİK: ayrıştırılan secret gerçekten kod üretiyor', () {
       // Uçtan uca: idareci ekler → QR → öğretmen kaydeder → kod.
       final kayit = OgretmenTahtaDeposu.qrAyristir(gecerliYuk)!;
@@ -144,12 +118,7 @@ void main() {
     test('gerçek üretilmiş secret ile tur kapanıyor', () {
       // Sabit secret yerine gerçekten üretilmiş olanla.
       final secret = TahtaTotp.secretUret();
-      const kod = 'BDEMIR';
-
-      final yuk = TahtaOgretmenDeposu.kurulumQrYuku(
-        okulId: 'meb_34_9',
-        ogretmen: PanoOgretmeni(kod: kod, ad: 'B. Demir', totpSecret: secret),
-      );
+      final yuk = 'SCT1:meb_34_9:BDEMIR:B. Demir:$secret';
 
       final kayit = OgretmenTahtaDeposu.qrAyristir(yuk)!;
       expect(kayit.totpSecret, secret);
