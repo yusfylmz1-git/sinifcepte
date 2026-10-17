@@ -11,7 +11,6 @@ class ClassTeacherContactModel {
   final String location; // Örn: Veli Görüşme Odası, Öğretmenler Odası
   final String? phone;
   final String? email;
-  final bool isVerified; // Okul İdaresi / Admin Tarafından Doğrulanmış mı?
 
   const ClassTeacherContactModel({
     required this.id,
@@ -25,7 +24,6 @@ class ClassTeacherContactModel {
     this.location = 'Veli Görüşme Odası',
     this.phone,
     this.email,
-    this.isVerified = true,
   });
 
   ClassTeacherContactModel copyWith({
@@ -40,7 +38,6 @@ class ClassTeacherContactModel {
     String? location,
     String? phone,
     String? email,
-    bool? isVerified,
   }) {
     return ClassTeacherContactModel(
       id: id ?? this.id,
@@ -54,7 +51,6 @@ class ClassTeacherContactModel {
       location: location ?? this.location,
       phone: phone ?? this.phone,
       email: email ?? this.email,
-      isVerified: isVerified ?? this.isVerified,
     );
   }
 
@@ -71,7 +67,6 @@ class ClassTeacherContactModel {
       'location': location,
       'phone': phone,
       'email': email,
-      'is_verified': isVerified,
     };
   }
 
@@ -88,7 +83,6 @@ class ClassTeacherContactModel {
       location: map['location']?.toString() ?? 'Veli Görüşme Odası',
       phone: map['phone']?.toString(),
       email: map['email']?.toString(),
-      isVerified: map['is_verified'] == true || map['is_verified'] == 1 || map['is_verified'] == null,
     );
   }
 }

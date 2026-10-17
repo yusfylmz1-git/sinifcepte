@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/storage/prefs_keys.dart';
 import '../../../core/storage/prefs_service.dart';
-import '../data/services/auth_claims_service.dart';
 
 /// SınıfCepte Kullanıcı Rolleri
 enum UserRole {
@@ -11,82 +10,34 @@ enum UserRole {
   none,    // Henüz seçim yapılmadı
 }
 
-/// Okul yöneticiliği başvuru/onay durumu.
-///
-/// Yönetici rolü **opsiyoneldir**: yöneticisi olmayan okullarda uygulamanın
-/// tamamı normal çalışır. Bu yüzden [UserRole] içine değil, ayrı bir eksen
-/// olarak tutulur — bir kullanıcı hem öğretmen hem okul yöneticisi olabilir.
-enum SchoolAdminStatus {
-  none,     // Başvurmamış
-  pending,  // Başvurdu, süper admin onayı bekliyor
-  approved, // Onaylandı, yönetici paneline erişebilir
-  rejected, // Başvurusu reddedildi
-}
-
 /// Aktif Kullanıcı Rol Durumu
+///
+/// ## Okul yöneticiliği yok (18 Ekim 2026)
+/// Burada bir de "okul yöneticisi" ekseni vardı (süper adminin onayladığı
+/// custom claim). Telefondaki yönetici paneli öğretmen doğrulamıyordu:
+/// yalnızca başka başvuruları ve hiç dolmayan şikâyet listesini
+/// gösteriyordu. Kullanıcı kararıyla kalktı; okul yönetimi masaüstü Ana
+/// Program'da.
 class UserRoleState {
   final UserRole role;
   final bool isInitialized;
 
-  /// Okul yöneticiliği durumu. Kaynağı Firebase custom claim'dir; yerel
-  /// tercih olarak saklanmaz çünkü kullanıcı kendini yönetici ilan edememeli.
-  final SchoolAdminStatus adminStatus;
-
-  /// Süper admin (uygulama sahibi). Yalnızca custom claim ile verilir.
-  final bool isSuperAdmin;
-
-  /// Yöneticiliğin geçerli olduğu okul kimliği (custom claim).
-  ///
-  /// Yetkinin KAPSAMI buradan okunur, yerel profilden değil: profil bir
-  /// tercih dosyasıdır, `firestore.rules` ise `request.auth.token.schoolId`
-  /// ile karar verir. İkisi ayrışabilir (örneğin okul değişikliğinden
-  /// sonra), ve ayrıştığında yerel profile güvenen kod kullanıcıya
-  /// sunucunun reddedeceği bir işlemi gösterir.
-  final String adminSchoolId;
-
   const UserRoleState({
     required this.role,
     this.isInitialized = false,
-    this.adminStatus = SchoolAdminStatus.none,
-    this.isSuperAdmin = false,
-    this.adminSchoolId = '',
   });
 
   bool get isTeacher => role == UserRole.teacher;
   bool get isParent => role == UserRole.parent;
   bool get hasSelectedRole => role != UserRole.none;
 
-  /// Yönetici paneli yalnızca onaylanmış öğretmenlere açılır.
-  bool get isSchoolAdmin =>
-      role == UserRole.teacher && adminStatus == SchoolAdminStatus.approved;
-
-  /// Bu kullanıcı verilen okulun onaylı yöneticisi mi?
-  ///
-  /// `firestore.rules` içindeki `isSchoolAdminOf` ile aynı mantık. Okul
-  /// panosuna yazma düğmesini göstermeden önce buna bakılır; gerçek
-  /// koruma yine sunucudadır.
-  bool isSchoolAdminOf(String okulId) =>
-      isSchoolAdmin && adminSchoolId.isNotEmpty && adminSchoolId == okulId;
-
-  /// Başvuru butonunun gösterilip gösterilmeyeceği.
-  bool get canApplyForSchoolAdmin =>
-      role == UserRole.teacher &&
-      (adminStatus == SchoolAdminStatus.none ||
-          adminStatus == SchoolAdminStatus.rejected);
-
   UserRoleState copyWith({
     UserRole? role,
     bool? isInitialized,
-    SchoolAdminStatus? adminStatus,
-    bool? isSuperAdmin,
-    String? adminSchoolId,
   }) {
     return UserRoleState(
       role: role ?? this.role,
       isInitialized: isInitialized ?? this.isInitialized,
-      adminStatus: adminStatus ?? this.adminStatus,
-      isSuperAdmin: isSuperAdmin ?? this.isSuperAdmin,
-      adminSchoolId: adminSchoolId ?? this.adminSchoolId,
     );
   }
 }
@@ -107,8 +58,8 @@ class UserRoleNotifier extends StateNotifier<UserRoleState> {
   /// Kaydedilmiş rolü SharedPreferences'tan yükle.
   ///
   /// Yerelde tutulan yalnızca "hangi panele girmek istiyorum" tercihidir;
-  /// yetki değildir. Yönetici/süper admin bilgisi [refreshClaims] ile
-  /// sunucudan gelir.
+  /// yetki değildir. Yetkiyi sunucu kuralları verir (sınıf sahipliği,
+  /// veli kodu, kadro).
   Future<void> loadRole() async {
     try {
       final prefs = await PrefsService.instance();
@@ -146,36 +97,6 @@ class UserRoleNotifier extends StateNotifier<UserRoleState> {
   /// Rolü sıfırla (Çıkış veya Rol Değiştirme)
   Future<void> resetRole() async {
     await _setRole(UserRole.none);
-    state = state.copyWith(
-      adminStatus: SchoolAdminStatus.none,
-      isSuperAdmin: false,
-      // Okul kapsamı da sıfırlanmalı: çıkış yapan yöneticinin okulu
-      // bellekte kalırsa, aynı cihazda giren ikinci öğretmen bir an
-      // için o okulun yönetim düğmelerini görebilirdi.
-      adminSchoolId: '',
-    );
-  }
-
-  /// Yetki bilgisini Firebase custom claim'lerinden tazeler.
-  ///
-  /// Girişten sonra ve yönetici başvurusu onaylandığında çağrılır. Ağ yoksa
-  /// mevcut durum korunur — offline-first ilkesi gereği uygulama çalışmaya
-  /// devam eder, yalnızca yönetici paneli görünmez.
-  Future<void> refreshClaims({bool forceRefresh = false}) async {
-    try {
-      final claims = await AuthClaimsService.instance.readClaims(
-        forceRefresh: forceRefresh,
-      );
-      if (claims == null) return;
-
-      state = state.copyWith(
-        adminStatus: claims.schoolAdminStatus,
-        isSuperAdmin: claims.isSuperAdmin,
-        adminSchoolId: claims.schoolId,
-      );
-    } catch (e, stackTrace) {
-      debugPrint('Rol claim tazeleme hatası: $e\n$stackTrace');
-    }
   }
 
   Future<void> _setRole(UserRole newRole) async {

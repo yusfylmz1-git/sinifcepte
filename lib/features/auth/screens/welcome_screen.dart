@@ -78,8 +78,6 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
         await ref
             .read(teacherProfileProvider.notifier)
             .loadProfileFromStorage();
-        // Yönetici yetkisi yalnızca sunucudaki claim'den okunur.
-        await ref.read(userRoleProvider.notifier).refreshClaims();
       }
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
@@ -165,8 +163,6 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
       }
 
       await ref.read(userRoleProvider.notifier).selectTeacherRole();
-      // Okul yöneticisi yetkisi varsa claim'den okunur (opsiyonel rol).
-      await ref.read(userRoleProvider.notifier).refreshClaims(forceRefresh: true);
       // Hesap değiştiyse kullanıcıyı bilgilendir: her hesabın verisi
       // ayrıdır ve bu bilinçli bir tasarımdır. Sessizce boş sınıf listesi
       // göstermek "verilerim silindi" endişesi yaratıyordu.
@@ -198,7 +194,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
   ///
   /// Bulut oturumu açılmaz; sınıf ve öğrenci verisi zaten cihazda tutulduğu
   /// için öğretmen tarafının tamamı çalışır. Yalnızca bulut bağlantısı
-  /// gerektiren özellikler (okul dizini, veli bağlama, yönetici yetkisi)
+  /// gerektiren özellikler (okul dizini, veli bağlama)
   /// devre dışı kalır.
   Future<void> _handleDesktopTeacherEntry(BuildContext context) async {
     final proceed = await _showDesktopLocalModeNotice(context);
@@ -265,7 +261,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
             _DesktopModeRow(
               icon: Icons.cloud_off_rounded,
               color: const Color(0xFFF59E0B),
-              text: 'Veli bağlama, okul dizini ve yönetici yetkisi kapalıdır.',
+              text: 'Veli bağlama ve okul dizini kapalıdır.',
             ),
             _DesktopModeRow(
               icon: Icons.phone_android_rounded,

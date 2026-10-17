@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../../../../core/storage/prefs_service.dart';
-import '../models/content_report_model.dart';
 
 /// KVKK Açık Rıza ve İzin Kaydı Modeli
 class ConsentLogModel {
@@ -97,8 +96,6 @@ class AuditLogModel {
 class KvkkConsentService {
   static const String _consentPrefKey = 'sinifcepte_kvkk_consents';
   static const String _auditPrefKey = 'sinifcepte_audit_logs';
-  static const String _reportsPrefKey = 'sinifcepte_content_reports';
-  static const String _verifiedTeachersPrefKey = 'sinifcepte_verified_teachers';
   static const String currentConsentVersion = 'v2.0';
 
   /// 1. Veli Açık Rıza Onayını Kaydetme (KVKK Madde 5/2-c & 5/2-f Uyumlu)
@@ -214,118 +211,6 @@ class KvkkConsentService {
     } catch (e, stackTrace) {
       debugPrint('KvkkConsentService getAuditLogs hatası: $e\n$stackTrace');
       return [];
-    }
-  }
-
-  /// 5. İçerik Şikayeti Kaydetme (Content Moderation)
-  static Future<bool> reportContent({
-    required String reportedByUserId,
-    required String reportedRole,
-    required String contentId,
-    required String contentType,
-    required String contentSnippet,
-    required String reason,
-  }) async {
-    try {
-      final prefs = await PrefsService.instance();
-      final rawList = prefs?.getStringList(_reportsPrefKey) ?? [];
-
-      final report = ContentReportModel(
-        id: 'rep_${DateTime.now().millisecondsSinceEpoch}',
-        reportedByUserId: reportedByUserId,
-        reportedRole: reportedRole,
-        contentId: contentId,
-        contentType: contentType,
-        contentSnippet: contentSnippet,
-        reason: reason,
-        reportedAt: DateTime.now(),
-        status: 'pending',
-      );
-
-      rawList.add(jsonEncode(report.toMap()));
-      if (prefs != null) {
-        await prefs.setStringList(_reportsPrefKey, rawList);
-      }
-
-      await logAudit(
-        actorId: reportedByUserId,
-        actorRole: reportedRole,
-        action: 'content_reported',
-        targetId: contentId,
-        details: 'İçerik şikayet edildi: $reason ($contentType)',
-      );
-
-      return true;
-    } catch (e, stackTrace) {
-      debugPrint('KvkkConsentService reportContent hatası: $e\n$stackTrace');
-      return false;
-    }
-  }
-
-  /// 6. İçerik Şikayetlerini Listeleme
-  static Future<List<ContentReportModel>> getContentReports() async {
-    try {
-      final prefs = await PrefsService.instance();
-      final rawList = prefs?.getStringList(_reportsPrefKey) ?? [];
-      final list = <ContentReportModel>[];
-
-      for (final raw in rawList.reversed) {
-        try {
-          final decoded = jsonDecode(raw);
-          if (decoded is Map<String, dynamic>) {
-            list.add(ContentReportModel.fromMap(decoded));
-          }
-        } catch (_) {}
-      }
-      return list;
-    } catch (e, stackTrace) {
-      debugPrint('KvkkConsentService getContentReports hatası: $e\n$stackTrace');
-      return [];
-    }
-  }
-
-  /// 7. Öğretmen Doğrulama / Mavi Rozet Verme (Admin Onayı)
-  static Future<bool> verifyTeacher({
-    required String teacherId,
-    required String teacherName,
-    required String adminId,
-    required String schoolName,
-  }) async {
-    try {
-      final prefs = await PrefsService.instance();
-      final verifiedList = prefs?.getStringList(_verifiedTeachersPrefKey) ?? [];
-
-      if (!verifiedList.contains(teacherId)) {
-        verifiedList.add(teacherId);
-        if (prefs != null) {
-          await prefs.setStringList(_verifiedTeachersPrefKey, verifiedList);
-        }
-      }
-
-      await logAudit(
-        actorId: adminId,
-        actorRole: 'admin',
-        action: 'teacher_verified',
-        targetId: teacherId,
-        details: '$teacherName isimli öğretmene $schoolName okul yönetimi tarafından Mavi Onay Rozeti verildi.',
-      );
-
-      return true;
-    } catch (e, stackTrace) {
-      debugPrint('KvkkConsentService verifyTeacher hatası: $e\n$stackTrace');
-      return false;
-    }
-  }
-
-  /// 8. Öğretmenin Doğrulanmış Olup Olmadığını Kontrol Etme
-  static Future<bool> isTeacherVerified(String teacherId) async {
-    try {
-      final prefs = await PrefsService.instance();
-      final verifiedList = prefs?.getStringList(_verifiedTeachersPrefKey) ?? [];
-      return verifiedList.contains(teacherId);
-    } catch (e, stackTrace) {
-      debugPrint('KvkkConsentService isTeacherVerified hatası: $e\n$stackTrace');
-      return false;
     }
   }
 }

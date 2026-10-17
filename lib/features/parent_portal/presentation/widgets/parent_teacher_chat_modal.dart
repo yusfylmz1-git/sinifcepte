@@ -221,8 +221,10 @@ class _ParentTeacherChatModalState
     //
     // Onceden HICBIR denetim yoktu; hakaret ve mesaj bombardimani
     // dogrudan gidiyordu. Denetim cihazda calisir (sifir bulut maliyeti);
-    // kararli bir saldirgan atlatabilir, o yuzden sikayet mekanizmasi
-    // ikinci katman olarak durur.
+    // kararli bir saldirgan atlatabilir. Ikinci katman sanilan sikayet
+    // yolu hic baglanmamisti (gonderen yoktu) ve 18 Ekim 2026'da
+    // kaldirildi. Google Play kullanici icerigi kurali icin gercek bir
+    // "bildir" yolu ileride gerekecek (acik is).
     final denetim = ContentGuard.instance.check(
       userId: widget.selfUid,
       body: body,

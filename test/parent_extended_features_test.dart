@@ -59,40 +59,6 @@ void main() {
       expect(children.first.studentName, equals('Ali YILMAZ'));
     });
 
-    test('Teacher verification by admin grants blue badge and logs audit', () async {
-      expect(await KvkkConsentService.isTeacherVerified('t_1'), isFalse);
-
-      final verified = await KvkkConsentService.verifyTeacher(
-        teacherId: 't_1',
-        teacherName: 'Yusuf Yılmaz',
-        adminId: 'admin_1',
-        schoolName: 'Cumhuriyet Ortaokulu',
-      );
-
-      expect(verified, isTrue);
-      expect(await KvkkConsentService.isTeacherVerified('t_1'), isTrue);
-
-      final logs = await KvkkConsentService.getAuditLogs();
-      expect(logs.any((l) => l.action == 'teacher_verified'), isTrue);
-    });
-
-    test('Content moderation: reporting content records report and audit trail', () async {
-      final success = await KvkkConsentService.reportContent(
-        reportedByUserId: 'parent_1',
-        reportedRole: 'parent',
-        contentId: 'ann_123',
-        contentType: 'Duyuru',
-        contentSnippet: 'Yarın toplantı var',
-        reason: 'Yanlış saat bilgisi içeriyor',
-      );
-
-      expect(success, isTrue);
-
-      final reports = await KvkkConsentService.getContentReports();
-      expect(reports.length, equals(1));
-      expect(reports.first.reason, contains('Yanlış saat'));
-    });
-
     test('Self-Service KVKK: parent exports data and deletes account', () async {
       // 1. Veri İndirme (JSON Dışa Aktarma)
       final export = await ParentLifecycleService.exportParentDataAsJson('puser_test');

@@ -13,8 +13,6 @@ class PrefsKeys {
   static const auditLogsLegacy = 'sinifcepte_audit_logs_v1';
 
   static const consentLogs = 'sinifcepte_consent_logs';
-  static const contentReports = 'sinifcepte_content_reports';
-  static const verifiedTeachers = 'sinifcepte_verified_teachers';
   static const localParentId = 'sinifcepte_local_parent_id';
   static const activeUserRole = 'sinifcepte_active_user_role';
 

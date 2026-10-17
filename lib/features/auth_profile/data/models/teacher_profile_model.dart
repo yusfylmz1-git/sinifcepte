@@ -15,9 +15,6 @@ class TeacherProfileModel {
   final String schoolPrincipalName;
   final String email;
   final String? photoUrl;
-  final bool isVerifiedBySchoolAdmin;
-  final DateTime? verifiedAt;
-  final String? verifiedByAdminId;
 
   const TeacherProfileModel({
     required this.id,
@@ -33,9 +30,6 @@ class TeacherProfileModel {
     required this.schoolPrincipalName,
     required this.email,
     this.photoUrl,
-    this.isVerifiedBySchoolAdmin = false,
-    this.verifiedAt,
-    this.verifiedByAdminId,
   });
 
   /// Standart yazım: **Yusuf YILMAZ**.
@@ -87,9 +81,6 @@ class TeacherProfileModel {
       'schoolPrincipalName': schoolPrincipalName,
       'email': email,
       'photoUrl': photoUrl,
-      'isVerifiedBySchoolAdmin': isVerifiedBySchoolAdmin,
-      'verifiedAt': verifiedAt?.toIso8601String(),
-      'verifiedByAdminId': verifiedByAdminId,
     };
   }
 
@@ -108,9 +99,6 @@ class TeacherProfileModel {
       schoolPrincipalName: map['schoolPrincipalName'] as String? ?? map['mudur'] as String? ?? '',
       email: map['email'] as String? ?? '',
       photoUrl: map['photoUrl'] as String? ?? map['fotoUrl'] as String?,
-      isVerifiedBySchoolAdmin: map['isVerifiedBySchoolAdmin'] as bool? ?? false,
-      verifiedAt: map['verifiedAt'] != null ? DateTime.parse(map['verifiedAt'].toString()) : null,
-      verifiedByAdminId: map['verifiedByAdminId'] as String?,
     );
   }
 
@@ -128,9 +116,6 @@ class TeacherProfileModel {
     String? schoolPrincipalName,
     String? email,
     String? photoUrl,
-    bool? isVerifiedBySchoolAdmin,
-    DateTime? verifiedAt,
-    String? verifiedByAdminId,
   }) {
     return TeacherProfileModel(
       id: id ?? this.id,
@@ -146,9 +131,6 @@ class TeacherProfileModel {
       schoolPrincipalName: schoolPrincipalName ?? this.schoolPrincipalName,
       email: email ?? this.email,
       photoUrl: photoUrl ?? this.photoUrl,
-      isVerifiedBySchoolAdmin: isVerifiedBySchoolAdmin ?? this.isVerifiedBySchoolAdmin,
-      verifiedAt: verifiedAt ?? this.verifiedAt,
-      verifiedByAdminId: verifiedByAdminId ?? this.verifiedByAdminId,
     );
   }
 }

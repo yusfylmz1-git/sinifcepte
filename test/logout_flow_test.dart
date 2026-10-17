@@ -32,19 +32,6 @@ void main() {
       expect(prefs?.getString(PrefsKeys.activeUserRole), isNull);
     });
 
-    test('resetRole yönetici yetkisini de temizler', () async {
-      final notifier = UserRoleNotifier();
-      await notifier.loadRole();
-      await notifier.selectTeacherRole();
-
-      await notifier.resetRole();
-
-      // Yeni hesap eski hesabın yöneticilik yetkisini devralmamalı.
-      expect(notifier.state.adminStatus, SchoolAdminStatus.none);
-      expect(notifier.state.isSuperAdmin, isFalse);
-      expect(notifier.state.isSchoolAdmin, isFalse);
-    });
-
     test('Çıkış sonrası yeni rol seçimi temiz başlar', () async {
       final notifier = UserRoleNotifier();
       await notifier.loadRole();

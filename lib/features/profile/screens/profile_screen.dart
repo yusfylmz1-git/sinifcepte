@@ -8,9 +8,6 @@ import '../../../shared/widgets/glass_card.dart';
 import 'about_screen.dart';
 import '../../auth_profile/presentation/views/teacher_profile_setup_view.dart';
 import '../../auth_profile/providers/teacher_profile_provider.dart';
-import '../../auth_profile/presentation/views/school_admin_panel_view.dart';
-import '../../auth_profile/presentation/views/school_admin_request_view.dart';
-import '../../auth_profile/providers/user_role_provider.dart';
 import '../../board_config/presentation/tahta_kilidi_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../parent_portal/presentation/widgets/help_support_modal.dart';
@@ -22,6 +19,13 @@ import '../../parent_portal/presentation/widgets/help_support_modal.dart';
 /// buraya toplandı; menü kalktı. Gizlilik politikası Hakkında'da.
 /// Profil kartının altındaki "Profil ve Mesleki Bilgiler" satırı da kalktı:
 /// kartın kendisiyle aynı ekranı açıyordu.
+///
+/// ## Okul yöneticiliği yok (18 Ekim 2026)
+/// "Okul Yöneticiliği Başvurusu / Paneli" satırı kalktı (kullanıcı
+/// kararı). Panel öğretmen doğrulamıyordu: yalnızca başka başvuruları ve
+/// hiç dolmayan şikâyet listesini gösteriyordu; "okul idaresince
+/// doğrulandı" rozetini veren kod da yoktu. Okul yönetimi masaüstü Ana
+/// Program'da.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -29,8 +33,6 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final teacherProfile = ref.watch(teacherProfileProvider);
-    // Yönetici yetkisi custom claim'den gelir; yerel tercihten değil.
-    final roleState = ref.watch(userRoleProvider);
 
     void ac(Widget hedef) => Navigator.push(
           context,
@@ -98,20 +100,6 @@ class ProfileScreen extends ConsumerWidget {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                // Okul idaresince doğrulanmış öğretmen rozeti.
-                                // Bir KAPI değil, ROZET: doğrulanmamış
-                                // öğretmen de tüm özellikleri kullanır.
-                                if (teacherProfile.isVerifiedBySchoolAdmin) ...[
-                                  const SizedBox(width: 5),
-                                  Tooltip(
-                                    message: 'Okul idaresince doğrulandı',
-                                    child: Icon(
-                                      Icons.verified_rounded,
-                                      size: 17,
-                                      color: Colors.blue.shade400,
-                                    ),
-                                  ),
-                                ],
                               ],
                             ),
                             const SizedBox(height: 4),
@@ -160,9 +148,8 @@ class ProfileScreen extends ConsumerWidget {
 
               _baslik(isDark, 'Okul'),
 
-              // Tahta Kilidi: öğretmen tarafı. Okul yöneticiliği kartından
-              // ayrı: bu kart her öğretmene görünür, yöneticilik isteğe bağlı
-              // bir ek yetkidir.
+              // Tahta Kilidi: öğretmen tarafı. Tahtaların kurulumu ve
+              // yönetimi masaüstü Ana Program'da.
               _satir(
                 isDark,
                 ikon: Icons.desktop_windows_outlined,
@@ -170,33 +157,6 @@ class ProfileScreen extends ConsumerWidget {
                 baslik: 'Tahta Kilidi',
                 altBaslik: 'Etkileşimli tahtayı telefonunuzla açın',
                 onTap: () => ac(const TahtaKilidiScreen()),
-              ),
-              const SizedBox(height: 12),
-
-              // Okul Yöneticiliği
-              //
-              // Yönetici rolü opsiyoneldir: yöneticisi olmayan okullarda
-              // uygulamanın tamamı normal çalışır. Kart, kullanıcının
-              // durumuna göre başvuru veya panel açar.
-              _satir(
-                isDark,
-                ikon: Icons.admin_panel_settings_rounded,
-                renk: roleState.isSchoolAdmin
-                    ? const Color(0xFF10B981)
-                    : AppColors.primary,
-                baslik: roleState.isSchoolAdmin
-                    ? 'Okul Yönetim Paneli'
-                    : 'Okul Yöneticiliği Başvurusu',
-                altBaslik: roleState.isSchoolAdmin
-                    ? 'Öğretmen onayı ve veli şikâyetleri'
-                    : 'İsteğe bağlı — onay olmadan da tüm özellikler açık',
-                onTap: () {
-                  if (roleState.isSchoolAdmin) {
-                    ac(const SchoolAdminPanelView());
-                  } else {
-                    SchoolAdminRequestView.show(context);
-                  }
-                },
               ),
 
               _baslik(isDark, 'Veriler ve ayarlar'),
