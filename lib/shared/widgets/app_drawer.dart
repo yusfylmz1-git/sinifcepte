@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/app_surumu.dart';
+import '../../core/privacy/veri_saklama_metni.dart';
 import '../../core/theme/app_colors.dart';
 import '../../features/academic_calendar/screens/academic_calendar_screen.dart';
 import '../../features/analytics/presentation/views/analytics_dashboard_view.dart';
@@ -106,7 +108,7 @@ class AppDrawer extends ConsumerWidget {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              'Verileriniz yalnızca bu cihazda saklanır (KVKK Uyumlu)',
+                              VeriSaklamaMetni.kisa,
                               style: TextStyle(
                                 color: isDark ? AppColors.accent : const Color(0xFF059669),
                                 fontSize: 11,
@@ -270,7 +272,7 @@ class AppDrawer extends ConsumerWidget {
                     Divider(color: isDark ? AppColors.glassBorder : Colors.grey.shade300),
                     const SizedBox(height: 8),
                     Text(
-                      'SınıfCepte v1.0.0',
+                      'SınıfCepte v$uygulamaSurumu',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: isDark ? Colors.white38 : Colors.black45,
                         fontSize: 12,

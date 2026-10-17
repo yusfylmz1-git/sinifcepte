@@ -2,12 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_fonts.dart';
 import '../../core/theme/app_colors.dart';
+import '../../features/exam_operations/data/models/exam_model.dart';
 import '../../features/exam_operations/presentation/views/exam_tracking_view.dart';
 import '../../features/exam_operations/providers/exam_tracking_provider.dart';
 
 /// SınıfCepte - Standart Üst Bar (Distinct Top AppBar) Widget'ı
 /// Sol üstte: 3 Çizgi Menü + (Özet'te Profil Fotosu / Diğerlerinde Proje Logosu)
-/// En sağda: Mesaj Kutusu İkonu + Bildirim İkonu
+/// En sağda: Mesaj Kutusu İkonu (yalnız [onMessageTap] verilince) + Bildirim İkonu
+///
+/// ## Söz verip yapmayan simge yok (17 Ekim 2026)
+/// Mesaj simgesi her ekranda duruyordu, üstünde hep nokta yanıyordu ve
+/// basınca "Mesaj Kutusu (Yakında)" diyordu. Zildeki nokta da bildirim
+/// olsun olmasın yanıyordu ve listeye her seferinde sahte bir "MEB
+/// takvimi yayında" bildirimi ekleniyordu. Artık mesaj simgesi yalnız
+/// gerçek bir hedefi varsa görünür, zilin noktası yalnız gerçek bir sınav
+/// uyarısı varken çıkar.
 class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
   final String title;
   final String? subtitle;
@@ -43,9 +52,62 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => Size.fromHeight(height);
 
+  /// Zilde gösterilecek sınav uyarıları: favori ve geçmemiş sınavlar için
+  /// son başvuruya 24 saat, sınava 24 saat ve son 7 gün hatırlatması.
+  ///
+  /// Saf fonksiyon: zilin noktası da açılan liste de aynı hesaptan gelir,
+  /// "nokta yanıyor ama liste boş" olamaz.
+  static List<Map<String, dynamic>> sinavBildirimleri(
+    Iterable<ExamModel> exams, {
+    DateTime? simdi,
+  }) {
+    final now = simdi ?? DateTime.now();
+    final notifications = <Map<String, dynamic>>[];
+    for (final exam in exams) {
+      if (!exam.isFavorite || exam.isPast) continue;
+      // 1. Son Başvuruya 24 Saat Kaldı Uyarısı
+      if (exam.applicationDeadline != null &&
+          exam.applicationDeadline!.isAfter(now) &&
+          exam.applicationDeadline!.difference(now).inHours <= 24) {
+        notifications.add({
+          'type': 'exam_deadline_24h',
+          'title': '⚠️ Son Başvuruya 24 Saat!',
+          'subtitle': '📝 "${exam.title}" başvuruları yarın sona eriyor. Başvurunuzu tamamlayınız!',
+          'exam': exam,
+          'isUrgent': true,
+        });
+      }
+
+      // 2. Sınav Gününe 24 Saat Kaldı Uyarısı
+      if (exam.daysRemaining <= 1) {
+        notifications.add({
+          'type': 'exam_24h',
+          'title': '⏳ Sınava Son 24 Saat!',
+          'subtitle': '⭐ "${exam.title}" sınavına 24 saatten az bir süre kaldı.',
+          'exam': exam,
+          'isUrgent': true,
+        });
+      } else if (exam.daysRemaining <= 7) {
+        notifications.add({
+          'type': 'exam_fav',
+          'title': '⭐ Favori Sınav Hatırlatması',
+          'subtitle': '"${exam.title}" için son ${exam.daysRemaining} gün kaldı.',
+          'exam': exam,
+          'isUrgent': false,
+        });
+      }
+    }
+    return notifications;
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Sınav listesi burada BAŞLATILMAZ: üst çubuk onlarca ekranda var ve
+    // başlatmak her birinde veritabanı/asset yüklemesi demek. Ana sayfa
+    // sınavları zaten yüklüyor; sağlayıcı açıksa nokta onun verisinden çıkar.
+    final bildirimVar = ref.exists(examTrackingProvider) &&
+        sinavBildirimleri(ref.watch(examTrackingProvider).exams).isNotEmpty;
     final canPop = Navigator.of(context).canPop();
     final bool shouldShowBack = showBackButton ?? canPop;
     final bool shouldShowDrawer = !shouldShowBack && showDrawerButton;
@@ -186,49 +248,29 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Mesajlaşma İkonu (💬)
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        icon: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 19),
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              child: Container(
-                                width: 7,
-                                height: 7,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.accent,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            ),
-                          ],
+                    // Mesajlaşma İkonu (💬) — yalnız gerçek bir hedefi varsa.
+                    if (onMessageTap != null) ...[
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
                         ),
-                        tooltip: 'Mesajlar',
-                        visualDensity: VisualDensity.compact,
-                        onPressed: () {
-                          try {
-                            if (onMessageTap != null) {
+                        child: IconButton(
+                          icon: const Icon(Icons.chat_bubble_outline_rounded,
+                              color: Colors.white, size: 19),
+                          tooltip: 'Mesajlar',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () {
+                            try {
                               onMessageTap!();
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Mesaj Kutusu (Yakında)')),
-                              );
+                            } catch (e, stackTrace) {
+                              debugPrint('Mesaj ikonu tıklama hatası: $e\n$stackTrace');
                             }
-                          } catch (e, stackTrace) {
-                            debugPrint('Mesaj ikonu tıklama hatası: $e\n$stackTrace');
-                          }
-                        },
+                          },
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
+                      const SizedBox(width: 8),
+                    ],
                     // Bildirim İkonu (🔔)
                     Container(
                       decoration: BoxDecoration(
@@ -240,18 +282,20 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                           clipBehavior: Clip.none,
                           children: [
                             const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 19),
-                            Positioned(
-                              right: 1,
-                              top: 1,
-                              child: Container(
-                                width: 7,
-                                height: 7,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.danger,
-                                  shape: BoxShape.circle,
+                            if (bildirimVar)
+                              Positioned(
+                                right: 1,
+                                top: 1,
+                                child: Container(
+                                  key: const ValueKey('zil_noktasi'),
+                                  width: 7,
+                                  height: 7,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.danger,
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                         tooltip: 'Bildirimler',
@@ -281,56 +325,9 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
   /// Uygulama İçi Bildirim Merkezi BottomSheet Modalı
   void _showInAppNotificationsModal(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final examState = ref.read(examTrackingProvider);
-
-    // Favori Sınavlar ve Son 24 Saat / Yaklaşan Sınav Bildirimleri
-    final notifications = <Map<String, dynamic>>[];
-
-    final now = DateTime.now();
-
-    for (final exam in examState.exams) {
-      if (exam.isFavorite && !exam.isPast) {
-        // 1. Son Başvuruya 24 Saat Kaldı Uyarısı
-        if (exam.applicationDeadline != null &&
-            exam.applicationDeadline!.isAfter(now) &&
-            exam.applicationDeadline!.difference(now).inHours <= 24) {
-          notifications.add({
-            'type': 'exam_deadline_24h',
-            'title': '⚠️ Son Başvuruya 24 Saat!',
-            'subtitle': '📝 "${exam.title}" başvuruları yarın sona eriyor. Başvurunuzu tamamlayınız!',
-            'exam': exam,
-            'isUrgent': true,
-          });
-        }
-
-        // 2. Sınav Gününe 24 Saat Kaldı Uyarısı
-        if (exam.daysRemaining <= 1) {
-          notifications.add({
-            'type': 'exam_24h',
-            'title': '⏳ Sınava Son 24 Saat!',
-            'subtitle': '⭐ "${exam.title}" sınavına 24 saatten az bir süre kaldı.',
-            'exam': exam,
-            'isUrgent': true,
-          });
-        } else if (exam.daysRemaining <= 7) {
-          notifications.add({
-            'type': 'exam_fav',
-            'title': '⭐ Favori Sınav Hatırlatması',
-            'subtitle': '"${exam.title}" için son ${exam.daysRemaining} gün kaldı.',
-            'exam': exam,
-            'isUrgent': false,
-          });
-        }
-      }
-    }
-
-    // Sistem Duyurusu Örneği
-    notifications.add({
-      'type': 'system',
-      'title': '📢 MEB Resmî Çalışma Takvimi',
-      'subtitle': '2026-2027 Eğitim Öğretim Yılı takvimi ve Maarif Modeli kazanımları yayındadır.',
-      'isUrgent': false,
-    });
+    // Noktayla AYNI hesap: nokta yanıyorsa liste dolu, sönükse boş.
+    final notifications =
+        sinavBildirimleri(ref.read(examTrackingProvider).exams);
 
     showModalBottomSheet(
       context: context,

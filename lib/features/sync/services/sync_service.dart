@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../../core/app_surumu.dart';
 import '../../../core/cloud/remote_manifest_service.dart';
 import '../../../core/database/database_helper.dart';
 import '../../exam_operations/data/services/exam_sync_service.dart';
@@ -53,8 +54,9 @@ class SyncService {
   static const String _kSchoolsSyncKey = 'sync_school_directory';
   static const String _kExamsSyncKey = 'sync_official_exams';
 
-  /// Uygulamanın yayımlanmış sürümü (pubspec `version` alanıyla eşleşir).
-  static const String currentAppVersion = '1.0.0';
+  /// Uygulamanın yayımlanmış sürümü. Tek kaynağı [uygulamaSurumu]; eskiden
+  /// burada "1.0.0" elle yazılıydı ve uygulama 1.2.0'dayken öyle kalmıştı.
+  static const String currentAppVersion = uygulamaSurumu;
 
   /// Arka planda veya manuel tetiklenen akıllı senkronizasyon.
   ///

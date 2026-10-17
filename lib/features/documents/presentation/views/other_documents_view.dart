@@ -33,10 +33,6 @@ class OtherDocumentsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // "Yakında" listesi şimdilik boş: Öğretmen Dosyası da üretilir
-    // hâle geldi. Yeni belge planlandığında buraya eklenir.
-    const planlanan = <({String ad, String aciklama, IconData ikon})>[];
-
     return Scaffold(
       backgroundColor:
           isDark ? AppColors.darkBackground : const Color(0xFFF8FAFC),
@@ -49,8 +45,8 @@ class OtherDocumentsView extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
           children: [
-            _tasindiNotu(isDark),
-            const SizedBox(height: 18),
+            // "Raporlar taşındı" bilgi kartı burada duruyordu; taşınma
+            // eskidi, kart da kalktı (17 Ekim 2026).
             // Teftişte ilk istenen dosya bu; listenin başında durur.
             _hazirKart(
               context,
@@ -135,19 +131,6 @@ class OtherDocumentsView extends StatelessWidget {
               ikon: Icons.class_outlined,
               hedef: const MyClassHubScreen(),
             ),
-            if (planlanan.isNotEmpty) ...[
-            const SizedBox(height: 18),
-            Text(
-              'Yakında',
-              style: AppFonts.outfit(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: isDark ? Colors.white : const Color(0xFF0F172A),
-              ),
-            ),
-            const SizedBox(height: 8),
-            for (final b in planlanan) _yakindaKart(isDark, b),
-            ],
           ],
         ),
       ),
@@ -223,122 +206,6 @@ class OtherDocumentsView extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  /// Taşınan raporların nereye gittiğini söyler.
-  ///
-  /// Kullanıcı alışkanlığı önemli: bu ekranda sınav analizini arayan
-  /// öğretmen "kayboldu" sanmasın.
-  Widget _tasindiNotu(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.moving_rounded, size: 16, color: AppColors.primary),
-              const SizedBox(width: 7),
-              Text(
-                'Raporlar taşındı',
-                style: AppFonts.outfit(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.primary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Sınav analizi ve karne görüşü artık Sınav İşlemleri’nde, '
-            'katılım raporu Ders İçi Katılım’da. Her rapor, verisini '
-            'ürettiğiniz ekranın yanında.',
-            style: AppFonts.outfit(
-              fontSize: 12,
-              height: 1.45,
-              color: isDark ? Colors.white70 : const Color(0xFF475569),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _yakindaKart(
-    bool isDark,
-    ({String ad, String aciklama, IconData ikon}) b,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: (isDark ? Colors.white : Colors.black)
-                  .withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(b.ikon,
-                size: 19, color: isDark ? Colors.white38 : Colors.grey),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  b.ad,
-                  style: AppFonts.outfit(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white70 : const Color(0xFF334155),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  b.aciklama,
-                  style: AppFonts.outfit(
-                    fontSize: 11.5,
-                    color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-            decoration: BoxDecoration(
-              color: (isDark ? Colors.white : Colors.black)
-                  .withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              'Yakında',
-              style: AppFonts.outfit(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white54 : Colors.grey,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

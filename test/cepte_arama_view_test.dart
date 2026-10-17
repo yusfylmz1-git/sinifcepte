@@ -117,11 +117,14 @@ void main() {
     expect(s, contains('Widget _cip('));
   });
 
-  test('KRITIK: ana sayfada en üstte arama kutusu, Cepte kartı yeni ekranı açıyor', () {
+  test('KRITIK: ana sayfada en üstte arama kutusu yeni ekranı açıyor', () {
     final s = File('lib/features/dashboard/screens/dashboard_screen.dart').readAsStringSync();
     expect(s.indexOf('_aramaKutusu(context, isDark)'), greaterThan(0));
     expect(s.indexOf('_aramaKutusu(context, isDark)'), lessThan(s.indexOf('_buildModernGreetingHero(')));
-    expect(s, contains("'target': const CepteAramaView()"));
+    expect(s, contains('const CepteAramaView()'));
     expect(s, isNot(contains('CepteSohbetView')));
+    // 17 Ekim 2026: hızlı işlemlerdeki ayrı "Cepte" kartı kaldırıldı; aynı
+    // ekrana tepedeki arama kutusu zaten götürüyor (tek kapı kuralı).
+    expect(s, isNot(contains("'title': 'Cepte'")));
   });
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/app_surumu.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 import '../../../shared/widgets/custom_app_bar.dart';
@@ -19,8 +20,9 @@ import 'legal_document_screen.dart';
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
-  /// Uygulama sürümü. Destek talebinde de kullanılır.
-  static const String appVersion = '1.0.0';
+  /// Uygulama sürümü. Destek talebinde de kullanılır; tek kaynağı
+  /// [uygulamaSurumu].
+  static const String appVersion = uygulamaSurumu;
 
   @override
   Widget build(BuildContext context) {

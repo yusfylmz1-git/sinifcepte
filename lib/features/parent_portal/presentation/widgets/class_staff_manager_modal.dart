@@ -22,19 +22,15 @@ import '../../../auth_profile/data/services/teacher_identity.dart';
 /// içindeki `isClassStaff()` bunu zorunlu kılar.
 ///
 /// ## Öğretmen kimliği nasıl belirleniyor
-/// Mesajlaşma yetkisi Firebase UID'ye bağlıdır, isme değil. İki yol var:
+/// Mesajlaşma yetkisi Firebase UID'ye bağlıdır, isme değil. Tek yol
+/// meslektaş seçimidir: öğretmen okulunu zaten seçmek zorunda olduğu için
+/// UID'si `school_teachers` dizinine kaydolur. Sınıf öğretmeni kadroyu aynı
+/// okuldaki meslektaşları arasından seçerek kurar; seçildiği anda
+/// mesajlaşma açılır, karşı tarafın bir şey yapması gerekmez.
 ///
-/// **1. Meslektaş seçimi (öncelikli, tek adım).** Öğretmen okulunu zaten
-/// seçmek zorunda olduğu için UID'si `school_teachers` dizinine kaydolur.
-/// Sınıf öğretmeni kadroyu aynı okuldaki meslektaşları arasından seçerek
-/// kurar; seçildiği anda mesajlaşma açılır. Karşı tarafın hiçbir işlem
-/// yapması gerekmez.
-///
-/// **2. Katılım kodu (yedek).** Yalnızca dizinde bulunmayan öğretmenler
-/// için: henüz uygulamayı açmamış ya da farklı okul seçmiş olabilir.
-/// Bu durumda satır "beklemede" görünür — veli öğretmeni listede görür
-/// (kimin dersine girdiğini bilir) ama kod girilene kadar mesajlaşma
-/// açılmaz.
+/// Eskiden ikinci bir "katılım kodu" yolu vardı; kaldırıldı ama ekrandaki
+/// düğmesi kalmıştı ve yalnız "ekleyemezsiniz" diyordu (17 Ekim 2026'da
+/// düğme de kaldırıldı). Listede olmayan öğretmen henüz kaydolmamıştır.
 class ClassStaffManagerModal extends ConsumerStatefulWidget {
   final ClassModel classModel;
 
@@ -140,29 +136,13 @@ class _ClassStaffManagerModalState
       builder: (ctx) => _ColleaguePickerSheet(
         colleagues: available,
         schoolName: teacher.schoolName,
-        onManualEntry: () => Navigator.of(ctx).pop(null),
       ),
     );
 
-    if (!mounted) return;
-
-    if (picked == null) {
-      // Kodlu davet yolu kaldırıldı: uygulamaya hiç girmemiş öğretmen
-      // zaten mesajlaşamıyordu, kadroda görünmesi veliye tutulamayan bir
-      // söz veriyordu (veli mesaj atıyor, karşılık gelmiyordu).
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Aradığınız öğretmen listede yoksa henüz uygulamaya '
-            'kaydolmamıştır. Kaydolup okulunu seçtikten sonra '
-            'buradan ekleyebilirsiniz.',
-          ),
-          duration: Duration(seconds: 6),
-        ),
-      );
-      return;
-    }
+    // Pencere seçim yapılmadan kapatıldı: bir şey söylemeye gerek yok.
+    // (Kodlu davet yolu kaldırıldı; listede olmayan öğretmen için açıklama
+    // seçim penceresinin altında duruyor.)
+    if (!mounted || picked == null) return;
 
     await _saveDirectStaff(picked);
   }
@@ -529,12 +509,10 @@ class _ClassStaffManagerModalState
 class _ColleaguePickerSheet extends StatelessWidget {
   final List<SchoolTeacher> colleagues;
   final String schoolName;
-  final VoidCallback onManualEntry;
 
   const _ColleaguePickerSheet({
     required this.colleagues,
     required this.schoolName,
-    required this.onManualEntry,
   });
 
   @override
@@ -631,20 +609,13 @@ class _ColleaguePickerSheet extends StatelessWidget {
                   ),
           ),
           const SizedBox(height: 8),
-          // Dizinde olmayan öğretmen için yedek yol.
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: onManualEntry,
-              icon: const Icon(Icons.key_rounded, size: 17),
-              label: const Text('Listede yok — katılım koduyla ekle'),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(44),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
+          // Eskiden burada "Listede yok — katılım koduyla ekle" düğmesi
+          // vardı; o yol kaldırılmıştı ve düğme yalnız "ekleyemezsiniz"
+          // diyordu (17 Ekim 2026). Yerine durumu açıkça söyleyen satır.
+          Text(
+            'Listede olmayan öğretmen henüz uygulamaya kaydolmamıştır. '
+            'Kaydolup okulunu seçtiğinde burada görünür.',
+            style: AppFonts.outfit(fontSize: 12, color: Colors.grey, height: 1.4),
           ),
         ],
       ),
@@ -672,7 +643,7 @@ class _ColleaguePickerSheet extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               'Meslektaşlarınız uygulamada okullarını seçtiğinde burada '
-              'görünecekler. Şimdilik katılım koduyla ekleyebilirsiniz.',
+              'görünecekler.',
               textAlign: TextAlign.center,
               style: AppFonts.outfit(
                 fontSize: 12.5,

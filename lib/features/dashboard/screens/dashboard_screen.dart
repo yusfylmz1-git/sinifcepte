@@ -15,7 +15,6 @@ import '../../exam_operations/data/models/exam_model.dart';
 import '../../exam_operations/presentation/views/exam_operations_menu_view.dart';
 import '../../exam_operations/presentation/views/exam_tracking_view.dart';
 import '../../exam_operations/providers/exam_tracking_provider.dart';
-import '../../outcomes/presentation/views/weekly_outcomes_view.dart';
 import '../../outcomes/providers/outcomes_provider.dart';
 import '../../outcomes/utils/kazanim_ders_eslestirici.dart';
 import '../../schedule/models/lesson_model.dart';
@@ -646,18 +645,15 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  /// 2. Öğretmen Bento Grid Modül Kartları (6 Adet - Kompakt & Ultra Modern Tasarım)
+  /// 2. Öğretmen Bento Grid Modül Kartları (4 adet).
+  ///
+  /// ## Tek kapı kuralı (17 Ekim 2026)
+  /// Burada "Kazanımlar" ve "Cepte" kartları da vardı. Kazanımlar alt
+  /// sekmede zaten duruyor; Cepte bu ekranın en tepesinde arama kutusu
+  /// olarak duruyor. Aynı işe aynı ekrandan iki kapı açılıyordu, ikisi de
+  /// kaldırıldı.
   Widget _buildTeacherBentoGrid(BuildContext context, bool isDark) {
     final modules = [
-      {
-        'title': 'Kazanımlar',
-        'subtitle': 'Konu & Müfredat',
-        'icon': Icons.track_changes_rounded,
-        'gradient': [const Color(0xFF2563EB), const Color(0xFF4F46E5)],
-        'accent': const Color(0xFF3B82F6),
-        'tabIndex': 2,
-        'target': const WeeklyOutcomesView(),
-      },
       {
         'title': 'Ders İçi Katılım',
         'subtitle': 'Etkinlik & Puan',
@@ -666,33 +662,9 @@ class DashboardScreen extends ConsumerWidget {
         'accent': const Color(0xFF10B981),
         'target': const ClassroomParticipationView(),
       },
-      // KURULLAR KARTI KALDIRILDI.
-      //
-      // Ana ekranda tam bir kart yeri kaplıyordu ama arkasında yalnızca
-      // İKİ belge vardı (zümre + ŞÖK tutanağı). Oysa uygulamada otuzdan
-      // fazla yerde evrak üretiliyor ve öğretmen hangisinin nerede
-      // olduğunu bulamıyordu: tutanak için Kurullar'a, yıllık plan için
-      // Diğer Evraklar'a, nöbetçi listesi için Sınıfım'a gidiyordu.
-      //
-      // Kurul tutanakları artık Diğer Evraklar'ın içinde. Ayrım şu:
-      // sınıftan BAĞIMSIZ evraklar (tutanak, plan, öğretmen dosyası,
-      // kulüp) orada toplanır; sınıfa BAĞLI olanlar (oturma planı,
-      // nöbetçi listesi) Sınıfım'da kalır ve oraya kısayol verilir.
-      {
-        // Uygulamada 32 ekran var ve öğretmen "ne nerede bulmak
-        // gerçekten zor" diyordu. Cepte yeni bir iş yapmaz; var olanı
-        // konuşarak bulunur kılar: "5. sınıf türkçe yıllık plan" deyince
-        // belgeyi hazırlar, "oturma planı" deyince ekrana götürür.
-        //
-        // Kurullar kartından boşalan yere geldi. Kazanımlar alt menüde
-        // zaten duruyor; onu buraya almak çift gösterim olurdu.
-        'title': 'Cepte',
-        'subtitle': 'Sor, bul, hazırla',
-        'icon': Icons.auto_awesome_rounded,
-        'gradient': [const Color(0xFF0284C7), const Color(0xFF06B6D4)],
-        'accent': const Color(0xFF0EA5E9),
-        'target': const CepteAramaView(),
-      },
+      // KURULLAR KARTI KALDIRILDI: kurul tutanakları Diğer Evraklar'ın
+      // içinde. Sınıftan BAĞIMSIZ evraklar orada toplanır; sınıfa BAĞLI
+      // olanlar (oturma planı, nöbetçi listesi) Sınıfım'da kalır.
       {
         'title': 'Sınav İşlemleri',
         'subtitle': 'Not & Değerlendirme',

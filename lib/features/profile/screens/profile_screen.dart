@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/app_surumu.dart';
+import '../../../core/privacy/veri_saklama_metni.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/theme_provider.dart';
 import '../../../shared/widgets/glass_card.dart';
 import 'about_screen.dart';
 import '../../auth_profile/presentation/views/teacher_profile_setup_view.dart';
@@ -20,7 +21,6 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final themeMode = ref.watch(themeModeProvider);
     final teacherProfile = ref.watch(teacherProfileProvider);
     // Yönetici yetkisi custom claim'den gelir; yerel tercihten değil.
     final roleState = ref.watch(userRoleProvider);
@@ -232,57 +232,10 @@ class ProfileScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
 
-              // Tema Değiştirme Kartı
-              GlassCard(
-                padding: EdgeInsets.zero,
-                child: ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      themeMode == ThemeMode.dark
-                          ? Icons.dark_mode_rounded
-                          : Icons.light_mode_rounded,
-                      color: AppColors.secondary,
-                    ),
-                  ),
-                  title: Text(
-                    'Karanlık Mod',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? AppColors.textPrimaryDark
-                          : AppColors.textPrimaryLight,
-                    ),
-                  ),
-                  subtitle: Text(
-                    themeMode == ThemeMode.dark ? 'Koyu Tema' : 'Açık Tema',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark
-                          ? AppColors.textSecondaryDark
-                          : AppColors.textSecondaryLight,
-                    ),
-                  ),
-                  trailing: Switch(
-                    value: themeMode == ThemeMode.dark,
-                    activeThumbColor: AppColors.primary,
-                    onChanged: (value) {
-                      try {
-                        ref
-                            .read(themeModeProvider.notifier)
-                            .setThemeMode(value ? ThemeMode.dark : ThemeMode.light);
-                      } catch (e, stackTrace) {
-                        debugPrint('Tema değiştirme hatası: $e\n$stackTrace');
-                      }
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
+              // Tema TEK yerde: Ayarlar ekranı (açık, koyu, telefonunki).
+              // Burada ayrıca "Karanlık Mod" anahtarı vardı; aynı ayarı ikinci
+              // kapıdan değiştiriyordu ve "telefonun teması" seçeneğini
+              // bilmiyordu (17 Ekim 2026).
 
               // Genel Ayarlar Kartı
               GlassCard(
@@ -312,7 +265,7 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ),
                   title: Text(
-                    'Uygulama Ayarları',
+                    'Ayarlar',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       color: isDark
@@ -321,7 +274,9 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ),
                   subtitle: Text(
-                    'Veritabanı yedekleme, dışa aktarma',
+                    // Eskiden "Veritabanı yedekleme, dışa aktarma" yazıyordu;
+                    // o ekranda yedekleme hiç yoktu.
+                    'Tema ve uygulama sürümü',
                     style: TextStyle(
                       fontSize: 12,
                       color: isDark
@@ -594,7 +549,7 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                         const SizedBox(width: 10),
                         Text(
-                          'SınıfCepte v1.0.0',
+                          'SınıfCepte v$uygulamaSurumu',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: isDark
@@ -606,7 +561,7 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Tüm verileriniz tamamen yerel cihazınızda SQLite veritabanında güvenle depolanır. İnternet bağlantısı gerektirmez.',
+                      VeriSaklamaMetni.uzun,
                       style: TextStyle(
                         fontSize: 12,
                         color: isDark

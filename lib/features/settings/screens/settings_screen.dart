@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/app_surumu.dart';
+import '../../../core/privacy/veri_saklama_metni.dart';
 import '../../../core/theme/app_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_provider.dart';
@@ -15,7 +17,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  static const String _appVersion = '1.0.0';
+  static const String _appVersion = uygulamaSurumu;
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +141,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '🔒 Yerel Depolama Koruması',
+                          '🔒 Verileriniz nerede saklanır',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
@@ -148,7 +150,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Tüm verileriniz yalnızca bu cihazda şifreli yerel SQLite veritabanında saklanır.',
+                          VeriSaklamaMetni.uzun,
                           style: TextStyle(
                             fontSize: 12,
                             color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,

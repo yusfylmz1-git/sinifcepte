@@ -83,11 +83,13 @@ void main() {
       // Kart SAYISI kilitlenmez: kirilgan olcut, her duzen
       // degisikliginde testi bozar. Onemli olan hangi ISLERIN
       // ana sayfada durdugu.
+      //
+      // 17 Ekim 2026: "Kazanimlar" ve "Cepte" kartlari kaldirildi (tek
+      // kapi kurali). Kazanimlar alt sekmede, Cepte ekranin tepesinde
+      // arama kutusu olarak duruyor; ayni ekranda ikinci kapi aciyorlardi.
       final kod = oku(anaSayfa);
       for (final baslik in [
-        'Kazanımlar',
         'Ders İçi Katılım',
-        'Cepte',
         'Sınav İşlemleri',
         'Rehberlik',
         'Diğer Evraklar',
@@ -95,6 +97,8 @@ void main() {
         expect(kod, contains("'title': '$baslik'"),
             reason: '$baslik karti ana sayfada olmali');
       }
+      expect(kod, contains('CepteAramaView'),
+          reason: 'Cepte arama kutusu ana sayfanin tepesinde olmali');
     });
   });
 

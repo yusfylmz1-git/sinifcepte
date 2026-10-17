@@ -534,7 +534,8 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
-                                    'İnternet paketi gerektirmez! %100 yerel ve güvenli mimariyle çalışır.',
+                                    'Öğrenci ve sınıf bilgileri cihazınızda kalır; '
+                                    'veli iletişimi için internet gerekir.',
                                     style: AppFonts.outfit(
                                       fontSize: 11.5,
                                       color: Colors.white70,
