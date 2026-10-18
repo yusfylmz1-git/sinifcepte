@@ -19,7 +19,9 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   String oku(String yol) => File(yol).readAsStringSync();
 
-  const sinifim = 'lib/features/classes/screens/my_class_hub_screen.dart';
+  // 18 Ekim 2026: Sinifim merkezi kalkti; sinif evraklari sinif
+  // sayfasindaki Evrak dugmesinden acilan sayfada.
+  const sinifim = 'lib/features/classes/screens/sinif_evraklari_ekrani.dart';
   const anaSayfa = 'lib/features/dashboard/screens/dashboard_screen.dart';
   // 17 Ekim 2026: "Diğer Evraklar" sayfası alt çubuktaki Evraklar
   // sekmesi oldu (tek katalog).

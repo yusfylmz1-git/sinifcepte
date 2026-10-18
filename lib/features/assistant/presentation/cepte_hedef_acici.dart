@@ -20,9 +20,9 @@ import '../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../board_config/presentation/tahta_kilidi_screen.dart';
 import '../../classes/providers/class_provider.dart';
 import '../../classes/screens/absence_followup_screen.dart';
-import '../../classes/screens/my_class_hub_screen.dart';
 import '../../classes/screens/parent_contacts_screen.dart';
 import '../../classes/screens/seating_plan_screen.dart';
+import '../../classes/screens/sinif_evraklari_ekrani.dart';
 import '../../classes/screens/student_list_screen.dart';
 import '../../clubs/data/repositories/club_repository.dart';
 import '../../clubs/presentation/screens/clubs_hub_screen.dart';
@@ -44,8 +44,7 @@ import '../../guidance/presentation/screens/guidance_hub_screen.dart';
 import '../../guidance/presentation/views/special_education_view.dart';
 import '../../navigation/providers/navigation_provider.dart';
 import '../../outcomes/providers/outcomes_provider.dart';
-import '../../parent_portal/presentation/screens/bulk_announcement_screen.dart';
-import '../../parent_portal/presentation/screens/teacher_parent_panel_screen.dart';
+import '../../parent_portal/presentation/screens/sinif_velileri_ekrani.dart';
 import '../../schedule/screens/schedule_screen.dart';
 import '../../schedule/screens/schedule_table_preview_screen.dart';
 import '../../settings/screens/settings_screen.dart';
@@ -116,6 +115,15 @@ Future<void> _ekranAc(BuildContext context, WidgetRef ref, CepteEkran ekran) asy
     case CepteEkran.veriYedekleme:
       yedekPenceresiniAc(context);
       return;
+    case CepteEkran.sinifim ||
+          CepteEkran.ogrenciListesi ||
+          CepteEkran.veliPaneli ||
+          CepteEkran.ogretmenKadrosu ||
+          CepteEkran.topluDuyuru ||
+          CepteEkran.devamsizlik ||
+          CepteEkran.oturmaPlani ||
+          CepteEkran.nobetciListesi:
+      return _rehberlikSinifindaAc(context, ref, ekran);
     default:
       break;
   }
@@ -140,22 +148,20 @@ Future<void> _ekranAc(BuildContext context, WidgetRef ref, CepteEkran ekran) asy
     CepteEkran.calismaTakvimi => const AcademicCalendarScreen(),
     CepteEkran.eokulFoto => const EokulFotoMerkeziEkrani(),
     CepteEkran.tahtaKilidi => const TahtaKilidiScreen(),
-    CepteEkran.topluDuyuru => const BulkAnnouncementScreen(),
     CepteEkran.zumreTutanagi => const CouncilMinutesView(kind: CouncilKind.zumre),
     CepteEkran.sokTutanagi => const CouncilMinutesView(kind: CouncilKind.sok),
     CepteEkran.geriYukleme => const GeriYuklemeEkrani(),
     CepteEkran.ayarlar => const SettingsScreen(),
     CepteEkran.profilBilgileri => const TeacherProfileSetupView(),
-    // Sınıfa bağlı eski niyetler: sınıf Sınıfım'da seçilir.
+    // Yukarıda sekme/pencere ya da rehberlik sınıfında açıldılar.
     CepteEkran.sinifim ||
     CepteEkran.veliPaneli ||
     CepteEkran.devamsizlik ||
     CepteEkran.oturmaPlani ||
     CepteEkran.nobetciListesi ||
     CepteEkran.ogrenciListesi ||
-    CepteEkran.ogretmenKadrosu =>
-      const MyClassHubScreen(),
-    // Yukarıda sekme/pencere olarak açıldılar.
+    CepteEkran.ogretmenKadrosu ||
+    CepteEkran.topluDuyuru ||
     CepteEkran.kazanimlar ||
     CepteEkran.siniflarim ||
     CepteEkran.digerEvraklar ||
@@ -166,6 +172,38 @@ Future<void> _ekranAc(BuildContext context, WidgetRef ref, CepteEkran ekran) asy
       const SizedBox.shrink(),
   };
   if (!context.mounted) return;
+  await _git(context, hedef);
+}
+
+/// Sınıf adı verilmeden sorulan sınıf işleri ("veliler", "nöbet",
+/// "devamsızlık"...) rehberlik sınıfında açılır.
+///
+/// Eskiden hepsi "Sınıfım" merkezini açıyordu; o merkez kalktı (18 Ekim
+/// 2026). Rehberlik sınıfı seçilmemişse Sınıflar sekmesine gidilir ve
+/// nasıl seçileceği söylenir.
+Future<void> _rehberlikSinifindaAc(BuildContext context, WidgetRef ref, CepteEkran ekran) async {
+  final siniflar = await ClassRepository().getAllClasses();
+  final sinif = siniflar.where((c) => c.isHomeroom).firstOrNull;
+  if (!context.mounted) return;
+  if (sinif == null) {
+    final messenger = ScaffoldMessenger.of(context);
+    _sekmeyeGec(context, ref, AnaSekme.siniflar);
+    messenger.showSnackBar(const SnackBar(
+      content: Text('Önce rehberlik sınıfınızı seçin: sınıf kartındaki ⋮ › Rehberlik Sınıfı Yap.'),
+      duration: Duration(seconds: 5),
+    ));
+    return;
+  }
+  final Widget hedef = switch (ekran) {
+    CepteEkran.veliPaneli ||
+    CepteEkran.ogretmenKadrosu ||
+    CepteEkran.topluDuyuru =>
+      SinifVelileriEkrani(classModel: sinif),
+    CepteEkran.devamsizlik => AbsenceFollowupScreen(classModel: sinif),
+    CepteEkran.oturmaPlani => SeatingPlanScreen(classModel: sinif),
+    CepteEkran.nobetciListesi => SinifEvraklariEkrani(classModel: sinif),
+    _ => StudentListScreen(classModel: sinif),
+  };
   await _git(context, hedef);
 }
 
@@ -203,12 +241,15 @@ Future<void> _sinifEkraniAc(BuildContext context, CepteSinifEkrani ekran, int cl
       break;
   }
   final Widget hedef = switch (ekran) {
-    CepteSinifEkrani.sinifim => MyClassHubScreen(initialClass: c),
+    CepteSinifEkrani.sinifim => StudentListScreen(classModel: c),
     CepteSinifEkrani.ogrenciListesi => StudentListScreen(classModel: c),
     CepteSinifEkrani.oturmaPlani => SeatingPlanScreen(classModel: c),
     CepteSinifEkrani.devamsizlik => AbsenceFollowupScreen(classModel: c),
     CepteSinifEkrani.veliIletisim => ParentContactsScreen(classModel: c),
-    CepteSinifEkrani.veliPaneli => TeacherParentPanelScreen(classModel: c),
+    // Veli bağlantıları rehberlik sınıfında; ders sınıfında sınıf
+    // sayfası açılır, şeritteki pasif "Veliler" nedenini söyler.
+    CepteSinifEkrani.veliPaneli =>
+      c.isHomeroom ? SinifVelileriEkrani(classModel: c) : StudentListScreen(classModel: c),
     CepteSinifEkrani.eokulFoto => SinifFotoEkrani(sinif: c),
     CepteSinifEkrani.islenenDersler || CepteSinifEkrani.artiEksi => const SizedBox.shrink(),
   };

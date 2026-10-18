@@ -51,7 +51,7 @@ void main() {
     test('KRITIK: duyuru yayimlama (baslik + metin)', () {
       expect(
         hasLimits(
-          'lib/features/parent_portal/presentation/widgets/class_parent_communication_modal.dart',
+          'lib/features/parent_portal/presentation/widgets/duyuru_penceresi.dart',
           2,
         ),
         isTrue,

@@ -25,7 +25,9 @@ void main() {
   const provider = 'lib/features/classes/providers/absence_followup_provider.dart';
   const ekran = 'lib/features/classes/screens/absence_followup_screen.dart';
   const liste = 'lib/features/classes/screens/student_list_screen.dart';
-  const hub = 'lib/features/classes/screens/my_class_hub_screen.dart';
+  // 18 Ekim 2026: Sinifim merkezi kalkti; devamsizlik dugmesi sinif
+  // sayfasinin seridinde.
+  const hub = 'lib/features/classes/presentation/widgets/sinif_seridi.dart';
   const pdf = 'lib/features/classes/utils/classroom_documents_pdf_generator.dart';
   const dbHelper = 'lib/core/database/database_helper.dart';
 
@@ -554,7 +556,7 @@ void main() {
   group('Kapsam: rehberlik sinifi', () {
     test('KRITIK: brans sinifinda kart pasif ve nedeni yaziyor', () {
       final s = read(hub);
-      expect(s.contains('disabledReason'), isTrue);
+      expect(s.contains('pasif: !rehberlik'), isTrue);
       expect(s.contains('rehberlik sınıfınız değil'), isTrue,
           reason: 'Pasif kart NEDEN kullanilamadigini soylemeli');
     });

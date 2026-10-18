@@ -199,7 +199,7 @@ void main() {
   group('Eski menüdeki her maddenin yeni evi var', () {
     // Madde → (evi olan dosya, o dosyada aranan çağrı).
     const evler = {
-      'Sınıfım': ('lib/features/classes/screens/class_list_screen.dart', 'MyClassHubScreen('),
+      'Sınıfım': ('lib/features/classes/screens/class_list_screen.dart', 'StudentListScreen(classModel: homeroomClass)'),
       'Sınıflarım': ('lib/features/navigation/screens/main_navigation_screen.dart', 'const ClassListScreen()'),
       'Ders İçi Katılım': ('lib/features/dashboard/screens/dashboard_screen.dart', 'ClassroomParticipationView('),
       'Müfredat & Kazanımlar': ('lib/features/navigation/screens/main_navigation_screen.dart', 'const WeeklyOutcomesView()'),

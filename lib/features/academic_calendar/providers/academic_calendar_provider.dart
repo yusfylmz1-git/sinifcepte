@@ -37,6 +37,8 @@ class AcademicCalendarNotifier
     try {
       final rawList = await DatabaseHelper.instance
           .academicCalendarGetir(academicYear: academicYear);
+      // Okuma sürerken sağlayıcı kapanmış olabilir (hesap değişimi).
+      if (!mounted) return;
 
       if (rawList.isNotEmpty) {
         state = rawList
@@ -50,7 +52,7 @@ class AcademicCalendarNotifier
       debugPrint('Hata Mesajı : $e');
       debugPrint('Kod Satırı   : $stackTrace');
       debugPrint('----------------------------------------------------------------------------------');
-      state = [];
+      if (mounted) state = [];
     }
   }
 

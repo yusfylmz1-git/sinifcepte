@@ -7,7 +7,6 @@ import '../../../data/models/class_model.dart';
 import '../presentation/views/student_import_preview_view.dart';
 import '../../schedule/screens/schedule_screen.dart';
 import '../providers/class_provider.dart';
-import 'my_class_hub_screen.dart';
 import 'student_list_screen.dart';
 
 /// SınıfCepte - Sınıf Listesi ve Otomatik Kategori/Sıralama Yönetimi Ekranı
@@ -363,10 +362,10 @@ class ClassListScreen extends ConsumerWidget {
                       ),
                     );
 
-                    // Doğrudan Sınıfım ekranına yönlendir
+                    // Doğrudan sınıfın sayfasına
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => MyClassHubScreen(initialClass: targetClass),
+                        builder: (_) => StudentListScreen(classModel: targetClass),
                       ),
                     );
                   }
@@ -705,7 +704,9 @@ class ClassListScreen extends ConsumerWidget {
   ) {
     final Map<String, List<ClassModel>> groups = {};
 
-    for (var item in allClasses) {
+    // Rehberlik sınıfı gruplara girmez: en üstte kendi kartında durur
+    // (aynı sınıf iki yerde görünmesin).
+    for (var item in allClasses.where((c) => !c.isHomeroom)) {
       // Sınıf adından seviye önekini al (Örn: "5-A" -> "5", "Hazırlık" -> "Hazırlık")
       final parts = item.name.split('-');
       final gradeLevel = parts.isNotEmpty ? parts.first.trim() : 'Diğer';
@@ -730,9 +731,9 @@ class ClassListScreen extends ConsumerWidget {
     final homeroomClass = allClasses.where((c) => c.isHomeroom).firstOrNull;
     List<Widget> widgets = [];
 
-    // ⭐ VIP REHBERLİK & ŞUBE MERKEZİ HERO BANNER
+    // ⭐ Rehberlik sınıfı en üstte
     if (homeroomClass != null) {
-      widgets.add(_buildHomeroomHeroBanner(context, ref, homeroomClass, isDark));
+      widgets.add(_buildHomeroomCard(context, ref, homeroomClass, isDark));
     } else {
       widgets.add(_buildNoHomeroomBanner(context, ref, allClasses, isDark));
     }
@@ -794,151 +795,83 @@ class ClassListScreen extends ConsumerWidget {
     return widgets;
   }
 
-  /// ⭐ VIP Rehberlik Sınıfı Hero Banner Widget'ı
-  Widget _buildHomeroomHeroBanner(
+  /// ⭐ Rehberlik sınıfı kartı: listenin en üstünde, sınıf sayfasını açar.
+  ///
+  /// Eskiden burada "REHBERLİK & ŞUBE MERKEZİ" bandı vardı ve ayrı bir
+  /// "Sınıfım" merkezini açıyordu; aynı sınıf aşağıdaki gruplarda bir kez
+  /// daha duruyordu. Artık tek kart ve her sınıfla aynı sınıf sayfası
+  /// (kullanıcı kararı, 18 Ekim 2026).
+  Widget _buildHomeroomCard(
     BuildContext context,
     WidgetRef ref,
     ClassModel homeroomClass,
     bool isDark,
   ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [const Color(0xFF1E1B4B), const Color(0xFF312E81)]
-              : [const Color(0xFF4338CA), const Color(0xFF6366F1)],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? const Color(0xFF4338CA) : const Color(0xFF818CF8),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF4F46E5).withValues(alpha: isDark ? 0.35 : 0.25),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
+    final ders = homeroomClass.subject.trim();
+    final ad = ders.isNotEmpty && ders != 'Genel Ders'
+        ? '${homeroomClass.name} · $ders'
+        : homeroomClass.name;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
       child: Material(
-        color: Colors.transparent,
+        color: isDark ? const Color(0xFF1E1B4B) : const Color(0xFFEEF2FF),
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => MyClassHubScreen(initialClass: homeroomClass),
+          key: const ValueKey('rehberlik_sinifi_karti'),
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => StudentListScreen(classModel: homeroomClass)),
+          ),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? const Color(0xFF4338CA) : const Color(0xFFC7D2FE),
               ),
-            );
-          },
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+            child: Row(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.stars_rounded, color: Colors.amberAccent, size: 15),
-                            SizedBox(width: 5),
-                            Flexible(
-                              child: Text(
-                                'REHBERLİK & ŞUBE MERKEZİ',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ),
-                          ],
+                const Icon(Icons.stars_rounded, color: Colors.amber, size: 28),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Rehberlik sınıfım',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4338CA),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
+                      const SizedBox(height: 2),
+                      Text(
+                        ad,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: isDark ? Colors.white : const Color(0xFF1E1B4B),
+                        ),
                       ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Yönet',
-                            style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                          ),
-                          SizedBox(width: 4),
-                          Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 10),
-                        ],
+                      const SizedBox(height: 2),
+                      Text(
+                        'Öğrenciler, veliler, devamsızlık ve şube evrakları',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: isDark ? Colors.white60 : const Color(0xFF475569),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${homeroomClass.name} Sınıfım',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Oturma Planı • Sosyometri • Resmî Evraklar • Veli Portalı',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.85),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.school_rounded,
-                        color: Colors.white,
-                        size: 26,
-                      ),
-                    ),
-                  ],
-                ),
+                _sinifMenusu(context, ref, homeroomClass, isDark),
               ],
             ),
           ),
@@ -1145,75 +1078,85 @@ class ClassListScreen extends ConsumerWidget {
               ),
             ),
 
-            // Seçenekler Menüsü 
-            PopupMenuButton<String>(
-              icon: Icon(Icons.more_vert_rounded, color: isDark ? Colors.white54 : Colors.black45, size: 19),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              color: isDark ? const Color(0xFF1E293B) : Colors.white,
-              onSelected: (value) async {
-                if (value == 'edit') {
-                  _showEditClassSheet(context, ref, classModel);
-                } else if (value == 'delete') {
-                  _confirmDelete(context, ref, classModel.id!, classModel.name);
-                } else if (value == 'set_homeroom') {
-                  await ref.read(classListProvider.notifier).setHomeroomClass(classModel.id!);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('${classModel.name} Rehberlik Sınıfınız olarak belirlendi! 🌟'),
-                        backgroundColor: AppColors.primary,
-                      ),
-                    );
-                  }
-                } else if (value == 'clear_homeroom') {
-                  await ref.read(classListProvider.notifier).clearHomeroomClass(classModel.id!);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('${classModel.name} rehberlik sınıfı unvanı kaldırıldı.'),
-                      ),
-                    );
-                  }
-                }
-              },
-              itemBuilder: (context) => [
-                if (!classModel.isHomeroom)
-                  const PopupMenuItem(
-                    value: 'set_homeroom',
-                    child: Row(
-                      children: [
-                        Icon(Icons.stars_rounded, color: AppColors.primary, size: 17),
-                        SizedBox(width: 8),
-                        Text('Rehberlik Sınıfı Yap'),
-                      ],
-                    ),
-                  )
-                else
-                  const PopupMenuItem(
-                    value: 'clear_homeroom',
-                    child: Row(
-                      children: [
-                        Icon(Icons.star_border_rounded, size: 17),
-                        SizedBox(width: 8),
-                        Text('Rehberlikten Çıkar'),
-                      ],
-                    ),
-                  ),
-                const PopupMenuItem(
-                  value: 'edit', 
-                  child: Row(children: [Icon(Icons.edit_rounded, size: 17), SizedBox(width: 8), Text('Düzenle')]),
-                ),
-                const PopupMenuItem(
-                  value: 'delete', 
-                  child: Row(children: [Icon(Icons.delete_rounded, color: Colors.redAccent, size: 17), SizedBox(width: 8), Text('Sil', style: TextStyle(color: Colors.redAccent))]),
-                ),
-              ],
-            ),
+            // Seçenekler Menüsü
+            _sinifMenusu(context, ref, classModel, isDark),
             const SizedBox(width: 6),
           ],
         ),
       ),
+    );
+  }
+
+  /// Sınıf kartı ⋮ menüsü: rehberlik sınıfı yap / çıkar, düzenle, sil.
+  Widget _sinifMenusu(
+    BuildContext context,
+    WidgetRef ref,
+    ClassModel classModel,
+    bool isDark,
+  ) {
+    return PopupMenuButton<String>(
+      icon: Icon(Icons.more_vert_rounded, color: isDark ? Colors.white54 : Colors.black45, size: 19),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(),
+      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+      onSelected: (value) async {
+        if (value == 'edit') {
+          _showEditClassSheet(context, ref, classModel);
+        } else if (value == 'delete') {
+          _confirmDelete(context, ref, classModel.id!, classModel.name);
+        } else if (value == 'set_homeroom') {
+          await ref.read(classListProvider.notifier).setHomeroomClass(classModel.id!);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${classModel.name} Rehberlik Sınıfınız olarak belirlendi! 🌟'),
+                backgroundColor: AppColors.primary,
+              ),
+            );
+          }
+        } else if (value == 'clear_homeroom') {
+          await ref.read(classListProvider.notifier).clearHomeroomClass(classModel.id!);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${classModel.name} rehberlik sınıfı unvanı kaldırıldı.'),
+              ),
+            );
+          }
+        }
+      },
+      itemBuilder: (context) => [
+        if (!classModel.isHomeroom)
+          const PopupMenuItem(
+            value: 'set_homeroom',
+            child: Row(
+              children: [
+                Icon(Icons.stars_rounded, color: AppColors.primary, size: 17),
+                SizedBox(width: 8),
+                Text('Rehberlik Sınıfı Yap'),
+              ],
+            ),
+          )
+        else
+          const PopupMenuItem(
+            value: 'clear_homeroom',
+            child: Row(
+              children: [
+                Icon(Icons.star_border_rounded, size: 17),
+                SizedBox(width: 8),
+                Text('Rehberlikten Çıkar'),
+              ],
+            ),
+          ),
+        const PopupMenuItem(
+          value: 'edit', 
+          child: Row(children: [Icon(Icons.edit_rounded, size: 17), SizedBox(width: 8), Text('Düzenle')]),
+        ),
+        const PopupMenuItem(
+          value: 'delete', 
+          child: Row(children: [Icon(Icons.delete_rounded, color: Colors.redAccent, size: 17), SizedBox(width: 8), Text('Sil', style: TextStyle(color: Colors.redAccent))]),
+        ),
+      ],
     );
   }
 

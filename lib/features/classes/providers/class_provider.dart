@@ -29,17 +29,21 @@ class ClassListNotifier extends StateNotifier<AsyncValue<List<ClassModel>>> {
   }
 
   /// Tüm sınıfları veritabanından yükle
+  ///
+  /// Okuma sürerken sağlayıcı kapanabilir (hesap değişince
+  /// `invalidate`, ekran kapanınca): bitince kapanmış nesneye yazılmaz.
   Future<void> loadClasses() async {
     try {
       state = const AsyncValue.loading();
       final classes = await _repository.getAllClasses();
+      if (!mounted) return;
       state = AsyncValue.data(classes);
     } catch (e, st) {
       debugPrint('---------------- HATA DETAYI (ClassList.loadClasses) ----------------');
       debugPrint('Hata Mesajı : $e');
       debugPrint('Kod Satırı   : $st');
       debugPrint('--------------------------------------------------------------------');
-      state = AsyncValue.error(e, st);
+      if (mounted) state = AsyncValue.error(e, st);
     }
   }
 

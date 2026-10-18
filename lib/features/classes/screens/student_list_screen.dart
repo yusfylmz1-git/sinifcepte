@@ -20,9 +20,17 @@ import '../../parent_portal/data/services/student_lifecycle_coordinator.dart';
 import '../../parent_portal/data/services/student_lifecycle_policy.dart';
 import '../../../core/utils/search_debouncer.dart';
 import '../../../core/utils/turkish_text.dart';
+import '../../student_photos/presentation/sinif_foto_ekrani.dart';
 import '../../student_photos/presentation/widgets/ogrenci_foto_kucuk.dart';
+import '../presentation/widgets/sinif_seridi.dart';
 
-/// Sınıf İçi Öğrenci Listesi ve Yönetim Ekranı (StudentListScreen)
+/// Sınıf sayfası: öğrenci listesi ve üstte sınıfın işleri.
+///
+/// Kullanıcı kararı (18 Ekim 2026): sınıfa dokununca önce öğrenciler
+/// açılır; Katılım · Devamsızlık · Oturma · Veliler · Evrak şeridi üstte
+/// durur ([SinifSeridi]). Rehberlik sınıfının ayrı "Sınıfım" merkezi
+/// kalktı; her sınıfın sayfası aynı iskelette, rehberlik sınıfında
+/// Devamsızlık ve Veliler açılır.
 class StudentListScreen extends ConsumerStatefulWidget {
   final ClassModel classModel;
 
@@ -118,21 +126,8 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
             )
           : CustomAppBar(
               title: widget.classModel.name,
-              subtitle: widget.classModel.subject.trim().isNotEmpty 
-                  ? '${widget.classModel.subject} • Öğrenci Listesi'
-                  : 'Öğrenci Listesi',
+              subtitle: _altBaslik(studentListAsync.valueOrNull?.length),
               actions: [
-                IconButton(
-                  icon: const Icon(Icons.contact_phone_rounded, color: Colors.white),
-                  tooltip: 'Veli İletişim Rehberi',
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => ParentContactsScreen(classModel: widget.classModel),
-                      ),
-                    );
-                  },
-                ),
                 IconButton(
                   icon: const Icon(Icons.person_add_rounded, color: Colors.white),
                   tooltip: 'Yeni Öğrenci Ekle',
@@ -142,7 +137,21 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                   icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
                   color: isDark ? AppColors.darkCardBackground : Colors.white,
                   onSelected: (value) {
-                    if (value == 'move_all') {
+                    if (value == 'import') {
+                      _topluYukle(context);
+                    } else if (value == 'veli_rehberi') {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ParentContactsScreen(classModel: widget.classModel),
+                        ),
+                      );
+                    } else if (value == 'eokul_foto') {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => SinifFotoEkrani(sinif: widget.classModel),
+                        ),
+                      );
+                    } else if (value == 'move_all') {
                       if (allStudents.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sınıfta taşınacak öğrenci yok.')));
                         return;
@@ -157,6 +166,10 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                     }
                   },
                   itemBuilder: (context) => [
+                    _menuSatiri('import', Icons.picture_as_pdf_rounded, 'PDF / Excel ile öğrenci yükle', isDark),
+                    _menuSatiri('veli_rehberi', Icons.contact_phone_rounded, 'Veli rehberi (telefonlar)', isDark),
+                    _menuSatiri('eokul_foto', Icons.photo_camera_front_outlined, 'e-Okul fotoğrafları', isDark),
+                    const PopupMenuDivider(),
                     PopupMenuItem(
                       value: 'move_all',
                       child: Row(
@@ -186,82 +199,28 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
           child: Column(
             children: [
-              // Hızlı Aksiyon Kartları (Öğrenci Ekle & PDF İçe Aktar)
-              Row(
-                children: [
-                  // 1. Yeni Öğrenci Ekle
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () => _openAddStudentDialog(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 8),
-                      ),
-                      icon: const Icon(Icons.person_add_rounded, size: 18),
-                      label: const Text(
-                        'Öğrenci Ekle',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+              // Sınıfın işleri (18 Ekim 2026). Öğrenci ekleme üst çubukta,
+              // toplu yükleme ⋮ menüsünde ve boş sınıfın ekranında.
+              SinifSeridi(classModel: widget.classModel),
+              const SizedBox(height: 12),
+
+              // Sayılar tek satırda; eskiden üç büyük kart (Kız, Erkek,
+              // Toplam) listeyi ekranın yarısına itiyordu.
+              if (allStudents.isNotEmpty) ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    _sayilar(allStudents),
+                    key: const ValueKey('sinif_sayilari'),
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white60 : const Color(0xFF64748B),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  // 2. PDF İçe Aktar
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => StudentImportPreviewView(
-                              initialClassId: widget.classModel.id,
-                              initialClassName: widget.classModel.name,
-                              autoPickPdf: true,
-                            ),
-                          ),
-                        );
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: isDark ? AppColors.glassBorder : Colors.grey.shade300),
-                        foregroundColor: isDark ? Colors.white : AppColors.textPrimaryLight,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 8),
-                      ),
-                      icon: const Icon(Icons.picture_as_pdf_rounded, size: 18, color: Color(0xFFFF512F)),
-                      label: Text(
-                        widget.classModel.isHomeroom ? 'PDF Yükle' : 'PDF İçe Aktar',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // İstatistik Kartları
-              if (studentListAsync.valueOrNull != null && studentListAsync.valueOrNull!.isNotEmpty)
-                Row(
-                  children: [
-                    Expanded(child: _buildStatCard(context, isDark, 'Kız', studentListAsync.valueOrNull!.where((s) => s.gender.toLowerCase().contains('kız')).length, Colors.pinkAccent, Icons.face_3_rounded)),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildStatCard(context, isDark, 'Erkek', studentListAsync.valueOrNull!.where((s) => s.gender.toLowerCase().contains('erkek')).length, Colors.blueAccent, Icons.face_6_rounded)),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildStatCard(context, isDark, 'Toplam', studentListAsync.valueOrNull!.length, AppColors.primary, Icons.groups_rounded)),
-                  ],
                 ),
-              
-              if (studentListAsync.valueOrNull != null && studentListAsync.valueOrNull!.isNotEmpty)
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
+              ],
 
               // Arama ve Sıralama Çubuğu
               if (studentListAsync.valueOrNull != null && studentListAsync.valueOrNull!.isNotEmpty)
@@ -845,7 +804,59 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
               icon: const Icon(Icons.person_add_rounded, size: 20),
               label: const Text('Öğrenci Ekle', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: () => _topluYukle(context),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              icon: const Icon(Icons.picture_as_pdf_rounded, size: 20, color: Color(0xFFFF512F)),
+              label: const Text('PDF / Excel ile yükle', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Üst çubuk alt başlığı: rehberlik rozeti ya da ders, öğrenci sayısı.
+  String _altBaslik(int? ogrenciSayisi) {
+    final c = widget.classModel;
+    final ders = c.subject.trim();
+    final ilk = c.isHomeroom
+        ? '⭐ Rehberlik sınıfım'
+        : (ders.isNotEmpty && ders != 'Genel Ders' ? ders : 'Ders sınıfı');
+    return ogrenciSayisi == null ? ilk : '$ilk · $ogrenciSayisi öğrenci';
+  }
+
+  /// "28 öğrenci · 15 kız · 13 erkek"
+  String _sayilar(List<StudentModel> ogrenciler) {
+    final kiz = ogrenciler.where((o) => o.gender.toLowerCase().contains('kız')).length;
+    final erkek = ogrenciler.where((o) => o.gender.toLowerCase().contains('erkek')).length;
+    return '${ogrenciler.length} öğrenci · $kiz kız · $erkek erkek';
+  }
+
+  PopupMenuItem<String> _menuSatiri(String deger, IconData ikon, String ad, bool isDark) {
+    return PopupMenuItem(
+      value: deger,
+      child: Row(
+        children: [
+          Icon(ikon, size: 20, color: isDark ? Colors.white70 : Colors.black87),
+          const SizedBox(width: 12),
+          Flexible(child: Text(ad)),
+        ],
+      ),
+    );
+  }
+
+  void _topluYukle(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => StudentImportPreviewView(
+          initialClassId: widget.classModel.id,
+          initialClassName: widget.classModel.name,
+          autoPickPdf: true,
         ),
       ),
     );
@@ -1315,40 +1326,6 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
             ],
           );
         }
-      ),
-    );
-  }
-
-  Widget _buildStatCard(BuildContext context, bool isDark, String title, int count, Color color, IconData icon) {
-    return GlassCard(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                count.toString(),
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                ),
-              ),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white70 : Colors.black54,
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

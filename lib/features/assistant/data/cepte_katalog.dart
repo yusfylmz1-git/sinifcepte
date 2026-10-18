@@ -133,7 +133,7 @@ List<CepteHedef> cepteEkranHedefleri() => [
         'bep', 'özel eğitim', 'kaynaştırma', 'bütünleştirme', 'ram',
         'bireyselleştirilmiş eğitim', 'kaba değerlendirme',
       ]),
-      _ekran(CepteEkran.sinifim, 'Sınıfım', 'Sınıflar › Sınıfım', [
+      _ekran(CepteEkran.sinifim, 'Rehberlik sınıfım', 'Sınıflar › Rehberlik sınıfı', [
         'sınıfım', 'sınıf yönetimi', 'sınıf evrakları', 'şubem', 'rehberlik sınıfım',
         'nöbetçi', 'nöbet', 'nöbetçi öğrenci', 'sınıf başkanı',
       ], oncelik: 2),
@@ -153,7 +153,7 @@ List<CepteHedef> cepteEkranHedefleri() => [
         'tahta', 'akıllı tahta', 'etkileşimli tahta', 'kilit', 'tahta şifresi',
         'tahta kodu', 'tahtayı aç', 'karekod',
       ]),
-      _ekran(CepteEkran.topluDuyuru, 'Velilere toplu duyuru', 'Veli paneli › Toplu duyuru', [
+      _ekran(CepteEkran.topluDuyuru, 'Velilere duyuru', 'Rehberlik sınıfı › Veliler', [
         'veli duyuru', 'toplu duyuru', 'velilere mesaj', 'velilere duyuru',
         'veli bilgilendirme',
       ]),
@@ -180,26 +180,26 @@ List<CepteHedef> cepteEkranHedefleri() => [
 
 /// Sınıfa bağlı ekranların başlığı, yolu ve anahtarları.
 const Map<CepteSinifEkrani, (String, String, List<String>)> _sinifEkranlari = {
-  CepteSinifEkrani.sinifim: ('Sınıfım', 'Sınıfım', [
+  CepteSinifEkrani.sinifim: ('Sınıf', 'Sınıflar', [
     'sınıf yönetimi', 'sınıf evrakları', 'nöbetçi', 'nöbet', 'nöbetçi listesi',
   ]),
-  CepteSinifEkrani.ogrenciListesi: ('Öğrenci listesi', 'Sınıflarım', [
+  CepteSinifEkrani.ogrenciListesi: ('Öğrenci listesi', 'Sınıflar', [
     'öğrenciler', 'sınıf listesi', 'öğrenci ekle', 'öğrenci sil', 'numara',
     'sınıf mevcudu',
   ]),
-  CepteSinifEkrani.oturmaPlani: ('Oturma planı', 'Sınıfım', [
+  CepteSinifEkrani.oturmaPlani: ('Oturma planı', 'Sınıf sayfası', [
     'oturma düzeni', 'kroki', 'sınıf krokisi', 'sıra düzeni', 'yerleşim',
     'kim nerede oturuyor',
   ]),
-  CepteSinifEkrani.devamsizlik: ('Devamsızlık takibi', 'Sınıfım', [
+  CepteSinifEkrani.devamsizlik: ('Devamsızlık takibi', 'Sınıf sayfası', [
     'devamsızlık', 'yoklama', 'gelmeyenler', 'gelmeyen öğrenci', 'özürsüz',
     'raporlu', 'okula gelmiyor',
   ]),
-  CepteSinifEkrani.veliIletisim: ('Veli iletişim', 'Sınıfım', [
+  CepteSinifEkrani.veliIletisim: ('Veli rehberi', 'Veliler', [
     'veli telefonu', 'veli numarası', 'veli rehberi', 'veliyi ara',
     'veli bilgileri', 'anne baba telefon',
   ]),
-  CepteSinifEkrani.veliPaneli: ('Veli paneli', 'Sınıfım', [
+  CepteSinifEkrani.veliPaneli: ('Veliler', 'Sınıf sayfası', [
     'veli', 'veliler', 'veli mesajı', 'veliye mesaj', 'veli kodu',
     'veli uygulaması', 'veli bağla',
   ]),
@@ -228,8 +228,16 @@ List<CepteHedef> cepteSinifHedefleri(
             kategori: CepteKategori.sinif,
             anahtarlar: [...e.value.$3, s.ders, s.ad],
             eylem: SinifEkraniEylemi(e.key, s.id),
-            // Sınıfın kendisi ("5-A" yazınca) en üstte.
-            oncelik: e.key == CepteSinifEkrani.sinifim ? 2 : 0,
+            // Sınıfın kendisi ("5-A" yazınca) en üstte. "veli" araması
+            // Veliler sayfasına gitsin (kullanıcının seçtiği örnek): "Veli
+            // rehberi" başlığı kelimeyle birebir başladığı için öne
+            // geçiyordu (64'e 58, ölçüldü). Rehber Veliler sayfasının bir
+            // satırı; "veli rehberi", "telefon" gibi aramalarda yine ilk.
+            oncelik: switch (e.key) {
+              CepteSinifEkrani.sinifim => 2,
+              CepteSinifEkrani.veliIletisim => -10,
+              _ => 0,
+            },
           ),
     ];
 

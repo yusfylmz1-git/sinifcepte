@@ -79,8 +79,8 @@ void main() {
     test('KRITIK: randevu kartinda ogrenci + veli + yakinlik', () {
       expect(
         korumali(
-          'lib/features/parent_portal/presentation/widgets/class_parent_communication_modal.dart',
-          r"'${app.studentName} • ${app.parentName} (${app.relation})',",
+          'lib/features/parent_portal/presentation/screens/sinif_velileri_ekrani.dart',
+          r"'Randevu · ${a.studentName} · ${a.parentName} (${a.relation})',",
         ),
         isTrue,
         reason: 'uc kullanici metni yan yana, Row icinde',
