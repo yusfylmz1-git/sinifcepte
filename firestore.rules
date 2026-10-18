@@ -38,45 +38,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Onaylı okul yöneticisi mi?
-    //
-    // Yetkiyi veren şey custom claim'dir; claim yalnızca Admin SDK ile
-    // (scripts/admin/approve_school_admin.mjs) yazılır. Firestore'daki
-    // başvuru kaydının 'approved' olması TEK BAŞINA yetki vermez —
-    // başvuran kendi kaydını onaylayamadığı gibi, onaylayabilseydi bile
-    // buradan geçemezdi.
-    function isApprovedSchoolAdmin() {
-      return request.auth != null
-        && request.auth.token.schoolAdminStatus == 'approved';
-    }
-
-    // Yönetici yetkisi kendi okuluyla sınırlıdır: bir okulun yöneticisi
-    // başka okulun şikâyetlerini göremez.
-    function isSchoolAdminOf(schoolId) {
-      return isApprovedSchoolAdmin()
-        && request.auth.token.schoolId == schoolId;
-    }
-    // Okuyan kişi bu okulun öğretmen dizininde kayıtlı mı?
-    //
-    // `school_teachers` bloğundaki desenin aynısı. Pano içeriği
-    // (nöbetçi listesi, duyurular) öğretmen ADI taşıyor ve bu kişisel
-    // veri; oturum açmış herkesin tüm okulları taraması gerekmiyor.
-    //
-    // ## Bu korumanın SINIRI
-    //
-    // `school_teachers` kaydı ONAYSIZ oluşuyor: Google hesabı olan
-    // biri bir kurum kodu seçip o okulun öğretmeni olabiliyor
-    // (bkz. o bloktaki not). Yani bu koşul, hedefli bir saldırıyı
-    // değil **toplu taramayı** engelliyor — saldırganın her okul için
-    // ayrı kayıt açması gerekiyor.
-    //
-    // Tam çözüm okul üyeliğinin onaya bağlanmasıdır; o, kapsamı
-    // daha geniş ayrı bir karar.
-    function isSchoolMemberOf(schoolId) {
-      return request.auth != null && exists(
-        /databases/$(database)/documents/school_teachers/$(schoolId + '_' + request.auth.uid)
-      );
-    }
+    // Okul yöneticisi rolü (isApprovedSchoolAdmin, isSchoolAdminOf) ve
+    // okul tahtası üyeliği (isSchoolMemberOf) 18 Ekim 2026'da kalktı:
+    // telefondaki yönetici paneli, şikâyet incelemesi ve tahta yönetimi
+    // silindi; okul yönetimi masaüstü Ana Program'da, buluta çıkmıyor.
     function ownsClassRoom(classCloudId) {
       return request.auth != null
         && classCloudId.matches('cls_' + request.auth.uid + '_.*');
@@ -360,114 +325,20 @@ service cloud.firestore {
       allow update: if ownsStudent(resource.data.studentCloudId);
     }
 
-    // Okul yöneticiliği başvuruları. Öğretmen kendi başvurusunu görür ve
-    // oluşturur; kararı yalnızca süper admin verir.
-    //
-    // ## Okul yöneticisi neden okuyabiliyor
-    //
-    // Panelin "Öğretmen Onayı" sekmesi `pendingRequestsForSchool()`
-    // çağırıyor ve bu bir **sorgu** (`where school_id == ...`).
-    // Firestore'da sorgu ancak tüm olası sonuçlar kurala uyuyorsa
-    // çalışıyor; `resource.data.teacherUid == request.auth.uid`
-    // koşulu sorguya çevrilemediği için sorgu **baştan**
-    // reddediliyordu.
-    //
-    // Cihazda ölçüldü (18 Eylül 2026):
-    //   Listen for Query(school_admin_requests where
-    //     school_id==meb_775214 and status==pending) failed:
-    //     PERMISSION_DENIED
-    //
-    // Yani o sekme hiç çalışmamış: "bekleyen başvuru yok" mesajı boş
-    // listeden değil, izin reddinden geliyordu ve sebebi görünmüyordu
-    // (`pendingRequestsForSchool` hatayı yutup boş liste döndürüyor).
-    //
-    // `isSchoolAdminOf(resource.data.school_id)` sorguya çevrilebilir:
-    // claim'deki okul ile dokümandaki okul karşılaştırılıyor.
-    //
-    // NOT: Bu, yöneticiliğe karar verme yetkisi DEĞİL — karar hâlâ
-    // yalnızca süper adminde (`allow update, delete: if isSuper()`).
-    // Okul yöneticisi kendi okulunun başvurularını yalnızca görüyor.
-    //
-    // ## Alan adları snake_case (ÖLÇÜLDÜ)
-    //
-    // `SchoolAdminRequestModel.toMap()` snake_case yazıyor:
-    // `school_id`, `teacher_uid`. Kural bir dönem `resource.data.teacherUid`
-    // okuyordu — **o alan hiç yok**, yani öğretmen kendi başvurusunu da
-    // okuyamıyordu. Dün yaşanan "başvuru gönderilemedi" sorununun ikinci
-    // yarısı buydu.
-    //
-    // `create` koşulu da aynı sebeple çalışmıyordu; artık gerçek alan
-    // adına bakıyor.
-    match /school_admin_requests/{id} {
-      allow read: if isAdmin()
-        || isSchoolAdminOf(resource.data.school_id)
-        || (request.auth != null
-            && resource.data.teacher_uid == request.auth.uid);
-
-      allow create: if request.auth != null
-        && request.resource.data.teacher_uid == request.auth.uid
-        && request.resource.data.status == 'pending';
-
-      // Başvuran kendi kararını yazamaz — yetki yükseltmeyi engeller.
-      allow update, delete: if isSuper();
-
-      // Reddedilen (ya da yöneticiliği geri alınan) öğretmen, karardan
-      // 24 saat sonra YENİDEN başvurabilir (kullanıcı kararı, 30 Eylül
-      // 2026; yönetici seçimi raporu md. 6: bekleme spam'i önler).
-      //
-      // Belge kimliği öğretmenden türediği için yeniden başvuru bir
-      // GÜNCELLEME; eskiden `update` yalnızca süper admindeydi ve
-      // reddedilen öğretmen bir daha hiç başvuramıyordu (ekranda
-      // yanıltıcı "bağlantınızı kontrol edin" hatası).
-      //
-      // - yalnızca kendi belgesi, yalnızca rejected -> pending
-      // - karar alanları boş olmalı: öğretmen kendi kararını yazamaz
-      // - bekleme SUNUCU zaman damgasıyla (`decided_ts`, karar
-      //   fonksiyonu yazar); damgasız eski kararda bekleme yok
-      allow update: if request.auth != null
-        && resource.data.teacher_uid == request.auth.uid
-        && request.resource.data.teacher_uid == request.auth.uid
-        && resource.data.status == 'rejected'
-        && request.resource.data.status == 'pending'
-        && request.resource.data.get('decided_by_uid', null) == null
-        && request.resource.data.get('decided_at', null) == null
-        && request.resource.data.get('decided_ts', null) == null
-        && request.resource.data.get('rejection_reason', null) == null
-        && request.resource.data.get('revoked_at', null) == null
-        && (!(resource.data.get('decided_ts', null) is timestamp)
-            || request.time > resource.data.decided_ts + duration.value(24, 'h'));
-    }
-
-    // Veli şikâyetleri.
-    //
-    // Okuma yetkisi iki gruba açıktır:
-    //  - Moderatör/süper admin: tüm şikâyetler
-    //  - Onaylı okul yöneticisi: YALNIZCA kendi okulunun şikâyetleri
-    //
-    // Yöneticinin işi tam olarak budur (kullanıcı kurgusu), ama yetkisi
-    // kendi okuluyla sınırlıdır. Şikâyeti gönderen veli bile sonradan
-    // okuyamaz: denetim izi tek yönlüdür.
-    match /content_reports/{id} {
-      allow read: if isAdmin() || isSchoolAdminOf(resource.data.schoolId);
-
-      allow create: if request.auth != null
-        && request.resource.data.reporterUid == request.auth.uid
-        && request.resource.data.status == 'open';
-
-      // Okul yöneticisi şikâyeti "incelendi" olarak işaretleyebilir;
-      // içeriğine dokunamaz (denetim izi bütünlüğü).
-      allow update: if isSchoolAdminOf(resource.data.schoolId)
-        && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['status', 'reviewNote', 'reviewedAt']);
-
-      allow update, delete: if isSuper();
-    }
+    // `school_admin_requests` ve `content_reports` kuralları 18 Ekim
+    // 2026'da kalktı (uygulamadan da silindiler). Kural yoksa erişim
+    // kapalıdır.
 
     // Sınıf odası: yalnızca sınıfın kimliği, adı, okulu ve öğretmeni.
     // Öğrenci listesi, not, katılım gibi veriler buraya ASLA yazılmaz —
     // onlar öğretmenin yerel SQLite'ında kalır (offline-first + KVKK).
     match /class_rooms/{classCloudId} {
-      allow read: if ownsClassRoom(classCloudId) || parentHasClass(classCloudId);
+      // Kadrodaki branş öğretmeni de okur: gelen kutusu sınıfın adını ve
+      // sınıf öğretmenini buradan gösterir (18 Ekim 2026). Doküman öğrenci
+      // verisi taşımaz.
+      allow read: if ownsClassRoom(classCloudId)
+        || parentHasClass(classCloudId)
+        || isClassStaff(classCloudId);
 
       // Duyuru yetkisi kararı gereği sınıf odasının sahibi tek öğretmendir.
       allow create, update: if ownsClassRoom(classCloudId)
@@ -523,11 +394,17 @@ service cloud.firestore {
       }
 
       // Randevular. Veli talep eder, öğretmen yanıtlar.
-      // Kadrodaki branş öğretmenleri de yanıtlayabilir: veli onlarla da
-      // görüşme talep edebildiği için (mesajlaşmayla aynı yetki ekseni).
+      // Kadrodaki branş öğretmeni yalnız KENDİSİNE istenen randevuyu
+      // görür ve yanıtlar (`teacherUid == kendisi`; sorgu da bu süzgeçle
+      // yapılmalı). 18 Ekim 2026'ya kadar sınıfın bütün randevularını
+      // okuyabiliyordu; gelen kutusu zaten yalnız kendisine istenenleri
+      // gösteriyor, fazlası ölçülülük ilkesine aykırıydı (KVKK m.4).
+      // `teacherUid` alanı olmayan eski talepleri yalnız sınıf öğretmeni
+      // görür.
       match /appointments/{id} {
         allow read: if ownsClassRoom(classCloudId)
-          || isClassStaff(classCloudId)
+          || (resource.data.teacherUid == request.auth.uid
+              && isClassStaff(classCloudId))
           || (isParent() && parentHasStudent(resource.data.studentCloudId));
 
         allow create: if isParent()
@@ -535,8 +412,13 @@ service cloud.firestore {
           && request.resource.data.parentUserId == request.auth.uid
           && request.resource.data.status == 'pending';
 
-        // Öğretmen onaylar/reddeder.
-        allow update: if ownsClassRoom(classCloudId) || isClassStaff(classCloudId);
+        // Öğretmen onaylar/reddeder. Kadrodaki öğretmen yalnız kendisine
+        // istenen randevuda ve yalnız yanıt alanlarını değiştirir.
+        allow update: if ownsClassRoom(classCloudId);
+        allow update: if resource.data.teacherUid == request.auth.uid
+          && isClassStaff(classCloudId)
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['status', 'responseNote', 'respondedAt']);
 
         // Veli kendi talebini iptal edebilir (yalnızca durum alanı).
         allow update: if isParent()
@@ -606,12 +488,13 @@ service cloud.firestore {
         // mesajlaşma yetkisi kazanamayacağını garanti eder.
       }
 
-      // Durum bildirimleri (ilaç, erken çıkış, not).
-      // Öğrencinin sağlık/durum bilgisini taşır: yalnızca sınıfın
-      // öğretmenleri ve bildirimi gönderen veli erişebilir.
+      // Durum bildirimleri (erken çıkış, geç gelme, not).
+      // Öğrencinin durum bilgisini taşır: yalnızca sınıf öğretmeni ve
+      // bildirimi gönderen veli erişir. Kadrodaki branş öğretmeni 18 Ekim
+      // 2026'dan beri göremez: bildirimi sınıf öğretmeni karşılar, branş
+      // öğretmeninin bunu gösteren ekranı da yoktu (KVKK m.4 ölçülülük).
       match /status_reports/{id} {
         allow read: if ownsClassRoom(classCloudId)
-          || isClassStaff(classCloudId)
           || (isParent() && parentHasStudent(resource.data.studentCloudId));
 
         allow create: if isParent()
@@ -623,7 +506,7 @@ service cloud.firestore {
         // Veli bildirimi gönderdikten sonra içeriğini DEĞİŞTİREMEZ:
         // öğretmen "ilaç saat 12:30" diye okuduktan sonra metin değişirse
         // sorumluluk belirsizleşirdi.
-        allow update: if ownsClassRoom(classCloudId) || isClassStaff(classCloudId);
+        allow update: if ownsClassRoom(classCloudId);
 
         allow delete: if ownsClassRoom(classCloudId);
       }
@@ -673,187 +556,23 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // --- Okul panosu (tahta modülü) ---
+    // Kadrosunda olduğum sınıflar (gelen kutusu, 18 Ekim 2026).
     //
-    // Etkileşimli tahtalarda gösterilecek okul geneli içerik: nöbetçi
-    // listesi ve idare duyuruları. Sınıf duyurularından AYRI bir yol,
-    // çünkü ölçek farklı: `class_rooms/{cls_{uid}_{id}}` sahipliği
-    // doküman kimliğindeki öğretmen uid'sinden türüyor (`cloud_ids.dart`),
-    // okul panosunun ise sahibi bir öğretmen değil, okulun yöneticisi.
+    // Branş öğretmeninin uygulamasında kadrosunda olduğu sınıfı açan hiçbir
+    // yol yoktu: veli matematik öğretmenine yazıyor, mesaj buluta düşüyor
+    // ama öğretmen onu hiçbir yerde görmüyordu. Öğretmen kendi kadro
+    // satırlarını collection group sorgusuyla (`teacherUid == uid`) bulur.
     //
-    // Mevcut şema DEĞİŞTİRİLMEDİ, yeni yol açıldı: `cloud_ids.dart:26-29`
-    // kimlik deseninin geri dönüşünün zor olduğunu uyarıyor.
-    //
-    // Doküman kimliği kanonik okul kimliğidir (`meb_*` / `man_*`), yani
-    // yetki tek karşılaştırmayla denetlenir — ekstra okuma yok.
-    match /school_boards/{schoolId} {
-      // Okuma: YALNIZCA o okulun dizininde kayıtlı öğretmenler.
-      //
-      // Eski kural `request.auth != null` idi ve gerekçe "pano zaten
-      // tahtada herkese açık" diyordu. Gerekçe yanlıştı: tahtada O
-      // OKULUN panosu görünür, ama kural TÜM okulların taranmasına
-      // izin veriyordu. Kurum kodları da tahmin edilebilir (`meb_*`).
-      //
-      // Nöbetçi listesi öğretmen adı taşıyor — kişisel veri
-      // (bağımsız incelemede bildirildi, 19 Eylül 2026'da
-      // doğrulandı).
-      allow read: if isSchoolMemberOf(schoolId) || isSchoolAdminOf(schoolId);
-
-      // Yazma: YALNIZCA o okulun onaylı yöneticisi. Claim tabanlı
-      // (`isSchoolAdminOf`), yani başvuru kaydını "approved" yapmak
-      // yetki vermez — claim'i Admin SDK yazar.
-      allow create, update: if isSchoolAdminOf(schoolId)
-        && request.resource.data.schoolId == schoolId;
-
-      // Silme yok: pano geçmişi denetim izidir. Yönetici içeriği
-      // güncelleyerek boşaltabilir, ama kaydı yok edemez.
-      allow delete: if isSuper();
-
-      // Nöbetçi listesi.
-      //
-      // Doküman kimliği gün+kat (`pazartesi_1-_Kat`) — **haftalık
-      // döngü**, tarih değil. Tarih bazlı yapıda liste her ay
-      // yenilenmek ve yeni dosya her tahtaya elden götürülmek
-      // zorundaydı.
-      //
-      // Nöbetçi bilgisi öğretmen adı içerir; öğrenci verisi ASLA
-      // girmez.
-      match /duty/{dutyId} {
-        allow read: if isSchoolMemberOf(schoolId) || isSchoolAdminOf(schoolId);
-        allow write: if isSchoolAdminOf(schoolId);
-      }
-
-      // İdare duyuruları.
-      //
-      // Sınıf duyurularıyla karıştırılmamalı: bunlar okul geneli ve
-      // veliye değil tahtaya gider.
-      match /notices/{noticeId} {
-        allow read: if isSchoolMemberOf(schoolId) || isSchoolAdminOf(schoolId);
-
-        allow create, update: if isSchoolAdminOf(schoolId)
-          && request.resource.data.baslik is string
-          && request.resource.data.baslik.size() > 0
-          && request.resource.data.baslik.size() <= 100
-          && request.resource.data.metin is string
-          && request.resource.data.metin.size() <= 2000;
-
-        // Süresi geçen duyuru silinebilir — denetim izi değil, gösterim
-        // verisi.
-        allow delete: if isSchoolAdminOf(schoolId);
-      }
-
-      // Tahta açma yetkisi olan öğretmenler.
-      //
-      // ## Neden bu koleksiyon var
-      //
-      // Önceki akışta idareci her öğretmeni tek tek ekliyor, QR
-      // üretiyor, öğretmen o QR'ı okutuyordu. 40 öğretmenli okulda
-      // bu saatler sürüyor ve telefon değiştiren/uygulamayı silen
-      // öğretmen için tekrar gerekiyor.
-      //
-      // Artık öğretmen kendi isteğini gönderiyor, yönetici onaylıyor.
-      //
-      // ## Neden okuma kısıtlı (üstteki pano kuralından FARKLI)
-      //
-      // `school_boards/{schoolId}` okumaya oturumlu herkese açık —
-      // pano içeriği (nöbetçi, duyuru) zaten tahtada herkese
-      // gösteriliyor. Ama bu koleksiyon **TOTP secret'ı** taşıyor:
-      // secret, o öğretmenin tahtayı açma yetkisidir.
-      //
-      // Firestore kuralları alt yollara miras geçmez, yani üstteki
-      // açık okuma buraya uygulanmıyor. Yine de açıkça yazılıyor:
-      // öğretmen KENDİ kaydını, yönetici okulunun TÜMÜNÜ okur.
-      // Yönetici okumak zorunda — tahtaya götürülecek `okul_config`
-      // dosyasını bu secret'larla üretiyor.
-      //
-      // ## Neden `durum == 'bekliyor'` şartı
-      //
-      // Bu şart olmadan öğretmen kendi kaydını `onayli` yazıp kendini
-      // yetkilendirir. Yetki yükseltme koruması: onayı yalnızca
-      // yönetici verebilir (`update`).
-      //
-      // `school_teachers` kaydının ONAYSIZ oluştuğu ölçüldü (bkz.
-      // o bloktaki not): Google hesabı olan herkes bir kurum kodunu
-      // seçip o okulun öğretmeni olabiliyor. Bu yüzden tahta yetkisi
-      // okul seçimine değil, **yönetici onayına** bağlı.
-      // İmzalama anahtarının bulut yedeği.
-      //
-      // ## Neden var (kullanıcı kararı, 18 Eylül 2026)
-      //
-      // Anahtar kaybolursa geri dönüşü yok: yeni yapılandırma
-      // yayımlanamaz ve her tahtaya elden gitmek gerekir. Müdürün
-      // metin yedeği alması bekleniyordu ama sahada bu **olmuyor** —
-      // kullanıcı: *"bence yedeği direkt buluta yedeklesin."*
-      //
-      // ## Kabul edilen risk
-      //
-      // Özel anahtar artık bulutta DÜZ duruyor (kullanıcı parolasız
-      // yedeği seçti). Yani Firebase hesabı ele geçirilirse saldırgan
-      // **tüm okulların** tahtalarına geçerli dosya üretebilir.
-      //
-      // Bu bilerek kabul edildi. Gerekçe: kilit zaten "caydırıcı
-      // katman" ve panelin kaynak düğmesiyle atlanıyor (MEB
-      // şartnamesi md. 1.11.3); anahtar kaybı ise gerçek ve sık bir
-      // zarar.
-      //
-      // ## Neden AYRI alt koleksiyon
-      //
-      // `school_boards/{schoolId}` okumaya oturumlu **herkese** açık
-      // (pano içeriği tahtada zaten görünüyor). Anahtar oraya
-      // yazılsaydı okuldaki her öğretmen okuyabilirdi.
-      //
-      // Burada okuma da yazma da yalnızca o okulun onaylı
-      // yöneticisinde. Öğretmen, veli ve başka okulun yöneticisi
-      // hiçbir şey göremiyor.
-      match /gizli/{belge} {
-        allow read, write: if isSchoolAdminOf(schoolId);
-      }
-
-      match /teachers/{teacherUid} {
-        allow read: if request.auth != null
-          && (request.auth.uid == teacherUid || isSchoolAdminOf(schoolId));
-
-        // İstek gönderme: yalnızca kendi adına, yalnızca "bekliyor".
-        allow create: if request.auth != null
-          && request.auth.uid == teacherUid
-          && request.resource.data.teacherUid == request.auth.uid
-          && request.resource.data.durum == 'bekliyor'
-          && request.resource.data.totpSecret is string
-          && request.resource.data.totpSecret.size() >= 16
-          && request.resource.data.totpSecret.size() <= 64
-          && request.resource.data.ad is string
-          && request.resource.data.ad.size() > 0
-          && request.resource.data.ad.size() <= 80;
-
-        // Onay, ret ve çıkarma: yalnızca o okulun onaylı yöneticisi.
-        allow update, delete: if isSchoolAdminOf(schoolId)
-          // REDDEDİLEN öğretmen yeniden isteyebilir.
-          //
-          // `reddet` belgeyi silmiyor, `durum: 'reddedildi'` yapıyor.
-          // Öğretmenin `update` hakkı olmadığı için yeniden istek
-          // gönderemiyordu; ekran ise "İsteğiniz zaten gönderilmiş,
-          // onay bekleniyor" diyordu — oysa reddedilmişti.
-          //
-          // Yanlışlıkla reddedilen öğretmen müdürün kapısına gitmek
-          // zorunda kalıyordu: tam da otomatik kaydın çözmek istediği
-          // sahne (bağımsız incelemede bildirildi, 19 Eylül 2026'da
-          // doğrulandı).
-          //
-          // İzin DAR: yalnızca `reddedildi` -> `bekliyor` ve yalnızca
-          // kendi kaydı. Yetki yükselmesi yok — `onayli` yazmak hâlâ
-          // imkânsız.
-          || (request.auth != null
-              && request.auth.uid == teacherUid
-              && resource.data.durum == 'reddedildi'
-              && request.resource.data.durum == 'bekliyor'
-              && request.resource.data.teacherUid == request.auth.uid
-              && request.resource.data.totpSecret is string
-              && request.resource.data.totpSecret.size() >= 16
-              && request.resource.data.totpSecret.size() <= 64
-              && request.resource.data.ad is string
-              && request.resource.data.ad.size() > 0
-              && request.resource.data.ad.size() <= 80);
-      }
+    // Yalnız KENDİ satırları: sorgu başka uid ile ya da süzgeçsiz
+    // yapılırsa reddedilir; tüm okulların kadroları taranamaz.
+    match /{path=**}/staff/{staffId} {
+      allow list: if request.auth != null
+        && resource.data.teacherUid == request.auth.uid;
     }
+
+    // `school_boards` (okul tahtası panosu, nöbet, öğretmen tahta
+    // yetkileri) kuralları 18 Ekim 2026'da kalktı: telefondan tahta
+    // yönetimi silindi, tahtayı masaüstü Ana Program yönetiyor ve buluta
+    // çıkmıyor. Kural yoksa erişim kapalıdır.
   }
 }

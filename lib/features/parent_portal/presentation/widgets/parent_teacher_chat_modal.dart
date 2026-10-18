@@ -289,6 +289,8 @@ class _ParentTeacherChatModalState
             authorUid: widget.selfUid,
             teacherUid: widget.teacherUid,
             body: body,
+            // Kadrodaki ogretmen gelen kutusunda ogrenciyi bu alandan gorur.
+            studentName: widget.studentName,
           );
 
       if (!mounted) return;

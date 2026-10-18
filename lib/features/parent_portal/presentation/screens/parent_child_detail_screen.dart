@@ -510,6 +510,7 @@ class _TeachersTab extends ConsumerWidget {
       relation: child.relation,
       teacherName: teacher.teacherName,
       branch: teacher.branch,
+      teacherUid: teacher.teacherUid,
       appointmentDate: appointmentDate,
       timeSlot: teacher.meetingTime,
       topic: topicCtrl.text.trim(),

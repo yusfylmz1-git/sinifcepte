@@ -78,7 +78,8 @@ class SinifSeridi extends StatelessWidget {
               : () => _neden(
                     context,
                     'Veli bağlantıları rehberlik sınıfında kurulur. Bu sınıfın '
-                    'rehber öğretmeni sizi kadroya eklerse velilerle yazışabilirsiniz.',
+                    'rehber öğretmeni sizi kadroya eklediyse velilerin size '
+                    "yazdıkları Bugün'deki gelen kutusuna gelir.",
                   ),
         ),
         _dugme(

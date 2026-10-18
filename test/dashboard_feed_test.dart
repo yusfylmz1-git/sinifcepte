@@ -55,18 +55,18 @@ void main() {
       expect(kod, contains("'Akış'"));
     });
 
-    test('KRITIK: veliden gelenler akista', () {
+    // 18 Ekim 2026: velilerden gelenler akista DEGIL, Bugun'deki "Veli
+    // gelen kutusu" kartinda. Akis onlari her acilista "yeni" sayan eski
+    // bildirim hesabindan aliyordu (ogretmen tarafinda okunma takibi yoktu).
+    test('KRITIK: veliden gelenler gelen kutusu kartinda, akista degil', () {
       final kod = saglayici();
-      expect(kod, contains('teacherNotificationsProvider'),
-          reason: 'veli mesaj/randevu/bildirimleri akista gorunmeli');
-    });
-
-    test('KRITIK: TUM siniflar taraniyor', () {
-      // teacherNotificationsProvider SINIF BASINA calisiyor; ana sayfada
-      // ogretmenin butun siniflari tek listede olmali.
-      final kod = saglayici();
-      expect(kod, contains('classListProvider'));
-      expect(kod, contains('for (final c in classes)'));
+      expect(kod.contains('teacherNotificationsProvider'), isFalse);
+      final ekr = ekran();
+      expect(ekr, contains('GelenKutusuKarti(isDark: isDark)'));
+      expect(ekr, contains('gelenKutusuProvider'));
+      expect(ekr.indexOf('GelenKutusuKarti(isDark: isDark)'),
+          lessThan(ekr.indexOf('_buildTeacherBentoGrid(context, isDark)')),
+          reason: 'kart hizli islemlerin ustunde');
     });
 
     test('KRITIK: yonetici duyurusu destekleniyor', () {

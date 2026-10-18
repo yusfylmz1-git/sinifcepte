@@ -134,6 +134,13 @@ class CloudMessage {
   /// goruyordu. Sohbetler bu alanla ayrisir.
   final String teacherUid;
 
+  /// Öğrencinin adı (18 Ekim 2026'dan sonra yazılan mesajlarda).
+  ///
+  /// Kadrodaki branş öğretmeni velinin bağ kaydını okuyamaz; gelen
+  /// kutusunda kimin velisiyle yazıştığını bu alandan görür. Eski
+  /// mesajlarda boştur.
+  final String studentName;
+
   const CloudMessage({
     required this.id,
     required this.studentCloudId,
@@ -142,6 +149,7 @@ class CloudMessage {
     required this.authorName,
     this.authorUid = '',
     this.teacherUid = '',
+    this.studentName = '',
     required this.body,
     required this.createdAt,
   });
@@ -242,6 +250,13 @@ class CloudAppointment {
   final DateTime createdAt;
   final String? responseNote;
 
+  /// Randevu istenen öğretmen (18 Ekim 2026'dan sonraki taleplerde).
+  ///
+  /// Kadrodaki öğretmen sınıfın bütün randevularını okuyabilir; gelen
+  /// kutusunda yalnız kendine istenenleri göstermek için. Eski taleplerde
+  /// boştur, o zaman öğretmen adına bakılır.
+  final String teacherUid;
+
   const CloudAppointment({
     required this.id,
     required this.studentCloudId,
@@ -257,6 +272,7 @@ class CloudAppointment {
     this.status = 'pending',
     required this.createdAt,
     this.responseNote,
+    this.teacherUid = '',
   });
 
   bool get isPending => status == 'pending';
@@ -310,6 +326,21 @@ class CloudAppointment {
 ///    listede görür ama mesajlaşma açılmaz.
 /// 2. **Etkin**: branş öğretmeni [joinCode] ile katılır, kayıt kendi
 ///    UID'siyle yeniden yazılır ve mesajlaşma açılır.
+/// Öğretmenin kadrosunda olduğu (başka öğretmenin) sınıfı.
+class KadroSinifi {
+  final String classCloudId;
+  final String className;
+  final String homeroomTeacherName;
+  final String branch;
+
+  const KadroSinifi({
+    required this.classCloudId,
+    required this.className,
+    required this.homeroomTeacherName,
+    required this.branch,
+  });
+}
+
 class CloudStaffMember {
   /// Öğretmenin Firebase UID'si.
   final String teacherUid;
@@ -622,6 +653,7 @@ class CloudCommunicationRepository {
           authorName: data['authorName'] as String? ?? '',
           authorUid: data['authorUid'] as String? ?? '',
           teacherUid: data['teacherUid'] as String? ?? '',
+          studentName: data['studentName'] as String? ?? '',
           body: data['body'] as String? ?? '',
           createdAt:
               DateTime.tryParse(data['createdAt'] as String? ?? '') ??
@@ -631,6 +663,112 @@ class CloudCommunicationRepository {
     } catch (e, stackTrace) {
       debugPrint('fetchMessages hatası: $e\n$stackTrace');
       return const [];
+    }
+  }
+
+  /// Gelen kutusu: bu sınıfta öğretmene yazılmış (ve onun yazdığı)
+  /// mesajlar, [since] sonrası yeniler önce.
+  ///
+  /// Delta uygulanır (maliyet kararı #2): [since] verilirse yalnız ondan
+  /// sonraki mesajlar okunur; yeni mesaj yoksa sıfır doküman. Kural,
+  /// kadrodaki öğretmene yalnız `teacherUid == kendisi` sorgusunu açar.
+  /// İndeks: messages (teacherUid ASC, createdAt DESC).
+  Future<List<CloudMessage>> fetchTeacherInbox({
+    required String classCloudId,
+    required String teacherUid,
+    DateTime? since,
+    int limit = 100,
+  }) async {
+    await _client.ensureConfigured();
+    final db = _client.db;
+    if (db == null) return const [];
+
+    try {
+      Query<Map<String, dynamic>> query = db
+          .collection(_classRooms)
+          .doc(classCloudId)
+          .collection('messages')
+          .where('teacherUid', isEqualTo: teacherUid);
+      if (since != null) {
+        query = query.where('createdAt', isGreaterThan: since.toIso8601String());
+      }
+      final snap = await query
+          .orderBy('createdAt', descending: true)
+          .limit(limit)
+          .get()
+          .timeout(_queryTimeout);
+
+      await _client.recordQueryReads(snap.docs.length);
+
+      return snap.docs.map((d) {
+        final data = d.data();
+        return CloudMessage(
+          id: d.id,
+          studentCloudId: data['studentCloudId'] as String? ?? '',
+          parentUserId: data['parentUserId'] as String? ?? '',
+          authorRole: data['authorRole'] as String? ?? 'teacher',
+          authorName: data['authorName'] as String? ?? '',
+          authorUid: data['authorUid'] as String? ?? '',
+          teacherUid: data['teacherUid'] as String? ?? '',
+          studentName: data['studentName'] as String? ?? '',
+          body: data['body'] as String? ?? '',
+          createdAt:
+              DateTime.tryParse(data['createdAt'] as String? ?? '') ??
+                  DateTime.now(),
+        );
+      }).toList();
+    } catch (e, stackTrace) {
+      debugPrint('fetchTeacherInbox hatası: $e\n$stackTrace');
+      rethrow;
+    }
+  }
+
+  /// Öğretmenin kadrosunda olduğu sınıflar (kendi sınıfları hariç).
+  ///
+  /// Branş öğretmeninin kadrosunda olduğu sınıfı açan hiçbir yol yoktu;
+  /// veli ona yazınca mesaj kimsenin görmediği yere düşüyordu (17 Ekim
+  /// 2026 tespiti). Collection group sorgusu yalnız kendi satırlarını
+  /// getirir (kural). Okuma: kadro satırı sayısı + her sınıf odası için 1.
+  Future<List<KadroSinifi>> fetchMyStaffClasses(String teacherUid) async {
+    await _client.ensureConfigured();
+    final db = _client.db;
+    if (db == null) return const [];
+
+    try {
+      final snap = await db
+          .collectionGroup('staff')
+          .where('teacherUid', isEqualTo: teacherUid)
+          .get()
+          .timeout(_queryTimeout);
+      await _client.recordQueryReads(snap.docs.length);
+
+      final siniflar = <KadroSinifi>[];
+      for (final d in snap.docs) {
+        final sinifRef = d.reference.parent.parent;
+        if (sinifRef == null) continue;
+        // Kendi sınıfı (sınıf öğretmeni satırı) zaten "sınıflarım"da.
+        if (sinifRef.id.startsWith('cls_${teacherUid}_')) continue;
+        var ad = '';
+        var sinifOgretmeni = '';
+        try {
+          final oda = await sinifRef.get().timeout(_queryTimeout);
+          await _client.recordQueryReads(1);
+          ad = oda.data()?['className'] as String? ?? '';
+          sinifOgretmeni = oda.data()?['teacherName'] as String? ?? '';
+        } catch (e) {
+          debugPrint('Kadro sınıfı okunamadı ($e)');
+        }
+        siniflar.add(KadroSinifi(
+          classCloudId: sinifRef.id,
+          className: ad,
+          homeroomTeacherName: sinifOgretmeni,
+          branch: d.data()['branch'] as String? ?? '',
+        ));
+      }
+      return siniflar;
+    } catch (e, stackTrace) {
+      debugPrint('fetchMyStaffClasses hatası: $e\n$stackTrace');
+      rethrow;
     }
   }
 
@@ -648,6 +786,7 @@ class CloudCommunicationRepository {
     required String authorUid,
     required String teacherUid,
     required String body,
+    String studentName = '',
   }) {
     return _client.setDoc(
       '$_classRooms/$classCloudId/messages/$messageId',
@@ -660,6 +799,8 @@ class CloudCommunicationRepository {
         // Yazismanin hangi ogretmenle oldugunu belirler; olmadan tum
         // ogretmenlerin yazismalari tek sohbette birikiyordu.
         'teacherUid': teacherUid,
+        // Kadrodaki ogretmen gelen kutusunda ogrenciyi bu alandan gorur.
+        if (studentName.isNotEmpty) 'studentName': studentName,
         'body': body,
         'createdAt': DateTime.now().toIso8601String(),
       },
@@ -983,10 +1124,13 @@ class CloudCommunicationRepository {
     required DateTime appointmentDate,
     required String timeSlot,
     required String topic,
+    String teacherUid = '',
   }) {
     return _client.setDoc(
       '$_classRooms/$classCloudId/appointments/$appointmentId',
       {
+        // Kadrodaki ogretmen gelen kutusunda yalniz kendine istenenleri gorur.
+        if (teacherUid.isNotEmpty) 'teacherUid': teacherUid,
         'studentCloudId': studentCloudId,
         'studentName': studentName,
         'parentUserId': parentUserId,
@@ -1040,9 +1184,14 @@ class CloudCommunicationRepository {
   /// Randevuları getirir.
   ///
   /// [studentCloudId] verilirse veli görünümü, verilmezse sınıfın tamamı.
+  ///
+  /// [teacherUid]: kadrodaki öğretmen yalnız kendisine istenen randevuları
+  /// okuyabilir; kural süzgeçsiz sorguyu reddeder (18 Ekim 2026). İndeks:
+  /// appointments (teacherUid ASC, createdAt DESC).
   Future<List<CloudAppointment>> fetchAppointments({
     required String classCloudId,
     String? studentCloudId,
+    String? teacherUid,
     int limit = 50,
   }) async {
     await _client.ensureConfigured();
@@ -1057,6 +1206,9 @@ class CloudCommunicationRepository {
 
       if (studentCloudId != null) {
         query = query.where('studentCloudId', isEqualTo: studentCloudId);
+      }
+      if (teacherUid != null) {
+        query = query.where('teacherUid', isEqualTo: teacherUid);
       }
 
       final snap =
@@ -1084,6 +1236,7 @@ class CloudCommunicationRepository {
           createdAt: DateTime.tryParse(data['createdAt'] as String? ?? '') ??
               DateTime.now(),
           responseNote: data['responseNote'] as String?,
+          teacherUid: data['teacherUid'] as String? ?? '',
         );
       }).toList();
     } catch (e, stackTrace) {

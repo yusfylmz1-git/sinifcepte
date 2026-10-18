@@ -2,18 +2,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/cloud/remote_manifest_service.dart';
 import '../../../core/storage/prefs_service.dart';
-import '../../classes/providers/class_provider.dart';
-import '../../parent_portal/data/models/app_notification.dart';
-import '../../parent_portal/providers/notification_provider.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../documents/data/special_days_repository.dart';
 
 /// Ana sayfadaki "Akış" bölümünün öğesi.
 ///
-/// İki kaynaktan beslenir:
-///   * Velilerden gelenler (mesaj, randevu, durum bildirimi)
+/// Kaynakları:
 ///   * Yöneticiden gelen genel duyuru (Remote Config)
+///   * Yaklaşan belirli gün ve haftalar
+///
+/// Velilerden gelenler 18 Ekim 2026'dan beri burada DEĞİL, Bugün'deki
+/// "Veli gelen kutusu" kartında: akış onları her açılışta "yeni" sayan
+/// eski bildirim hesabından alıyordu (öğretmen tarafında okunma takibi
+/// yoktu).
 class FeedItem {
   final String id;
   final String title;
@@ -31,15 +33,6 @@ class FeedItem {
 }
 
 enum FeedKind {
-  /// Veliden gelen mesaj.
-  message,
-
-  /// Randevu talebi.
-  appointment,
-
-  /// Veli durum bildirimi (erken çıkış, geç kalma).
-  report,
-
   /// Yöneticiden gelen genel duyuru.
   admin,
 
@@ -52,16 +45,10 @@ enum FeedKind {
 /// Aynı duyuruyu her açılışta göstermek rahatsız edici olurdu.
 const String _kDismissedNoticeKey = 'dismissed_admin_notice_id';
 
-/// Ana sayfa akışı: tüm sınıflardan gelen bildirimler + yönetici duyurusu.
+/// Ana sayfa akışı: yönetici duyurusu + yaklaşan belirli günler.
 ///
-/// ## Neden ayrı bir sağlayıcı
-/// `teacherNotificationsProvider` **sınıf başına** çalışıyor. Ana sayfada
-/// öğretmenin bütün sınıflarını tek listede görmesi gerekiyor; her sınıf
-/// için ayrı ayrı sorgulayıp birleştirmek ekranın işi değil.
-///
-/// ## Maliyet
-/// Sınıf sayısı kadar sorgu çalışır ama hepsi delta senkronizasyonlu:
-/// yeni mesaj yoksa sıfır doküman okunur.
+/// Firestore okuması yapmaz: duyuru Remote Config'den, belirli günler
+/// paketteki çizelgeden gelir.
 final dashboardFeedProvider = FutureProvider<List<FeedItem>>((ref) async {
   final items = <FeedItem>[];
 
@@ -102,23 +89,6 @@ final dashboardFeedProvider = FutureProvider<List<FeedItem>>((ref) async {
     debugPrint('Akış: belirli günler okunamadı ($e)');
   }
 
-  // 3. Velilerden gelenler — tüm sınıflar.
-  final classes = ref.watch(classListProvider).valueOrNull ?? const [];
-  for (final c in classes) {
-    final bildirimler =
-        await ref.watch(teacherNotificationsProvider(c).future);
-
-    for (final n in bildirimler) {
-      items.add(FeedItem(
-        id: n.id,
-        title: '${c.name} · ${n.title}',
-        subtitle: n.body,
-        at: n.createdAt,
-        kind: _kindOf(n.kind),
-      ));
-    }
-  }
-
   // Yönetici duyurusu her zaman en üstte; kalanlar yeniden eskiye.
   items.sort((a, b) {
     if (a.kind == FeedKind.admin) return -1;
@@ -129,20 +99,6 @@ final dashboardFeedProvider = FutureProvider<List<FeedItem>>((ref) async {
   // Ana sayfa akışı kısa tutulur; tamamı bildirim merkezinde.
   return items.take(6).toList();
 });
-
-FeedKind _kindOf(NotificationKind k) {
-  switch (k) {
-    case NotificationKind.message:
-      return FeedKind.message;
-    case NotificationKind.appointment:
-      return FeedKind.appointment;
-    case NotificationKind.statusReport:
-      return FeedKind.report;
-    case NotificationKind.announcement:
-    case NotificationKind.exam:
-      return FeedKind.report;
-  }
-}
 
 Future<String> _dismissedNoticeId() async {
   try {

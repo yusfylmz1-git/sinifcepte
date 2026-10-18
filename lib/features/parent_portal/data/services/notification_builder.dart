@@ -58,50 +58,6 @@ class NotificationBuilder {
     return AppNotification.sorted(out);
   }
 
-  /// Öğretmenin bildirim listesi.
-  static List<AppNotification> forTeacher({
-    required List<CloudMessage> messages,
-    required List<CloudStatusReport> reports,
-    required List<CloudAppointment> appointments,
-    required DateTime? lastSeenMessages,
-  }) {
-    final out = <AppNotification>[];
-
-    for (final m in messages) {
-      // Öğretmenin kendi mesajı bildirim üretmez.
-      if (m.isFromTeacher) continue;
-      out.add(_fromMessage(m, lastSeenMessages));
-    }
-
-    for (final r in reports) {
-      out.add(AppNotification(
-        id: 'rep_${r.id}',
-        kind: NotificationKind.statusReport,
-        title: r.title,
-        body: '${r.studentName} · ${r.parentName}',
-        createdAt: r.createdAt,
-        // Öğretmen onayladıysa iş bitmiştir.
-        isRead: r.status == 'acknowledged',
-        targetId: r.id,
-      ));
-    }
-
-    for (final ap in appointments) {
-      // Öğretmenin haber alması gereken şey BEKLEYEN taleptir.
-      if (ap.status != 'pending') continue;
-      out.add(AppNotification(
-        id: 'apt_${ap.id}',
-        kind: NotificationKind.appointment,
-        title: 'Randevu talebi',
-        body: '${ap.studentName} · ${ap.parentName} (${ap.timeSlot})',
-        createdAt: ap.createdAt,
-        targetId: ap.id,
-      ));
-    }
-
-    return AppNotification.sorted(out);
-  }
-
   static AppNotification _fromMessage(
     CloudMessage m,
     DateTime? lastSeen,

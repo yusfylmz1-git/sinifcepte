@@ -161,53 +161,9 @@ void main() {
     });
   });
 
-  group('Ogretmen beslemesi', () {
-    test('KRITIK: veli mesaji bildirim uretir', () {
-      final liste = NotificationBuilder.forTeacher(
-        messages: [mesaj(authorRole: 'parent')],
-        reports: const [],
-        appointments: const [],
-        lastSeenMessages: null,
-      );
-
-      expect(liste.length, 1);
-      expect(liste.single.kind, NotificationKind.message);
-    });
-
-    test('KRITIK: ogretmenin kendi mesaji bildirim uretmez', () {
-      final liste = NotificationBuilder.forTeacher(
-        messages: [mesaj(authorRole: 'teacher')],
-        reports: const [],
-        appointments: const [],
-        lastSeenMessages: null,
-      );
-
-      expect(liste, isEmpty);
-    });
-
-    test('KRITIK: bekleyen randevu talebi ogretmene bildirilir', () {
-      final liste = NotificationBuilder.forTeacher(
-        messages: const [],
-        reports: const [],
-        appointments: [randevu(status: 'pending')],
-        lastSeenMessages: null,
-      );
-
-      expect(liste.length, 1);
-      expect(liste.single.isRead, isFalse);
-    });
-
-    test('Karara baglanmis randevu tekrar bildirilmez', () {
-      final liste = NotificationBuilder.forTeacher(
-        messages: const [],
-        reports: const [],
-        appointments: [randevu(status: 'confirmed')],
-        lastSeenMessages: null,
-      );
-
-      expect(liste, isEmpty);
-    });
-  });
+  // 18 Ekim 2026: ogretmen beslemesi kalkti. Veli mesajini her acilista
+  // "yeni" sayiyordu (okunma takibi yoktu). Yerini gelen kutusu aldi;
+  // davranislari gelen_kutusu_test sinar.
 
   group('Siralama ve sayim', () {
     test('KRITIK: okunmamislar ustte, sonra en yeni', () {

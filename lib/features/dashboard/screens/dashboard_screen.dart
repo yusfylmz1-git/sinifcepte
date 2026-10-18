@@ -16,6 +16,8 @@ import '../../exam_operations/presentation/views/exam_tracking_view.dart';
 import '../../exam_operations/providers/exam_tracking_provider.dart';
 import '../../navigation/providers/navigation_provider.dart';
 import '../../outcomes/providers/outcomes_provider.dart';
+import '../../parent_portal/presentation/widgets/gelen_kutusu_karti.dart';
+import '../../parent_portal/providers/gelen_kutusu_provider.dart';
 import '../../outcomes/utils/kazanim_ders_eslestirici.dart';
 import '../../schedule/models/lesson_model.dart';
 import '../../schedule/models/schedule_settings.dart';
@@ -76,6 +78,7 @@ class DashboardScreen extends ConsumerWidget {
               await ref.read(classListProvider.notifier).loadClasses();
               await ref.read(scheduleProvider.notifier).loadLessons();
               await ref.read(examTrackingProvider.notifier).loadExams();
+              ref.invalidate(gelenKutusuProvider);
             } catch (e, stackTrace) {
               debugPrint('---------------- HATA DETAYI (Dashboard.refresh) ----------------');
               debugPrint('Hata Mesajı : $e');
@@ -120,6 +123,11 @@ class DashboardScreen extends ConsumerWidget {
                     activeLesson: activeLesson,
                   ),
                 ],
+                const SizedBox(height: 12),
+
+                // 1.2 VELİ GELEN KUTUSU (18 Ekim 2026): bütün sınıflardan,
+                // kadrosunda olunanlar dahil; okunmamış rozetli.
+                GelenKutusuKarti(isDark: isDark),
                 const SizedBox(height: 14),
 
                 // 2. ÖĞRETMEN HIZLI MODÜLLERİ (Bento Grid)
@@ -154,7 +162,7 @@ class DashboardScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
 
-                // 5. AKIŞ — velilerden gelenler + yönetici duyurusu
+                // 5. AKIŞ — yönetici duyurusu ve yaklaşan belirli günler
                 _buildActivityFeed(context, ref, isDark),
                 const SizedBox(height: 95), // Floating Bottom Nav için güvenli boşluk
               ],
@@ -165,11 +173,10 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  /// 1. Kompakt Karşılama ve Tarih Alanı (Zarif Tek Satır - Yer Tasarruflu)
-  /// AKIŞ — velilerden gelenler ve yöneticiden gelen duyuru.
+  /// AKIŞ — yöneticiden gelen duyuru ve yaklaşan belirli günler.
   ///
-  /// Öğretmen bir mesaj geldiğini ancak sınıf sayfasına girip bakınca
-  /// öğreniyordu. Ana sayfada tek bir yerde toplanması istendi.
+  /// Velilerden gelenler burada değil, üstteki "Veli gelen kutusu"
+  /// kartında (18 Ekim 2026).
   ///
   /// Yönetici duyurusu Remote Config'den gelir: ücretsiz, kotasız ve
   /// Cloud Functions gerektirmez. Kullanıcı kapattığında bir daha
@@ -247,10 +254,6 @@ class DashboardScreen extends ConsumerWidget {
   ) {
     final (ikon, renk) = switch (item.kind) {
       FeedKind.admin => (Icons.campaign_rounded, const Color(0xFF8B5CF6)),
-      FeedKind.message => (Icons.chat_bubble_rounded, AppColors.primary),
-      FeedKind.appointment =>
-        (Icons.event_available_rounded, const Color(0xFF0EA5E9)),
-      FeedKind.report => (Icons.info_rounded, const Color(0xFFF59E0B)),
       FeedKind.specialDay =>
         (Icons.event_available_rounded, const Color(0xFF10B981)),
     };
@@ -1990,4 +1993,3 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 }
-

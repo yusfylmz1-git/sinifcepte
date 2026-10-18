@@ -16,7 +16,7 @@ import {
   assertSucceeds,
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, getDocs, collection, setDoc, deleteDoc, updateDoc, query, where, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, getDocs, collection, collectionGroup, setDoc, deleteDoc, updateDoc, query, where, Timestamp } from 'firebase/firestore';
 
 const TEACHER_UID = 'teacherAhmet';
 const OTHER_TEACHER_UID = 'teacherMehmet';
@@ -408,228 +408,6 @@ describe('3. Sınıf odası (class_rooms) — sahiplik', () => {
         { merge: true },
       ),
     );
-  });
-});
-
-describe('4. Okul yöneticisi başvuruları — yetki yükseltme koruması', () => {
-  const REQ_ID = 'req_ahmet_1';
-
-  before(async () => {
-    await testEnv.clearFirestore();
-    await seed(async (db) => {
-      await setDoc(doc(db, 'school_admin_requests', REQ_ID), {
-        teacher_uid: TEACHER_UID,
-        school_id: 'meb_16_123',
-        status: 'pending',
-      });
-    });
-  });
-
-  it('öğretmen kendi başvurusunu görebilir', async () => {
-    await assertSucceeds(
-      getDoc(doc(teacherDb(), 'school_admin_requests', REQ_ID)),
-    );
-  });
-
-  it('başka öğretmen bu başvuruyu göremez', async () => {
-    await assertFails(
-      getDoc(doc(otherTeacherDb(), 'school_admin_requests', REQ_ID)),
-    );
-  });
-
-  it('öğretmen beklemede durumuyla başvuru oluşturabilir', async () => {
-    await assertSucceeds(
-      setDoc(doc(teacherDb(), 'school_admin_requests', 'req_yeni'), {
-        teacher_uid: TEACHER_UID,
-        school_id: 'meb_16_123',
-        status: 'pending',
-      }),
-    );
-  });
-
-  it('KRİTİK: öğretmen kendini doğrudan onaylayamaz', async () => {
-    await assertFails(
-      setDoc(doc(teacherDb(), 'school_admin_requests', 'req_hile'), {
-        teacher_uid: TEACHER_UID,
-        school_id: 'meb_16_123',
-        status: 'approved', // yetki yükseltme denemesi
-      }),
-    );
-  });
-
-  it('KRİTİK: öğretmen bekleyen başvurusunu onaylıya çeviremez', async () => {
-    await assertFails(
-      updateDoc(doc(teacherDb(), 'school_admin_requests', REQ_ID), {
-        status: 'approved',
-      }),
-    );
-  });
-
-  it('süper admin başvuruyu onaylayabilir', async () => {
-    await assertSucceeds(
-      updateDoc(doc(superAdminDb(), 'school_admin_requests', REQ_ID), {
-        status: 'approved',
-      }),
-    );
-  });
-
-  // Panelin "Öğretmen Onayı" sekmesi bir SORGU çalıştırıyor
-  // (`pendingRequestsForSchool`). Firestore'da sorgu ancak tüm olası
-  // sonuçlar kurala uyuyorsa çalışıyor.
-  //
-  // Bu blok olmadan kusur fark edilmedi: sekme hiç çalışmıyordu ama
-  // "bekleyen başvuru yok" yazdığı için boş liste sanılıyordu.
-  // Gerçek sebep cihazda ölçüldü (18 Eylül 2026):
-  //
-  //   Listen for Query(school_admin_requests where
-  //     school_id==meb_775214 and status==pending) failed:
-  //     PERMISSION_DENIED
-  describe('Panel sorgusu — okul yöneticisi bekleyenleri listeler', () => {
-    const OKUL = 'meb_16_123';
-
-    const okulAdmini = () =>
-      testEnv
-        .authenticatedContext('okulAdmini16', {
-          schoolAdminStatus: 'approved',
-          schoolId: OKUL,
-        })
-        .firestore();
-
-    const baskaOkulAdmini = () =>
-      testEnv
-        .authenticatedContext('okulAdmini34', {
-          schoolAdminStatus: 'approved',
-          schoolId: 'meb_34_999',
-        })
-        .firestore();
-
-    before(async () => {
-      await testEnv.clearFirestore();
-      await seed(async (db) => {
-        await setDoc(doc(db, 'school_admin_requests', 'req_a'), {
-          teacher_uid: TEACHER_UID,
-          school_id: OKUL,
-          status: 'pending',
-        });
-        await setDoc(doc(db, 'school_admin_requests', 'req_b'), {
-          teacher_uid: 'baskaOgretmen',
-          school_id: 'meb_34_999',
-          status: 'pending',
-        });
-      });
-    });
-
-    it('KRİTİK: okul yöneticisi kendi okulunun sorgusunu çalıştırabilir', async () => {
-      await assertSucceeds(
-        getDocs(
-          query(
-            collection(okulAdmini(), 'school_admin_requests'),
-            where('school_id', '==', OKUL),
-            where('status', '==', 'pending'),
-          ),
-        ),
-      );
-    });
-
-    it('KRİTİK: başka okulun yöneticisi bu sorguyu çalıştıramaz', async () => {
-      await assertFails(
-        getDocs(
-          query(
-            collection(baskaOkulAdmini(), 'school_admin_requests'),
-            where('school_id', '==', OKUL),
-            where('status', '==', 'pending'),
-          ),
-        ),
-      );
-    });
-
-    it('KRİTİK: sıradan öğretmen okul sorgusunu çalıştıramaz', async () => {
-      // Öğretmen yalnızca KENDİ kaydını okuyabiliyor; okul geneli
-      // sorgu tüm sonuçları kapsayamadığı için reddedilmeli.
-      await assertFails(
-        getDocs(
-          query(
-            collection(teacherDb(), 'school_admin_requests'),
-            where('school_id', '==', OKUL),
-            where('status', '==', 'pending'),
-          ),
-        ),
-      );
-    });
-
-    it('KRİTİK: öğretmen kendi kaydını GERÇEK alan adlarıyla okur', async () => {
-      // Kural bir dönem `resource.data.teacherUid` okuyordu ama model
-      // `teacher_uid` yazıyor (snake_case). O alan hiç olmadığı için
-      // öğretmen kendi başvurusunu bile okuyamıyordu.
-      //
-      // Testler de camelCase veri yazdığı için kusuru kaçırdı —
-      // kendi uydurdukları biçimle geçiyorlardı.
-      await assertSucceeds(
-        getDoc(doc(teacherDb(), 'school_admin_requests', 'req_a')),
-      );
-    });
-
-    it('okul yöneticisi başka okulun kaydını göremez', async () => {
-      await assertFails(
-        getDoc(doc(okulAdmini(), 'school_admin_requests', 'req_b')),
-      );
-    });
-
-    it('KRİTİK: okul yöneticisi yöneticiliğe karar VEREMEZ', async () => {
-      // Okuma yetkisi karar yetkisi değil: onay hâlâ yalnızca süper
-      // adminde. Aksi hâlde bir okul yöneticisi kendi okuluna ikinci
-      // bir yönetici atayabilirdi.
-      await assertFails(
-        updateDoc(doc(okulAdmini(), 'school_admin_requests', 'req_a'), {
-          status: 'approved',
-        }),
-      );
-    });
-  });
-});
-
-describe('5. Veli şikâyetleri (content_reports)', () => {
-  before(async () => {
-    await testEnv.clearFirestore();
-    await seed(async (db) => {
-      await setDoc(doc(db, 'content_reports', 'rep_1'), {
-        reporterUid: PARENT_UID,
-        reason: 'Uygunsuz içerik',
-      });
-    });
-  });
-
-  it('veli kendi adına şikâyet oluşturabilir', async () => {
-    // Yeni şikâyet 'open' durumunda başlamalıdır; kural bunu şart koşar
-    // ki veli kaydı doğrudan "incelendi" olarak açamasın.
-    await assertSucceeds(
-      setDoc(doc(parentDb(), 'content_reports', 'rep_2'), {
-        reporterUid: PARENT_UID,
-        reason: 'Test',
-        status: 'open',
-      }),
-    );
-  });
-
-  it('KRİTİK: veli başkası adına şikâyet oluşturamaz', async () => {
-    await assertFails(
-      setDoc(doc(parentDb(), 'content_reports', 'rep_3'), {
-        reporterUid: OTHER_PARENT_UID,
-        reason: 'Sahte ihbar',
-      }),
-    );
-  });
-
-  it('KRİTİK: veli şikâyetleri okuyamaz (yalnızca yönetim)', async () => {
-    await assertFails(getDoc(doc(parentDb(), 'content_reports', 'rep_1')));
-  });
-
-  it('süper admin şikâyetleri okuyabilir', async () => {
-    await assertSucceeds(getDoc(doc(superAdminDb(), 'content_reports', 'rep_1')));
-  });
-
-  it('KRİTİK: şikâyet kaydı veli tarafından silinemez (denetim izi)', async () => {
-    await assertFails(deleteDoc(doc(parentDb(), 'content_reports', 'rep_1')));
   });
 });
 
@@ -1037,6 +815,16 @@ describe('10. Durum bildirimleri ve randevular', () => {
         timeSlot: '13:30',
         status: 'pending',
       });
+      // Veli branş öğretmeninden randevu istemiş.
+      await setDoc(doc(db, 'class_rooms', CLASS_ID, 'appointments', 'apt_brans'), {
+        studentCloudId: STUDENT_ID,
+        parentUserId: PARENT_UID,
+        teacherName: 'Selin Demir',
+        teacherUid: BRANCH_UID,
+        timeSlot: '14:20',
+        status: 'pending',
+        createdAt: '2026-10-18T09:00:00.000',
+      });
     });
   });
 
@@ -1101,11 +889,15 @@ describe('10. Durum bildirimleri ve randevular', () => {
     );
   });
 
-  it('kadrodaki branş öğretmeni de bildirimi görüp işaretleyebilir', async () => {
-    await assertSucceeds(
+  it('KRİTİK: kadrodaki branş öğretmeni durum bildirimini göremez, işaretleyemez', async () => {
+    // 18 Ekim 2026: bildirimi sınıf öğretmeni karşılar (KVKK m.4).
+    await assertFails(
       getDoc(doc(branchDb(), 'class_rooms', CLASS_ID, 'status_reports', 'rep_1')),
     );
-    await assertSucceeds(
+    await assertFails(
+      getDocs(collection(branchDb(), 'class_rooms', CLASS_ID, 'status_reports')),
+    );
+    await assertFails(
       updateDoc(doc(branchDb(), 'class_rooms', CLASS_ID, 'status_reports', 'rep_1'), {
         status: 'acknowledged',
       }),
@@ -1168,146 +960,57 @@ describe('10. Durum bildirimleri ve randevular', () => {
     );
   });
 
-  it('kadrodaki branş öğretmeni de randevu yanıtlayabilir', async () => {
+  it('kadrodaki branş öğretmeni kendisine istenen randevuyu görüp yanıtlayabilir', async () => {
+    const snap = await assertSucceeds(
+      getDocs(query(
+        collection(branchDb(), 'class_rooms', CLASS_ID, 'appointments'),
+        where('teacherUid', '==', BRANCH_UID),
+      )),
+    );
+    assert.equal(snap.size, 1);
     await assertSucceeds(
+      updateDoc(doc(branchDb(), 'class_rooms', CLASS_ID, 'appointments', 'apt_brans'), {
+        status: 'confirmed',
+        responseNote: 'Perşembe görüşelim',
+        respondedAt: '2026-10-18T10:00:00.000',
+      }),
+    );
+  });
+
+  it('KRİTİK: kadrodaki öğretmen başkasına istenen randevuyu göremez, yanıtlayamaz', async () => {
+    await assertFails(
+      getDoc(doc(branchDb(), 'class_rooms', CLASS_ID, 'appointments', 'apt_1')),
+    );
+    await assertFails(
+      getDocs(collection(branchDb(), 'class_rooms', CLASS_ID, 'appointments')),
+    );
+    await assertFails(
       updateDoc(doc(branchDb(), 'class_rooms', CLASS_ID, 'appointments', 'apt_1'), {
         status: 'confirmed',
       }),
     );
   });
-});
 
-describe('11. Okul yöneticisi yetkisi', () => {
-  const SCHOOL_A = 'meb_16_111';
-  const SCHOOL_B = 'meb_34_222';
-  const ADMIN_A_UID = 'adminOkulA';
-
-  // Onaylı okul yöneticisi: claim'leri Admin SDK betiği yazar.
-  const schoolAdminA = () =>
-    testEnv
-      .authenticatedContext(ADMIN_A_UID, {
-        schoolAdminStatus: 'approved',
-        schoolId: SCHOOL_A,
-      })
-      .firestore();
-
-  // Başvurusu beklemede olan öğretmen
-  const pendingAdmin = () =>
-    testEnv
-      .authenticatedContext('teacherBekleyen', {
-        schoolAdminStatus: 'pending',
-        schoolId: SCHOOL_A,
-      })
-      .firestore();
-
-  before(async () => {
-    await testEnv.clearFirestore();
-    await seed(async (db) => {
-      await setDoc(doc(db, 'content_reports', 'rep_okulA'), {
-        reporterUid: PARENT_UID,
-        schoolId: SCHOOL_A,
-        contentType: 'Duyuru',
-        reason: 'Uygunsuz',
-        status: 'open',
-      });
-      await setDoc(doc(db, 'content_reports', 'rep_okulB'), {
-        reporterUid: OTHER_PARENT_UID,
-        schoolId: SCHOOL_B,
-        contentType: 'Duyuru',
-        reason: 'Uygunsuz',
-        status: 'open',
-      });
-    });
-  });
-
-  it('okul yöneticisi KENDİ okulunun şikâyetini okuyabilir', async () => {
-    await assertSucceeds(
-      getDoc(doc(schoolAdminA(), 'content_reports', 'rep_okulA')),
-    );
-  });
-
-  it('KRİTİK: okul yöneticisi BAŞKA okulun şikâyetini okuyamaz', async () => {
+  it('KRİTİK: kadrodaki öğretmen kendi randevusunda yalnız yanıt alanlarını değiştirir', async () => {
     await assertFails(
-      getDoc(doc(schoolAdminA(), 'content_reports', 'rep_okulB')),
+      updateDoc(doc(branchDb(), 'class_rooms', CLASS_ID, 'appointments', 'apt_brans'), {
+        timeSlot: '08:00',
+      }),
     );
-  });
-
-  it('KRİTİK: onaylanmamış başvuru sahibi şikâyet okuyamaz', async () => {
-    // Claim 'pending' ise yetki yoktur; onay yalnızca Admin SDK ile verilir.
     await assertFails(
-      getDoc(doc(pendingAdmin(), 'content_reports', 'rep_okulA')),
-    );
-  });
-
-  it('KRİTİK: sıradan öğretmen şikâyet okuyamaz', async () => {
-    await assertFails(
-      getDoc(doc(teacherDb(), 'content_reports', 'rep_okulA')),
-    );
-  });
-
-  it('KRİTİK: şikâyeti gönderen veli bile sonradan okuyamaz', async () => {
-    await assertFails(
-      getDoc(doc(parentDb(), 'content_reports', 'rep_okulA')),
-    );
-  });
-
-  it('okul yöneticisi şikâyeti incelendi işaretleyebilir', async () => {
-    await assertSucceeds(
-      updateDoc(doc(schoolAdminA(), 'content_reports', 'rep_okulA'), {
-        status: 'reviewed',
-        reviewNote: 'Öğretmenle görüşüldü',
+      updateDoc(doc(branchDb(), 'class_rooms', CLASS_ID, 'appointments', 'apt_brans'), {
+        teacherUid: OTHER_TEACHER_UID,
       }),
     );
   });
 
-  it('KRİTİK: okul yöneticisi şikâyet içeriğini değiştiremez', async () => {
-    // Denetim izi bütünlüğü: gerekçe sonradan yeniden yazılamaz.
-    await assertFails(
-      updateDoc(doc(schoolAdminA(), 'content_reports', 'rep_okulA'), {
-        reason: 'Gerekçe değiştirildi',
-      }),
+  it('sınıf öğretmeni bütün randevuları görür', async () => {
+    const snap = await assertSucceeds(
+      getDocs(collection(teacherDb(), 'class_rooms', CLASS_ID, 'appointments')),
     );
-  });
-
-  it('KRİTİK: okul yöneticisi başka okulun şikâyetini işaretleyemez', async () => {
-    await assertFails(
-      updateDoc(doc(schoolAdminA(), 'content_reports', 'rep_okulB'), {
-        status: 'reviewed',
-      }),
-    );
-  });
-
-  it('KRİTİK: veli şikâyeti kapalı durumda oluşturamaz', async () => {
-    await assertFails(
-      setDoc(doc(parentDb(), 'content_reports', 'rep_hile'), {
-        reporterUid: PARENT_UID,
-        schoolId: SCHOOL_A,
-        contentType: 'Duyuru',
-        reason: 'test',
-        status: 'reviewed',
-      }),
-    );
-  });
-
-  it('KRİTİK: okul yöneticisi öğrenci verisine erişemez', async () => {
-    // Yöneticinin yetkisi öğretmen doğrulama ve şikâyetle sınırlıdır;
-    // sınıf odası, mesaj veya bağ kayıtlarına erişimi yoktur.
-    await seed(async (db) => {
-      await setDoc(doc(db, 'class_rooms', CLASS_ID), {
-        classCloudId: CLASS_ID,
-        teacherUid: TEACHER_UID,
-      });
-      await setDoc(doc(db, 'parent_links', `${PARENT_UID}_${STUDENT_ID}`), {
-        parentUid: PARENT_UID,
-        studentCloudId: STUDENT_ID,
-        status: 'active',
-      });
-    });
-
-    await assertFails(getDoc(doc(schoolAdminA(), 'class_rooms', CLASS_ID)));
-    await assertFails(
-      getDoc(doc(schoolAdminA(), 'parent_links', `${PARENT_UID}_${STUDENT_ID}`)),
-    );
+    // Bölümdeki önceki test yeni bir talep de yazar; sayıya değil kimliğe bakılır.
+    const idler = snap.docs.map((d) => d.id);
+    assert.ok(idler.includes('apt_1') && idler.includes('apt_brans'), idler.join(','));
   });
 });
 
@@ -2204,860 +1907,180 @@ describe('Brans ogretmeni duyuru yayimlayabilir', () => {
   });
 });
 
-describe('Okul panosu (school_boards) — tahta modülü', () => {
-  const OKUL_A = 'meb_16_111';
-  const OKUL_B = 'meb_34_222';
-  const ADMIN_A_UID = 'panoAdminA';
-  const ADMIN_B_UID = 'panoAdminB';
-
-  // Onaylı okul yöneticisi. Claim'leri yalnızca Admin SDK betiği yazar
-  // (scripts/admin/approve_school_admin.mjs), bu yüzden testte de
-  // claim olarak veriliyor — Firestore'daki başvuru kaydı değil.
-  const panoAdminA = () =>
-    testEnv
-      .authenticatedContext(ADMIN_A_UID, {
-        schoolAdminStatus: 'approved',
-        schoolId: OKUL_A,
-      })
-      .firestore();
-
-  const panoAdminB = () =>
-    testEnv
-      .authenticatedContext(ADMIN_B_UID, {
-        schoolAdminStatus: 'approved',
-        schoolId: OKUL_B,
-      })
-      .firestore();
-
-  // Başvurusu onaylanmamış öğretmen: kayıt 'pending' olsa bile yetkisi yok.
-  const bekleyenAdmin = () =>
-    testEnv
-      .authenticatedContext('panoBekleyen', {
-        schoolAdminStatus: 'pending',
-        schoolId: OKUL_A,
-      })
-      .firestore();
-
-  // Haftalık döngü: `gun`, tarih değil (bkz. okul_config_model.dart).
-  const NOBETCI = { gun: 'pazartesi', kat: '1. Kat', ad: 'A. Yılmaz' };
-  const DUYURU_PANO = { baslik: 'Veli toplantısı', metin: 'Cuma 15:00' };
+describe('17. Gelen kutusu — kadrodaki öğretmen (18 Ekim 2026)', () => {
+  // Branş öğretmeninin kadrosunda olduğu sınıfı açan yol yoktu: veli
+  // matematik öğretmenine yazıyor, mesaj buluta düşüyor ama öğretmen onu
+  // hiçbir yerde görmüyordu. Öğretmen kadro satırlarını collection group
+  // sorgusuyla bulur, sınıf odasını okur, kendine yazılanları sorgular.
+  const BRANS_UID = 'teacherMatematikEce';
+  const YABANCI_UID = 'teacherYabanciCan';
+  const DIGER_SINIF = `cls_${OTHER_TEACHER_UID}_3`;
 
   before(async () => {
     await testEnv.clearFirestore();
     await seed(async (db) => {
-      await setDoc(doc(db, 'school_boards', OKUL_A), {
-        schoolId: OKUL_A,
-        okulAdi: 'A Ortaokulu',
-      });
-      await setDoc(doc(db, 'school_boards', OKUL_B), {
-        schoolId: OKUL_B,
-        okulAdi: 'B Ortaokulu',
-      });
-      await setDoc(doc(db, 'school_boards', OKUL_A, 'duty', 'pazartesi_1-_Kat'), NOBETCI);
-      await setDoc(doc(db, 'school_boards', OKUL_A, 'notices', 'n1'), DUYURU_PANO);
-
-      // Öğretmenin OKUL A dizin kaydı.
-      //
-      // Fixture'da bu yoktu ve testler öğretmenin okul üyeliğini hiç
-      // kurmadan okuma yapıyordu — yani kuralın `request.auth != null`
-      // olduğunu varsayıyorlardı. O varsayım tam olarak açığın
-      // kendisiydi: oturum açmış herkes TÜM okulların nöbetçi
-      // listesini okuyabiliyordu (19 Eylül 2026).
-      await setDoc(doc(db, 'school_teachers', `${OKUL_A}_${TEACHER_UID}`), {
-        schoolId: OKUL_A,
+      await setDoc(doc(db, 'class_rooms', CLASS_ID), {
+        classCloudId: CLASS_ID,
         teacherUid: TEACHER_UID,
-        adSoyad: 'Ahmet Öğretmen',
+        className: '5-A',
+      });
+      await setDoc(doc(db, 'class_rooms', CLASS_ID, 'staff', BRANS_UID), {
+        teacherUid: BRANS_UID,
+        teacherName: 'Ece Kaya',
+        branch: 'Matematik',
+      });
+      await setDoc(doc(db, 'class_rooms', DIGER_SINIF), {
+        classCloudId: DIGER_SINIF,
+        teacherUid: OTHER_TEACHER_UID,
+        className: '6-B',
+      });
+      await setDoc(doc(db, 'class_rooms', DIGER_SINIF, 'staff', BRANS_UID), {
+        teacherUid: BRANS_UID,
+        teacherName: 'Ece Kaya',
+        branch: 'Matematik',
+      });
+      await setDoc(doc(db, 'class_rooms', DIGER_SINIF, 'staff', YABANCI_UID), {
+        teacherUid: YABANCI_UID,
+        teacherName: 'Can Er',
+        branch: 'Müzik',
+      });
+      await setDoc(doc(db, 'class_rooms', CLASS_ID, 'messages', 'm_brans'), {
+        studentCloudId: STUDENT_ID,
+        parentUserId: PARENT_UID,
+        authorRole: 'parent',
+        authorUid: PARENT_UID,
+        teacherUid: BRANS_UID,
+        body: 'Matematik ödevi',
+        createdAt: '2026-10-18T09:00:00.000',
+      });
+      await setDoc(doc(db, 'class_rooms', CLASS_ID, 'messages', 'm_sinif'), {
+        studentCloudId: STUDENT_ID,
+        parentUserId: PARENT_UID,
+        authorRole: 'parent',
+        authorUid: PARENT_UID,
+        teacherUid: TEACHER_UID,
+        body: 'Sınıf öğretmenine',
+        createdAt: '2026-10-18T09:05:00.000',
       });
     });
   });
 
-  // --- Okuma ---
+  const bransDb = () => testEnv.authenticatedContext(BRANS_UID).firestore();
+  const yabanciDb = () => testEnv.authenticatedContext(YABANCI_UID).firestore();
 
-  it('KENDİ okulunun öğretmeni panoyu okuyabilir', async () => {
-    await assertSucceeds(getDoc(doc(teacherDb(), 'school_boards', OKUL_A)));
+  it('kadrodaki öğretmen sınıf odasını okuyabilir (sınıf adı)', async () => {
+    await assertSucceeds(getDoc(doc(bransDb(), 'class_rooms', CLASS_ID)));
   });
 
-  it('KRİTİK: BAŞKA okulun panosu okunamaz', async () => {
-    // Eski kural `request.auth != null` idi: oturum açmış herkes TÜM
-    // okulların panosunu okuyabiliyordu ve kurum kodları tahmin
-    // edilebilir (`meb_*`). Nöbetçi listesi öğretmen ADI taşıyor —
-    // kişisel veri.
-    //
-    // Gerekçe "pano tahtada zaten herkese açık" idi ve yanlıştı:
-    // tahtada O OKULUN panosu görünür, kural ise tüm okulları
-    // taramaya izin veriyordu (19 Eylül 2026).
-    await assertFails(getDoc(doc(teacherDb(), 'school_boards', OKUL_B)));
+  it('KRİTİK: kadroda olmayan öğretmen sınıf odasını okuyamaz', async () => {
+    await assertFails(getDoc(doc(yabanciDb(), 'class_rooms', CLASS_ID)));
   });
 
-  it('KRİTİK: başka okulun nöbetçi listesi okunamaz', async () => {
+  it('öğretmen kendi kadro satırlarını tüm sınıflarda listeleyebilir', async () => {
+    const snap = await assertSucceeds(
+      getDocs(query(collectionGroup(bransDb(), 'staff'), where('teacherUid', '==', BRANS_UID))),
+    );
+    assert.equal(snap.size, 2);
+  });
+
+  it('KRİTİK: başkasının kadro satırlarını listeleyemez', async () => {
     await assertFails(
-      getDoc(doc(teacherDb(), 'school_boards', OKUL_B, 'duty', 'pazartesi_1-_Kat')),
+      getDocs(query(collectionGroup(bransDb(), 'staff'), where('teacherUid', '==', YABANCI_UID))),
     );
   });
 
-  it('KRİTİK: okul dizininde OLMAYAN kullanıcı okuyamaz', async () => {
-    // Veli hesabı ya da başka okulun öğretmeni.
-    const yabanci = testEnv.authenticatedContext('baskaBiri').firestore();
-    await assertFails(getDoc(doc(yabanci, 'school_boards', OKUL_A)));
+  it('KRİTİK: kadro satırları süzgeçsiz taranamaz', async () => {
+    await assertFails(getDocs(collectionGroup(bransDb(), 'staff')));
+  });
+
+  it('kadrodaki öğretmen kendine yazılan mesajları sorgulayabilir', async () => {
+    const snap = await assertSucceeds(
+      getDocs(query(
+        collection(bransDb(), 'class_rooms', CLASS_ID, 'messages'),
+        where('teacherUid', '==', BRANS_UID),
+      )),
+    );
+    assert.equal(snap.size, 1);
+  });
+
+  it('KRİTİK: kadrodaki öğretmen sınıf öğretmenine yazılanları sorgulayamaz', async () => {
     await assertFails(
-      getDoc(doc(yabanci, 'school_boards', OKUL_A, 'duty', 'pazartesi_1-_Kat')),
+      getDocs(query(
+        collection(bransDb(), 'class_rooms', CLASS_ID, 'messages'),
+        where('teacherUid', '==', TEACHER_UID),
+      )),
     );
   });
 
-  it('nöbetçi listesi okunabilir', async () => {
-    await assertSucceeds(
-      getDoc(doc(teacherDb(), 'school_boards', OKUL_A, 'duty', 'pazartesi_1-_Kat')),
+  it('sınıf öğretmeni kendine yazılan YENİ mesajları sorgulayabilir (delta)', async () => {
+    const snap = await assertSucceeds(
+      getDocs(query(
+        collection(teacherDb(), 'class_rooms', CLASS_ID, 'messages'),
+        where('teacherUid', '==', TEACHER_UID),
+        where('createdAt', '>', '2026-10-18T09:01:00.000'),
+      )),
     );
-  });
-
-  it('idare duyurusu okunabilir', async () => {
-    await assertSucceeds(
-      getDoc(doc(teacherDb(), 'school_boards', OKUL_A, 'notices', 'n1')),
-    );
-  });
-
-  it('KRİTİK: oturumsuz erişim reddedilir', async () => {
-    // Kayıtsız kimsenin okul listesini taraması gerekmiyor.
-    const anonim = testEnv.unauthenticatedContext().firestore();
-    await assertFails(getDoc(doc(anonim, 'school_boards', OKUL_A)));
-  });
-
-  // --- Yazma: okul kapsamı ---
-
-  it('yönetici KENDİ okulunun panosunu güncelleyebilir', async () => {
-    await assertSucceeds(
-      updateDoc(doc(panoAdminA(), 'school_boards', OKUL_A), {
-        schoolId: OKUL_A,
-        okulAdi: 'A Ortaokulu (güncel)',
-      }),
-    );
-  });
-
-  it('KRİTİK: yönetici BAŞKA okulun panosunu güncelleyemez', async () => {
-    // Kuralların en önemli sınırı. Claim'deki schoolId ile doküman
-    // kimliği eşleşmediği için reddedilmeli.
-    await assertFails(
-      updateDoc(doc(panoAdminA(), 'school_boards', OKUL_B), {
-        schoolId: OKUL_B,
-        okulAdi: 'Ele geçirildi',
-      }),
-    );
-  });
-
-  it('KRİTİK: schoolId alanı doküman kimliğinden farklı olamaz', async () => {
-    // Aksi halde A okulunun yöneticisi kendi yolunda B okuluna ait
-    // veri tutabilir ve tahta yanlış okulun panosunu gösterebilirdi.
-    await assertFails(
-      updateDoc(doc(panoAdminA(), 'school_boards', OKUL_A), {
-        schoolId: OKUL_B,
-      }),
-    );
-  });
-
-  it('KRİTİK: onaylanmamış başvuru sahibi yazamaz', async () => {
-    await assertFails(
-      updateDoc(doc(bekleyenAdmin(), 'school_boards', OKUL_A), {
-        schoolId: OKUL_A,
-        okulAdi: 'Yetkisiz',
-      }),
-    );
-  });
-
-  it('KRİTİK: sıradan öğretmen yazamaz', async () => {
-    await assertFails(
-      updateDoc(doc(teacherDb(), 'school_boards', OKUL_A), {
-        schoolId: OKUL_A,
-        okulAdi: 'Yetkisiz',
-      }),
-    );
-  });
-
-  it('KRİTİK: veli yazamaz', async () => {
-    await assertFails(
-      updateDoc(doc(parentDb(), 'school_boards', OKUL_A), {
-        schoolId: OKUL_A,
-        okulAdi: 'Yetkisiz',
-      }),
-    );
-  });
-
-  it('KRİTİK: pano kaydı yönetici tarafından silinemez', async () => {
-    // Pano geçmişi denetim izi; yönetici içeriği boşaltabilir ama
-    // kaydı yok edemez.
-    await assertFails(deleteDoc(doc(panoAdminA(), 'school_boards', OKUL_A)));
-  });
-
-  // --- Nöbetçi listesi ---
-
-  it('yönetici nöbetçi yazabilir', async () => {
-    await assertSucceeds(
-      setDoc(
-        doc(panoAdminA(), 'school_boards', OKUL_A, 'duty', 'sali_1-_Kat'),
-        { kat: '2. Kat', ad: 'B. Demir' },
-      ),
-    );
-  });
-
-  it('KRİTİK: başka okulun yöneticisi nöbetçi yazamaz', async () => {
-    await assertFails(
-      setDoc(
-        doc(panoAdminB(), 'school_boards', OKUL_A, 'duty', 'carsamba_1-_Kat'),
-        { kat: '1. Kat', ad: 'Davetsiz' },
-      ),
-    );
-  });
-
-  it('KRİTİK: sıradan öğretmen nöbetçi yazamaz', async () => {
-    await assertFails(
-      setDoc(
-        doc(teacherDb(), 'school_boards', OKUL_A, 'duty', 'persembe_1-_Kat'),
-        NOBETCI,
-      ),
-    );
-  });
-
-  it('yönetici nöbetçi kaydını silebilir', async () => {
-    await assertSucceeds(
-      deleteDoc(doc(panoAdminA(), 'school_boards', OKUL_A, 'duty', 'pazartesi_1-_Kat')),
-    );
-  });
-
-  // --- İdare duyuruları ---
-
-  it('yönetici duyuru yayımlayabilir', async () => {
-    await assertSucceeds(
-      setDoc(
-        doc(panoAdminA(), 'school_boards', OKUL_A, 'notices', 'n2'),
-        DUYURU_PANO,
-      ),
-    );
-  });
-
-  it('KRİTİK: başka okulun yöneticisi duyuru yayımlayamaz', async () => {
-    await assertFails(
-      setDoc(
-        doc(panoAdminB(), 'school_boards', OKUL_A, 'notices', 'n3'),
-        DUYURU_PANO,
-      ),
-    );
-  });
-
-  it('KRİTİK: boş başlık reddedilir', async () => {
-    await assertFails(
-      setDoc(doc(panoAdminA(), 'school_boards', OKUL_A, 'notices', 'n4'), {
-        baslik: '',
-        metin: 'Metin var ama başlık yok',
-      }),
-    );
-  });
-
-  it('KRİTİK: 100 karakterden uzun başlık reddedilir', async () => {
-    // Firestore 1 MiB doküman sınırı ve tahta ekranında taşma koruması.
-    await assertFails(
-      setDoc(doc(panoAdminA(), 'school_boards', OKUL_A, 'notices', 'n5'), {
-        baslik: 'x'.repeat(101),
-        metin: 'Metin',
-      }),
-    );
-  });
-
-  it('100 karakterlik başlık kabul edilir (sınırın tam üstü)', async () => {
-    await assertSucceeds(
-      setDoc(doc(panoAdminA(), 'school_boards', OKUL_A, 'notices', 'n6'), {
-        baslik: 'x'.repeat(100),
-        metin: 'Metin',
-      }),
-    );
-  });
-
-  it('KRİTİK: 2000 karakterden uzun metin reddedilir', async () => {
-    await assertFails(
-      setDoc(doc(panoAdminA(), 'school_boards', OKUL_A, 'notices', 'n7'), {
-        baslik: 'Başlık',
-        metin: 'x'.repeat(2001),
-      }),
-    );
-  });
-
-  it('KRİTİK: başlık dize değilse reddedilir', async () => {
-    await assertFails(
-      setDoc(doc(panoAdminA(), 'school_boards', OKUL_A, 'notices', 'n8'), {
-        baslik: 12345,
-        metin: 'Metin',
-      }),
-    );
-  });
-
-  it('yönetici süresi geçen duyuruyu silebilir', async () => {
-    await assertSucceeds(
-      deleteDoc(doc(panoAdminA(), 'school_boards', OKUL_A, 'notices', 'n1')),
-    );
-  });
-
-  it('KRİTİK: sıradan öğretmen duyuru silemez', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      await setDoc(
-        doc(ctx.firestore(), 'school_boards', OKUL_A, 'notices', 'n9'),
-        DUYURU_PANO,
-      );
-    });
-
-    await assertFails(
-      deleteDoc(doc(teacherDb(), 'school_boards', OKUL_A, 'notices', 'n9')),
-    );
-  });
-
-  // --- Tahta yetkisi: öğretmen ister, yönetici onaylar ---
-  //
-  // Bu blok, 40 öğretmenin tek tek müdürün yanına gelmesini ortadan
-  // kaldıran akışı koruyor. En kritik kural: öğretmen kendi kaydını
-  // oluşturabiliyor ama `onayli` YAZAMIYOR.
-  describe('Tahta yetkisi (teachers alt koleksiyonu)', () => {
-    const SECRET = '45O6OJ5SJJTVLOD552RNFLCPONZ2U6EO';
-
-    const istek = (uid, durum = 'bekliyor') => ({
-      teacherUid: uid,
-      ad: 'Ahmet Öğretmen',
-      kod: 'AOGRETMEN',
-      totpSecret: SECRET,
-      durum,
-      istekZamani: '2026-09-18T14:00:00+03:00',
-      onayZamani: '',
-      onaylayanUid: '',
-    });
-
-    it('öğretmen kendi isteğini gönderebilir', async () => {
-      await assertSucceeds(
-        setDoc(
-          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          istek(TEACHER_UID),
-        ),
-      );
-    });
-
-    it('KRİTİK: öğretmen kendini ONAYLAYAMAZ', async () => {
-      // Bu şart olmadan öğretmen `durum: 'onayli'` yazıp kendini
-      // yetkilendirir ve tahtaları açabilir. Yetki yükseltme.
-      await assertFails(
-        setDoc(
-          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          istek(TEACHER_UID, 'onayli'),
-        ),
-      );
-    });
-
-    it('KRİTİK: öğretmen BAŞKASI adına istek gönderemez', async () => {
-      await assertFails(
-        setDoc(
-          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', 'baskaUid'),
-          istek('baskaUid'),
-        ),
-      );
-    });
-
-    it('KRİTİK: doküman kimliği ile teacherUid uyuşmazsa reddedilir', async () => {
-      // Kimlik kendi uid'si ama içerik başkasını gösteriyor.
-      await assertFails(
-        setDoc(
-          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          istek('baskaUid'),
-        ),
-      );
-    });
-
-    it('kısa secret ile istek gönderilemez', async () => {
-      await assertFails(
-        setDoc(
-          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          { ...istek(TEACHER_UID), totpSecret: 'KISA' },
-        ),
-      );
-    });
-
-    it('boş adla istek gönderilemez', async () => {
-      await assertFails(
-        setDoc(
-          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          { ...istek(TEACHER_UID), ad: '' },
-        ),
-      );
-    });
-
-    it('KRİTİK: REDDEDİLEN öğretmen yeniden istek gönderebilir', async () => {
-      // `reddet` belgeyi silmiyor, `durum: 'reddedildi'` yapıyor.
-      // Öğretmenin `update` hakkı olmadığı için yeniden istek
-      // gönderemiyordu; ekran ise "İsteğiniz zaten gönderilmiş, onay
-      // bekleniyor" diyordu — oysa reddedilmişti.
-      //
-      // Yanlışlıkla reddedilen öğretmen müdürün kapısına gitmek
-      // zorunda kalıyordu: tam da otomatik kaydın çözmek istediği
-      // sahne (19 Eylül 2026).
-      await testEnv.withSecurityRulesDisabled(async (ctx) => {
-        await setDoc(
-          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          { ...istek(TEACHER_UID), durum: 'reddedildi' },
-        );
-      });
-
-      await assertSucceeds(
-        setDoc(
-          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          istek(TEACHER_UID),
-        ),
-      );
-    });
-
-    it('KRİTİK: öğretmen kendini ONAYLAYAMAZ', async () => {
-      // Yeniden istek izni yetki yükseltmeye açılmamalı. `reddedildi`
-      // durumundan çıkış YALNIZCA `bekliyor` yönünde.
-      await testEnv.withSecurityRulesDisabled(async (ctx) => {
-        await setDoc(
-          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          { ...istek(TEACHER_UID), durum: 'reddedildi' },
-        );
-      });
-
-      await assertFails(
-        setDoc(
-          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          { ...istek(TEACHER_UID), durum: 'onayli' },
-        ),
-      );
-    });
-
-    it('KRİTİK: BEKLEYEN kayıt öğretmen tarafından değiştirilemez', async () => {
-      // Yalnızca `reddedildi` durumundan çıkış serbest. Bekleyen bir
-      // kaydı yeniden yazmak, secret'ı değiştirip müdürün onayladığı
-      // şeyden başkasını kurmaya yol açabilirdi.
-      await testEnv.withSecurityRulesDisabled(async (ctx) => {
-        await setDoc(
-          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          istek(TEACHER_UID),
-        );
-      });
-
-      await assertFails(
-        setDoc(
-          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          { ...istek(TEACHER_UID), ad: 'Değişti' },
-        ),
-      );
-    });
-
-    it('KRİTİK: ONAYLI kayıt öğretmen tarafından değiştirilemez', async () => {
-      await testEnv.withSecurityRulesDisabled(async (ctx) => {
-        await setDoc(
-          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          { ...istek(TEACHER_UID), durum: 'onayli' },
-        );
-      });
-
-      await assertFails(
-        setDoc(
-          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          istek(TEACHER_UID),
-        ),
-      );
-    });
-
-    it('KRİTİK: BAŞKASININ reddedilmiş kaydı yeniden açılamaz', async () => {
-      await testEnv.withSecurityRulesDisabled(async (ctx) => {
-        await setDoc(
-          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', 'baskaUid'),
-          { ...istek('baskaUid'), durum: 'reddedildi' },
-        );
-      });
-
-      await assertFails(
-        setDoc(
-          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', 'baskaUid'),
-          istek('baskaUid'),
-        ),
-      );
-    });
-
-    it('öğretmen KENDİ kaydını okuyabilir', async () => {
-      await testEnv.withSecurityRulesDisabled(async (ctx) => {
-        await setDoc(
-          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          istek(TEACHER_UID),
-        );
-      });
-
-      await assertSucceeds(
-        getDoc(
-          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-        ),
-      );
-    });
-
-    it('KRİTİK: öğretmen BAŞKASININ secret\'ını okuyamaz', async () => {
-      // Secret, o öğretmenin tahtayı açma yetkisidir. Başkasının
-      // secret'ını okuyan kişi onun adına kilidi açabilir.
-      await testEnv.withSecurityRulesDisabled(async (ctx) => {
-        await setDoc(
-          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', 'digerUid'),
-          istek('digerUid'),
-        );
-      });
-
-      await assertFails(
-        getDoc(
-          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', 'digerUid'),
-        ),
-      );
-    });
-
-    it('yönetici okulunun TÜM kayıtlarını okuyabilir', async () => {
-      // Okumak zorunda: tahtaya götürülecek okul_config dosyasını
-      // bu secret'larla üretiyor.
-      await testEnv.withSecurityRulesDisabled(async (ctx) => {
-        await setDoc(
-          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', 'digerUid'),
-          istek('digerUid'),
-        );
-      });
-
-      await assertSucceeds(
-        getDoc(
-          doc(panoAdminA(), 'school_boards', OKUL_A, 'teachers', 'digerUid'),
-        ),
-      );
-    });
-
-    it('KRİTİK: BAŞKA okulun yöneticisi okuyamaz', async () => {
-      await testEnv.withSecurityRulesDisabled(async (ctx) => {
-        await setDoc(
-          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          istek(TEACHER_UID),
-        );
-      });
-
-      await assertFails(
-        getDoc(
-          doc(panoAdminB(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-        ),
-      );
-    });
-
-    it('yönetici isteği onaylayabilir', async () => {
-      await testEnv.withSecurityRulesDisabled(async (ctx) => {
-        await setDoc(
-          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          istek(TEACHER_UID),
-        );
-      });
-
-      await assertSucceeds(
-        updateDoc(
-          doc(panoAdminA(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          { durum: 'onayli', onaylayanUid: ADMIN_A_UID },
-        ),
-      );
-    });
-
-    it('KRİTİK: başka okulun yöneticisi onaylayamaz', async () => {
-      await testEnv.withSecurityRulesDisabled(async (ctx) => {
-        await setDoc(
-          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          istek(TEACHER_UID),
-        );
-      });
-
-      await assertFails(
-        updateDoc(
-          doc(panoAdminB(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          { durum: 'onayli' },
-        ),
-      );
-    });
-
-    it('KRİTİK: onaylanmamış yönetici onaylayamaz', async () => {
-      // Başvuru kaydı 'pending' olsa bile claim yetki vermiyor.
-      await testEnv.withSecurityRulesDisabled(async (ctx) => {
-        await setDoc(
-          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          istek(TEACHER_UID),
-        );
-      });
-
-      await assertFails(
-        updateDoc(
-          doc(bekleyenAdmin(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          { durum: 'onayli' },
-        ),
-      );
-    });
-
-    it('yönetici öğretmeni listeden çıkarabilir', async () => {
-      await testEnv.withSecurityRulesDisabled(async (ctx) => {
-        await setDoc(
-          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          istek(TEACHER_UID, 'onayli'),
-        );
-      });
-
-      await assertSucceeds(
-        deleteDoc(
-          doc(panoAdminA(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-        ),
-      );
-    });
-
-    it('KRİTİK: öğretmen kendi kaydını silemez', async () => {
-      // Silebilse yeni bir secret'la yeniden kayıt olup onay
-      // beklemeden yetki alabilirdi (yeni kayıt 'bekliyor' olurdu
-      // ama eski onaylı kaydı da yok etmiş olurdu — karışıklık).
-      await testEnv.withSecurityRulesDisabled(async (ctx) => {
-        await setDoc(
-          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          istek(TEACHER_UID, 'onayli'),
-        );
-      });
-
-      await assertFails(
-        deleteDoc(
-          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-        ),
-      );
-    });
-
-    it('KRİTİK: öğretmen onaylı kaydını değiştiremez', async () => {
-      // Değiştirebilse secret'ını yenileyip tahtadaki eski dosyayla
-      // uyumu bozardı — ya da durumu geri 'onayli' yazardı.
-      await testEnv.withSecurityRulesDisabled(async (ctx) => {
-        await setDoc(
-          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          istek(TEACHER_UID, 'onayli'),
-        );
-      });
-
-      await assertFails(
-        updateDoc(
-          doc(teacherDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          { totpSecret: 'YENIYENIYENIYENIYENI' },
-        ),
-      );
-    });
-
-    it('veli hiçbir kaydı göremez', async () => {
-      await testEnv.withSecurityRulesDisabled(async (ctx) => {
-        await setDoc(
-          doc(ctx.firestore(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-          istek(TEACHER_UID),
-        );
-      });
-
-      await assertFails(
-        getDoc(
-          doc(parentDb(), 'school_boards', OKUL_A, 'teachers', TEACHER_UID),
-        ),
-      );
-    });
-  });
-
-  // Imzalama anahtarinin bulut yedegi.
-  //
-  // Kullanici karari (18 Eylul 2026): *"bence yedegi direkt buluta
-  // yedeklesin."* Mudurun metin yedegi almasi bekleniyordu ama sahada
-  // olmuyor; anahtar kaybi geri donusu olmayan bir zarar.
-  //
-  // KABUL EDILEN RISK: ozel anahtar bulutta DUZ duruyor (parolasiz
-  // yedek secildi). Firebase hesabi ele gecerse saldirgan tum
-  // okullarin tahtalarina gecerli dosya uretebilir.
-  //
-  // Bu blok o riskin SINIRINI kilitliyor: anahtari yalnizca o okulun
-  // onayli yoneticisi gorebilir. Ogretmen, veli ve baska okulun
-  // yoneticisi goremez.
-  describe('Anahtar bulut yedegi (gizli alt koleksiyonu)', () => {
-    const ANAHTAR = { anahtar: 'A'.repeat(88), yedeklenmeZamani: '2026-09-18' };
-
-    before(async () => {
-      await testEnv.clearFirestore();
-      await seed(async (db) => {
-        await setDoc(
-          doc(db, 'school_boards', OKUL_A, 'gizli', 'imzalama_anahtari'),
-          ANAHTAR,
-        );
-      });
-    });
-
-    it('yonetici kendi okulunun anahtarini okuyabilir', async () => {
-      await assertSucceeds(
-        getDoc(
-          doc(panoAdminA(), 'school_boards', OKUL_A, 'gizli', 'imzalama_anahtari'),
-        ),
-      );
-    });
-
-    it('yonetici anahtar yazabilir', async () => {
-      await assertSucceeds(
-        setDoc(
-          doc(panoAdminA(), 'school_boards', OKUL_A, 'gizli', 'imzalama_anahtari'),
-          ANAHTAR,
-        ),
-      );
-    });
-
-    it('KRITIK: siradan ogretmen anahtari OKUYAMAZ', async () => {
-      // `school_boards/{schoolId}` okumaya herkese acik (pano icerigi).
-      // Anahtar oraya yazilsaydi okuldaki her ogretmen okurdu.
-      await assertFails(
-        getDoc(
-          doc(teacherDb(), 'school_boards', OKUL_A, 'gizli', 'imzalama_anahtari'),
-        ),
-      );
-    });
-
-    it('KRITIK: baska okulun yoneticisi okuyamaz', async () => {
-      await assertFails(
-        getDoc(
-          doc(panoAdminB(), 'school_boards', OKUL_A, 'gizli', 'imzalama_anahtari'),
-        ),
-      );
-    });
-
-    it('KRITIK: veli okuyamaz', async () => {
-      await assertFails(
-        getDoc(
-          doc(parentDb(), 'school_boards', OKUL_A, 'gizli', 'imzalama_anahtari'),
-        ),
-      );
-    });
-
-    it('KRITIK: ogretmen anahtar YAZAMAZ', async () => {
-      // Yazabilse kendi anahtarini koyup tum tahtalara gecerli dosya
-      // uretebilirdi.
-      await assertFails(
-        setDoc(
-          doc(teacherDb(), 'school_boards', OKUL_A, 'gizli', 'imzalama_anahtari'),
-          ANAHTAR,
-        ),
-      );
-    });
-
-    it('yonetici anahtari silebilir (yenileme icin)', async () => {
-      await assertSucceeds(
-        deleteDoc(
-          doc(panoAdminA(), 'school_boards', OKUL_A, 'gizli', 'imzalama_anahtari'),
-        ),
-      );
-    });
-
-    it('KRITIK: ogretmen silemez', async () => {
-      await testEnv.withSecurityRulesDisabled(async (ctx) => {
-        await setDoc(
-          doc(ctx.firestore(), 'school_boards', OKUL_A, 'gizli', 'imzalama_anahtari'),
-          ANAHTAR,
-        );
-      });
-
-      await assertFails(
-        deleteDoc(
-          doc(teacherDb(), 'school_boards', OKUL_A, 'gizli', 'imzalama_anahtari'),
-        ),
-      );
-    });
+    assert.equal(snap.size, 1);
   });
 });
 
-// Kullanıcı kararı (30 Eylül 2026): reddedilen öğretmen karardan 24 saat
-// sonra yeniden başvurabilir. Belge kimliği öğretmenden türediği için
-// yeniden başvuru bir GÜNCELLEME; eskiden yalnızca süper admin
-// güncelleyebiliyordu ve reddedilen öğretmen bir daha hiç başvuramıyordu.
-describe('4b. Okul yöneticiliği — yeniden başvuru (24 saat)', () => {
-  const REQ = 'req_yeniden';
-  const saatOnce = (h) => Timestamp.fromMillis(Date.now() - h * 3600 * 1000);
+describe('18. Kaldırılan koleksiyonlar kapalı (18 Ekim 2026)', () => {
+  // Telefondaki okul yöneticiliği, şikâyet incelemesi ve tahta yönetimi
+  // silindi; kuralları da kalktı. Kural yoksa erişim kapalı olmalı —
+  // eski okul yöneticisi claim'i taşıyan hesap dahil.
+  const OKUL = 'meb_16_111';
 
-  /** Mobil istemcinin yazdığı biçim (karar alanları null değerle). */
-  const basvuru = (ek = {}) => ({
-    id: REQ,
-    teacher_uid: TEACHER_UID,
-    school_id: 'meb_16_123',
-    status: 'pending',
-    requested_at: new Date().toISOString(),
-    decided_by_uid: null,
-    decided_at: null,
-    rejection_reason: null,
-    ...ek,
-  });
-
-  async function reddedilmis(ek = {}) {
+  before(async () => {
     await testEnv.clearFirestore();
     await seed(async (db) => {
-      await setDoc(doc(db, 'school_admin_requests', REQ), {
+      await setDoc(doc(db, 'school_admin_requests', TEACHER_UID), {
         teacher_uid: TEACHER_UID,
-        school_id: 'meb_16_123',
-        status: 'rejected',
-        decided_at: '2026-09-29T10:00:00.000Z',
-        decided_by_uid: 'superAdmin',
-        rejection_reason: 'Belge okunaklı değil',
-        ...ek,
+        school_id: OKUL,
+        status: 'pending',
       });
+      await setDoc(doc(db, 'content_reports', 'r1'), {
+        reporterUid: PARENT_UID,
+        schoolId: OKUL,
+        status: 'open',
+      });
+      await setDoc(doc(db, 'school_teachers', `${OKUL}_${TEACHER_UID}`), {
+        teacherUid: TEACHER_UID,
+        schoolId: OKUL,
+      });
+      await setDoc(doc(db, 'school_boards', OKUL), { ad: 'Okul' });
     });
-  }
-
-  it('KRİTİK: 24 saat geçtiyse yeniden başvurabilir', async () => {
-    await reddedilmis({ decided_ts: saatOnce(25) });
-    await assertSucceeds(setDoc(doc(teacherDb(), 'school_admin_requests', REQ), basvuru()));
   });
 
-  it('KRİTİK: 24 saat geçmeden yeniden başvuramaz', async () => {
-    await reddedilmis({ decided_ts: saatOnce(1) });
-    await assertFails(setDoc(doc(teacherDb(), 'school_admin_requests', REQ), basvuru()));
-  });
+  const eskiOkulYoneticisi = () =>
+    testEnv
+      .authenticatedContext('adminOkul', { schoolAdminStatus: 'approved', schoolId: OKUL })
+      .firestore();
 
-  it('damgasız eski kararda bekleme yok', async () => {
-    await reddedilmis();
-    await assertSucceeds(setDoc(doc(teacherDb(), 'school_admin_requests', REQ), basvuru()));
-  });
-
-  it('KRİTİK: yeniden başvururken kendini onaylayamaz', async () => {
-    await reddedilmis({ decided_ts: saatOnce(25) });
+  it('KRİTİK: yöneticilik başvurusu okunamaz ve yazılamaz', async () => {
+    await assertFails(getDoc(doc(teacherDb(), 'school_admin_requests', TEACHER_UID)));
     await assertFails(
-      setDoc(doc(teacherDb(), 'school_admin_requests', REQ), basvuru({ status: 'approved' })),
+      setDoc(doc(otherTeacherDb(), 'school_admin_requests', OTHER_TEACHER_UID), {
+        teacher_uid: OTHER_TEACHER_UID,
+        school_id: OKUL,
+        status: 'pending',
+      }),
     );
   });
 
-  it('KRİTİK: karar alanlarını kendisi yazamaz', async () => {
-    await reddedilmis({ decided_ts: saatOnce(25) });
-    for (const ek of [
-      { decided_by_uid: TEACHER_UID },
-      { decided_at: '2026-09-30T10:00:00.000Z' },
-      { decided_ts: saatOnce(0) },
-      { rejection_reason: 'eski gerekçe kalsın' },
-      { revoked_at: '2026-09-30T10:00:00.000Z' },
-    ]) {
-      await assertFails(
-        setDoc(doc(teacherDb(), 'school_admin_requests', REQ), basvuru(ek)),
-      );
-    }
+  it('KRİTİK: şikâyet yazılamaz; eski yönetici claim\'i de okuyamaz', async () => {
+    await assertFails(
+      setDoc(doc(parentDb(), 'content_reports', 'r2'), {
+        reporterUid: PARENT_UID,
+        schoolId: OKUL,
+        status: 'open',
+      }),
+    );
+    await assertFails(getDoc(doc(eskiOkulYoneticisi(), 'content_reports', 'r1')));
+    await assertFails(getDoc(doc(superAdminDb(), 'content_reports', 'r1')));
   });
 
-  it('KRİTİK: başka öğretmen yeniden başvuru yazamaz', async () => {
-    await reddedilmis({ decided_ts: saatOnce(25) });
-    await assertFails(
-      setDoc(doc(otherTeacherDb(), 'school_admin_requests', REQ), basvuru()),
-    );
-    await assertFails(
-      setDoc(
-        doc(otherTeacherDb(), 'school_admin_requests', REQ),
-        basvuru({ teacher_uid: OTHER_TEACHER_UID }),
-      ),
-    );
-  });
-
-  it('bekleyen ya da onaylı başvuru öğretmence güncellenemez', async () => {
-    for (const durum of ['pending', 'approved']) {
-      await testEnv.clearFirestore();
-      await seed(async (db) => {
-        await setDoc(doc(db, 'school_admin_requests', REQ), {
-          teacher_uid: TEACHER_UID,
-          school_id: 'meb_16_123',
-          status: durum,
-        });
-      });
-      await assertFails(setDoc(doc(teacherDb(), 'school_admin_requests', REQ), basvuru()));
-    }
+  it('KRİTİK: okul tahtası panosu okul üyesine de yöneticiye de kapalı', async () => {
+    await assertFails(getDoc(doc(teacherDb(), 'school_boards', OKUL)));
+    await assertFails(setDoc(doc(eskiOkulYoneticisi(), 'school_boards', OKUL), { ad: 'X' }));
   });
 });

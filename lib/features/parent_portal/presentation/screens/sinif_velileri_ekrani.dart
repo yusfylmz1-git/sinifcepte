@@ -14,12 +14,14 @@ import '../../../classes/screens/parent_contacts_screen.dart';
 import '../../data/models/parent_link_model.dart';
 import '../../data/repositories/cloud_communication_repository.dart';
 import '../../providers/cloud_communication_provider.dart';
+import '../../providers/gelen_kutusu_provider.dart';
 import '../../providers/parent_portal_provider.dart';
 import '../../providers/parent_token_provider.dart';
 import '../widgets/class_reference_codes_modal.dart';
 import '../widgets/duyuru_penceresi.dart';
 import '../widgets/parent_teacher_chat_modal.dart';
 import '../widgets/sinif_kadrosu_bolumu.dart';
+import 'gelen_kutusu_ekrani.dart';
 
 /// Rehberlik sınıfının Veliler sayfası: tek sayfa, sekmesiz.
 ///
@@ -34,10 +36,9 @@ import '../widgets/sinif_kadrosu_bolumu.dart';
 ///
 /// ## "Yanıt bekleyen" ne demek
 /// Durumu sunucuda tutulan işler: onay bekleyen randevu ve "görüldü"
-/// denmemiş veli bildirimi. Mesajların okunma takibi öğretmen tarafında
-/// güvenilir değil (her veli mesajı hep "yeni" sayılıyor); tek gelen
-/// kutusu aşamasında düzelecek. O zamana kadar mesajlar yazışma
-/// listesinden açılır.
+/// denmemiş veli bildirimi. Mesajlar gelen kutusunda (Bugün'de de):
+/// okunmamış sayısı cihazda tutulur, sohbet açılınca sıfırlanır (18 Ekim
+/// 2026).
 class SinifVelileriEkrani extends ConsumerWidget {
   final ClassModel classModel;
 
@@ -111,10 +112,13 @@ class SinifVelileriEkrani extends ConsumerWidget {
                 _baslik(isDark, 'Yanıt bekleyenler'),
                 _Bekleyenler(classModel: classModel, uid: uid),
                 _baslik(isDark, 'Yazışmalar'),
+                _GelenKutusuSatiri(
+                  classCloudId: CloudIds.classId(teacherUid: uid, localClassId: classModel.id ?? 0),
+                ),
                 _satir(
                   isDark,
-                  ikon: Icons.forum_rounded,
-                  baslik: 'Velilerle yazışmalar',
+                  ikon: Icons.edit_note_rounded,
+                  baslik: 'Bir veliye yaz',
                   altBaslik: 'Bağlı velilerin listesi; dokununca sohbet açılır',
                   onTap: () => _git(context, VeliYazismalariEkrani(classModel: classModel)),
                 ),
@@ -234,6 +238,31 @@ Widget _bilgi(bool isDark, String metin) => Container(
         ),
       ),
     );
+
+/// "Gelen kutusu · 3 okunmamış" satırı (bu sınıfın mesajları).
+class _GelenKutusuSatiri extends ConsumerWidget {
+  final String classCloudId;
+
+  const _GelenKutusuSatiri({required this.classCloudId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final d = ref.watch(gelenKutusuProvider).valueOrNull;
+    final okunmamis = d == null
+        ? 0
+        : d.sohbetler
+            .where((o) => o.classCloudId == classCloudId)
+            .fold<int>(0, (t, o) => t + o.okunmamis);
+    return _satir(
+      isDark,
+      ikon: Icons.inbox_rounded,
+      baslik: okunmamis == 0 ? 'Gelen kutusu' : 'Gelen kutusu · $okunmamis okunmamış',
+      altBaslik: 'Velilerin size yazdıkları; okunmamışlar önde',
+      onTap: () => GelenKutusuEkrani.ac(context, sinif: classCloudId),
+    );
+  }
+}
 
 /// "18/28 öğrencinin velisi bağlı".
 class _BaglantiOzeti extends ConsumerWidget {
@@ -357,6 +386,7 @@ class BildirimKarti extends ConsumerWidget {
                           reportId: r.id,
                         );
                     ref.invalidate(classStatusReportsCloudProvider(classCloudId));
+                    ref.invalidate(gelenKutusuProvider);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF10B981),
@@ -398,6 +428,7 @@ class RandevuKarti extends ConsumerWidget {
           status: durum,
         );
     ref.invalidate(classAppointmentsCloudProvider(classCloudId));
+    ref.invalidate(gelenKutusuProvider);
   }
 
   @override
