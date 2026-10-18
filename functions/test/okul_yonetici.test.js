@@ -59,20 +59,6 @@ test('KRITIK: karar yalnızca uygun durumda', () => {
   assert.equal(kararUygunMu('rejected', 'geri_al').ok, false);
 });
 
-test('KRITIK: geri alma mobilin tanıdığı durumla yazılıyor', () => {
-  // Mobil parseStatus yalnızca pending/approved/rejected tanıyor;
-  // bilinmeyen durum "Başvuru yok" diye görünürdü.
-  const dart = readFileSync(
-    new URL('../../lib/features/auth_profile/data/models/school_admin_request_model.dart', import.meta.url),
-    'utf8'
-  );
-  const tanınan = [...dart.slice(dart.indexOf('parseStatus')).matchAll(/case '(\w+)':/g)].map((m) => m[1]);
-  for (const karar of ['onay', 'red', 'geri_al']) {
-    const g = basvuruGuncellemesi(karar, 'admin', 'sebep', '2026-09-29T10:00:00Z');
-    assert.ok(tanınan.includes(g.status), `${karar} -> ${g.status} mobilde tanınmıyor`);
-  }
-});
-
 test('geri alma öğretmene sebebiyle görünüyor, panel ayırt ediyor', () => {
   const g = basvuruGuncellemesi('geri_al', 'admin_uid', 'Okuldan ayrıldı', '2026-09-29T10:00:00Z');
   assert.equal(g.status, 'rejected');
@@ -112,16 +98,13 @@ test('okul kimliği yalnızca kanonik biçimde', () => {
   }
 });
 
-test('başvuru kimliği mobil depoyla aynı', () => {
-  const dart = readFileSync(
-    new URL('../../lib/features/auth_profile/data/repositories/school_admin_repository.dart', import.meta.url),
-    'utf8'
-  );
-  assert.match(dart, /requestIdFor\(String teacherUid\) => 'req_\$teacherUid'/);
-  assert.equal(basvuruKimligi('abc'), 'req_abc');
-});
-
 // --- Sunucu fonksiyonlarının bağlantısı ---
+
+// 18 Ekim 2026: okul yöneticiliği mobil uygulamadan ve Firestore
+// kurallarından kalktı (sadeleştirme 5b ve 2). Mobil modele, mobil depoya
+// ve `school_admin_requests` kuralına karşı yapılan üç tutarlılık testi
+// karşı tarafı silindiği için kaldırıldı. Bu fonksiyonlar (liste ve karar)
+// bir sonraki fonksiyon yayınında silinecek; panel artık çağırmıyor.
 
 const kaynak = readFileSync(new URL('../index.js', import.meta.url), 'utf8');
 /** Bir fonksiyonun gövdesi: bir sonraki dışa aktarıma kadar. */
@@ -158,12 +141,3 @@ test('listeyi moderatör de görebiliyor, liste yazmıyor', () => {
   assert.ok(!/\.(update|set|add|delete)\(/.test(g), 'liste fonksiyonu yazıyor');
 });
 
-test('KRITIK: karar SUNUCU zaman damgasıyla yazılıyor (yeniden başvuru beklemesi)', () => {
-  // firestore.rules reddedilen öğretmenin yeniden başvurusunu
-  // `decided_ts + 24 saat` ile bekletiyor; damga yazılmazsa bekleme
-  // hiç çalışmaz (kural damgasız kararı eski kayıt sayıp serbest bırakır).
-  const kaynak = readFileSync(new URL('../index.js', import.meta.url), 'utf8');
-  assert.match(kaynak, /ref\.update\(\{ \.\.\.guncelleme, decided_ts: FieldValue\.serverTimestamp\(\) \}\)/);
-  const kural = readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8');
-  assert.match(kural, /resource\.data\.decided_ts \+ duration\.value\(24, 'h'\)/);
-});

@@ -5,11 +5,13 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../data/models/parent_link_model.dart';
+import '../../data/moderasyon.dart';
 import '../../data/repositories/cloud_communication_repository.dart';
 import '../../data/services/communication_ids.dart';
 import '../../data/services/messaging_window.dart';
 import '../../providers/cloud_communication_provider.dart';
 import '../../providers/parent_token_provider.dart';
+import '../widgets/bildir_penceresi.dart';
 import '../widgets/parent_teacher_chat_modal.dart';
 
 /// Bir çocuğun detay ekranı.
@@ -150,6 +152,44 @@ class _AnnouncementCard extends ConsumerWidget {
     required this.isDark,
   });
 
+  /// Uygunsuz duyuruyu bildirir (Google Play kullanıcı içeriği kuralı).
+  /// Kural metni, başlığı ve yazarı buluttaki duyuruyla karşılaştırır.
+  Future<void> _bildir(BuildContext context, WidgetRef ref) async {
+    final identity = ref.read(parentAuthServiceProvider).currentIdentity;
+    if (identity == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bildirmek için Google ile giriş yapmalısınız.')),
+      );
+      return;
+    }
+    final a = announcement;
+    final secim = await bildirimSec(
+      context,
+      kime: a.authorName.isEmpty ? 'Duyuru' : a.authorName,
+      adaylar: [BildirimAdayi(kimlik: a.id, metin: a.content, ust: a.title)],
+    );
+    if (secim == null || !context.mounted) return;
+    await bildirimGonder(
+      context,
+      ref,
+      IcerikBildirimi(
+        bildirenUid: identity.uid,
+        bildirenRol: 'parent',
+        tur: BildirilenIcerik.duyuru,
+        icerikId: a.id,
+        classCloudId: child.classCloudId,
+        studentCloudId: child.studentCloudId,
+        bildirilenUid: a.authorUid,
+        bildirilenAd: a.authorName,
+        metin: a.content,
+        baslik: a.title,
+        neden: secim.neden,
+        not: secim.not,
+        zaman: DateTime.now(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final a = announcement;
@@ -255,6 +295,14 @@ class _AnnouncementCard extends ConsumerWidget {
                   fontSize: 10.5,
                   color: isDark ? Colors.white38 : Colors.black38,
                 ),
+              ),
+              IconButton(
+                key: ValueKey('duyuru_bildir_${a.id}'),
+                tooltip: 'Duyuruyu bildir',
+                visualDensity: VisualDensity.compact,
+                icon: Icon(Icons.flag_outlined,
+                    size: 16, color: isDark ? Colors.white38 : Colors.black38),
+                onPressed: () => _bildir(context, ref),
               ),
               const Spacer(),
               if (!a.readByMe)

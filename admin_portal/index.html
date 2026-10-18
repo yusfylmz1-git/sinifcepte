@@ -104,9 +104,9 @@
           Okullar ve Kişiler
         </a>
 
-        <a href="#" class="menu-item" data-tab="yoneticiler">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z"/><polyline points="9 12 11 14 15 10"/></svg>
-          Okul Yöneticileri
+        <a href="#" class="menu-item" data-tab="bildirimler">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22V4"/><path d="M4 4h13l-2 4 2 4H4"/></svg>
+          Bildirimler
         </a>
       </nav>
 
@@ -515,43 +515,43 @@
           </div>
         </section>
 
-        <!-- OKUL YÖNETİCİLERİ (Y17): başvuruya panelden karar. Yetkiyi
-             sunucu (decideSchoolAdmin) veriyor; düğmeler yalnızca süper
-             yöneticiye çıkıyor. -->
-        <section id="tab-yoneticiler" class="tab-content">
+        <!-- BİLDİRİMLER (18 Ekim 2026): uygulamadan bildirilen mesaj ve
+             duyurular (Google Play kullanıcı içeriği kuralı) ve destek
+             talepleri. Okul yöneticiliği kalkınca bu sekmenin yerine geldi.
+             Okuma ve kapatma kuralda yalnız yöneticiye açık. -->
+        <section id="tab-bildirimler" class="tab-content">
           <div class="panel-card">
             <div class="panel-header">
-              <h2 class="panel-title">Okul yöneticiliği başvuruları</h2>
+              <h2 class="panel-title">Bildirimler ve destek talepleri</h2>
               <div style="display: flex; gap: 8px; align-items: center;">
-                <select id="yonetici-durum" class="form-control" data-degisim="yoneticileriYukle" style="width: auto;">
-                  <option value="pending">Bekleyen</option>
-                  <option value="approved">Onaylanan</option>
-                  <option value="rejected">Reddedilen / geri alınan</option>
+                <select id="bildirim-suzgec" class="form-control" data-degisim="bildirimTablosuCiz" data-deger style="width: auto;">
+                  <option value="acik">Açık olanlar</option>
+                  <option value="icerik">Açık içerik bildirimleri</option>
+                  <option value="hepsi">Hepsi</option>
                 </select>
-                <button class="btn btn-secondary" data-eylem="yoneticileriYukle">Yenile</button>
+                <button class="btn btn-secondary" data-eylem="bildirimleriYukle">Yenile</button>
               </div>
             </div>
             <p style="margin: 0 0 12px; font-size: 13px; line-height: 1.55; color: var(--text-muted);">
-              Onaylanan öğretmen kendi okulunun şikâyetlerini görür ve öğretmen
-              onaylarını yönetir. <strong>Kanıt sütunu</strong> başvuranın o okulun
-              öğretmen dizininde kayıtlı olup olmadığını gösterir; dizin kaydı onaysız
-              oluştuğu için tek başına yeterli değildir. Emin değilseniz okulu
-              arayıp teyit edin.
+              İçerik bildiriminde metin ve kişi, Firestore kuralında buluttaki asıl
+              mesajla karşılaştırılır; uydurma bildirim yazılamaz. Gerekirse hesabı
+              Firebase Console → Authentication'dan kapatın, içeriği gösterilen yoldan
+              silin. Sonra <strong>Kapat</strong> ile ne yapıldığını not edin.
             </p>
-            <p id="yonetici-bilgi" style="margin: 0 0 12px; font-size: 12px; color: var(--text-muted);"></p>
+            <p id="bildirim-bilgi" style="margin: 0 0 12px; font-size: 12px; color: var(--text-muted);"></p>
             <div class="table-responsive">
               <table class="data-table">
                 <thead>
                   <tr>
-                    <th>Öğretmen</th>
-                    <th>Okul</th>
-                    <th>Kanıt</th>
-                    <th>Not</th>
                     <th>Tarih</th>
+                    <th>Tür</th>
+                    <th>Kimden</th>
+                    <th>Hakkında</th>
+                    <th>Ayrıntı</th>
                     <th style="text-align: right;">İşlem</th>
                   </tr>
                 </thead>
-                <tbody id="yonetici-tablo"></tbody>
+                <tbody id="bildirim-tablo"></tbody>
               </table>
             </div>
           </div>
@@ -1228,7 +1228,7 @@
   <script src="js/manifest_manager.js?v=202609291200"></script>
   <script src="js/cloud_exporter.js?v=202609291200"></script>
   <script src="js/admin_app.js?v=202609291200"></script>
-  <script src="js/okul_yonetimi.js?v=202609291200"></script>
+  <script src="js/bildirimler.js?v=202610181200"></script>
   <script src="js/okullar.js?v=202609291200"></script>
   <script src="js/eylemler.js?v=202609291200"></script>
   <!--

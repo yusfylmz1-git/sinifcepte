@@ -33,6 +33,16 @@ import {
   getFunctions,
   httpsCallable,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
+import {
+  getFirestore,
+  collection,
+  query,
+  orderBy,
+  limit,
+  getDocs,
+  doc,
+  updateDoc,
+} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 /**
  * Web istemci yapılandırması.
@@ -56,6 +66,7 @@ const BOLGE = 'europe-west1';
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const functions = getFunctions(app, BOLGE);
+const db = getFirestore(app);
 
 /** Oturumdaki kullanıcı ve rolü. Giriş yoksa rol boştur. */
 let durum = { user: null, role: '' };
@@ -169,22 +180,28 @@ window.SinifCepteAdminAuth = {
     return sonuc.data;
   },
 
-  /** Okul yöneticiliği başvuruları (durum: pending | approved | rejected). */
-  async listSchoolAdminRequests(durum) {
-    const cagir = httpsCallable(functions, 'listSchoolAdminRequests');
-    const sonuc = await cagir({ durum });
-    return sonuc.data;
+  /**
+   * Destek talepleri ve içerik bildirimleri, en yeni 200.
+   *
+   * Doğrudan Firestore'dan: kural (`support_requests`) okumayı yalnız
+   * yöneticiye (`adminRole` claim'i) açıyor. Okul yöneticiliği
+   * başvuruları 18 Ekim 2026'da kalktı.
+   */
+  async listSupportRequests() {
+    const snap = await getDocs(
+      query(collection(db, 'support_requests'), orderBy('createdAt', 'desc'), limit(200))
+    );
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   },
 
-  /**
-   * Okul yöneticiliği kararı: 'onay' | 'red' | 'geri_al'.
-   *
-   * Claim sunucuda yazılıyor; buradan yalnızca istek gidiyor.
-   */
-  async decideSchoolAdmin(uid, karar, gerekce = '') {
-    const cagir = httpsCallable(functions, 'decideSchoolAdmin');
-    const sonuc = await cagir({ uid, karar, gerekce });
-    return sonuc.data;
+  /** Talebi kapatır; ne yapıldığı not olarak kalır. */
+  async resolveSupportRequest(id, not = '') {
+    await updateDoc(doc(db, 'support_requests', id), {
+      status: 'resolved',
+      resolvedAt: new Date().toISOString(),
+      resolvedBy: auth.currentUser?.email || '',
+      adminNote: String(not || '').slice(0, 500),
+    });
   },
 
   /** Okul görünümü: kayıtlı öğretmenler, yöneticilik, geçmiş. */

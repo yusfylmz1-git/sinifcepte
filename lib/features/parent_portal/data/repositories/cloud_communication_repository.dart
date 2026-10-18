@@ -14,6 +14,10 @@ class CloudAnnouncement {
   final String content;
   final String priority; // 'normal' | 'urgent' | 'event'
   final String authorName;
+
+  /// Duyuruyu yazan öğretmen (kadrodaki öğretmen de yazabilir). Veli
+  /// duyuruyu bildirince kural bu kimliği doğrular.
+  final String authorUid;
   final DateTime createdAt;
   final DateTime updatedAt;
   final int readCount;
@@ -38,12 +42,32 @@ class CloudAnnouncement {
     required this.content,
     this.priority = 'normal',
     this.authorName = '',
+    this.authorUid = '',
     required this.createdAt,
     required this.updatedAt,
     this.readCount = 0,
     this.readByMe = false,
     this.eventAt,
   });
+
+  /// Buluttaki belgeden okur.
+  ///
+  /// `eventAt` 18 Ekim 2026'ya kadar hiç okunmuyordu: öğretmen sınav
+  /// tarihini yazıyor, veli tarafı atlıyordu. Velinin takvimi yalnız
+  /// tarihli duyuruları gösterdiği için sınavlar takvime hiç düşmüyordu.
+  factory CloudAnnouncement.fromMap(String id, Map<String, dynamic> data) {
+    return CloudAnnouncement(
+      id: id,
+      title: data['title'] as String? ?? '',
+      content: data['content'] as String? ?? '',
+      priority: data['priority'] as String? ?? 'normal',
+      authorName: data['authorName'] as String? ?? '',
+      authorUid: data['authorUid'] as String? ?? '',
+      createdAt: DateTime.tryParse(data['createdAt'] as String? ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(data['updatedAt'] as String? ?? '') ?? DateTime.now(),
+      eventAt: DateTime.tryParse(data['eventAt'] as String? ?? ''),
+    );
+  }
 
   bool get isUrgent => priority == 'urgent';
   bool get isEvent => priority == 'event';
@@ -78,6 +102,7 @@ class CloudAnnouncement {
       content: content,
       priority: priority,
       authorName: authorName,
+      authorUid: authorUid,
       createdAt: createdAt,
       updatedAt: updatedAt,
       readCount: readCount ?? this.readCount,
@@ -431,22 +456,7 @@ class CloudCommunicationRepository {
 
       await _client.recordQueryReads(snap.docs.length);
 
-      return snap.docs.map((d) {
-        final data = d.data();
-        return CloudAnnouncement(
-          id: d.id,
-          title: data['title'] as String? ?? '',
-          content: data['content'] as String? ?? '',
-          priority: data['priority'] as String? ?? 'normal',
-          authorName: data['authorName'] as String? ?? '',
-          createdAt:
-              DateTime.tryParse(data['createdAt'] as String? ?? '') ??
-                  DateTime.now(),
-          updatedAt:
-              DateTime.tryParse(data['updatedAt'] as String? ?? '') ??
-                  DateTime.now(),
-        );
-      }).toList();
+      return snap.docs.map((d) => CloudAnnouncement.fromMap(d.id, d.data())).toList();
     } catch (e, stackTrace) {
       debugPrint('fetchAnnouncements hatası: $e\n$stackTrace');
       return const [];

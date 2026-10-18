@@ -8,14 +8,15 @@
 /// ## Neden cihazda çalışıyor
 /// Denetim sunucuda yapılsaydı her mesaj için ek okuma/yazma maliyeti
 /// çıkardı. Cihazda çalışan bir kontrol **sıfır bulut maliyeti** ile
-/// aynı işi görür. Kararlı bir saldırgan istemciyi atlatabilir; bu
-/// yüzden şikayet mekanizması ikinci katman olarak durur.
+/// aynı işi görür. Kararlı bir saldırgan istemciyi atlatabilir; ikinci
+/// katman alıcının elinde: mesajı bildirir, kişiyi engeller (sunucu
+/// kuralı engeli uygular; bkz. `parent_portal/data/moderasyon.dart`).
 ///
 /// ## Neden engellemek yerine uyarıyor
 /// Türkçede bağlama göre masum kelimeler var ("sikinti" yazarken düşen
 /// harf, "piç" içeren yer adları). Mesajı doğrudan reddetmek yanlış
 /// alarmda kullanıcıyı kilitlerdi. Doğru davranış: uyar, kullanıcı
-/// yine de göndermek isterse göndersin — ama şikayet edilebilir olsun.
+/// yine de göndermek isterse göndersin — alıcı bildirebilir.
 library;
 
 import '../utils/turkish_text.dart';

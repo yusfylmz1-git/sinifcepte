@@ -4,12 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../data/moderasyon.dart';
 import '../../data/repositories/cloud_communication_repository.dart';
 import '../../providers/cloud_communication_provider.dart';
+import '../../providers/moderasyon_provider.dart';
 import '../../data/services/communication_ids.dart';
 import '../../data/services/messaging_window.dart';
 import '../../../../core/cloud/firestore_budget_guard.dart';
 import '../../../../core/moderation/content_guard.dart';
+import 'bildir_penceresi.dart';
 
 /// Öğretmen ↔ veli birebir yazışma ekranı.
 ///
@@ -27,6 +30,12 @@ import '../../../../core/moderation/content_guard.dart';
 /// Canlı dinleyici kullanılmaz (maliyet kararı #4). Mesajlar açılışta bir kez
 /// çekilir, aşağı çekilerek yenilenir. Gönderim sonrası liste yerel olarak
 /// güncellenir; sunucudan yeniden okuma yapılmaz.
+///
+/// ## Bildir ve engelle (18 Ekim 2026)
+/// Google Play kullanıcı içeriği kuralı: karşı tarafın mesajı basılı
+/// tutularak ya da ⋮ menüsünden bildirilir; kişi aynı menüden engellenir.
+/// Engel kuralda uygulanır (engellenen yazamaz); açılışta iki okumayla
+/// durum gösterilir. Bkz. `moderasyon.dart`.
 class ParentTeacherChatModal extends ConsumerStatefulWidget {
   final String classCloudId;
   final String studentCloudId;
@@ -103,18 +112,23 @@ class ParentTeacherChatModal extends ConsumerStatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => ParentTeacherChatModal(
-        classCloudId: classCloudId,
-        studentCloudId: studentCloudId,
-        studentName: studentName,
-        parentUserId: parentUserId,
-        selfName: selfName,
-        selfUid: selfUid,
-        asTeacher: asTeacher,
-        counterpartName: counterpartName,
-        teacherUid: teacherUid,
-        meetingDay: meetingDay,
-        meetingTime: meetingTime,
+      // Alt sayfanın kendi ScaffoldMessenger'ı: sayfanınki SnackBar'ı alt
+      // sayfanın ARKASINDA gösteriyordu; "görüşme saati dışında",
+      // "gönderilemedi", "engellendi" uyarıları görünmüyordu (18 Ekim 2026).
+      builder: (_) => ScaffoldMessenger(
+        child: ParentTeacherChatModal(
+          classCloudId: classCloudId,
+          studentCloudId: studentCloudId,
+          studentName: studentName,
+          parentUserId: parentUserId,
+          selfName: selfName,
+          selfUid: selfUid,
+          asTeacher: asTeacher,
+          counterpartName: counterpartName,
+          teacherUid: teacherUid,
+          meetingDay: meetingDay,
+          meetingTime: meetingTime,
+        ),
       ),
     );
   }
@@ -144,11 +158,138 @@ class _ParentTeacherChatModalState
       );
   bool _sending = false;
   String? _error;
+  EngelDurumu _engel = EngelDurumu.yok;
+
+  /// Sohbetin karşı tarafı: öğretmen görünümünde veli, veli görünümünde
+  /// öğretmen.
+  String get _karsiUid => widget.asTeacher ? widget.parentUserId : widget.teacherUid;
 
   @override
   void initState() {
     super.initState();
     _loadMessages();
+    _engelDurumunuOku();
+  }
+
+  Future<void> _engelDurumunuOku() async {
+    final durum = await ref
+        .read(moderasyonDeposuProvider)
+        .engelDurumu(ben: widget.selfUid, karsi: _karsiUid);
+    if (!mounted) return;
+    setState(() => _engel = durum);
+  }
+
+  /// Karşı tarafın mesajını bildirir. [secili] basılı tutulan mesaj; menüden
+  /// açılınca kullanıcı son mesajlar arasından seçer.
+  Future<void> _bildir({CloudMessage? secili}) async {
+    final karsininMesajlari = [
+      for (final m in _messages.reversed)
+        if (widget.asTeacher ? !m.isFromTeacher : m.isFromTeacher) m,
+    ].take(10).toList();
+    if (karsininMesajlari.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bildirilecek bir mesaj yok.')),
+      );
+      return;
+    }
+    final secim = await bildirimSec(
+      context,
+      kime: widget.counterpartName,
+      seciliKimlik: secili?.id,
+      adaylar: [
+        for (final m in karsininMesajlari)
+          BildirimAdayi(
+            kimlik: m.id,
+            metin: m.body,
+            ust: DateFormat('dd.MM HH:mm').format(m.createdAt),
+          ),
+      ],
+    );
+    if (secim == null || !mounted) return;
+    final ok = await bildirimGonder(
+      context,
+      ref,
+      IcerikBildirimi(
+        bildirenUid: widget.selfUid,
+        bildirenRol: widget.asTeacher ? 'teacher' : 'parent',
+        tur: BildirilenIcerik.mesaj,
+        icerikId: secim.aday.kimlik,
+        classCloudId: widget.classCloudId,
+        studentCloudId: widget.studentCloudId,
+        bildirilenUid: _karsiUid,
+        bildirilenAd: widget.counterpartName,
+        // Kural buluttaki gövdeyle birebir karşılaştırır; kırpılmaz.
+        metin: secim.aday.metin,
+        neden: secim.neden,
+        not: secim.not,
+        zaman: DateTime.now(),
+      ),
+    );
+    if (!ok || !mounted || _engel.benEngelledim) return;
+
+    final engelle = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Bu kişiyi engellemek ister misiniz?'),
+        content: Text(
+          '${widget.counterpartName} size mesaj gönderemez. Engeli bu pencerenin '
+          '⋮ menüsünden kaldırabilirsiniz.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hayır')),
+          TextButton(
+            key: const ValueKey('bildir_sonra_engelle'),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Engelle'),
+          ),
+        ],
+      ),
+    );
+    if (engelle == true && mounted) await _engelDegistir(true);
+  }
+
+  Future<void> _engelleSor() async {
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('${widget.counterpartName} engellensin mi?'),
+        content: Text(
+          widget.asTeacher
+              ? 'Engellediğiniz veli size mesaj gönderemez; engeli kaldırana kadar siz '
+                  'de yazamazsınız. Randevu talepleri ve durum bildirimleri (ör. erken '
+                  'çıkış) öğrencinin güvenliği için gelmeye devam eder.'
+              : 'Engellediğiniz öğretmen size mesaj gönderemez; engeli kaldırana kadar '
+                  'siz de yazamazsınız. Sınıf duyuruları görünmeye devam eder; uygunsuz '
+                  'bir duyuruyu duyurunun altından bildirebilirsiniz.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+          TextButton(
+            key: const ValueKey('engel_onayla'),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Engelle'),
+          ),
+        ],
+      ),
+    );
+    if (onay == true && mounted) await _engelDegistir(true);
+  }
+
+  Future<void> _engelDegistir(bool engelle) async {
+    final depo = ref.read(moderasyonDeposuProvider);
+    final ok = engelle
+        ? await depo.engelle(ben: widget.selfUid, karsi: _karsiUid)
+        : await depo.engeliKaldir(ben: widget.selfUid, karsi: _karsiUid);
+    if (!mounted) return;
+    // Başarıda SnackBar yok: alttaki şerit zaten değişiyor ve SnackBar
+    // "Engeli kaldır" düğmesinin üstüne biniyordu.
+    if (ok) {
+      setState(() => _engel = EngelDurumu(benEngelledim: engelle, beniEngelledi: _engel.beniEngelledi));
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('İşlem yapılamadı. İnternet bağlantınızı kontrol edin.')),
+    );
   }
 
   @override
@@ -221,10 +362,8 @@ class _ParentTeacherChatModalState
     //
     // Onceden HICBIR denetim yoktu; hakaret ve mesaj bombardimani
     // dogrudan gidiyordu. Denetim cihazda calisir (sifir bulut maliyeti);
-    // kararli bir saldirgan atlatabilir. Ikinci katman sanilan sikayet
-    // yolu hic baglanmamisti (gonderen yoktu) ve 18 Ekim 2026'da
-    // kaldirildi. Google Play kullanici icerigi kurali icin gercek bir
-    // "bildir" yolu ileride gerekecek (acik is).
+    // kararli bir saldirgan atlatabilir. Ikinci katman: alici mesaji
+    // bildirir ve kisiyi engeller (18 Ekim 2026, bkz. moderasyon.dart).
     final denetim = ContentGuard.instance.check(
       userId: widget.selfUid,
       body: body,
@@ -399,7 +538,14 @@ class _ParentTeacherChatModalState
           color: isDark ? const Color(0xFF1E293B) : Colors.white,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        child: content,
+        // SnackBar bu Scaffold'da, alt sayfanın içinde görünür (`show`
+        // alt sayfaya kendi ScaffoldMessenger'ını verir). Klavye payı
+        // yukarıda verildi; Scaffold ikinci kez kaydırmasın.
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          resizeToAvoidBottomInset: false,
+          body: content,
+        ),
       ),
     );
   }
@@ -450,6 +596,41 @@ class _ParentTeacherChatModalState
             icon: const Icon(Icons.refresh_rounded, size: 20),
             tooltip: 'Yenile',
             onPressed: _loading ? null : _loadMessages,
+          ),
+          PopupMenuButton<String>(
+            key: const ValueKey('sohbet_menu'),
+            tooltip: 'Bildir veya engelle',
+            icon: const Icon(Icons.more_vert_rounded, size: 20),
+            onSelected: (secim) {
+              if (secim == 'bildir') _bildir();
+              if (secim == 'engelle') _engelleSor();
+              if (secim == 'kaldir') _engelDegistir(false);
+            },
+            itemBuilder: (_) => [
+              const PopupMenuItem(
+                key: ValueKey('sohbet_bildir'),
+                value: 'bildir',
+                child: ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.flag_outlined, size: 20),
+                  title: Text('Mesaj bildir'),
+                ),
+              ),
+              PopupMenuItem(
+                key: const ValueKey('sohbet_engel'),
+                value: _engel.benEngelledim ? 'kaldir' : 'engelle',
+                child: ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    _engel.benEngelledim ? Icons.lock_open_rounded : Icons.block_rounded,
+                    size: 20,
+                  ),
+                  title: Text(_engel.benEngelledim ? 'Engeli kaldır' : 'Engelle'),
+                ),
+              ),
+            ],
           ),
           IconButton(
             icon: const Icon(Icons.close_rounded),
@@ -543,57 +724,102 @@ class _ParentTeacherChatModalState
 
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.sizeOf(context).width * 0.72,
-        ),
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-        decoration: BoxDecoration(
-          color: isMine
-              ? AppColors.primary
-              : (isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFF1F5F9)),
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(14),
-            topRight: const Radius.circular(14),
-            bottomLeft: Radius.circular(isMine ? 14 : 4),
-            bottomRight: Radius.circular(isMine ? 4 : 14),
+      // Karşı tarafın mesajı basılı tutulunca bildirilir.
+      child: GestureDetector(
+        key: ValueKey('mesaj_${m.id}'),
+        onLongPress: isMine ? null : () => _bildir(secili: m),
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.sizeOf(context).width * 0.72,
           ),
-        ),
-        child: Column(
-          crossAxisAlignment:
-              isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            if (!isMine && m.authorName.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 3),
-                child: Text(
-                  m.authorName,
-                  style: AppFonts.outfit(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+          decoration: BoxDecoration(
+            color: isMine
+                ? AppColors.primary
+                : (isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFF1F5F9)),
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(14),
+              topRight: const Radius.circular(14),
+              bottomLeft: Radius.circular(isMine ? 14 : 4),
+              bottomRight: Radius.circular(isMine ? 4 : 14),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment:
+                isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              if (!isMine && m.authorName.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 3),
+                  child: Text(
+                    m.authorName,
+                    style: AppFonts.outfit(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
                   ),
                 ),
+              Text(
+                m.body,
+                style: AppFonts.outfit(
+                  fontSize: 13,
+                  height: 1.35,
+                  color: isMine
+                      ? Colors.white
+                      : (isDark ? Colors.white : Colors.black87),
+                ),
               ),
-            Text(
-              m.body,
-              style: AppFonts.outfit(
-                fontSize: 13,
-                height: 1.35,
-                color: isMine
-                    ? Colors.white
-                    : (isDark ? Colors.white : Colors.black87),
+              const SizedBox(height: 3),
+              Text(
+                timeStr,
+                style: AppFonts.outfit(
+                  fontSize: 9.5,
+                  color: isMine ? Colors.white70 : Colors.grey,
+                ),
               ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              timeStr,
-              style: AppFonts.outfit(
-                fontSize: 9.5,
-                color: isMine ? Colors.white70 : Colors.grey,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Engel varsa yazma alanının yerinde durur.
+  Widget? _engelSeridi(bool isDark) {
+    final String metin;
+    if (_engel.benEngelledim) {
+      metin = widget.asTeacher
+          ? 'Bu veliyi engellediniz; size mesaj gönderemez.'
+          : 'Bu öğretmeni engellediniz; size mesaj gönderemez.';
+    } else if (_engel.beniEngelledi) {
+      metin = widget.asTeacher
+          ? 'Veli bu sohbeti kapattı.'
+          : 'Öğretmen bu sohbeti kapattı. Okulla doğrudan iletişime geçebilirsiniz.';
+    } else {
+      return null;
+    }
+    return Container(
+      key: const ValueKey('sohbet_engel_seridi'),
+      padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+        border: Border(top: BorderSide(color: isDark ? Colors.white12 : Colors.black12)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            const Icon(Icons.block_rounded, size: 18, color: Colors.grey),
+            const SizedBox(width: 10),
+            Expanded(child: Text(metin, style: AppFonts.outfit(fontSize: 12.5, height: 1.4))),
+            if (_engel.benEngelledim)
+              TextButton(
+                key: const ValueKey('sohbet_engeli_kaldir'),
+                onPressed: () => _engelDegistir(false),
+                child: const Text('Engeli kaldır'),
               ),
-            ),
           ],
         ),
       ),
@@ -601,6 +827,8 @@ class _ParentTeacherChatModalState
   }
 
   Widget _buildComposer(bool isDark) {
+    final serit = _engelSeridi(isDark);
+    if (serit != null) return serit;
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       decoration: BoxDecoration(

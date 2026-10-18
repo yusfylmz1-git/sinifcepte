@@ -5,7 +5,11 @@ enum SupportCategory {
   codeIssue('code_issue', '🔑 Veli Referans Kodu Sorunu'),
   bugReport('bug_report', '🐛 Uygulama Hatası Bildir'),
   suggestion('suggestion', '💡 Öneri & İyileştirme'),
-  other('other', '❓ Diğer Sorular');
+  other('other', '❓ Diğer Sorular'),
+
+  /// Mesaj ya da duyuru bildirimi (sohbetten / duyuru kartından gelir,
+  /// destek penceresinde seçilmez). Kural içeriği doğrular.
+  contentReport('content_report', '🚩 İçerik Bildirimi');
 
   const SupportCategory(this.id, this.label);
 

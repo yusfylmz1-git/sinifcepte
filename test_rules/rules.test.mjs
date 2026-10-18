@@ -2084,3 +2084,223 @@ describe('18. Kaldırılan koleksiyonlar kapalı (18 Ekim 2026)', () => {
     await assertFails(setDoc(doc(eskiOkulYoneticisi(), 'school_boards', OKUL), { ad: 'X' }));
   });
 });
+describe('19. Bildir ve engelle (Google Play kullanıcı içeriği, 18 Ekim 2026)', () => {
+  // Veli–öğretmen mesajları ve duyurular kullanıcı içeriği: Play,
+  // uygulama içinden bildirme ve engelleme ister. Bildirim destek
+  // talebi olarak yazılır ve içeriği kuralda buluttakiyle karşılaştırılır;
+  // engellenen engelleyene mesaj yazamaz.
+  const BRANS_UID = 'teacherBransZeynep';
+  const VELI_MESAJI = 'Hocam bu ne biçim not, sizi şikâyet edeceğim!';
+  const OGRETMEN_MESAJI = 'Yarın veli toplantısı var.';
+  const DUYURU = { title: 'Gezi', content: 'Cuma günü müzeye gidiyoruz.' };
+
+  const mesaj = (ekler) => ({
+    studentCloudId: STUDENT_ID,
+    parentUserId: PARENT_UID,
+    teacherUid: TEACHER_UID,
+    createdAt: '2026-10-18T10:00:00.000',
+    ...ekler,
+  });
+
+  const bildirim = (uid, ekler) => ({
+    userId: uid,
+    userRole: 'teacher',
+    category: 'content_report',
+    subject: 'İçerik bildirimi: Hakaret veya taciz',
+    message: 'Ek not yok.',
+    createdAt: new Date().toISOString(),
+    status: 'open',
+    contentType: 'message',
+    contentId: 'm_veli',
+    classCloudId: CLASS_ID,
+    reportedUid: PARENT_UID,
+    reportedName: 'Ayşe Veli',
+    excerpt: VELI_MESAJI,
+    reason: 'hakaret',
+    ...ekler,
+  });
+
+  before(async () => {
+    await testEnv.clearFirestore();
+    await seed(async (db) => {
+      await setDoc(doc(db, 'class_rooms', CLASS_ID), { classCloudId: CLASS_ID, teacherUid: TEACHER_UID });
+      await setDoc(doc(db, 'class_rooms', CLASS_ID, 'staff', BRANS_UID), {
+        teacherUid: BRANS_UID,
+        teacherName: 'Zeynep Ak',
+        branch: 'Fen',
+      });
+      await setDoc(doc(db, 'parent_links', `${PARENT_UID}_${STUDENT_ID}`), {
+        parentUid: PARENT_UID,
+        studentCloudId: STUDENT_ID,
+        status: 'active',
+      });
+      await setDoc(doc(db, 'parent_class_access', `${PARENT_UID}_${CLASS_ID}`), {
+        parentUid: PARENT_UID,
+        classCloudId: CLASS_ID,
+      });
+      await setDoc(doc(db, 'class_rooms', CLASS_ID, 'messages', 'm_veli'), mesaj({
+        authorRole: 'parent',
+        authorUid: PARENT_UID,
+        body: VELI_MESAJI,
+      }));
+      await setDoc(doc(db, 'class_rooms', CLASS_ID, 'messages', 'm_ogretmen'), mesaj({
+        authorRole: 'teacher',
+        authorUid: TEACHER_UID,
+        body: OGRETMEN_MESAJI,
+      }));
+      await setDoc(doc(db, 'class_rooms', CLASS_ID, 'announcements', 'a1'), {
+        ...DUYURU,
+        authorUid: TEACHER_UID,
+        authorName: 'Ahmet Öğretmen',
+        createdAt: '2026-10-18T08:00:00.000',
+        updatedAt: '2026-10-18T08:00:00.000',
+      });
+    });
+  });
+
+  const bransDb = () => testEnv.authenticatedContext(BRANS_UID).firestore();
+  const engel = (engelleyen, engellenen) => ({
+    blockerUid: engelleyen,
+    blockedUid: engellenen,
+    createdAt: '2026-10-18T11:00:00.000',
+  });
+  const yeniVeliMesaji = (ogretmen) => mesaj({
+    teacherUid: ogretmen,
+    authorRole: 'parent',
+    authorUid: PARENT_UID,
+    body: 'Merhaba',
+  });
+
+  // --- Bildirim ---
+
+  it('öğretmen velinin mesajını bildirebilir', async () => {
+    await assertSucceeds(setDoc(doc(teacherDb(), 'support_requests', 'sup_b1'), bildirim(TEACHER_UID)));
+  });
+
+  it('veli öğretmenin mesajını bildirebilir', async () => {
+    await assertSucceeds(setDoc(doc(parentDb(), 'support_requests', 'sup_b2'), bildirim(PARENT_UID, {
+      userRole: 'parent',
+      contentId: 'm_ogretmen',
+      reportedUid: TEACHER_UID,
+      excerpt: OGRETMEN_MESAJI,
+    })));
+  });
+
+  it('KRİTİK: uydurma metinle bildirim yazılamaz', async () => {
+    await assertFails(setDoc(doc(teacherDb(), 'support_requests', 'sup_b3'),
+      bildirim(TEACHER_UID, { excerpt: 'Veli küfretti (aslında etmedi)' })));
+  });
+
+  it('KRİTİK: bildirilen kişi mesajın yazarı olmalı', async () => {
+    await assertFails(setDoc(doc(teacherDb(), 'support_requests', 'sup_b4'),
+      bildirim(TEACHER_UID, { reportedUid: OTHER_PARENT_UID })));
+  });
+
+  it('KRİTİK: kendi mesajını ya da yabancı sohbeti bildiremez', async () => {
+    // Öğretmen kendi mesajını "veli yazdı" diye bildiremez.
+    await assertFails(setDoc(doc(teacherDb(), 'support_requests', 'sup_b5'), bildirim(TEACHER_UID, {
+      contentId: 'm_ogretmen',
+      excerpt: OGRETMEN_MESAJI,
+      reportedUid: PARENT_UID,
+    })));
+    // Sohbetin tarafı olmayan öğretmen (kadrodaki bile) bildiremez.
+    await assertFails(setDoc(doc(bransDb(), 'support_requests', 'sup_b6'), bildirim(BRANS_UID)));
+    // Başka veli de bildiremez.
+    await assertFails(setDoc(doc(otherParentDb(), 'support_requests', 'sup_b7'), bildirim(OTHER_PARENT_UID, {
+      userRole: 'parent',
+      contentId: 'm_ogretmen',
+      reportedUid: TEACHER_UID,
+      excerpt: OGRETMEN_MESAJI,
+    })));
+  });
+
+  it('KRİTİK: olmayan mesaj bildirilemez', async () => {
+    await assertFails(setDoc(doc(teacherDb(), 'support_requests', 'sup_b8'),
+      bildirim(TEACHER_UID, { contentId: 'yok' })));
+  });
+
+  it('veli sınıf duyurusunu bildirebilir; uydurma ya da erişimsiz bildiremez', async () => {
+    const duyuruBildirimi = (uid, ekler) => bildirim(uid, {
+      userRole: 'parent',
+      contentType: 'announcement',
+      contentId: 'a1',
+      reportedUid: TEACHER_UID,
+      excerpt: DUYURU.content,
+      contentTitle: DUYURU.title,
+      ...ekler,
+    });
+    await assertSucceeds(setDoc(doc(parentDb(), 'support_requests', 'sup_d1'), duyuruBildirimi(PARENT_UID)));
+    await assertFails(setDoc(doc(parentDb(), 'support_requests', 'sup_d2'),
+      duyuruBildirimi(PARENT_UID, { contentTitle: 'Başka başlık' })));
+    await assertFails(setDoc(doc(otherParentDb(), 'support_requests', 'sup_d3'),
+      duyuruBildirimi(OTHER_PARENT_UID)));
+  });
+
+  it('bildiren kendi bildirimini görür; yönetici hepsini görür ve kapatır', async () => {
+    await assertSucceeds(getDoc(doc(teacherDb(), 'support_requests', 'sup_b1')));
+    await assertFails(getDoc(doc(otherParentDb(), 'support_requests', 'sup_b1')));
+    await assertSucceeds(getDocs(collection(superAdminDb(), 'support_requests')));
+    await assertSucceeds(updateDoc(doc(superAdminDb(), 'support_requests', 'sup_b1'), {
+      status: 'resolved',
+    }));
+  });
+
+  // --- Engel ---
+
+  it('KRİTİK: engellenen veli engelleyen öğretmene yazamaz; engel kalkınca yazar', async () => {
+    await assertSucceeds(setDoc(doc(teacherDb(), 'user_blocks', `${TEACHER_UID}_${PARENT_UID}`),
+      engel(TEACHER_UID, PARENT_UID)));
+    await assertFails(setDoc(doc(parentDb(), 'class_rooms', CLASS_ID, 'messages', 'm_e1'),
+      yeniVeliMesaji(TEACHER_UID)));
+    // Aynı veli, kendisini engellemeyen kadro öğretmenine yazabilir.
+    await assertSucceeds(setDoc(doc(parentDb(), 'class_rooms', CLASS_ID, 'messages', 'm_e2'),
+      yeniVeliMesaji(BRANS_UID)));
+    // Randevu talebi güvenlik için açık kalır.
+    await assertSucceeds(setDoc(doc(parentDb(), 'class_rooms', CLASS_ID, 'appointments', 'r_e1'), {
+      studentCloudId: STUDENT_ID,
+      parentUserId: PARENT_UID,
+      teacherUid: TEACHER_UID,
+      status: 'pending',
+    }));
+    await assertSucceeds(deleteDoc(doc(teacherDb(), 'user_blocks', `${TEACHER_UID}_${PARENT_UID}`)));
+    await assertSucceeds(setDoc(doc(parentDb(), 'class_rooms', CLASS_ID, 'messages', 'm_e3'),
+      yeniVeliMesaji(TEACHER_UID)));
+  });
+
+  it('KRİTİK: veli öğretmeni engelleyince öğretmen ona yazamaz', async () => {
+    await assertSucceeds(setDoc(doc(parentDb(), 'user_blocks', `${PARENT_UID}_${TEACHER_UID}`),
+      engel(PARENT_UID, TEACHER_UID)));
+    await assertFails(setDoc(doc(teacherDb(), 'class_rooms', CLASS_ID, 'messages', 'm_e4'), mesaj({
+      authorRole: 'teacher',
+      authorUid: TEACHER_UID,
+      body: 'Merhaba',
+    })));
+    await assertSucceeds(deleteDoc(doc(parentDb(), 'user_blocks', `${PARENT_UID}_${TEACHER_UID}`)));
+  });
+
+  it('iki taraf engeli sorabilir (yok da olsa); üçüncü kişi soramaz', async () => {
+    await assertSucceeds(setDoc(doc(teacherDb(), 'user_blocks', `${TEACHER_UID}_${PARENT_UID}`),
+      engel(TEACHER_UID, PARENT_UID)));
+    await assertSucceeds(getDoc(doc(teacherDb(), 'user_blocks', `${TEACHER_UID}_${PARENT_UID}`)));
+    await assertSucceeds(getDoc(doc(parentDb(), 'user_blocks', `${TEACHER_UID}_${PARENT_UID}`)));
+    await assertSucceeds(getDoc(doc(parentDb(), 'user_blocks', `${PARENT_UID}_${TEACHER_UID}`)));
+    await assertFails(getDoc(doc(otherParentDb(), 'user_blocks', `${TEACHER_UID}_${PARENT_UID}`)));
+    await assertFails(getDoc(doc(otherParentDb(), 'user_blocks', `${TEACHER_UID}_${OTHER_TEACHER_UID}`)));
+    await assertSucceeds(getDocs(query(collection(teacherDb(), 'user_blocks'),
+      where('blockerUid', '==', TEACHER_UID))));
+    await assertFails(getDocs(collection(teacherDb(), 'user_blocks')));
+  });
+
+  it('KRİTİK: başkası adına engel yazılamaz, engellenen engeli kaldıramaz', async () => {
+    await assertFails(setDoc(doc(otherParentDb(), 'user_blocks', `${TEACHER_UID}_${OTHER_PARENT_UID}`),
+      engel(TEACHER_UID, OTHER_PARENT_UID)));
+    await assertFails(setDoc(doc(parentDb(), 'user_blocks', `${PARENT_UID}_${OTHER_TEACHER_UID}`),
+      engel(PARENT_UID, TEACHER_UID)));
+    await assertFails(setDoc(doc(parentDb(), 'user_blocks', `${PARENT_UID}_${PARENT_UID}`),
+      engel(PARENT_UID, PARENT_UID)));
+    await assertFails(setDoc(doc(parentDb(), 'user_blocks', `${PARENT_UID}_${TEACHER_UID}`),
+      { ...engel(PARENT_UID, TEACHER_UID), not: 'ek alan' }));
+    // Engel duruyor (önceki testte yazıldı); veli onu kaldıramaz.
+    await assertFails(deleteDoc(doc(parentDb(), 'user_blocks', `${TEACHER_UID}_${PARENT_UID}`)));
+  });
+});

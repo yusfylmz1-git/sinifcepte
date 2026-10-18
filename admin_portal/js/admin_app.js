@@ -47,7 +47,7 @@ class AdminApp {
       outcomes: { title: 'Müfredat ve 36 Haftalık Kazanım Kütüphanesi', sub: '1-12. Sınıflar Tüm Branşlar' },
       exams: { title: 'MEB & ÖSYM Resmî Sınav Takvimi', sub: 'LGS, YKS, MEB Ortak Sınavlar ve Kurumsal Sınav Takvimi' },
       manifest: { title: 'Versiyon Manifesti & Sistem Duyuruları', sub: 'Mobil Uygulama Senkronizasyonu & Bakım Modu' },
-      yoneticiler: { title: 'Okul Yöneticileri', sub: 'Yöneticilik başvurularına karar' },
+      bildirimler: { title: 'Bildirimler', sub: 'Uygulamadan bildirilen içerikler ve destek talepleri' },
       okullar: { title: 'Okullar ve Kişiler', sub: 'Kayıtlı öğretmenler, yöneticiler ve yapılan işlemler' },
     };
 
@@ -69,7 +69,7 @@ class AdminApp {
       // `canliOku` içinde ekrana yazılıyor.
       this.canliOku().catch(() => {});
     }
-    if (tabId === 'yoneticiler') this.yoneticileriYukle();
+    if (tabId === 'bildirimler') this.bildirimleriYukle();
   }
 
   updateDashboardStats() {

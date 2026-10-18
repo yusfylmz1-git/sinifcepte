@@ -57,6 +57,40 @@ service cloud.firestore {
       );
     }
 
+    // --- Bildir ve engelle (Google Play kullanıcı içeriği, 18 Ekim 2026) ---
+
+    // `alici` istek sahibini engellemiş mi? Mesaj yazmada 1 okuma.
+    function beniEngelledi(alici) {
+      return exists(
+        /databases/$(database)/documents/user_blocks/$(alici + '_' + request.auth.uid)
+      );
+    }
+
+    // Mesaj bildirimi: bildirilen metin ve kişi buluttaki mesajla AYNI
+    // olmalı, bildiren de o sohbetin tarafı. İstemcinin yazdığı metne
+    // güvenilseydi uydurma bir metinle birini karalamak mümkün olurdu
+    // (kimlik/gövde uyuşmazlığı). `get` kurallardan bağımsız okur; 1 okuma.
+    function mesajBildirimiGecerli(d) {
+      let m = get(/databases/$(database)/documents/class_rooms/$(d.classCloudId)/messages/$(d.contentId)).data;
+      return m.body == d.excerpt
+        && ((m.teacherUid == request.auth.uid
+              && m.authorRole == 'parent'
+              && d.reportedUid == m.parentUserId)
+          || (m.parentUserId == request.auth.uid
+              && m.authorRole == 'teacher'
+              && d.reportedUid == m.teacherUid));
+    }
+
+    // Duyuru bildirimi: yalnız sınıfa erişimi olan veli; metin, başlık ve
+    // yazar buluttaki duyuruyla aynı olmalı.
+    function duyuruBildirimiGecerli(d) {
+      let a = get(/databases/$(database)/documents/class_rooms/$(d.classCloudId)/announcements/$(d.contentId)).data;
+      return parentHasClass(d.classCloudId)
+        && a.content == d.excerpt
+        && a.title == d.contentTitle
+        && a.authorUid == d.reportedUid;
+    }
+
     // --- Token köprüsü yardımcıları (Faz 2) ---
 
     // Velinin dayandığı referans kodu GERÇEKTEN var mı ve bu öğrenciye
@@ -451,12 +485,17 @@ service cloud.firestore {
         //
         // Doğrulama `request.resource.data` üzerinden yapılır; ek `get()`
         // gerektirmediği için faturalanan okuma doğurmaz.
+        //
+        // Engel (18 Ekim 2026): alıcı göndereni engellediyse mesaj
+        // reddedilir. Randevu ve durum bildirimi bilerek açık kalır
+        // (öğrencinin güvenliği: "çocuğum 12:30'da çıkacak").
         allow create: if (
             (ownsClassRoom(classCloudId) || isClassStaff(classCloudId))
             && request.resource.data.authorRole == 'teacher'
             && request.resource.data.authorUid == request.auth.uid
             // Öğretmen yalnızca kendi sohbetine yazabilir.
             && request.resource.data.teacherUid == request.auth.uid
+            && !beniEngelledi(request.resource.data.parentUserId)
           ) || (
             isParent()
             && parentHasStudent(request.resource.data.studentCloudId)
@@ -464,6 +503,7 @@ service cloud.firestore {
             && request.resource.data.authorRole == 'parent'
             && request.resource.data.teacherUid is string
             && request.resource.data.teacherUid != ''
+            && !beniEngelledi(request.resource.data.teacherUid)
           );
 
         // Mesaj gönderildikten sonra içeriği değiştirilemez.
@@ -548,7 +588,14 @@ service cloud.firestore {
         && request.resource.data.message.size() <= 2000
         // Durum alanı istemciden 'open' dışında gelemez: kullanıcı
         // kendi talebini "çözüldü" işaretleyemez.
-        && request.resource.data.status == 'open';
+        && request.resource.data.status == 'open'
+        // İçerik bildirimi (18 Ekim 2026): bildirilen içerik buluttakiyle
+        // aynı olmalı; uydurma bildirim yazılamaz.
+        && (request.resource.data.get('category', '') != 'content_report'
+          || (request.resource.data.get('contentType', '') == 'message'
+              && mesajBildirimiGecerli(request.resource.data))
+          || (request.resource.data.get('contentType', '') == 'announcement'
+              && duyuruBildirimiGecerli(request.resource.data)));
 
       // Gönderen kullanıcı talebini değiştiremez ve silemez: aksi hâlde
       // yanıtlanmış bir talebi sonradan değiştirip yazışmayı
@@ -565,6 +612,42 @@ service cloud.firestore {
     //
     // Yalnız KENDİ satırları: sorgu başka uid ile ya da süzgeçsiz
     // yapılırsa reddedilir; tüm okulların kadroları taranamaz.
+    // ---------------------------------------------------------------
+    // ENGELLER (18 Ekim 2026, Google Play kullanıcı içeriği kuralı)
+    // ---------------------------------------------------------------
+    //
+    // `user_blocks/{engelleyen}_{engellenen}`. Engellenen engelleyene
+    // mesaj yazamaz (mesaj kuralı `beniEngelledi`). Kimlikler alt çizgi
+    // içermez; belge kimliği iki tarafı taşır, böylece okuma izni belge
+    // olmasa da kimlikten verilir: yalnız iki taraf sorabilir, üçüncü
+    // kişi "kim kimi engelledi" diye yoklayamaz.
+    match /user_blocks/{id} {
+      function taraf() {
+        let p = id.split('_');
+        return request.auth != null
+          && p.size() == 2
+          && (p[0] == request.auth.uid || p[1] == request.auth.uid);
+      }
+
+      allow get: if taraf();
+      allow list: if request.auth != null
+        && resource.data.blockerUid == request.auth.uid;
+
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['blockerUid', 'blockedUid', 'createdAt'])
+        && request.resource.data.blockerUid == request.auth.uid
+        && request.resource.data.blockedUid is string
+        && request.resource.data.blockedUid.size() > 0
+        && !request.resource.data.blockedUid.matches('.*_.*')
+        && request.resource.data.blockedUid != request.auth.uid
+        && id == request.auth.uid + '_' + request.resource.data.blockedUid;
+
+      // Yalnız engelleyen kaldırır.
+      allow delete: if request.auth != null
+        && id.matches(request.auth.uid + '_.*');
+      allow update: if false;
+    }
+
     match /{path=**}/staff/{staffId} {
       allow list: if request.auth != null
         && resource.data.teacherUid == request.auth.uid;
