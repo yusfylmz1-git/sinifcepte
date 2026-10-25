@@ -58,6 +58,27 @@ void main() {
       }
     });
 
+    test('KRITIK: Cepte\'nin açtığı her ekranın kendi sayfa iskeleti var', () {
+      // "bep" sonucu Rehberlik'in "Özel Eğitim" sekme gövdesini tek başına
+      // açıyordu: Scaffold yoktu, zemin siyah, başlık ve geri düğmesi yok,
+      // çipler durum çubuğunun altında (26 Ekim 2026, telefon ekranı).
+      final kaynak = File('lib/features/assistant/presentation/cepte_hedef_acici.dart').readAsStringSync();
+      final siniflar = RegExp(r'\b([A-Z][A-Za-z]+(?:View|Screen|Ekrani|Sekmesi))\(')
+          .allMatches(kaynak)
+          .map((m) => m.group(1)!)
+          .toSet();
+      expect(siniflar.length, greaterThan(20), reason: 'hedefler okunamadı');
+      final dosyalar = Directory('lib').listSync(recursive: true).whereType<File>()
+          .where((f) => f.path.endsWith('.dart')).toList();
+      for (final ad in siniflar) {
+        final dosya = dosyalar.where((f) => f.readAsStringSync().contains('class $ad extends')).firstOrNull;
+        expect(dosya, isNotNull, reason: ad);
+        expect(dosya!.readAsStringSync(), contains('Scaffold('), reason: '$ad sayfa iskeletsiz açılıyor');
+      }
+      expect(siniflar.contains('SpecialEducationView'), isFalse,
+          reason: 'sekme gövdesi; Rehberlik ekranı Özel Eğitim sekmesiyle açılmalı');
+    });
+
     test('açıcı her eylemi karşılıyor', () {
       final kaynak = File('lib/features/assistant/presentation/cepte_hedef_acici.dart').readAsStringSync();
       for (final t in ['EkranEylemi', 'SinifEkraniEylemi', 'OgrenciEylemi', 'BelirliGunEylemi',

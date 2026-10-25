@@ -49,8 +49,33 @@ INDIRILEN = (sys.argv[1] if len(sys.argv) > 1
 
 # ---------------------------------------------------------------- ortak
 
+# PDF'ten gelen bitisik harfler (ﬁ ﬂ ﬀ): ekranda tuhaf gorunur, aramada
+# "keyifli" bulunmaz. NFKC butun metni degistirebilecegi icin (ör. ½)
+# yalniz bunlar acilir (26 Ekim 2026).
+BITISIK = {'ﬀ': 'ff', 'ﬁ': 'fi', 'ﬂ': 'fl',
+           'ﬃ': 'ffi', 'ﬄ': 'ffl'}
+# Kaynak belgedeki bilinen yazim hatalari ("ozellik": ö dusmus).
+DUZELTME = [(re.compile(r'\bozellik'), 'özellik')]
+
+
 def nrm(t):
-    return unicodedata.normalize('NFC', t or '')
+    t = unicodedata.normalize('NFC', t or '')
+    for a, b in BITISIK.items():
+        t = t.replace(a, b)
+    for desen, yeni in DUZELTME:
+        t = desen.sub(yeni, t)
+    return t
+
+
+def temizle(x):
+    """Paketteki butun metinlere [nrm] uygular (yapi degismez)."""
+    if isinstance(x, str):
+        return nrm(x)
+    if isinstance(x, list):
+        return [temizle(y) for y in x]
+    if isinstance(x, dict):
+        return {k: temizle(v) for k, v in x.items()}
+    return x
 
 def tek(t):
     if not t:
@@ -433,7 +458,27 @@ def ozelEgitimAyristir():
     return cikti
 
 
+HEDEF = os.path.join(PROJE, 'assets', 'data', 'sinif_rehberlik_plani.json.gz')
+
+
+def yalnizTemizle():
+    """Kaynak PDF'ler yokken mevcut paketi [nrm] ile temizler.
+
+    `python tool/build_rehberlik_dataset.py --yalniz-temizle`
+    Yeniden uretimle ayni temizlik: tek kod, iki yol.
+    """
+    with gzip.open(HEDEF, 'rt', encoding='utf-8') as f:
+        eski = json.load(f)
+    yeni = temizle(eski)
+    ham = json.dumps(yeni, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+    with gzip.open(HEDEF, 'wb', compresslevel=9) as f:
+        f.write(ham)
+    print(f'temizlendi: {HEDEF}')
+
+
 def main():
+    if '--yalniz-temizle' in sys.argv:
+        return yalnizTemizle()
     planlar = []
     for grade, yol in planKaynaklari():
         if not os.path.exists(yol):
@@ -462,15 +507,15 @@ def main():
             eslesen += 1
     print(f'eslesen     : {eslesen} / {sum(1 for p in planlar if p["siraNo"])}')
 
-    paket = {
+    paket = temizle({
         'surum': 1,
         'ogretimYili': '2026-2027',
         'plan': planlar,
         'etkinlikler': etkinlikler,
         'ozelEgitim': ozelEgitim,
-    }
+    })
     ham = json.dumps(paket, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
-    hedef = os.path.join(PROJE, 'assets', 'data', 'sinif_rehberlik_plani.json.gz')
+    hedef = HEDEF
     with gzip.open(hedef, 'wb', compresslevel=9) as f:
         f.write(ham)
     print(f'\nham {len(ham)/1048576:.1f} MB -> gzip {os.path.getsize(hedef)/1048576:.2f} MB')

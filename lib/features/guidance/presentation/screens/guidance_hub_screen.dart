@@ -26,7 +26,16 @@ import '../views/special_education_view.dart';
 ///   1. **BEP Gelişim Raporları** — kaynaştırma/özel eğitim takibi
 ///   2. **Sınıf Rehberliği** — görüşme, tanıma fişi, izin belgeleri
 class GuidanceHubScreen extends ConsumerStatefulWidget {
-  const GuidanceHubScreen({super.key});
+  const GuidanceHubScreen({super.key, this.baslangicSekmesi = bepSekmesi});
+
+  /// Açılışta seçili sekme (Cepte "bep" ya da "özel eğitim" arayınca
+  /// doğrudan o sekmeyi açar).
+  final int baslangicSekmesi;
+
+  static const int bepSekmesi = 0;
+  static const int rehberlikPlaniSekmesi = 1;
+  static const int ozelEgitimSekmesi = 2;
+  static const int formlarSekmesi = 3;
 
   @override
   ConsumerState<GuidanceHubScreen> createState() => _GuidanceHubScreenState();
@@ -42,7 +51,11 @@ class _GuidanceHubScreenState extends ConsumerState<GuidanceHubScreen>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 4, vsync: this);
+    _tab = TabController(
+      length: 4,
+      vsync: this,
+      initialIndex: widget.baslangicSekmesi.clamp(0, 3),
+    );
   }
 
   @override

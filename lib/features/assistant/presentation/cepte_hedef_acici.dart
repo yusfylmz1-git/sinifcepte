@@ -43,7 +43,6 @@ import '../../exam_operations/presentation/views/exam_tracking_view.dart';
 import '../../exam_operations/presentation/views/project_tracking_view.dart';
 import '../../exam_operations/presentation/views/quiz_list_view.dart';
 import '../../guidance/presentation/screens/guidance_hub_screen.dart';
-import '../../guidance/presentation/views/special_education_view.dart';
 import '../../navigation/providers/navigation_provider.dart';
 import '../../outcomes/presentation/views/weekly_outcomes_view.dart';
 import '../../outcomes/providers/outcomes_provider.dart';
@@ -144,7 +143,12 @@ Future<void> _ekranAc(BuildContext context, WidgetRef ref, CepteEkran ekran) asy
     CepteEkran.quizSozlu => const QuizListView(),
     CepteEkran.sinavAnalizleri => const ExamAnalysisListView(),
     CepteEkran.rehberlik => const GuidanceHubScreen(),
-    CepteEkran.ozelEgitim => const SpecialEducationView(),
+    // Rehberlik ekranının sekmeleri: Özel eğitim görünümü tek başına
+    // açılınca sayfa iskeleti yoktu (siyah zemin, başlık ve geri düğmesi
+    // yok, durum çubuğunun altında; 26 Ekim 2026).
+    CepteEkran.bep => const GuidanceHubScreen(baslangicSekmesi: GuidanceHubScreen.bepSekmesi),
+    CepteEkran.ozelEgitim =>
+      const GuidanceHubScreen(baslangicSekmesi: GuidanceHubScreen.ozelEgitimSekmesi),
     CepteEkran.calismaTakvimi => const AcademicCalendarScreen(),
     CepteEkran.eokulFoto => const EokulFotoMerkeziEkrani(),
     CepteEkran.tahtaKilidi => const TahtaKilidiScreen(),
