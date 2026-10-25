@@ -12,8 +12,8 @@ import '../../documents/data/special_days_repository.dart';
 ///   * Yöneticiden gelen genel duyuru (Remote Config)
 ///   * Yaklaşan belirli gün ve haftalar
 ///
-/// Velilerden gelenler 18 Ekim 2026'dan beri burada DEĞİL, Bugün'deki
-/// "Veli gelen kutusu" kartında: akış onları her açılışta "yeni" sayan
+/// Velilerden gelenler 18 Ekim 2026'dan beri burada DEĞİL, veli gelen
+/// kutusunda (üst çubukta, zilin yanında): akış onları her açılışta "yeni" sayan
 /// eski bildirim hesabından alıyordu (öğretmen tarafında okunma takibi
 /// yoktu).
 class FeedItem {

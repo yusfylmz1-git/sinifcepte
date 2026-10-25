@@ -8,18 +8,22 @@ import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/custom_app_bar.dart';
 import '../../../shared/widgets/custom_bottom_nav_bar.dart';
 import '../../classes/presentation/views/student_import_preview_view.dart';
-import '../../classes/screens/class_list_screen.dart';
+import '../../classes/screens/sinifim_sekmesi.dart';
 import '../../dashboard/screens/dashboard_screen.dart';
-import '../../documents/presentation/views/evraklar_sekmesi.dart';
-import '../../outcomes/presentation/views/weekly_outcomes_view.dart';
+import '../../parent_portal/presentation/screens/gelen_kutusu_ekrani.dart';
+import '../../parent_portal/providers/gelen_kutusu_provider.dart';
 import '../../profile/screens/profile_screen.dart';
+import '../../schedule/screens/schedule_screen.dart';
 import '../providers/navigation_provider.dart';
 
-/// SınıfCepte - Ana Navigasyon Ekranı (5 sekme, çift geri çıkış koruması).
+/// SınıfCepte - Ana Navigasyon Ekranı (4 sekme, çift geri çıkış koruması).
 ///
-/// Sekmeler: Bugün · Sınıflar · Kazanımlar · Evraklarım · Ben ([AnaSekme]).
-/// Üç çizgili menü yok (17 Ekim 2026): içindeki her şeyin bir sekmede evi
-/// var; ana sayfa ve Cepte araması yalnız kısayol verir.
+/// Sekmeler: Özet · Ders Programı · Sınıfım · Profil ([AnaSekme]).
+/// Kullanıcı kararı (26 Ekim 2026): Kazanımlar, Ders İçi Katılım,
+/// Rehberlik, Sınıflar, Sınav İşlemleri ve Evraklar Özet'teki düğmelerden
+/// açılır. Üç çizgili menü yok.
+///
+/// Veli gelen kutusu üst çubukta, zilin yanında (okunmamış rozetli).
 class MainNavigationScreen extends ConsumerStatefulWidget {
   const MainNavigationScreen({super.key});
 
@@ -57,11 +61,12 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
     );
   }
 
+  /// [AnaSekme] sırasıyla. Sınıfım'ın başlığını sınıf sayfası kendisi
+  /// verir (sınıf adı, öğrenci ekle, ⋮ menüsü).
   static const List<Map<String, String>> _tabTitles = [
-    {'title': 'SınıfCepte', 'subtitle': 'Bugün'},
-    {'title': 'Sınıflarım', 'subtitle': 'Sınıflar, öğrenciler ve ders programı'},
-    {'title': 'Müfredat & Kazanımlar', 'subtitle': 'MEB Maarif Yıllık Planları'},
-    {'title': 'Evraklarım', 'subtitle': 'Dosya, plan, sınav ve rehberlik evrakları'},
+    {'title': 'SınıfCepte', 'subtitle': 'Özet'},
+    {'title': 'Ders Programı', 'subtitle': 'Haftalık program, ders saatleri ve PDF'},
+    {'title': 'Sınıfım', 'subtitle': 'Rehberlik sınıfım'},
     {'title': 'Profilim', 'subtitle': 'Profil, yedek, ayarlar ve yardım'},
   ];
 
@@ -70,7 +75,11 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
     final currentIndex = ref.watch(navigationIndexProvider);
     final activeHeader = _tabTitles[currentIndex.clamp(0, _tabTitles.length - 1)];
 
-    // 5 Temel Sekme Listesi (State Koruma İçin IndexedStack), [AnaSekme] sırasıyla.
+    // Gelen kutusu yalnız bulut varken (Google girişi) görünür; masaüstü
+    // yerel kipte simge hiç çıkmaz.
+    final gelenKutusu = ref.watch(gelenKutusuProvider).valueOrNull;
+
+    // 4 Temel Sekme Listesi (State Koruma İçin IndexedStack), [AnaSekme] sırasıyla.
     final List<Widget> screens = [
       DashboardScreen(
         onNavigateTab: (index) {
@@ -81,9 +90,8 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
           }
         },
       ),
-      const ClassListScreen(),
-      const WeeklyOutcomesView(),
-      const EvraklarSekmesi(),
+      const ScheduleScreen(),
+      const SinifimSekmesi(),
       const ProfileScreen(),
     ];
 
@@ -94,17 +102,17 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
 
-        // 1. Eğer yan sekmelerdeyse (Sınıflar, Kazanımlar, Evraklar, Ben), önce Bugün'e dön
-        if (currentIndex != AnaSekme.bugun) {
+        // 1. Eğer yan sekmelerdeyse (Ders Programı, Sınıfım, Profil), önce Özet'e dön
+        if (currentIndex != AnaSekme.ozet) {
           try {
-            ref.read(navigationIndexProvider.notifier).state = AnaSekme.bugun;
+            ref.read(navigationIndexProvider.notifier).state = AnaSekme.ozet;
           } catch (e, stackTrace) {
             debugPrint('PopScope tab geri dönüş hatası: $e\n$stackTrace');
           }
           return;
         }
 
-        // 2. Bugün sekmesindeyse: Çift tıklama kontrolü (WhatsApp stili)
+        // 2. Özet sekmesindeyse: Çift tıklama kontrolü (WhatsApp stili)
         final now = DateTime.now();
         if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
           _lastBackPressTime = now;
@@ -138,35 +146,40 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
       child: Scaffold(
         backgroundColor: isDark ? AppColors.darkBackground : Colors.white,
         extendBody: true,
-        // Kazanımlar sekmesi kendi dinamik CustomAppBar'ını (arama, hafta butonu, filtre vb.) yönetir
-        appBar: currentIndex == AnaSekme.kazanimlar
+        // Sınıfım sekmesi kendi üst çubuğunu (sınıf adı, öğrenci ekle, ⋮)
+        // yönetir.
+        appBar: currentIndex == AnaSekme.sinifim
             ? null
             : CustomAppBar(
                 title: activeHeader['title']!,
                 subtitle: activeHeader['subtitle'],
-                showBackButton: currentIndex != AnaSekme.bugun,
+                showBackButton: currentIndex != AnaSekme.ozet,
                 onBackPressed: () {
                   try {
-                    ref.read(navigationIndexProvider.notifier).state = AnaSekme.bugun;
+                    ref.read(navigationIndexProvider.notifier).state = AnaSekme.ozet;
                   } catch (e, stackTrace) {
                     debugPrint('Geri navigasyon hatası: $e\n$stackTrace');
                   }
                 },
-                showProfileAvatar: currentIndex == AnaSekme.bugun,
+                showProfileAvatar: currentIndex == AnaSekme.ozet,
                 onProfileTap: () {
                   try {
-                    ref.read(navigationIndexProvider.notifier).state = AnaSekme.ben;
+                    ref.read(navigationIndexProvider.notifier).state = AnaSekme.profil;
                   } catch (e, stackTrace) {
                     debugPrint('Profil avatar navigasyon hatası: $e\n$stackTrace');
                   }
                 },
                 onLogoTap: () {
                   try {
-                    ref.read(navigationIndexProvider.notifier).state = AnaSekme.bugun;
+                    ref.read(navigationIndexProvider.notifier).state = AnaSekme.ozet;
                   } catch (e, stackTrace) {
                     debugPrint('Logo navigasyon hatası: $e\n$stackTrace');
                   }
                 },
+                onMessageTap: gelenKutusu == null || !gelenKutusu.bulutVar
+                    ? null
+                    : () => GelenKutusuEkrani.ac(context),
+                mesajRozeti: gelenKutusu?.rozet ?? 0,
               ),
         body: IndexedStack(
           index: currentIndex,

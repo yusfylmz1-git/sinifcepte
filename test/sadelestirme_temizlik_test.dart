@@ -112,14 +112,19 @@ void main() {
       expect(ustCubuk.contains("'type': 'system'"), isFalse);
     });
 
-    test('ana sayfada Cepte ve Kazanimlar karti tekrar etmiyor', () {
+    test('ana sayfada Cepte karti tekrar etmiyor; Kazanimlar tek kapidan', () {
       final ozet = yorumsuz(
           File('lib/features/dashboard/screens/dashboard_screen.dart')
               .readAsStringSync());
       expect(ozet.contains("'title': 'Cepte'"), isFalse,
           reason: 'Cepte arama kutusu zaten ekranın tepesinde');
-      expect(ozet.contains("'title': 'Kazanımlar'"), isFalse,
-          reason: 'Kazanımlar alt sekmede zaten duruyor');
+      // 26 Ekim 2026 (kullanıcı kararı): Kazanımlar alt çubuktan çıktı,
+      // Özet'teki düğmeden açılıyor; alt çubukta ikinci kapısı yok.
+      expect("'title': 'Kazanımlar'".allMatches(ozet).length, 1);
+      final ana = yorumsuz(
+          File('lib/features/navigation/screens/main_navigation_screen.dart')
+              .readAsStringSync());
+      expect(ana.contains('WeeklyOutcomesView'), isFalse);
     });
 
     test('profilde tema icin ikinci kapi yok', () {

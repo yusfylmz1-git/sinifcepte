@@ -2670,6 +2670,13 @@ class DatabaseHelper {
     } catch (e) {
       debugPrint('resetForTests silme hatasi: $e');
     }
+    // Önceki testten kalan bir okuma yukarıdaki beklemeler sırasında
+    // veritabanını yeniden açmış olabilir; deleteDatabase o bağlantıyı da
+    // kapatır. Alan dolu kalırsa sonraki test kapalı örneği alır
+    // ("database has already been closed").
+    _database = null;
+    _openUid = null;
+    _opening = null;
   }
 
   Future<void> close() async {

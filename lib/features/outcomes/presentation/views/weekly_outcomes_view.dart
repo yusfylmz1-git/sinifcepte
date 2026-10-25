@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../../shared/widgets/glass_card.dart';
-import '../../../navigation/providers/navigation_provider.dart';
 import '../../providers/outcomes_provider.dart';
 import '../widgets/holiday_card.dart';
 import '../widgets/outcome_carousel_card.dart';
@@ -197,7 +196,8 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
             } else if (isFavMode) {
               ref.read(isFavoritesModeProvider.notifier).state = false;
             } else {
-              ref.read(navigationIndexProvider.notifier).state = AnaSekme.bugun;
+              // Özet'teki "Kazanımlar" düğmesinden açılan sayfa (26 Ekim 2026).
+              Navigator.of(context).maybePop();
             }
           } catch (e, stackTrace) {
             debugPrint('WeeklyOutcomesView geri navigasyon hatası: $e\n$stackTrace');

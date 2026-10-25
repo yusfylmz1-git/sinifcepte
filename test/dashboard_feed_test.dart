@@ -55,18 +55,20 @@ void main() {
       expect(kod, contains("'Akış'"));
     });
 
-    // 18 Ekim 2026: velilerden gelenler akista DEGIL, Bugun'deki "Veli
-    // gelen kutusu" kartinda. Akis onlari her acilista "yeni" sayan eski
-    // bildirim hesabindan aliyordu (ogretmen tarafinda okunma takibi yoktu).
-    test('KRITIK: veliden gelenler gelen kutusu kartinda, akista degil', () {
+    // 18 Ekim 2026: velilerden gelenler akista DEGIL, veli gelen
+    // kutusunda. Akis onlari her acilista "yeni" sayan eski bildirim
+    // hesabindan aliyordu (ogretmen tarafinda okunma takibi yoktu).
+    // 26 Ekim 2026: gelen kutusu Ozet'te kart degil, ust cubukta zilin
+    // yaninda (kullanici karari).
+    test('KRITIK: veliden gelenler gelen kutusunda, akista degil', () {
       final kod = saglayici();
       expect(kod.contains('teacherNotificationsProvider'), isFalse);
       final ekr = ekran();
-      expect(ekr, contains('GelenKutusuKarti(isDark: isDark)'));
-      expect(ekr, contains('gelenKutusuProvider'));
-      expect(ekr.indexOf('GelenKutusuKarti(isDark: isDark)'),
-          lessThan(ekr.indexOf('_buildTeacherBentoGrid(context, isDark)')),
-          reason: 'kart hizli islemlerin ustunde');
+      expect(ekr.contains('GelenKutusuKarti'), isFalse, reason: 'Ozette kart yok');
+      expect(ekr, contains('ref.invalidate(gelenKutusuProvider)'),
+          reason: 'asagi cekince gelen kutusu da tazelenir');
+      final ana = File('lib/features/navigation/screens/main_navigation_screen.dart').readAsStringSync();
+      expect(ana, contains('GelenKutusuEkrani.ac(context)'));
     });
 
     test('KRITIK: yonetici duyurusu destekleniyor', () {

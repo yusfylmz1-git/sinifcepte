@@ -7,7 +7,7 @@ import '../../features/exam_operations/presentation/views/exam_tracking_view.dar
 import '../../features/exam_operations/providers/exam_tracking_provider.dart';
 
 /// SınıfCepte - Standart Üst Bar (Distinct Top AppBar) Widget'ı
-/// Sol üstte: Geri düğmesi (alt sayfalarda) + (Bugün'de Profil Fotosu /
+/// Sol üstte: Geri düğmesi (alt sayfalarda) + (Özet'te Profil Fotosu /
 /// Diğerlerinde Proje Logosu)
 /// En sağda: Mesaj Kutusu İkonu (yalnız [onMessageTap] verilince) + Bildirim İkonu
 ///
@@ -21,6 +21,11 @@ import '../../features/exam_operations/providers/exam_tracking_provider.dart';
 ///
 /// Üç çizgili menü düğmesi de yok: menü kalktı, içindeki her şeyin alt
 /// çubukta bir evi var (17 Ekim 2026).
+///
+/// Ana ekranda mesaj simgesi veli gelen kutusunu açar; [mesajRozeti]
+/// okunmamış mesaj + bekleyen randevu + görülmemiş bildirim sayısıdır.
+/// Kullanıcı kararı (26 Ekim 2026): gelen kutusu Özet'te kart olarak değil,
+/// zilin yanında simge olarak durur.
 class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
   final String title;
   final String? subtitle;
@@ -33,6 +38,7 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
   final VoidCallback? onLogoTap;
   final VoidCallback? onNotificationTap;
   final VoidCallback? onMessageTap;
+  final int mesajRozeti;
   final double height;
 
   const CustomAppBar({
@@ -48,6 +54,7 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
     this.onLogoTap,
     this.onNotificationTap,
     this.onMessageTap,
+    this.mesajRozeti = 0,
     this.height = kToolbarHeight + 14,
   });
 
@@ -239,7 +246,7 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Mesajlaşma İkonu (💬) — yalnız gerçek bir hedefi varsa.
+                    // Veli gelen kutusu (💬) — yalnız gerçek bir hedefi varsa.
                     if (onMessageTap != null) ...[
                       Container(
                         decoration: BoxDecoration(
@@ -247,9 +254,35 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                           shape: BoxShape.circle,
                         ),
                         child: IconButton(
-                          icon: const Icon(Icons.chat_bubble_outline_rounded,
-                              color: Colors.white, size: 19),
-                          tooltip: 'Mesajlar',
+                          key: const ValueKey('ust_gelen_kutusu'),
+                          icon: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              const Icon(Icons.chat_bubble_outline_rounded,
+                                  color: Colors.white, size: 19),
+                              if (mesajRozeti > 0)
+                                Positioned(
+                                  right: -7,
+                                  top: -6,
+                                  child: Container(
+                                    key: const ValueKey('ust_gelen_kutusu_rozet'),
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                    constraints: const BoxConstraints(minWidth: 16),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.danger,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      mesajRozeti > 99 ? '99+' : '$mesajRozeti',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                          color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          tooltip: 'Veli gelen kutusu',
                           visualDensity: VisualDensity.compact,
                           onPressed: () {
                             try {

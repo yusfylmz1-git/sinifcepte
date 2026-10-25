@@ -17,8 +17,8 @@ class NavigationTabItem {
   });
 }
 
-/// SınıfCepte - Alt çubuk (5 sekme): Bugün · Sınıflar · Kazanımlar ·
-/// Evraklarım · Ben. Sıra [AnaSekme] ile aynıdır.
+/// SınıfCepte - Alt çubuk (4 sekme): Özet · Ders Programı · Sınıfım ·
+/// Profil. Sıra [AnaSekme] ile aynıdır (kullanıcı kararı, 26 Ekim 2026).
 ///
 /// Yalnız ana ekranda durur. Alt sayfalarda da vardı (sınav ekranları,
 /// Sınıfım); "sekme içinde sekme" hissi veriyordu, kaldırıldı (17 Ekim 2026).
@@ -32,31 +32,26 @@ class CustomBottomNavBar extends StatelessWidget {
     required this.onTap,
   });
 
-  // Ders Programı sekmesi kalktı: bugünkü program Bugün'de görünüyor,
-  // haftalık program Sınıflar'dan açılıyor. Yerine Evraklar geldi.
+  // 17 Ekim'de Ders Programı sekmesi kaldırılıp Sınıflar'a taşınmıştı;
+  // kullanıcı geri istedi: "ders programı sınıflar bölümünde olmadı".
   static const List<NavigationTabItem> tabs = [
     NavigationTabItem(
-      label: 'Bugün',
-      icon: Icons.today_outlined,
-      activeIcon: Icons.today_rounded,
+      label: 'Özet',
+      icon: Icons.dashboard_outlined,
+      activeIcon: Icons.dashboard_rounded,
     ),
     NavigationTabItem(
-      label: 'Sınıflar',
+      label: 'Ders Programı',
+      icon: Icons.calendar_view_week_outlined,
+      activeIcon: Icons.calendar_view_week_rounded,
+    ),
+    NavigationTabItem(
+      label: 'Sınıfım',
       icon: Icons.school_outlined,
       activeIcon: Icons.school_rounded,
     ),
     NavigationTabItem(
-      label: 'Kazanımlar',
-      icon: Icons.auto_stories_outlined,
-      activeIcon: Icons.auto_stories_rounded,
-    ),
-    NavigationTabItem(
-      label: 'Evraklarım',
-      icon: Icons.folder_copy_outlined,
-      activeIcon: Icons.folder_copy_rounded,
-    ),
-    NavigationTabItem(
-      label: 'Ben',
+      label: 'Profil',
       icon: Icons.person_outline_rounded,
       activeIcon: Icons.person_rounded,
     ),

@@ -23,8 +23,9 @@ void main() {
   // sayfasindaki Evrak dugmesinden acilan sayfada.
   const sinifim = 'lib/features/classes/screens/sinif_evraklari_ekrani.dart';
   const anaSayfa = 'lib/features/dashboard/screens/dashboard_screen.dart';
-  // 17 Ekim 2026: "Diğer Evraklar" sayfası alt çubuktaki Evraklar
-  // sekmesi oldu (tek katalog).
+  // 17 Ekim 2026: "Diğer Evraklar" sayfası Evraklar oldu (tek katalog).
+  // 26 Ekim 2026: alt çubukta değil, Özet'teki "Evraklar" düğmesinden
+  // açılan sayfa.
   const evraklar =
       'lib/features/documents/presentation/views/evraklar_sekmesi.dart';
 
@@ -49,15 +50,16 @@ void main() {
       expect(oku(anaSayfa).contains("'title': 'Analiz & Rapor'"), isFalse);
     });
 
-    test('KRITIK: evraklar alt cubukta; ana sayfada ikinci kapi yok', () {
-      // "Diger Evraklar" karti ana sayfadaydi; evraklar alt cubukta sekme
-      // olunca ayni ekranda ikinci kapi oldu ve kalkti.
+    test('KRITIK: Evraklar Ozet`teki dugmeden acilir, alt cubukta degil', () {
+      // 17 Ekim'de alt cubuga tasinmisti; kullanici geri istedi: "Ozet'teki
+      // dugmelerin kalkmasi iyi olmadi" (26 Ekim 2026). Tek kapi: Ozet.
       final kod = oku(anaSayfa);
       expect(kod.contains("'title': 'Diğer Evraklar'"), isFalse);
-      expect(kod.contains('EvraklarSekmesi'), isFalse);
+      expect(kod, contains("'title': 'Evraklar'"));
+      expect(kod, contains('const EvraklarSekmesi()'));
       expect(
-        oku('lib/features/navigation/screens/main_navigation_screen.dart'),
-        contains('const EvraklarSekmesi()'),
+        oku('lib/features/navigation/screens/main_navigation_screen.dart').contains('EvraklarSekmesi'),
+        isFalse,
       );
     });
 
@@ -68,11 +70,11 @@ void main() {
       // gidiyordu; ucu de evrak.
       final kod = oku(anaSayfa);
       expect(kod.contains("'title': 'Kurullar'"), isFalse,
-          reason: 'kurul tutanaklari Evraklar sekmesinde olmali');
+          reason: 'kurul tutanaklari Evraklar sayfasinda olmali');
       expect(kod.contains("'title': 'Evraklarım'"), isFalse);
     });
 
-    test('KRITIK: kurul tutanaklari Evraklar sekmesinde', () {
+    test('KRITIK: kurul tutanaklari Evraklar sayfasinda', () {
       // Tek yerden acilir: sinifa BAGLI OLMAYAN evraklarin yani.
       final kod = oku(evraklar);
       expect(kod, contains("ad: 'Kurul Tutanakları'"));
@@ -81,12 +83,12 @@ void main() {
 
     test('KRITIK: sinif evraklari Evraklar`da gosteriliyor, evine goturuyor', () {
       // Oturma plani, nobetci listesi gibi belgeler once "hangi
-      // sinif?" sorusunu gerektirdigi icin Siniflar sekmesinde KALIR; ama
+      // sinif?" sorusunu gerektirdigi icin sinif sayfasinda KALIR; ama
       // ogretmen "evrak" diye buraya baktiginda nerede olduklarini
-      // gormeli. Kart ayni ekrani ikinci kapidan ACMAZ, sekmeye goturur.
+      // gormeli. Kart sinif listesini acar.
       final kod = oku(evraklar);
       expect(kod, contains("ad: 'Sınıf Evrakları'"));
-      expect(kod, contains('AnaSekme.siniflar'));
+      expect(kod, contains('ClassListScreen.ac(context)'));
       expect(kod.contains('MyClassHubScreen'), isFalse,
           reason: 'Sinifim ikinci kapidan acilmamali');
     });
@@ -96,22 +98,24 @@ void main() {
       // degisikliginde testi bozar. Onemli olan hangi ISLERIN
       // ana sayfada durdugu.
       //
-      // 17 Ekim 2026: "Kazanimlar" ve "Cepte" kartlari kaldirildi (tek
-      // kapi kurali). Kazanimlar alt sekmede, Cepte ekranin tepesinde
-      // arama kutusu olarak duruyor; ayni ekranda ikinci kapi aciyorlardi.
-      // Ayni gun "Rehberlik" ve "Diger Evraklar" da Evraklar sekmesine
-      // gecti. Kalanlar her gun derste yapilan iki is (kisayol).
+      // 26 Ekim 2026 (kullanici karari): Ozet'te alti dugme. 17 Ekim'de
+      // "tek kapi" kuraliyla Kazanimlar, Rehberlik ve Diger Evraklar alt
+      // cubuga tasinmisti; alt cubuk artik Ozet · Ders Programi · Sinifim ·
+      // Profil. Cepte kart degil, ekranin tepesinde arama kutusu.
       final kod = oku(anaSayfa);
       for (final baslik in [
+        'Kazanımlar',
         'Ders İçi Katılım',
+        'Rehberlik',
+        'Sınıflar',
         'Sınav İşlemleri',
+        'Evraklar',
       ]) {
         expect(kod, contains("'title': '$baslik'"),
-            reason: '$baslik karti ana sayfada olmali');
+            reason: '$baslik dugmesi Ozet\'te olmali');
       }
-      for (final baslik in ['Rehberlik', 'Diğer Evraklar']) {
-        expect(kod.contains("'title': '$baslik'"), isFalse,
-            reason: '$baslik Evraklar sekmesinde; ana sayfada ikinci kapi');
+      for (final baslik in ['Diğer Evraklar', 'Cepte']) {
+        expect(kod.contains("'title': '$baslik'"), isFalse, reason: baslik);
       }
       final ev = oku(evraklar);
       expect(ev, contains('GuidanceHubScreen'));

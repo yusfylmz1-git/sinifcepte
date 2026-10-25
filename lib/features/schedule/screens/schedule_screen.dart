@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_fonts.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../shared/widgets/custom_app_bar.dart';
 import '../../classes/providers/class_provider.dart';
 import '../models/lesson_model.dart';
 import '../models/schedule_settings.dart';
@@ -13,9 +12,9 @@ import 'schedule_table_preview_screen.dart';
 
 /// SınıfCepte - Ders Programı Ekranı.
 ///
-/// Alt çubukta sekmesi yoktu, artık sayfa (17 Ekim 2026): bugünkü program
-/// Bugün'de görünüyor; haftalık program Sınıflar sekmesinden ("Ders
-/// programım") ve Bugün'deki "Tümünü Gör"den açılır.
+/// Alt çubuktaki "Ders Programı" sekmesi. 17 Ekim'de sekmeden çıkarılıp
+/// Sınıflar'a taşınmıştı; kullanıcı geri istedi (26 Ekim 2026). Özet'teki
+/// günün akışı ("Tümünü Gör") bu sekmeye geçer.
 class ScheduleScreen extends ConsumerStatefulWidget {
   const ScheduleScreen({super.key});
 
@@ -173,12 +172,10 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     final selectedDay = _weekDays[_selectedDayIndex];
     final dayLessons = allLessons.where((l) => l.day == selectedDay).toList();
 
+    // Alt çubuktaki "Ders Programı" sekmesi (26 Ekim 2026): başlığı ana
+    // ekranın üst çubuğu verir, burada üst çubuk yok.
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-      appBar: const CustomAppBar(
-        title: 'Ders Programım',
-        subtitle: 'Haftalık program, ders saatleri ve PDF',
-      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -343,8 +340,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                 },
                 child: ListView.builder(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  // Alt çubuğun altında kalmasın diye 95'ti; sayfa oldu, çubuk yok.
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                  // Son satır yüzen alt çubuğun altında kalmasın.
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 95),
                   itemCount: settings.dailyLessonCount + (settings.hasLunchBreak ? 1 : 0),
                   itemBuilder: (context, visualIndex) {
                     // Öğle Arası Konumunu Kontrol Et

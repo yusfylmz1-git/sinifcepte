@@ -3,10 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_fonts.dart';
+import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../clubs/presentation/screens/clubs_hub_screen.dart';
 import '../../../exam_operations/presentation/views/exam_operations_menu_view.dart';
 import '../../../guidance/presentation/screens/guidance_hub_screen.dart';
-import '../../../navigation/providers/navigation_provider.dart';
+import '../../../classes/screens/class_list_screen.dart';
 import '../../../student_photos/presentation/eokul_foto_merkezi_ekrani.dart';
 import 'annual_plans_view.dart';
 import 'daily_plans_view.dart';
@@ -14,21 +15,28 @@ import 'documents_hub_view.dart';
 import 'special_days_view.dart';
 import 'teacher_file_view.dart';
 
-/// Evraklar sekmesi: sınıfa bağlı olmayan bütün evrakların TEK kataloğu.
+/// Evraklar: sınıfa bağlı olmayan bütün evrakların TEK kataloğu.
 ///
-/// ## Neden alt çubukta (17 Ekim 2026)
+/// ## Neden tek katalog (17 Ekim 2026)
 /// Evraklara beş ayrı kapıdan giriliyordu: ana sayfadaki "Diğer Evraklar",
 /// "Sınav İşlemleri" ve "Rehberlik" kartları, üç çizgili menüdeki
 /// "Raporlar" ve "e-Okul foto". Öğretmen bir belgeyi ararken önce hangi
-/// kapıdan gireceğini bulmak zorundaydı. Artık hepsi burada; ana sayfa ve
+/// kapıdan gireceğini bulmak zorundaydı. Artık hepsi burada; Özet ve
 /// Cepte araması yalnız kısayol verir.
+///
+/// 17 Ekim'de alt çubukta sekmeydi; 26 Ekim 2026'dan beri Özet'teki
+/// "Evraklar" düğmesinden sayfa olarak açılır (kullanıcı kararı).
 ///
 /// Sınıfa BAĞLI evraklar (oturma planı, nöbetçi listesi, öğrenci listesi,
 /// veli rehberi) buraya taşınmaz: önce "hangi sınıf?" sorusunu gerektirir,
-/// evleri Sınıflar sekmesi. Son kart öğretmeni oraya götürür; aynı ekranı
-/// ikinci bir kapıdan açmaz.
+/// evleri sınıf sayfası. Son kart öğretmeni sınıf listesine götürür; aynı
+/// ekranı ikinci bir kapıdan açmaz.
 class EvraklarSekmesi extends ConsumerWidget {
   const EvraklarSekmesi({super.key});
+
+  static Future<void> ac(BuildContext context) => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const EvraklarSekmesi()),
+      );
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -42,6 +50,10 @@ class EvraklarSekmesi extends ConsumerWidget {
     return Scaffold(
       backgroundColor:
           isDark ? AppColors.darkBackground : const Color(0xFFF8FAFC),
+      appBar: const CustomAppBar(
+        title: 'Evraklarım',
+        subtitle: 'Dosya, plan, sınav ve rehberlik evrakları',
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),
@@ -135,10 +147,9 @@ class EvraklarSekmesi extends ConsumerWidget {
               ad: 'Sınıf Evrakları',
               aciklama:
                   'Oturma planı, nöbetçi listesi, öğrenci listesi, veli rehberi · '
-                  'Sınıflar sekmesinde',
+                  'her sınıfın kendi sayfasında',
               ikon: Icons.class_outlined,
-              onTap: () => ref.read(navigationIndexProvider.notifier).state =
-                  AnaSekme.siniflar,
+              onTap: () => ClassListScreen.ac(context),
             ),
           ],
         ),

@@ -16,11 +16,11 @@ import 'package:sinifcepte/features/parent_portal/data/gelen_kutusu.dart';
 import 'package:sinifcepte/features/parent_portal/data/models/parent_link_model.dart';
 import 'package:sinifcepte/features/parent_portal/data/repositories/cloud_communication_repository.dart';
 import 'package:sinifcepte/features/parent_portal/presentation/screens/gelen_kutusu_ekrani.dart';
-import 'package:sinifcepte/features/parent_portal/presentation/widgets/gelen_kutusu_karti.dart';
 import 'package:sinifcepte/features/parent_portal/presentation/widgets/parent_teacher_chat_modal.dart';
 import 'package:sinifcepte/features/parent_portal/providers/cloud_communication_provider.dart';
 import 'package:sinifcepte/features/parent_portal/providers/gelen_kutusu_provider.dart';
 import 'package:sinifcepte/features/parent_portal/providers/parent_token_provider.dart';
+import 'package:sinifcepte/shared/widgets/custom_app_bar.dart';
 
 /// Tek veli gelen kutusu (sadeleştirme 2. aşama, 18 Ekim 2026).
 ///
@@ -469,7 +469,7 @@ void main() {
       await tester.pump();
     }
 
-    testWidgets('KRITIK: sohbet açılıp kapanınca okunmamış sıfırlanır, Bugün kartı da güncellenir', (tester) async {
+    testWidgets('KRITIK: sohbet açılıp kapanınca okunmamış sıfırlanır, üst çubuk rozeti de', (tester) async {
       buyukEkran(tester);
       final bulut = _SahteBulut()
         ..sunucu[_cls] = [
@@ -489,13 +489,13 @@ void main() {
       addTearDown(kap.dispose);
       await tester.pumpWidget(UncontrolledProviderScope(
         container: kap,
-        child: const MaterialApp(home: Scaffold(body: GelenKutusuKarti(isDark: false))),
+        child: const MaterialApp(home: _UstCubuk()),
       ));
-      await bekleKadar(tester, () => find.text('1 okunmamış mesaj').evaluate().isNotEmpty);
-      expect(find.text('1 okunmamış mesaj'), findsOneWidget);
-      expect(find.byKey(const ValueKey('bugun_gelen_kutusu_rozet')), findsOneWidget);
+      final rozet = find.byKey(const ValueKey('ust_gelen_kutusu_rozet'));
+      await bekleKadar(tester, () => rozet.evaluate().isNotEmpty);
+      expect(find.descendant(of: rozet, matching: find.text('1')), findsOneWidget);
 
-      await tester.tap(find.byKey(const ValueKey('bugun_gelen_kutusu')));
+      await tester.tap(find.byKey(const ValueKey('ust_gelen_kutusu')));
       await bekleKadar(tester, () => find.byKey(ValueKey('gk_okunmamis_$_anahtar')).evaluate().isNotEmpty);
       expect(find.text('Ali YILMAZ · 5-A'), findsOneWidget);
       expect(find.text('Fatma YILMAZ: Hocam ödev ne zaman?'), findsOneWidget);
@@ -510,9 +510,9 @@ void main() {
 
       await tester.pump(const Duration(milliseconds: 500));
       Navigator.of(tester.element(find.byType(GelenKutusuEkrani))).pop();
-      await bekleKadar(tester, () => find.text('Yeni bir şey yok').evaluate().isNotEmpty);
-      expect(find.text('Yeni bir şey yok'), findsOneWidget);
-      expect(find.byKey(const ValueKey('bugun_gelen_kutusu_rozet')), findsNothing);
+      await bekleKadar(tester, () => find.byType(GelenKutusuEkrani).evaluate().isEmpty);
+      expect(find.byKey(const ValueKey('ust_gelen_kutusu')), findsOneWidget);
+      expect(rozet, findsNothing);
     });
 
     testWidgets('hepsi tek listede; süzgeç ve sınıf çipleri daraltır', (tester) async {
@@ -568,29 +568,23 @@ void main() {
       expect(find.textContaining('Bazı sınıflar güncellenemedi'), findsOneWidget);
     });
 
-    testWidgets('Bugün kartı: sayılar ve rozet; yeni bir şey yoksa sade; bulut yoksa hiç yok', (tester) async {
-      await hazirDurumla(tester, const Scaffold(body: GelenKutusuKarti(isDark: false)), _ornekDurum());
-      expect(find.text('2 okunmamış mesaj · 1 randevu talebi · 1 veli bildirimi'), findsOneWidget);
-      expect(
-        find.descendant(of: find.byKey(const ValueKey('bugun_gelen_kutusu_rozet')), matching: find.text('4')),
-        findsOneWidget,
-      );
+    testWidgets('üst çubuk: rozet toplamı; yeni bir şey yoksa rozet yok; bulut yoksa simge yok', (tester) async {
+      final rozet = find.byKey(const ValueKey('ust_gelen_kutusu_rozet'));
+      await hazirDurumla(tester, const _UstCubuk(), _ornekDurum());
+      expect(find.descendant(of: rozet, matching: find.text('4')), findsOneWidget,
+          reason: '2 okunmamış mesaj + 1 randevu + 1 bildirim');
 
       await hazirDurumla(
         tester,
-        const Scaffold(body: GelenKutusuKarti(key: ValueKey('sade'), isDark: false)),
+        const _UstCubuk(key: ValueKey('sade')),
         const GelenKutusuDurumu(
             bulutVar: true, siniflar: [], sohbetler: [], randevular: [], bildirimler: [], eksik: false),
       );
-      expect(find.text('Yeni bir şey yok'), findsOneWidget);
-      expect(find.byKey(const ValueKey('bugun_gelen_kutusu_rozet')), findsNothing);
+      expect(find.byKey(const ValueKey('ust_gelen_kutusu')), findsOneWidget);
+      expect(rozet, findsNothing);
 
-      await hazirDurumla(
-        tester,
-        const Scaffold(body: GelenKutusuKarti(key: ValueKey('bulutsuz'), isDark: false)),
-        GelenKutusuDurumu.bulutsuz,
-      );
-      expect(find.text('Veli gelen kutusu'), findsNothing, reason: 'masaüstü yerel kipte kart yok');
+      await hazirDurumla(tester, const _UstCubuk(key: ValueKey('bulutsuz')), GelenKutusuDurumu.bulutsuz);
+      expect(find.byKey(const ValueKey('ust_gelen_kutusu')), findsNothing, reason: 'masaüstü yerel kipte simge yok');
     });
   });
 
@@ -729,6 +723,25 @@ class _SahteProfil extends TeacherProfileNotifier {
 
   @override
   Future<void> loadProfileFromStorage() async {}
+}
+
+/// Ana ekrandaki üst çubuk bağlaması: gelen kutusu simgesi + rozet
+/// (main_navigation_screen.dart ile aynı; kaynak testi alt_cubuk testinde).
+class _UstCubuk extends ConsumerWidget {
+  const _UstCubuk({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final d = ref.watch(gelenKutusuProvider).valueOrNull;
+    return Scaffold(
+      appBar: CustomAppBar(
+        title: 'SınıfCepte',
+        showBackButton: false,
+        onMessageTap: d == null || !d.bulutVar ? null : () => GelenKutusuEkrani.ac(context),
+        mesajRozeti: d?.rozet ?? 0,
+      ),
+    );
+  }
 }
 
 /// Sunucunun gelen kutusu sorgusunu taklit eder: `teacherUid` eşit,

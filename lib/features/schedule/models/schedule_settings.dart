@@ -42,8 +42,10 @@ class ScheduleSettings {
     );
   }
 
-  /// Belirli bir ders saati index'i için (0 = 1. Ders, 1 = 2. Ders...) başlangıç ve bitiş saatini dinamik hesaplar
-  String calculateTimeRange(int lessonIndex) {
+  /// Dersin başlangıç ve bitişi, gece yarısından dakika olarak
+  /// (0 = 1. Ders). Özet'teki günün akışı "şu an / sıradaki" dersi bununla
+  /// seçer; [calculateTimeRange] aynı hesabı metne çevirir.
+  ({int bas, int bit}) dersDakikalari(int lessonIndex) {
     final int startMinutes = firstLessonTime.hour * 60 + firstLessonTime.minute;
 
     int passedMinutes = lessonIndex * (lessonDuration + breakDuration);
@@ -54,7 +56,14 @@ class ScheduleSettings {
     }
 
     final int lessonStartMin = startMinutes + passedMinutes;
-    final int lessonEndMin = lessonStartMin + lessonDuration;
+    return (bas: lessonStartMin, bit: lessonStartMin + lessonDuration);
+  }
+
+  /// Belirli bir ders saati index'i için (0 = 1. Ders, 1 = 2. Ders...) başlangıç ve bitiş saatini dinamik hesaplar
+  String calculateTimeRange(int lessonIndex) {
+    final dakika = dersDakikalari(lessonIndex);
+    final int lessonStartMin = dakika.bas;
+    final int lessonEndMin = dakika.bit;
 
     String formatMin(int totalMin) {
       final int hour = (totalMin ~/ 60) % 24;

@@ -36,7 +36,7 @@ import 'gelen_kutusu_ekrani.dart';
 ///
 /// ## "Yanıt bekleyen" ne demek
 /// Durumu sunucuda tutulan işler: onay bekleyen randevu ve "görüldü"
-/// denmemiş veli bildirimi. Mesajlar gelen kutusunda (Bugün'de de):
+/// denmemiş veli bildirimi. Mesajlar gelen kutusunda (üst çubukta da):
 /// okunmamış sayısı cihazda tutulur, sohbet açılınca sıfırlanır (18 Ekim
 /// 2026).
 class SinifVelileriEkrani extends ConsumerWidget {

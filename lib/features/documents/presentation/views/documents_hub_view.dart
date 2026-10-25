@@ -138,7 +138,8 @@ class DocumentsHubView extends ConsumerWidget {
             const SizedBox(height: 16),
             Text(
               'Sınıfa bağlı evraklar (öğrenci listesi, nöbetçi çizelgesi, '
-              'oturma planı, veli toplantısı) Sınıflar sekmesindedir.',
+              'oturma planı, veli toplantısı) her sınıfın kendi sayfasındadır '
+              '(Özet › Sınıflar).',
               style: TextStyle(
                 fontSize: 12,
                 height: 1.4,

@@ -15,14 +15,17 @@ import '../../exam_operations/presentation/views/exam_operations_menu_view.dart'
 import '../../exam_operations/presentation/views/exam_tracking_view.dart';
 import '../../exam_operations/providers/exam_tracking_provider.dart';
 import '../../navigation/providers/navigation_provider.dart';
+import '../../classes/screens/class_list_screen.dart';
+import '../../documents/presentation/views/evraklar_sekmesi.dart';
+import '../../guidance/presentation/screens/guidance_hub_screen.dart';
+import '../../outcomes/presentation/views/weekly_outcomes_view.dart';
 import '../../outcomes/providers/outcomes_provider.dart';
-import '../../parent_portal/presentation/widgets/gelen_kutusu_karti.dart';
 import '../../parent_portal/providers/gelen_kutusu_provider.dart';
 import '../../outcomes/utils/kazanim_ders_eslestirici.dart';
 import '../../schedule/models/lesson_model.dart';
 import '../../schedule/models/schedule_settings.dart';
 import '../../schedule/providers/schedule_provider.dart';
-import '../../schedule/screens/schedule_screen.dart';
+import '../../schedule/utils/gunun_akisi.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../providers/activity_feed_provider.dart';
 
@@ -49,10 +52,14 @@ class DashboardScreen extends ConsumerWidget {
     final scheduleSettings = ref.watch(scheduleSettingsProvider);
     final profile = ref.watch(teacherProfileProvider);
 
+    // Özet IndexedStack içinde gün boyu açık kalır: saat dilimi (5 dk)
+    // değişince günün akışı yeniden hesaplansın.
+    ref.watch(lessonClockProvider);
     final now = DateTime.now();
     final todayName = _weekDays[(now.weekday - 1).clamp(0, 6)];
     final todayLessons = allLessons.where((l) => l.day == todayName).toList()
       ..sort((a, b) => a.lessonHourIndex.compareTo(b.lessonHourIndex));
+    final akis = gununAkisi(todayLessons, scheduleSettings, now);
 
     final currentAcademicWeek = AppDateFormatter.getCurrentAcademicWeek(targetDate: now);
     final isSummerHoliday = currentAcademicWeek >= 40;
@@ -125,10 +132,8 @@ class DashboardScreen extends ConsumerWidget {
                 ],
                 const SizedBox(height: 12),
 
-                // 1.2 VELİ GELEN KUTUSU (18 Ekim 2026): bütün sınıflardan,
-                // kadrosunda olunanlar dahil; okunmamış rozetli.
-                GelenKutusuKarti(isDark: isDark),
-                const SizedBox(height: 14),
+                // Veli gelen kutusu kart değil, üst çubukta zilin yanında
+                // (kullanıcı kararı, 26 Ekim 2026).
 
                 // 2. ÖĞRETMEN HIZLI MODÜLLERİ (Bento Grid)
                 _buildTeacherBentoGrid(context, isDark),
@@ -144,6 +149,7 @@ class DashboardScreen extends ConsumerWidget {
                   ref: ref,
                   isDark: isDark,
                   todayLessons: todayLessons,
+                  akis: akis,
                   settings: scheduleSettings,
                   todayName: todayName,
                   isSummerHoliday: isSummerHoliday,
@@ -175,8 +181,8 @@ class DashboardScreen extends ConsumerWidget {
 
   /// AKIŞ — yöneticiden gelen duyuru ve yaklaşan belirli günler.
   ///
-  /// Velilerden gelenler burada değil, üstteki "Veli gelen kutusu"
-  /// kartında (18 Ekim 2026).
+  /// Velilerden gelenler burada değil, üst çubuktaki veli gelen kutusunda
+  /// (zilin yanında, 26 Ekim 2026).
   ///
   /// Yönetici duyurusu Remote Config'den gelir: ücretsiz, kotasız ve
   /// Cloud Functions gerektirmez. Kullanıcı kapattığında bir daha
@@ -648,20 +654,23 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  /// 2. Hızlı işlemler: her gün derste yapılan iki iş.
+  /// 2. Hızlı işlemler: Özet'teki altı düğme.
   ///
-  /// ## Tek kapı kuralı (17 Ekim 2026)
-  /// Burada "Kazanımlar" ve "Cepte" kartları da vardı. Kazanımlar alt
-  /// sekmede zaten duruyor; Cepte bu ekranın en tepesinde arama kutusu
-  /// olarak duruyor. Aynı işe aynı ekrandan iki kapı açılıyordu, ikisi de
-  /// kaldırıldı.
-  ///
-  /// "Rehberlik" ve "Diğer Evraklar" kartları da kalktı: ikisinin evi artık
-  /// alt çubuktaki Evraklar sekmesi, aynı ekranda ikinci kapıydılar. Kalan
-  /// iki kart kısayoldur (Bugün kısayol verebilir); evleri Sınıflar ve
-  /// Evraklar.
+  /// Kullanıcı kararı (26 Ekim 2026): "Özet'teki düğmelerin kalkması iyi
+  /// olmadı." 17 Ekim'de "tek kapı" kuralıyla Kazanımlar, Rehberlik ve
+  /// Evraklar kartları kaldırılıp alt çubuğa taşınmıştı. Alt çubuk artık
+  /// Özet · Ders Programı · Sınıfım · Profil; bu altı iş buradan açılır.
+  /// Sıra kullanıcının yazdığı gibi (iki sütun).
   Widget _buildTeacherBentoGrid(BuildContext context, bool isDark) {
     final modules = [
+      {
+        'title': 'Kazanımlar',
+        'subtitle': 'Haftanın kazanımları',
+        'icon': Icons.auto_stories_rounded,
+        'gradient': [const Color(0xFF4F46E5), const Color(0xFF6366F1)],
+        'accent': const Color(0xFF6366F1),
+        'target': const WeeklyOutcomesView(),
+      },
       {
         'title': 'Ders İçi Katılım',
         'subtitle': 'Etkinlik & Puan',
@@ -670,7 +679,22 @@ class DashboardScreen extends ConsumerWidget {
         'accent': const Color(0xFF10B981),
         'target': const ClassroomParticipationView(),
       },
-      // KURULLAR KARTI KALDIRILDI: kurul tutanakları Evraklar sekmesinde.
+      {
+        'title': 'Rehberlik',
+        'subtitle': 'BEP & Sınıf Rehberliği',
+        'icon': Icons.psychology_rounded,
+        'gradient': [const Color(0xFF7C3AED), const Color(0xFFA855F7)],
+        'accent': const Color(0xFF8B5CF6),
+        'target': const GuidanceHubScreen(),
+      },
+      {
+        'title': 'Sınıflar',
+        'subtitle': 'Sınıf & Öğrenci Listeleri',
+        'icon': Icons.school_rounded,
+        'gradient': [const Color(0xFF2563EB), const Color(0xFF3B82F6)],
+        'accent': const Color(0xFF3B82F6),
+        'target': const ClassListScreen(),
+      },
       {
         'title': 'Sınav İşlemleri',
         'subtitle': 'Not & Değerlendirme',
@@ -678,6 +702,14 @@ class DashboardScreen extends ConsumerWidget {
         'gradient': [const Color(0xFFD97706), const Color(0xFFF59E0B)],
         'accent': const Color(0xFFF59E0B),
         'target': const ExamOperationsMenuView(),
+      },
+      {
+        'title': 'Evraklar',
+        'subtitle': 'Öğretmen Dosyası & Planlar',
+        'icon': Icons.folder_copy_rounded,
+        'gradient': [const Color(0xFFDB2777), const Color(0xFFF43F5E)],
+        'accent': const Color(0xFFEC4899),
+        'target': const EvraklarSekmesi(),
       },
     ];
 
@@ -778,6 +810,7 @@ class DashboardScreen extends ConsumerWidget {
                     Material(
                       color: Colors.transparent,
                       child: InkWell(
+                        key: ValueKey('ozet_${item['title']}'),
                         onTap: () {
                           try {
                             if (item['tabIndex'] != null && onNavigateTab != null) {
@@ -1250,12 +1283,15 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  /// Haftalık ders programı. Alt çubukta sekmesi yok (17 Ekim 2026); evi
-  /// Sınıflar sekmesi, burası kısayol.
-  void _dersPrograminiAc(BuildContext context) {
+  /// Haftalık ders programı: alt çubuktaki "Ders Programı" sekmesi
+  /// (26 Ekim 2026).
+  void _dersPrograminiAc() => onNavigateTab?.call(AnaSekme.dersProgrami);
+
+  /// Kazanımlar Özet'teki düğmeden açılan sayfa (26 Ekim 2026).
+  void _kazanimlariAc(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const ScheduleScreen()),
+      MaterialPageRoute(builder: (_) => const WeeklyOutcomesView()),
     );
   }
 
@@ -1265,6 +1301,7 @@ class DashboardScreen extends ConsumerWidget {
     required WidgetRef ref,
     required bool isDark,
     required List<LessonModel> todayLessons,
+    required GununAkisi akis,
     required ScheduleSettings settings,
     required String todayName,
     required bool isSummerHoliday,
@@ -1299,7 +1336,7 @@ class DashboardScreen extends ConsumerWidget {
 
     if (isSummerHoliday) {
       buttonText = 'Kazanımlar';
-      onButtonTap = () => onNavigateTab?.call(AnaSekme.kazanimlar);
+      onButtonTap = () => _kazanimlariAc(context);
     } else if (isOfficialHoliday && todayCalendarEvent != null) {
       buttonText = 'MEB Takvimi';
       onButtonTap = () {
@@ -1310,7 +1347,7 @@ class DashboardScreen extends ConsumerWidget {
       };
     } else {
       buttonText = 'Tümünü Gör';
-      onButtonTap = () => _dersPrograminiAc(context);
+      onButtonTap = () => _dersPrograminiAc();
     }
 
     return Container(
@@ -1430,7 +1467,7 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                   ),
                   TextButton(
-                    onPressed: () => _dersPrograminiAc(context),
+                    onPressed: () => _dersPrograminiAc(),
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       minimumSize: const Size(0, 30),
@@ -1441,14 +1478,37 @@ class DashboardScreen extends ConsumerWidget {
                 ],
               ),
             )
+          else if (akis.bitti)
+            Padding(
+              key: const ValueKey('gunun_akisi_bitti'),
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  Icon(Icons.task_alt_rounded, size: 16, color: Colors.grey.shade400),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Bugünkü ${akis.toplam} dersiniz bitti.',
+                      style: AppFonts.outfit(
+                        fontSize: 12,
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
           else
+            // En çok iki ders: şu anki (ya da sıradaki) ve ondan sonraki.
+            // Eskiden günün ilk dördü gösteriliyordu; 4. dersten sonra
+            // sıradaki ders görünmüyordu (bkz. gunun_akisi.dart).
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: todayLessons.take(4).length,
+              itemCount: akis.dersler.length,
               separatorBuilder: (context, index) => const SizedBox(height: 8),
               itemBuilder: (context, idx) {
-                final lesson = todayLessons[idx];
+                final lesson = akis.dersler[idx];
                 final timeRange = settings.calculateTimeRange(lesson.lessonHourIndex);
 
                 return _buildTimelineItem(
@@ -1460,7 +1520,8 @@ class DashboardScreen extends ConsumerWidget {
                   subject: lesson.lessonName,
                   className: lesson.className,
                   color: lesson.color,
-                  isActive: idx == 0,
+                  isActive: idx == 0 && akis.ilkiSuAn,
+                  etiket: idx == 0 ? (akis.ilkiSuAn ? 'Şu an' : 'Sıradaki') : null,
                   isDark: isDark,
                 );
               },
@@ -1552,7 +1613,7 @@ class DashboardScreen extends ConsumerWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => onNavigateTab?.call(AnaSekme.kazanimlar),
+              onPressed: () => _kazanimlariAc(context),
               icon: const Icon(Icons.auto_stories_rounded, size: 16),
               label: const Text(
                 'Yeni Dönem Müfredatı & Kazanımları',
@@ -1766,7 +1827,7 @@ class DashboardScreen extends ConsumerWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => _dersPrograminiAc(context),
+              onPressed: () => _dersPrograminiAc(),
               icon: const Icon(Icons.calendar_view_week_rounded, size: 16),
               label: const Text(
                 'Haftalık Ders Programını İncele',
@@ -1848,7 +1909,7 @@ class DashboardScreen extends ConsumerWidget {
       final match = RegExp(r'^(\d+)').firstMatch(lesson.className.trim());
       final grade = match != null ? int.tryParse(match.group(1)!) : null;
       if (grade == null) {
-        onNavigateTab?.call(AnaSekme.kazanimlar);
+        _kazanimlariAc(context);
         return;
       }
 
@@ -1858,7 +1919,8 @@ class DashboardScreen extends ConsumerWidget {
       ref.read(selectedGradeProvider.notifier).state = grade;
       ref.read(selectedSubjectProvider.notifier).state = ders;
       ref.read(isFavoritesModeProvider.notifier).state = false;
-      onNavigateTab?.call(AnaSekme.kazanimlar);
+      if (!context.mounted) return;
+      _kazanimlariAc(context);
 
       if (ders == null && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -1869,7 +1931,7 @@ class DashboardScreen extends ConsumerWidget {
       }
     } catch (e, stackTrace) {
       debugPrint('DashboardScreen._openOutcomeForLesson error: $e\n$stackTrace');
-      onNavigateTab?.call(AnaSekme.kazanimlar);
+      if (context.mounted) _kazanimlariAc(context);
     }
   }
 
@@ -1884,10 +1946,12 @@ class DashboardScreen extends ConsumerWidget {
     required Color color,
     required bool isActive,
     required bool isDark,
+    String? etiket,
   }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
+        key: ValueKey('gunun_akisi_${lesson.lessonHourIndex}'),
         onTap: () => _openOutcomeForLesson(context, ref, lesson),
         borderRadius: BorderRadius.circular(12),
         child: Container(
@@ -1944,9 +2008,10 @@ class DashboardScreen extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      subject,
+                      etiket == null ? subject : '$etiket · $subject',
                       style: AppFonts.outfit(
                         fontSize: 11.5,
+                        fontWeight: etiket == null ? FontWeight.w400 : FontWeight.w600,
                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                       ),
                       maxLines: 1,
