@@ -7,7 +7,6 @@ import '../../../shared/widgets/glass_card.dart';
 import '../../../data/models/absence_followup_model.dart';
 import '../providers/absence_followup_provider.dart';
 import '../providers/student_provider.dart';
-import 'absence_followup_screen.dart';
 import '../providers/class_provider.dart';
 import '../../../data/models/student_model.dart';
 import '../widgets/add_student_dialog.dart';
@@ -55,14 +54,6 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
   final Set<int> _selectedStudentIds = {};
   bool get _isSelectionMode => _selectedStudentIds.isNotEmpty;
 
-  /// Yalnizca devamsiz isaretli ogrencileri goster.
-  ///
-  /// Ogretmen listeyi "devamsizlar" gozuyle okumak istedigi anda
-  /// baska ekrana gitmek zorunda kalmasin diye burada da var; veri
-  /// ayni kaynaktan (absenceFollowupProvider) geliyor, iki liste
-  /// birbirinden ayrisamaz.
-  bool _onlyAbsent = false;
-
   @override
   void dispose() {
     _searchDebouncer.dispose();
@@ -73,7 +64,7 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
   @override
   Widget build(BuildContext context) {
     final studentListAsync = ref.watch(studentListProvider(widget.classModel.id!));
-    // Devamsiz isaretli kimlikler: kart rozeti ve suzgec bunu kullanir.
+    // Devamsiz isaretli kimlikler: kart rozeti bunu kullanir.
     final absentIds = ref.watch(absentStudentIdsProvider(widget.classModel.id!));
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -282,64 +273,9 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                   ],
                 ),
 
-              // Devamsızlık şeridi.
-              //
-              // Yalnızca rehberlik sınıfında ve gerçekten işaretli
-              // öğrenci varken görünür; boş bir süzgeç düğmesi
-              // öğretmene "burada bir şey var" diye yanlış işaret
-              // verirdi.
-              if (widget.classModel.isHomeroom && absentIds.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilterChip(
-                        selected: _onlyAbsent,
-                        showCheckmark: false,
-                        avatar: Icon(
-                          Icons.event_busy_rounded,
-                          size: 16,
-                          color: _onlyAbsent
-                              ? Colors.white
-                              : const Color(0xFFEF4444),
-                        ),
-                        label: Text(
-                          'Devamsız Öğrenciler (${absentIds.length})',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
-                            color: _onlyAbsent
-                                ? Colors.white
-                                : (isDark ? Colors.white70 : const Color(0xFF475569)),
-                          ),
-                        ),
-                        selectedColor: const Color(0xFFEF4444),
-                        backgroundColor: isDark
-                            ? Colors.white.withValues(alpha: 0.05)
-                            : Colors.grey.shade100,
-                        side: BorderSide(
-                          color: const Color(0xFFEF4444)
-                              .withValues(alpha: _onlyAbsent ? 0 : 0.35),
-                        ),
-                        onSelected: (v) => setState(() => _onlyAbsent = v),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      tooltip: 'Devamsızlık Takip Ekranı',
-                      onPressed: () => openAbsenceFollowupScreen(
-                        context,
-                        widget.classModel,
-                      ),
-                      icon: const Icon(
-                        Icons.open_in_new_rounded,
-                        size: 20,
-                        color: Color(0xFFEF4444),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              // Devamsız öğrenciler ayrı şerit değil (26 Ekim 2026,
+              // kullanıcı): üstteki Devamsızlık düğmesi aynı listeyi
+              // açıyor; kartlardaki "Devamsız" rozeti yeterli.
 
               if (studentListAsync.valueOrNull != null && studentListAsync.valueOrNull!.isNotEmpty)
                 const SizedBox(height: 16),
@@ -362,9 +298,6 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                     }
 
                     var filtered = students.where((s) {
-                      if (_onlyAbsent && !absentIds.contains(s.id)) {
-                        return false;
-                      }
                       if (_searchQuery.isEmpty) return true;
                       // `toLowerCase` Turkce'de yaniltiyordu: ogretmen
                       // "Isil" yazinca "Isil" ogrencisi bulunamiyordu.
@@ -392,9 +325,7 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                     if (filtered.isEmpty) {
                       return Center(
                         child: Text(
-                          _onlyAbsent
-                              ? 'Devamsız işaretli öğrenci yok.'
-                              : 'Arama sonucunda öğrenci bulunamadı.',
+                          'Arama sonucunda öğrenci bulunamadı.',
                           style: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
                         ),
                       );

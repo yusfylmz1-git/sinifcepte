@@ -566,6 +566,15 @@ void main() {
       );
       expect(find.textContaining('Rehberlik sınıfınızda veli kodu dağıtın'), findsOneWidget);
       expect(find.textContaining('Bazı sınıflar güncellenemedi'), findsOneWidget);
+      expect(find.byKey(const ValueKey('gk_sinif_notu')), findsNothing,
+          reason: 'sınıf yokken yukarıdaki yönlendirme yeterli');
+    });
+
+    testWidgets('sınıf varken neden yalnız bu sınıfların listelendiği yazar', (tester) async {
+      await hazirDurumla(tester, const GelenKutusuEkrani(), _ornekDurum());
+      final not = find.byKey(const ValueKey('gk_sinif_notu'));
+      expect(not, findsOneWidget);
+      expect(find.descendant(of: not, matching: find.textContaining('sizi kadroya ekleyince')), findsOneWidget);
     });
 
     testWidgets('üst çubuk: rozet toplamı; yeni bir şey yoksa rozet yok; bulut yoksa simge yok', (tester) async {

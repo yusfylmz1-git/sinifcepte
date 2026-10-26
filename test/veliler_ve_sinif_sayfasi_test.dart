@@ -15,6 +15,7 @@ import 'package:sinifcepte/data/repositories/class_repository.dart';
 import 'package:sinifcepte/data/repositories/student_repository.dart';
 import 'package:sinifcepte/features/auth_profile/data/models/teacher_profile_model.dart';
 import 'package:sinifcepte/features/auth_profile/providers/teacher_profile_provider.dart';
+import 'package:sinifcepte/features/classes/providers/absence_followup_provider.dart';
 import 'package:sinifcepte/features/classes/screens/class_list_screen.dart';
 import 'package:sinifcepte/features/classes/screens/sinif_evraklari_ekrani.dart';
 import 'package:sinifcepte/features/classes/screens/student_list_screen.dart';
@@ -45,6 +46,7 @@ void main() {
 
   late ClassModel rehberlik;
   late ClassModel dersSinifi;
+  late int aliId;
 
   Future<void> bekleKadar(WidgetTester tester, bool Function() kosul) async {
     for (var i = 0; i < 200 && !kosul(); i++) {
@@ -78,7 +80,7 @@ void main() {
     rehberlik = ClassModel(
         id: rid, name: '5-A', subject: 'Türkçe', academicYear: '2026-2027', isHomeroom: true);
     dersSinifi = ClassModel(id: did, name: '6-B', subject: 'Türkçe', academicYear: '2026-2027');
-    await StudentRepository().insertStudent(
+    aliId = await StudentRepository().insertStudent(
         StudentModel(classId: rid, schoolNumber: 1, firstName: 'Ali', lastName: 'YILMAZ'));
     await StudentRepository().insertStudent(
         StudentModel(classId: rid, schoolNumber: 2, firstName: 'Ayşe', lastName: 'KAYA'));
@@ -225,6 +227,27 @@ void main() {
       await bekleKadar(tester, () => find.byType(SinifEvraklariEkrani).evaluate().isNotEmpty);
       expect(find.text('Nöbetçi Listesi'), findsOneWidget);
       expect(find.text('Veli Toplantı Tutanağı & İmza Sirküsü'), findsOneWidget);
+      await bekle(tester);
+    });
+
+    // Kullanıcı (26 Ekim 2026): listenin üstündeki "Devamsız Öğrenciler"
+    // şeridi gereksiz; şeritteki Devamsızlık düğmesi aynı listeyi açıyor.
+    testWidgets('devamsız öğrenci varken listenin üstünde ayrı şerit yok, kartta rozet var', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.5;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          teacherProfileProvider.overrideWith((ref) => _SahteProfil('local_teacher')),
+          absentStudentIdsProvider(rehberlik.id!).overrideWithValue({aliId}),
+        ],
+        child: MaterialApp(home: StudentListScreen(classModel: rehberlik)),
+      ));
+      await bekleKadar(tester, () => find.text('Ali YILMAZ').evaluate().isNotEmpty);
+
+      expect(find.textContaining('Devamsız Öğrenciler'), findsNothing);
+      expect(find.text('Devamsız'), findsOneWidget, reason: 'işaretli öğrencinin kart rozeti');
+      expect(find.byKey(const ValueKey('serit_devamsizlik')), findsOneWidget);
       await bekle(tester);
     });
 

@@ -118,6 +118,7 @@ class _GelenKutusuEkraniState extends ConsumerState<GelenKutusuEkrani> {
 
     final ogeler = <Widget>[
       _cipler(isDark, d),
+      if (d.siniflar.isNotEmpty) _sinifNotu(isDark),
       if (d.eksik)
         _bilgi(isDark, 'Bazı sınıflar güncellenemedi. Aşağı çekip yeniden deneyin.', uyari: true),
       if (bildirim)
@@ -184,6 +185,35 @@ class _GelenKutusuEkraniState extends ConsumerState<GelenKutusuEkrani> {
                 cip(s.kendi ? '⭐ ${s.ad}' : s.ad, _sinif == s.classCloudId,
                     () => setState(() => _sinif = s.classCloudId)),
             ]),
+        ],
+      ),
+    );
+  }
+
+  /// Hangi sınıfların burada olduğu (26 Ekim 2026): öğretmen derse
+  /// girdiği bütün sınıfları görmeyi bekliyordu; listede yalnız velilerin
+  /// ona yazabildiği sınıflar var.
+  Widget _sinifNotu(bool isDark) {
+    final renk = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    return Padding(
+      key: const ValueKey('gk_sinif_notu'),
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(Icons.info_outline_rounded, size: 15, color: renk),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Burada velilerin size yazabildiği sınıflar var: rehberlik sınıfınız ve '
+              'sizi kadrosuna ekleyen sınıflar. Derse girdiğiniz başka bir sınıf, '
+              'rehber öğretmeni sizi kadroya ekleyince burada görünür.',
+              style: AppFonts.outfit(fontSize: 11.5, height: 1.4, color: renk),
+            ),
+          ),
         ],
       ),
     );
