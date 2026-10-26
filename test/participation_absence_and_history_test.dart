@@ -328,13 +328,11 @@ void main() {
   });
 
   group('Izgara devamsizi ayirt ediyor', () {
-    test('KRITIK: devamsiz ogrenci GIZLENMIYOR', () {
-      // Gizlenseydi o gun derse gelen ogrenci degerlendirilemezdi.
-      final s = read(izgara);
-      expect(s.contains('.where((e) => !e.isAbsent)'), isFalse,
-          reason: 'Devamsiz ogrenci listeden cikarilmamali');
-    });
-
+    // Eskiden burada "devamsiz ogrenci GIZLENMIYOR" vardi. Kullanici
+    // karari (26 Ekim 2026): devamsiz ogrenci katilim listesine hic
+    // gelmiyor; davranis testi devamsiz_listeler_test.dart. Izgara yine
+    // de devamsizi ayirt edebilmeli: takibe alinmadan once o derste
+    // isaretlenen ogrencinin kaydi korunuyor ve soluk cizilir.
     test('Soluk cizim ve rozet var', () {
       final s = read(izgara);
       expect(s.contains('final bool devamsiz = student.isAbsent'), isTrue);

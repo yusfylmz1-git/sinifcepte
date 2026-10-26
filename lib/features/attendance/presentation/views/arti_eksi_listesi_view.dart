@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../shared/widgets/liste_arama_kutusu.dart';
+import '../../../classes/providers/absence_followup_provider.dart';
 import '../../data/models/arti_eksi_model.dart';
 import '../../data/models/classroom_participation_model.dart';
 import '../../providers/arti_eksi_provider.dart';
@@ -97,8 +98,17 @@ class _ArtiEksiListesiViewState extends ConsumerState<ArtiEksiListesiView> {
     final kayitlarA = ref.watch(artiEksiKayitlariProvider(_sorgu));
     final kayitlar = kayitlarA.valueOrNull;
     final ozetler = kayitlar == null ? const <int, ArtiEksiOzeti>{} : artiEksiOzetle(kayitlar);
-    final ogrenciler = [
+    // Devamsızlık takibindeki öğrenci listede yok (26 Ekim 2026,
+    // kullanıcı). Ders ekranından gelen liste zaten süzülü; Cepte'den
+    // açılınca burada süzülür.
+    final devamsizA = ref.watch(absenceFollowupProvider(widget.classId));
+    final devamsizlar = ref.watch(absentStudentIdsProvider(widget.classId));
+    final sinifta = [
       for (final o in widget.ogrenciler)
+        if (!devamsizlar.contains(o.studentId)) o,
+    ];
+    final ogrenciler = [
+      for (final o in sinifta)
         if (aramayaUyar(_arama, [o.studentName], numara: o.studentNumber)) o,
     ]..sort((a, b) => a.studentNumber.compareTo(b.studentNumber));
     final toplamArti = ozetler.values.fold<int>(0, (t, o) => t + o.arti);
@@ -144,9 +154,9 @@ class _ArtiEksiListesiViewState extends ConsumerState<ArtiEksiListesiView> {
               child: Text('Liste okunamadı: ${kayitlarA.error}'),
             ),
           Expanded(
-            child: kayitlar == null && kayitlarA.isLoading
+            child: (kayitlar == null && kayitlarA.isLoading) || devamsizA.isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : ogrenciler.isEmpty && widget.ogrenciler.isNotEmpty
+                : ogrenciler.isEmpty && sinifta.isNotEmpty
                 ? const Align(alignment: Alignment.topCenter, child: AramaSonucuYok())
                 : ListView.separated(
                     padding: const EdgeInsets.only(bottom: 24),

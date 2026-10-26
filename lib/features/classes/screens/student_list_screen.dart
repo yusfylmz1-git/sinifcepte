@@ -22,6 +22,7 @@ import '../../../core/utils/turkish_text.dart';
 import '../../student_photos/presentation/sinif_foto_ekrani.dart';
 import '../../student_photos/presentation/widgets/ogrenci_foto_kucuk.dart';
 import '../presentation/widgets/sinif_seridi.dart';
+import '../utils/classroom_documents_pdf_generator.dart';
 
 /// Sınıf sayfası: öğrenci listesi ve üstte sınıfın işleri.
 ///
@@ -142,12 +143,17 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                           builder: (_) => SinifFotoEkrani(sinif: widget.classModel),
                         ),
                       );
-                    } else if (value == 'move_all') {
+                    } else if (value == 'sinif_listesi_pdf') {
                       if (allStudents.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sınıfta taşınacak öğrenci yok.')));
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sınıfta öğrenci yok.')));
                         return;
                       }
-                      _showMoveDialog(context, allStudents.map((e) => e.id!).toList());
+                      ClassroomDocumentsPdfGenerator.generateStudentListPdf(
+                        context: context,
+                        classModel: widget.classModel,
+                        students: allStudents,
+                        teacherProfile: ref.read(teacherProfileProvider),
+                      );
                     } else if (value == 'delete_all') {
                       if (allStudents.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sınıfta silinecek öğrenci yok.')));
@@ -156,21 +162,14 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                       _confirmDeleteSelected(context, allStudents.map((e) => e.id!).toList());
                     }
                   },
+                  // "Sınıf Atlat" burada yok (26 Ekim 2026, kullanıcı): yıl
+                  // sonu atlatma yalnız Sınıflar sayfasının ⋮ menüsünde.
                   itemBuilder: (context) => [
+                    _menuSatiri('sinif_listesi_pdf', Icons.format_list_numbered_rounded, 'Sınıf listesi (PDF)', isDark),
                     _menuSatiri('import', Icons.picture_as_pdf_rounded, 'PDF / Excel ile öğrenci yükle', isDark),
                     _menuSatiri('veli_rehberi', Icons.contact_phone_rounded, 'Veli rehberi (telefonlar)', isDark),
                     _menuSatiri('eokul_foto', Icons.photo_camera_front_outlined, 'e-Okul fotoğrafları', isDark),
                     const PopupMenuDivider(),
-                    PopupMenuItem(
-                      value: 'move_all',
-                      child: Row(
-                        children: [
-                          Icon(Icons.drive_file_move_outline, size: 20, color: isDark ? Colors.white70 : Colors.black87),
-                          const SizedBox(width: 12),
-                          const Text('Tüm Sınıfı Taşı (Sınıf Atlat)'),
-                        ],
-                      ),
-                    ),
                     const PopupMenuItem(
                       value: 'delete_all',
                       child: Row(

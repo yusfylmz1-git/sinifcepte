@@ -251,6 +251,22 @@ void main() {
       await bekle(tester);
     });
 
+    // Kullanıcı (26 Ekim 2026): "Sınıf atlat her sınıfta gereksiz, yalnız
+    // Sınıflar'ın ⋮ menüsünde olmalı. Her sınıfın ⋮ menüsünde sınıf
+    // listesi PDF olmalı."
+    testWidgets('KRITIK: sınıfın ⋮ menüsünde sınıf listesi PDF var, sınıf atlatma yok', (tester) async {
+      await sinifAc(tester, rehberlik);
+      await tester.tap(find.byIcon(Icons.more_vert_rounded).first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('Sınıf listesi (PDF)'), findsOneWidget);
+      expect(find.textContaining('Atlat'), findsNothing);
+      expect(find.textContaining('Tüm Sınıfı Taşı'), findsNothing);
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pump(const Duration(milliseconds: 400));
+      await bekle(tester);
+    });
+
     testWidgets('ders sınıfının evrak sayfasında şube evrakı yok, nedeni yazıyor', (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.5;

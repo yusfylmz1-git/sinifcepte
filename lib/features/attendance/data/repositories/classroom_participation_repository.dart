@@ -42,10 +42,12 @@ class ClassroomParticipationRepository {
 
       // 1.5. Devamsizlik takibindeki ogrenciler.
       //
-      // Bu ogrenciler izgarada SOLUK gorunur ve yeni oturumda onlara
-      // "tam puan" varsayilani VERILMEZ: derse gelmeyen ogrenci
-      // "odevini yapti, 3 yildiz" sayilirsa ortalamasi sisiyor ve
-      // veli toplantisi raporu yanlis cikiyordu.
+      // Kullanici karari (26 Ekim 2026): devamsiz ogrenci katilim
+      // listesinde CIKMAZ ("ogretmen bir bilgi girecek sonucta").
+      // Eskiden soluk gorunuyordu. Oturum listesinden cikinca kura,
+      // toplu isaretleme, sayilar ve arti-eksi de onu gormez. O derste
+      // gercekten degerlendirildiyse (isareti varsa) kaydi korunur;
+      // ogrenci donerse ogretmen onu devamsizlik takibinden cikarir.
       final absentIds = await _absentStudentIds(db, classId, academicYear);
 
       // 2. Mevcut oturumu ara
@@ -90,7 +92,7 @@ class ClassroomParticipationRepository {
           final sGender = (s['gender'] as String?) ?? 'Erkek';
 
           if (existingRecordByStudentId.containsKey(sId)) {
-            evaluations.add(StudentParticipationEvaluation.fromMap(
+            final kayit = StudentParticipationEvaluation.fromMap(
               {
                 ...existingRecordByStudentId[sId]!,
                 'is_absent': absentIds.contains(sId) ? 1 : 0,
@@ -98,10 +100,13 @@ class ClassroomParticipationRepository {
               studentNameFallback: sName,
               studentNumberFallback: sNum,
               genderFallback: sGender,
-            ));
+            );
+            // Eski surumler devamsiz ogrenciyi bos kayitla saklardi.
+            if (kayit.isAbsent && !kayit.hasAnyMark) continue;
+            evaluations.add(kayit);
           } else {
+            if (absentIds.contains(sId)) continue;
             // Sonradan sinifa eklenen ogrenci: varsayilan tam puan.
-            // Devamsiz ogrenci bunun disinda (bkz. _varsayilanDeger).
             evaluations.add(_varsayilanDeger(
               studentId: sId,
               studentName: sName,
@@ -119,7 +124,9 @@ class ClassroomParticipationRepository {
         );
       } else {
         // Yeni oturum: Sınıfın tüm öğrencilerini varsayılan değerlerle hazırla (Hepsi Seçili: 3 Yıldız, Ödev, Materyal, Zamanında)
-        final List<StudentParticipationEvaluation> defaultEvals = studentRows.map((s) {
+        final List<StudentParticipationEvaluation> defaultEvals = studentRows
+            .where((s) => !absentIds.contains(s['id'] as int))
+            .map((s) {
           final sId = s['id'] as int;
           final sName = '${s['first_name']} ${s['last_name'] ?? ''}'.trim();
           final sNum = (s['school_number'] as int?) ?? 0;

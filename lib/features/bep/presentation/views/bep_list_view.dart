@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/date_formatter.dart';
@@ -8,6 +9,7 @@ import '../../../../data/models/student_model.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../../shared/widgets/liste_arama_kutusu.dart';
 import '../../../auth_profile/data/models/teacher_profile_model.dart';
+import '../../../classes/providers/absence_followup_provider.dart';
 import '../../../outcomes/data/repositories/curriculum_outcome_repository.dart';
 import '../../data/bep_developmental_bank.dart';
 import '../../data/bep_subject_codes.dart';
@@ -15,7 +17,7 @@ import '../../data/models/bep_models.dart';
 import '../../data/repositories/bep_repository.dart';
 import 'bep_plan_view.dart';
 
-class BepListView extends StatefulWidget {
+class BepListView extends ConsumerStatefulWidget {
   final ClassModel classModel;
   final List<StudentModel> students;
   final TeacherProfileModel teacher;
@@ -28,10 +30,10 @@ class BepListView extends StatefulWidget {
   });
 
   @override
-  State<BepListView> createState() => _BepListViewState();
+  ConsumerState<BepListView> createState() => _BepListViewState();
 }
 
-class _BepListViewState extends State<BepListView> {
+class _BepListViewState extends ConsumerState<BepListView> {
   final _repo = BepRepository();
   late final String _year;
   late final int _classGradeHint;
@@ -475,9 +477,14 @@ class _BepListViewState extends State<BepListView> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Devamsızlık takibindeki öğrenci listede yok (26 Ekim 2026,
+    // kullanıcı: "öğretmen bir bilgi girecek sonuçta").
+    final sinifId = widget.classModel.id ?? 0;
+    final devamsizA = ref.watch(absenceFollowupProvider(sinifId));
+    final devamsizlar = ref.watch(absentStudentIdsProvider(sinifId));
     final gorunen = [
       for (final s in widget.students)
-        if (aramayaUyar(_arama, [s.fullName], numara: s.schoolNumber)) s,
+        if (!devamsizlar.contains(s.id) && aramayaUyar(_arama, [s.fullName], numara: s.schoolNumber)) s,
     ];
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : Colors.white,
@@ -485,7 +492,7 @@ class _BepListViewState extends State<BepListView> {
         title: 'BEP hedef takibi',
         showProfileAvatar: false,
       ),
-      body: _loading
+      body: _loading || devamsizA.isLoading
           ? const Center(child: CircularProgressIndicator())
           : widget.students.isEmpty
               ? const Center(child: Text('Önce sınıfa öğrenci ekleyin.'))

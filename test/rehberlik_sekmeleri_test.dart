@@ -12,6 +12,7 @@ import 'package:sinifcepte/core/config/app_config.dart';
 import 'package:sinifcepte/core/database/database_helper.dart';
 import 'package:sinifcepte/data/models/class_model.dart';
 import 'package:sinifcepte/data/models/student_model.dart';
+import 'package:sinifcepte/data/repositories/absence_followup_repository.dart';
 import 'package:sinifcepte/data/repositories/class_repository.dart';
 import 'package:sinifcepte/data/repositories/student_repository.dart';
 import 'package:sinifcepte/features/auth_profile/data/models/teacher_profile_model.dart';
@@ -116,11 +117,16 @@ void main() {
       final id = await ClassRepository().insertClass(
           const ClassModel(name: '5-A', subject: 'Türkçe', academicYear: '2026-2027', isHomeroom: true));
       sinif = ClassModel(id: id, name: '5-A', subject: 'Türkçe', academicYear: '2026-2027', isHomeroom: true);
-      for (final (no, ad, soyad) in [(3, 'Ayşe', 'KAYA'), (7, 'Ali', 'YILMAZ'), (12, 'Işıl', 'DEMİR')]) {
+      for (final (no, ad, soyad) in [(3, 'Ayşe', 'KAYA'), (7, 'Ali', 'YILMAZ'), (12, 'Işıl', 'DEMİR'), (15, 'Can', 'ÖZ')]) {
         await StudentRepository().insertStudent(
             StudentModel(classId: id, schoolNumber: no, firstName: ad, lastName: soyad));
       }
       ogrenciler = await StudentRepository().getStudentsByClassId(id);
+      // Kullanıcı (26 Ekim 2026): devamsız öğrenci BEP listesinde çıkmaz.
+      await AbsenceFollowupRepository().mark(
+          studentId: ogrenciler.firstWhere((s) => s.firstName == 'Can').id!,
+          classId: id,
+          academicYear: '2026-2027');
     });
     await sayfaOlarakAc(
       tester,
@@ -142,6 +148,7 @@ void main() {
     await bekleKadar(tester, () => kutu.evaluate().isNotEmpty);
     expect(find.text('Ali YILMAZ'), findsOneWidget);
     expect(find.text('Işıl DEMİR'), findsOneWidget);
+    expect(find.text('Can ÖZ'), findsNothing, reason: 'devamsızlık takibinde');
 
     await tester.enterText(kutu, 'isil');
     await tester.pump();

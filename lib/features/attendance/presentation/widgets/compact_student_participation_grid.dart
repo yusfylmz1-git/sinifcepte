@@ -137,11 +137,9 @@ class CompactStudentParticipationGrid extends ConsumerWidget {
   ) {
     final isFemale = student.isFemale;
 
-    // Devamsizlik takibindeki ogrenci SOLUK cizilir.
-    //
-    // Gizlenmiyor: o gun derse gelirse ogretmen yine degerlendirmeli.
-    // Ama bir bakista ayrilmali ki ogretmen "bu cocuk zaten devamsiz"
-    // diye bilsin. Puan varsayilani da verilmiyor (bkz. repository).
+    // Devamsizlik takibindeki ogrenci oturum listesine gelmiyor (26 Ekim
+    // 2026, bkz. repository). Burada gorunuyorsa o derste takibe
+    // alinmadan once isaretlenmistir; kaydi korunur, SOLUK cizilir.
     final bool devamsiz = student.isAbsent;
 
     // Cinsiyet Temalı Renk Paletleri
