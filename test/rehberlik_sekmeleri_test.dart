@@ -10,6 +10,12 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:sinifcepte/core/config/app_config.dart';
 import 'package:sinifcepte/core/database/database_helper.dart';
+import 'package:sinifcepte/data/models/class_model.dart';
+import 'package:sinifcepte/data/models/student_model.dart';
+import 'package:sinifcepte/data/repositories/class_repository.dart';
+import 'package:sinifcepte/data/repositories/student_repository.dart';
+import 'package:sinifcepte/features/auth_profile/data/models/teacher_profile_model.dart';
+import 'package:sinifcepte/features/bep/presentation/views/bep_list_view.dart';
 import 'package:sinifcepte/features/guidance/presentation/screens/guidance_hub_screen.dart';
 import 'package:sinifcepte/features/guidance/presentation/views/special_education_view.dart';
 
@@ -99,6 +105,55 @@ void main() {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 40)));
       await tester.pump();
     }
+  });
+
+  // Kullanıcı (26 Ekim 2026): "BEP raporunda öğrenci arama yok; tek tek
+  // tüm öğrencilere bakmak yerine üstte arama kutusu olsa işleri hızlandırır."
+  testWidgets('KRITIK: BEP hedef takibinde öğrenci aranıyor', (tester) async {
+    late ClassModel sinif;
+    late List<StudentModel> ogrenciler;
+    await tester.runAsync(() async {
+      final id = await ClassRepository().insertClass(
+          const ClassModel(name: '5-A', subject: 'Türkçe', academicYear: '2026-2027', isHomeroom: true));
+      sinif = ClassModel(id: id, name: '5-A', subject: 'Türkçe', academicYear: '2026-2027', isHomeroom: true);
+      for (final (no, ad, soyad) in [(3, 'Ayşe', 'KAYA'), (7, 'Ali', 'YILMAZ'), (12, 'Işıl', 'DEMİR')]) {
+        await StudentRepository().insertStudent(
+            StudentModel(classId: id, schoolNumber: no, firstName: ad, lastName: soyad));
+      }
+      ogrenciler = await StudentRepository().getStudentsByClassId(id);
+    });
+    await sayfaOlarakAc(
+      tester,
+      BepListView(
+        classModel: sinif,
+        students: ogrenciler,
+        teacher: const TeacherProfileModel(
+          id: 'ogretmen',
+          firstName: 'Ayşe',
+          lastName: 'Demir',
+          branch: 'Türkçe',
+          schoolName: 'Mimar Sinan Ortaokulu',
+          schoolPrincipalName: 'Mehmet Yılmaz',
+          email: 'ayse@meb.k12.tr',
+        ),
+      ),
+    );
+    final kutu = find.byKey(const ValueKey('liste_arama'));
+    await bekleKadar(tester, () => kutu.evaluate().isNotEmpty);
+    expect(find.text('Ali YILMAZ'), findsOneWidget);
+    expect(find.text('Işıl DEMİR'), findsOneWidget);
+
+    await tester.enterText(kutu, 'isil');
+    await tester.pump();
+    expect(find.text('Işıl DEMİR'), findsOneWidget, reason: 'Türkçe harfsiz yazınca da');
+    expect(find.text('Ali YILMAZ'), findsNothing);
+    expect(find.text('Ayşe KAYA'), findsNothing);
+    expect(find.text('Ders / gelişim alanı aç'), findsOneWidget, reason: 'bulunan öğrencinin eylemi');
+
+    await tester.enterText(kutu, '7');
+    await tester.pump();
+    expect(find.text('Ali YILMAZ'), findsOneWidget, reason: 'okul numarasıyla');
+    expect(find.text('Işıl DEMİR'), findsNothing);
   });
 
   test('rehberlik verisinde PDF bitişik harfi ve "ozellik" yazım hatası yok', () {

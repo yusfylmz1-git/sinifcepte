@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/utils/date_formatter.dart';
+import '../../../../shared/widgets/liste_arama_kutusu.dart';
 import '../../data/models/arti_eksi_model.dart';
 import '../../data/models/classroom_participation_model.dart';
 import '../../providers/arti_eksi_provider.dart';
@@ -50,6 +51,7 @@ class ArtiEksiListesiView extends ConsumerStatefulWidget {
 
 class _ArtiEksiListesiViewState extends ConsumerState<ArtiEksiListesiView> {
   bool _tumYil = false;
+  String _arama = '';
 
   DateTime get _gun => DateTime.tryParse(widget.tarih) ?? DateTime.now();
 
@@ -95,8 +97,10 @@ class _ArtiEksiListesiViewState extends ConsumerState<ArtiEksiListesiView> {
     final kayitlarA = ref.watch(artiEksiKayitlariProvider(_sorgu));
     final kayitlar = kayitlarA.valueOrNull;
     final ozetler = kayitlar == null ? const <int, ArtiEksiOzeti>{} : artiEksiOzetle(kayitlar);
-    final ogrenciler = [...widget.ogrenciler]
-      ..sort((a, b) => a.studentNumber.compareTo(b.studentNumber));
+    final ogrenciler = [
+      for (final o in widget.ogrenciler)
+        if (aramayaUyar(_arama, [o.studentName], numara: o.studentNumber)) o,
+    ]..sort((a, b) => a.studentNumber.compareTo(b.studentNumber));
     final toplamArti = ozetler.values.fold<int>(0, (t, o) => t + o.arti);
     final toplamEksi = ozetler.values.fold<int>(0, (t, o) => t + o.eksi);
 
@@ -130,6 +134,10 @@ class _ArtiEksiListesiViewState extends ConsumerState<ArtiEksiListesiView> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+            child: ListeAramaKutusu(onChanged: (v) => setState(() => _arama = v)),
+          ),
           if (kayitlarA.hasError)
             Padding(
               padding: const EdgeInsets.all(16),
@@ -138,6 +146,8 @@ class _ArtiEksiListesiViewState extends ConsumerState<ArtiEksiListesiView> {
           Expanded(
             child: kayitlar == null && kayitlarA.isLoading
                 ? const Center(child: CircularProgressIndicator())
+                : ogrenciler.isEmpty && widget.ogrenciler.isNotEmpty
+                ? const Align(alignment: Alignment.topCenter, child: AramaSonucuYok())
                 : ListView.separated(
                     padding: const EdgeInsets.only(bottom: 24),
                     itemCount: ogrenciler.length,

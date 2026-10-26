@@ -5,6 +5,7 @@ import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../data/models/class_model.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
+import '../../../../shared/widgets/liste_arama_kutusu.dart';
 import '../../../classes/providers/class_provider.dart';
 import '../../../classes/providers/student_provider.dart';
 import '../../data/models/quiz_tracking_model.dart';
@@ -36,6 +37,8 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
     'Edebiyat',
     'Genel',
   ];
+
+  String _arama = '';
 
   @override
   void initState() {
@@ -99,6 +102,12 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
               children: [
                 // 1. Şirin Sınıf & Ders Seçici Kapsüller
                 _buildCuteFilterBar(context, isDark, classes, selectedClass, selectedSubject),
+
+                if (!tableState.isLoading && tableState.students.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+                    child: ListeAramaKutusu(onChanged: (v) => setState(() => _arama = v)),
+                  ),
 
                 // 2. Dinamik Kompakt Not Tablosu
                 Expanded(
@@ -300,6 +309,12 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
     }
 
     final overallAvg = tableState.calculateOverallClassAverage();
+    // Arama yalnız satırları süzer; sınıf ortalaması bütün sınıfın.
+    final gorunen = [
+      for (final s in tableState.students)
+        if (aramayaUyar(_arama, ['${s.firstName} ${s.lastName}'], numara: s.schoolNumber)) s,
+    ];
+    if (gorunen.isEmpty) return const Align(alignment: Alignment.topCenter, child: AramaSonucuYok());
 
     return SingleChildScrollView(
       scrollDirection: Axis.vertical,
@@ -399,7 +414,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
               ],
               rows: [
                 // Öğrenci Not Satırları (Zebra Efektli)
-                ...tableState.students.asMap().entries.map((entry) {
+                ...gorunen.asMap().entries.map((entry) {
                   final index = entry.key;
                   final student = entry.value;
                   final studentId = student.id ?? 0;

@@ -229,6 +229,31 @@ void main() {
       expect(find.text('Bu aralıkta kayıt yok.'), findsOneWidget);
     });
 
+    // Kullanıcı (26 Ekim 2026): "artı-eksi listesinde öğrenci arama yok."
+    testWidgets('KRITIK: arama listeyi daraltıyor; bulunan öğrenciye artı veriliyor', (tester) async {
+      await ac(tester);
+      final kutu = find.byKey(const ValueKey('liste_arama'));
+      expect(kutu, findsOneWidget);
+
+      await tester.enterText(kutu, 'kaya');
+      await tester.pump();
+      expect(find.text('Ali YILMAZ'), findsNothing);
+      expect(find.text('Ayşe KAYA'), findsOneWidget);
+
+      await tester.enterText(kutu, '7');
+      await tester.pump();
+      expect(find.text('Ali YILMAZ'), findsOneWidget, reason: 'okul numarasıyla');
+      expect(find.text('Ayşe KAYA'), findsNothing);
+      await tester.tap(find.byTooltip('Ali YILMAZ: artı ver'));
+      await bekleKadar(tester, () => find.text('Toplam: 1 artı · 0 eksi').evaluate().isNotEmpty);
+      expect(satirda('Ali YILMAZ', find.text('+1')), findsOneWidget);
+
+      await tester.enterText(kutu, 'zeynep');
+      await tester.pump();
+      expect(find.text('Aramaya uyan öğrenci yok.'), findsOneWidget);
+      expect(find.text('Toplam: 1 artı · 0 eksi'), findsOneWidget, reason: 'toplam bütün sınıfın');
+    });
+
     testWidgets('dar telefonda (320 dp) taşmıyor', (tester) async {
       await ac(tester, boyut: const Size(640, 1400));
       await tester.tap(find.byTooltip('Ali YILMAZ: artı ver'));

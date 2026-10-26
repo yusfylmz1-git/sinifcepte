@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/input_sanitizer.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../../shared/widgets/glass_card.dart';
+import '../../../../shared/widgets/liste_arama_kutusu.dart';
 import '../../../classes/providers/class_provider.dart';
 import '../../data/models/exam_analysis_model.dart';
 import '../../providers/exam_analysis_provider.dart';
@@ -34,6 +35,7 @@ class _ExamAnalysisEditorViewState extends ConsumerState<ExamAnalysisEditorView>
   List<double> _parsedQuestionScores = [10, 10, 15, 15, 25, 25];
   List<StudentExamScore> _studentScores = [];
   bool _isLoadingStudents = false;
+  String _arama = '';
 
   // Her öğrenci için TextEditingController haritası
   final Map<int, TextEditingController> _studentScoreControllers = {};
@@ -642,17 +644,31 @@ class _ExamAnalysisEditorViewState extends ConsumerState<ExamAnalysisEditorView>
                           ),
                         ),
                       )
-                    else
-                      ListView.separated(
+                    else ...[
+                      ListeAramaKutusu(onChanged: (v) => setState(() => _arama = v)),
+                      const SizedBox(height: 8),
+                      Builder(builder: (context) {
+                        // Süzülen satırlar asıl sıralarını korur: not denetleyicisi
+                        // ve "girmedi" işareti asıl sıraya bağlı.
+                        final gorunen = [
+                          for (var i = 0; i < _studentScores.length; i++)
+                            if (aramayaUyar(_arama, [_studentScores[i].studentName],
+                                numara: _studentScores[i].studentNumber))
+                              i,
+                        ];
+                        if (gorunen.isEmpty) return const AramaSonucuYok();
+                        return ListView.separated(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _studentScores.length,
+                        itemCount: gorunen.length,
                         separatorBuilder: (context, index) => const SizedBox(height: 8),
-                        itemBuilder: (context, index) {
+                        itemBuilder: (context, sira) {
+                          final index = gorunen[sira];
                           final s = _studentScores[index];
                           final controller = _studentScoreControllers[index] ?? TextEditingController();
 
                           return Container(
+                            key: ValueKey('not_girisi_$index'),
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
                               color: isDark ? const Color(0xFF1E293B) : Colors.white,
@@ -804,7 +820,9 @@ class _ExamAnalysisEditorViewState extends ConsumerState<ExamAnalysisEditorView>
                             ),
                           );
                         },
-                      ),
+                      );
+                      }),
+                    ],
                   ],
                 ),
               ),

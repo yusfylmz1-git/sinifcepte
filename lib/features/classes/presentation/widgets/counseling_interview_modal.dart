@@ -7,6 +7,7 @@ import '../../../../data/models/student_model.dart';
 import '../../../auth_profile/data/models/teacher_profile_model.dart';
 import '../../utils/classroom_documents_pdf_generator.dart';
 import '../../../../shared/screens/pdf_preview_screen.dart';
+import '../../../../shared/widgets/liste_arama_kutusu.dart';
 import '../../../bep/presentation/views/bep_list_view.dart';
 
 /// SınıfCepte - Rehberlik & Görüşme Evrakları Seçim ve Hazırlama Modalı
@@ -196,29 +197,46 @@ class _CounselingInterviewModalState extends State<CounselingInterviewModal> {
               ),
             ),
             const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            // Açılır liste değil, aranabilir pencere (26 Ekim 2026): otuz
+            // kişilik sınıfta açılır listede kaydırmak yavaştı.
+            Material(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              child: InkWell(
+                key: const ValueKey('gorusme_ogrenci_sec'),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: isDark ? Colors.white24 : Colors.grey.shade300),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<StudentModel?>(
-                  value: _selectedStudent,
-                  isExpanded: true,
-                  hint: const Text('Boş Şablon Olarak Üret (Öğrenci Seçilmedi)'),
-                  items: [
-                    const DropdownMenuItem<StudentModel?>(
-                      value: null,
-                      child: Text('Boş Şablon (Tüm Öğrenciler İçin Yazdırılabilir)'),
-                    ),
-                    ...widget.students.map((s) => DropdownMenuItem<StudentModel?>(
-                          value: s,
-                          child: Text('${s.schoolNumber > 0 ? "${s.schoolNumber} - " : ""}${s.fullName}'),
-                        )),
-                  ],
-                  onChanged: (val) => setState(() => _selectedStudent = val),
+                onTap: () async {
+                  final secim = await aranabilirSec<StudentModel>(
+                    context,
+                    baslik: 'Öğrenci seç',
+                    ogeler: widget.students,
+                    etiket: (s) => s.fullName,
+                    numara: (s) => s.schoolNumber,
+                    bosSecenek: 'Boş Şablon (Tüm Öğrenciler İçin Yazdırılabilir)',
+                  );
+                  if (secim != null && mounted) setState(() => _selectedStudent = secim.oge);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: isDark ? Colors.white24 : Colors.grey.shade300),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _selectedStudent == null
+                              ? 'Boş Şablon (Tüm Öğrenciler İçin Yazdırılabilir)'
+                              : '${_selectedStudent!.schoolNumber > 0 ? "${_selectedStudent!.schoolNumber} - " : ""}'
+                                  '${_selectedStudent!.fullName}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Icon(Icons.search_rounded, size: 20, color: isDark ? Colors.white54 : Colors.black54),
+                    ],
+                  ),
                 ),
               ),
             ),

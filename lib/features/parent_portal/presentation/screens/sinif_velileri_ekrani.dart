@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_fonts.dart';
 import '../../../../data/models/class_model.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
+import '../../../../shared/widgets/liste_arama_kutusu.dart';
 import '../../../auth_profile/data/services/teacher_identity.dart';
 import '../../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../../classes/providers/student_provider.dart';
@@ -505,13 +506,23 @@ class RandevuKarti extends ConsumerWidget {
 }
 
 /// Bağlı velilerin listesi; dokununca sohbet açılır.
-class VeliYazismalariEkrani extends ConsumerWidget {
+class VeliYazismalariEkrani extends ConsumerStatefulWidget {
   final ClassModel classModel;
 
   const VeliYazismalariEkrani({super.key, required this.classModel});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<VeliYazismalariEkrani> createState() => _VeliYazismalariEkraniState();
+}
+
+class _VeliYazismalariEkraniState extends ConsumerState<VeliYazismalariEkrani> {
+  /// Öğrenci ya da veli adıyla arama.
+  String _arama = '';
+
+  ClassModel get classModel => widget.classModel;
+
+  @override
+  Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final teacher = ref.watch(teacherProfileProvider);
     final uid = TeacherIdentity.resolve(teacher);
@@ -534,13 +545,27 @@ class VeliYazismalariEkrani extends ConsumerWidget {
                 ),
               );
             }
+            final gorunen = [
+              for (final b in baglar)
+                if (aramayaUyar(_arama, [b.studentName, b.parentName])) b,
+            ];
             return RefreshIndicator(
               onRefresh: () async => ref.invalidate(classLinkedParentsProvider(classModel)),
-              child: ListView.separated(
+              child: ListView(
                 padding: const EdgeInsets.all(14),
-                itemCount: baglar.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 8),
-                itemBuilder: (context, i) => _veliSatiri(context, isDark, baglar[i], uid, teacher.fullName),
+                children: [
+                  ListeAramaKutusu(
+                    ipucu: 'Öğrenci veya veli adı ara',
+                    onChanged: (v) => setState(() => _arama = v),
+                  ),
+                  const SizedBox(height: 10),
+                  if (gorunen.isEmpty) const AramaSonucuYok(metin: 'Aramaya uyan veli yok.'),
+                  for (final b in gorunen)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _veliSatiri(context, isDark, b, uid, teacher.fullName),
+                    ),
+                ],
               ),
             );
           },

@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_fonts.dart';
 import '../../../../data/models/class_model.dart';
 import '../../../../data/models/student_model.dart';
+import '../../../../shared/widgets/liste_arama_kutusu.dart';
 import '../../../classes/providers/class_provider.dart';
 import '../../../classes/providers/student_provider.dart';
 import '../../data/models/club_model.dart';
@@ -84,6 +85,9 @@ class _ClubMemberPickerSheetState
   /// Bu oturumda seçilen öğrenciler. Kaydedilene kadar burada durur.
   final Set<int> _secili = {};
 
+  /// Seçili şubede arama; şube değişince de geçerli kalır.
+  String _arama = '';
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -119,6 +123,10 @@ class _ClubMemberPickerSheetState
               child: Column(
                 children: [
                   _sinifSecici(isDark, liste, secili),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
+                    child: ListeAramaKutusu(onChanged: (v) => setState(() => _arama = v)),
+                  ),
                   Expanded(
                     child: _ogrenciListesi(isDark, secili, kayitliOgrenciler),
                   ),
@@ -275,11 +283,17 @@ class _ClubMemberPickerSheetState
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => _bilgi(
           isDark, Icons.error_outline_rounded, 'Öğrenciler yüklenemedi'),
-      data: (liste) {
-        if (liste.isEmpty) {
+      data: (tumu) {
+        if (tumu.isEmpty) {
           return _bilgi(
               isDark, Icons.people_outline_rounded, 'Bu şubede öğrenci yok');
         }
+        // "Tümünü seç" de yalnız aramaya uyanları seçer.
+        final liste = [
+          for (final o in tumu)
+            if (aramayaUyar(_arama, ['${o.firstName} ${o.lastName}'], numara: o.schoolNumber)) o,
+        ];
+        if (liste.isEmpty) return const AramaSonucuYok();
 
         // Tümünü seçme kısayolu: 30 kişilik sınıfta tek tek dokunmak
         // yorucu.
@@ -311,7 +325,7 @@ class _ClubMemberPickerSheetState
       return Padding(
         padding: const EdgeInsets.only(bottom: 4),
         child: Text(
-          'Bu şubedeki herkes zaten üye.',
+          _arama.trim().isEmpty ? 'Bu şubedeki herkes zaten üye.' : 'Bulunanların hepsi zaten üye.',
           style: AppFonts.outfit(
             fontSize: 12,
             fontWeight: FontWeight.w500,

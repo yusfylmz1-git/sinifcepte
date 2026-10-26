@@ -5,6 +5,7 @@ import '../../../../core/cloud/cloud_ids.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_fonts.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
+import '../../../../shared/widgets/liste_arama_kutusu.dart';
 import '../../../auth_profile/data/services/teacher_identity.dart';
 import '../../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../data/gelen_kutusu.dart';
@@ -48,6 +49,9 @@ class GelenKutusuEkrani extends ConsumerStatefulWidget {
 class _GelenKutusuEkraniState extends ConsumerState<GelenKutusuEkrani> {
   GelenKutusuSuzgeci _suzgec = GelenKutusuSuzgeci.tumu;
   late String? _sinif = widget.sinif;
+
+  /// Öğrenci ya da veli adıyla arama.
+  String _arama = '';
 
   Future<void> _sohbetiAc(SohbetOzeti o, GelenKutusuDurumu d) async {
     final teacher = ref.read(teacherProfileProvider);
@@ -112,13 +116,32 @@ class _GelenKutusuEkraniState extends ConsumerState<GelenKutusuEkrani> {
     final randevu = _suzgec == GelenKutusuSuzgeci.tumu || _suzgec == GelenKutusuSuzgeci.randevular;
     final bildirim = _suzgec == GelenKutusuSuzgeci.tumu || _suzgec == GelenKutusuSuzgeci.bildirimler;
 
-    final sohbetler = [for (final o in d.sohbetler) if (sinifta(o.classCloudId)) o];
-    final randevular = [for (final r in d.randevular) if (sinifta(r.classCloudId)) r];
-    final bildirimler = [for (final b in d.bildirimler) if (sinifta(b.classCloudId)) b];
+    bool uyar(String ogrenci, String veli) => aramayaUyar(_arama, [ogrenci, veli]);
+    final sohbetler = [
+      for (final o in d.sohbetler)
+        if (sinifta(o.classCloudId) && uyar(o.studentName, o.parentName)) o,
+    ];
+    final randevular = [
+      for (final r in d.randevular)
+        if (sinifta(r.classCloudId) && uyar(r.randevu.studentName, r.randevu.parentName)) r,
+    ];
+    final bildirimler = [
+      for (final b in d.bildirimler)
+        if (sinifta(b.classCloudId) && uyar(b.bildirim.studentName, b.bildirim.parentName)) b,
+    ];
+    final aranabilir = d.sohbetler.isNotEmpty || d.randevular.isNotEmpty || d.bildirimler.isNotEmpty;
 
     final ogeler = <Widget>[
       _cipler(isDark, d),
       if (d.siniflar.isNotEmpty) _sinifNotu(isDark),
+      if (aranabilir)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: ListeAramaKutusu(
+            ipucu: 'Öğrenci veya veli adı ara',
+            onChanged: (v) => setState(() => _arama = v),
+          ),
+        ),
       if (d.eksik)
         _bilgi(isDark, 'Bazı sınıflar güncellenemedi. Aşağı çekip yeniden deneyin.', uyari: true),
       if (bildirim)
@@ -140,7 +163,9 @@ class _GelenKutusuEkraniState extends ConsumerState<GelenKutusuEkrani> {
         d.siniflar.isEmpty
             ? 'Henüz veli bağlantısı olan sınıfınız yok. Rehberlik sınıfınızda veli kodu dağıtın; '
                 'kadrosunda olduğunuz sınıfların velileri size yazınca da burada görünür.'
-            : 'Burada gösterilecek bir şey yok.',
+            : _arama.trim().isNotEmpty
+                ? 'Aramaya uyan yazışma yok.'
+                : 'Burada gösterilecek bir şey yok.',
       ));
     }
 

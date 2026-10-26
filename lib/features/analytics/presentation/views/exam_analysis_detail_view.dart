@@ -4,6 +4,7 @@ import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../../shared/widgets/glass_card.dart';
+import '../../../../shared/widgets/liste_arama_kutusu.dart';
 import '../../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../data/models/exam_analysis_model.dart';
 import '../../providers/exam_analysis_provider.dart';
@@ -23,6 +24,7 @@ class ExamAnalysisDetailView extends ConsumerStatefulWidget {
 class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView> {
   late ExamAnalysisModel _currentExam;
   bool _sortByScoreDescending = true;
+  String _arama = '';
 
   @override
   void initState() {
@@ -113,6 +115,12 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
     } else {
       sortedStudents.sort((a, b) => a.studentNumber.compareTo(b.studentNumber));
     }
+    // Sıra numarası süzmeden önce verilir: aranan öğrencinin sınıftaki
+    // yeri değişmez.
+    final gorunen = [
+      for (var i = 0; i < sortedStudents.length; i++)
+        if (aramayaUyar(_arama, [sortedStudents[i].studentName], numara: sortedStudents[i].studentNumber)) i,
+    ];
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : const Color(0xFFF6F8FC),
@@ -543,12 +551,15 @@ class _ExamAnalysisDetailViewState extends ConsumerState<ExamAnalysisDetailView>
                     ],
                   ),
                   const SizedBox(height: 8),
+                  ListeAramaKutusu(onChanged: (v) => setState(() => _arama = v)),
+                  if (gorunen.isEmpty) const AramaSonucuYok(),
                   ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: sortedStudents.length,
+                    itemCount: gorunen.length,
                     separatorBuilder: (context, index) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
+                    itemBuilder: (context, sira) {
+                      final index = gorunen[sira];
                       final s = sortedStudents[index];
                       // Girmeyen ogrenci "0 Puan / kirmizi" gosterilmemeli:
                       // sinava girip kalan ogrenciyle ayni sey degil.

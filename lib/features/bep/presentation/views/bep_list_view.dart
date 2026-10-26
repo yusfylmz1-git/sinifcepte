@@ -6,6 +6,7 @@ import '../../../../core/utils/input_sanitizer.dart';
 import '../../../../data/models/class_model.dart';
 import '../../../../data/models/student_model.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
+import '../../../../shared/widgets/liste_arama_kutusu.dart';
 import '../../../auth_profile/data/models/teacher_profile_model.dart';
 import '../../../outcomes/data/repositories/curriculum_outcome_repository.dart';
 import '../../data/bep_developmental_bank.dart';
@@ -36,6 +37,7 @@ class _BepListViewState extends State<BepListView> {
   late final int _classGradeHint;
   List<BepStudentSummary> _summaries = const [];
   bool _loading = true;
+  String _arama = '';
 
   @override
   void initState() {
@@ -473,6 +475,10 @@ class _BepListViewState extends State<BepListView> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final gorunen = [
+      for (final s in widget.students)
+        if (aramayaUyar(_arama, [s.fullName], numara: s.schoolNumber)) s,
+    ];
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : Colors.white,
       appBar: const CustomAppBar(
@@ -498,7 +504,9 @@ class _BepListViewState extends State<BepListView> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    for (final s in widget.students) ...[
+                    ListeAramaKutusu(onChanged: (v) => setState(() => _arama = v)),
+                    if (gorunen.isEmpty) const AramaSonucuYok(),
+                    for (final s in gorunen) ...[
                       Padding(
                         padding: const EdgeInsets.fromLTRB(4, 12, 4, 4),
                         child: Text(

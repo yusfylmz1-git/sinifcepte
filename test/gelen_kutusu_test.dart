@@ -570,6 +570,26 @@ void main() {
           reason: 'sınıf yokken yukarıdaki yönlendirme yeterli');
     });
 
+    testWidgets('öğrenci ya da veli adıyla arama listeyi daraltır', (tester) async {
+      await hazirDurumla(tester, const GelenKutusuEkrani(), _ornekDurum());
+      final kutu = find.byKey(const ValueKey('liste_arama'));
+      expect(kutu, findsOneWidget);
+
+      await tester.enterText(kutu, 'hasan');
+      await tester.pump();
+      expect(find.text('Can ÖZ · 7-C'), findsOneWidget, reason: 'veli adıyla');
+      expect(find.text('Ali YILMAZ · 5-A'), findsNothing);
+
+      await tester.enterText(kutu, 'yilmaz');
+      await tester.pump();
+      expect(find.text('Ali YILMAZ · 5-A'), findsOneWidget, reason: 'Türkçe harfsiz öğrenci adıyla');
+      expect(find.text('Can ÖZ · 7-C'), findsNothing);
+
+      await tester.enterText(kutu, 'zeynep');
+      await tester.pump();
+      expect(find.text('Aramaya uyan yazışma yok.'), findsOneWidget);
+    });
+
     testWidgets('sınıf varken neden yalnız bu sınıfların listelendiği yazar', (tester) async {
       await hazirDurumla(tester, const GelenKutusuEkrani(), _ornekDurum());
       final not = find.byKey(const ValueKey('gk_sinif_notu'));
