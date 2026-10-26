@@ -16,6 +16,12 @@ class WeeklyOutcomesView extends ConsumerStatefulWidget {
 }
 
 class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
+  /// En son açılan Kazanımlar sayfası. Kapanan eski sayfa, hemen ardından
+  /// açılan yenisinin (ör. günün akışından seçili gelen dersin) seçimini
+  /// silmesin.
+  static int _sonAcilis = 0;
+  final int _acilis = ++_sonAcilis;
+
   PageController? _pageController;
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
@@ -34,6 +40,26 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
       initialPage: (activeWeek - 1).clamp(0, 39),
       viewportFraction: 0.88,
     );
+
+    // Kullanıcı (26 Ekim 2026): sayfa kapanınca seçim sıfırlanır; bir
+    // dahaki açılış kaldığı yerden değil kademe seçiminden başlar.
+    // Sıfırlama kapanış geçişi BİTİNCE yapılır: kapanırken sayfa kademe
+    // ekranına dönüp görünmesin. (Riverpod initState/dispose içinde durum
+    // değiştirmeye izin vermez; denetleyiciler şimdiden alınır.)
+    final sinifN = ref.read(selectedGradeProvider.notifier);
+    final dersN = ref.read(selectedSubjectProvider.notifier);
+    final favoriN = ref.read(isFavoritesModeProvider.notifier);
+    final aramaN = ref.read(outcomeSearchQueryProvider.notifier);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ModalRoute.of(context)?.completed.then((_) {
+        if (_acilis != _sonAcilis) return;
+        sinifN.state = null;
+        dersN.state = null;
+        favoriN.state = false;
+        aramaN.state = '';
+      });
+    });
   }
 
   @override
@@ -181,28 +207,11 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
             ? '$selectedGrade. Sınıf • ${selectedSubject['publisher']}'
             : (selectedGrade != null ? null : null),
         showBackButton: true,
-        onBackPressed: () {
-          try {
-            if (selectedSubject != null) {
-              ref.read(selectedSubjectProvider.notifier).state = null;
-              ref.read(outcomeSearchQueryProvider.notifier).state = '';
-              setState(() => _isSearching = false);
-            } else if (selectedGrade != null) {
-              ref.read(selectedGradeProvider.notifier).state = null;
-              setState(() {
-                _isSubjectSearching = false;
-                _subjectSearchController.clear();
-              });
-            } else if (isFavMode) {
-              ref.read(isFavoritesModeProvider.notifier).state = false;
-            } else {
-              // Özet'teki "Kazanımlar" düğmesinden açılan sayfa (26 Ekim 2026).
-              Navigator.of(context).maybePop();
-            }
-          } catch (e, stackTrace) {
-            debugPrint('WeeklyOutcomesView geri navigasyon hatası: $e\n$stackTrace');
-          }
-        },
+        // Üstteki geri de telefonun geri tuşu gibi sayfayı kapatır (26 Ekim
+        // 2026, kullanıcı: "ikisinde de aynı davranış; geri basınca Özet'e
+        // gelmeli"). Eskiden ders → sınıf → kademe diye adım adım geri
+        // gidiyordu; telefonun geri tuşu ise doğrudan Özet'e dönüyordu.
+        onBackPressed: () => Navigator.of(context).maybePop(),
         showProfileAvatar: false,
         actions: [
           if (selectedSubject != null) ...[
