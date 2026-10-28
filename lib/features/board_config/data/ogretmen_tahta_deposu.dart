@@ -203,16 +203,22 @@ class OgretmenTahtaDeposu {
   ///
   /// `SCT1:{okulId}:{kod}:{ad}:{secret}` ya da sonunda okul adıyla
   /// (`…:{okulAdi}`, Ana Program). Okul adı yalnızca gösterim için.
+  ///
+  /// 7. alan (28 Ekim 2026) Ana Program'ın Ed25519 açık anahtarı
+  /// (base64url, 32 bayt): idare duyurularının imzası bununla doğrulanır.
+  /// Bozuksa karekod yine kabul edilir, yalnızca duyuru kanalı kapalı
+  /// kalır — tahta açma ondan bağımsız.
   static OgretmenTahtaKaydi? qrAyristir(String hamYuk) {
     final parcalar = hamYuk.trim().split(':');
-    if (parcalar.length != 5 && parcalar.length != 6) return null;
+    if (parcalar.length < 5 || parcalar.length > 7) return null;
     if (parcalar[0] != kurulumOneki) return null;
 
     final okulId = parcalar[1].trim();
     final kod = parcalar[2].trim();
     final ad = parcalar[3].trim();
     final secret = parcalar[4].trim();
-    final okulAdi = parcalar.length == 6 ? parcalar[5].trim() : '';
+    final okulAdi = parcalar.length >= 6 ? parcalar[5].trim() : '';
+    final anahtar = parcalar.length == 7 ? parcalar[6].trim() : '';
 
     if (okulId.isEmpty || kod.isEmpty || secret.isEmpty) return null;
 
@@ -222,7 +228,18 @@ class OgretmenTahtaDeposu {
       ad: ad,
       totpSecret: secret,
       okulAdi: okulAdi,
+      anaProgramAnahtari: anahtarGecerliMi(anahtar) ? anahtar : '',
     );
+  }
+
+  /// base64url, 32 bayt.
+  static bool anahtarGecerliMi(String v) {
+    if (v.isEmpty || v.length > 64) return false;
+    try {
+      return base64Url.decode(base64Url.normalize(v)).length == 32;
+    } catch (_) {
+      return false;
+    }
   }
 }
 
@@ -242,12 +259,17 @@ class OgretmenTahtaKaydi {
   /// Okulun adı (ASCII'ye katlanmış); eski karekodlarda boş.
   final String okulAdi;
 
+  /// Ana Program'ın Ed25519 açık anahtarı (base64url); idare duyurusunun
+  /// imzası bununla doğrulanır. 28 Ekim 2026'dan önceki karekodlarda boş.
+  final String anaProgramAnahtari;
+
   const OgretmenTahtaKaydi({
     required this.okulId,
     required this.kod,
     required this.ad,
     required this.totpSecret,
     this.okulAdi = '',
+    this.anaProgramAnahtari = '',
   });
 
   /// Secret'ı ya da kodu olmayan kayıt işe yaramaz: kod üretilemez.
@@ -268,6 +290,7 @@ class OgretmenTahtaKaydi {
         ad: (j['ad'] as String?) ?? '',
         totpSecret: (j['totpSecret'] as String?) ?? '',
         okulAdi: (j['okulAdi'] as String?) ?? '',
+        anaProgramAnahtari: (j['anaProgramAnahtari'] as String?) ?? '',
       );
 
   Map<String, Object?> toJson() => {
@@ -276,6 +299,7 @@ class OgretmenTahtaKaydi {
         'ad': ad,
         'totpSecret': totpSecret,
         'okulAdi': okulAdi,
+        'anaProgramAnahtari': anaProgramAnahtari,
       };
 }
 

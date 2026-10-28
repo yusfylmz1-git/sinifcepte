@@ -27,6 +27,7 @@ import '../../schedule/models/schedule_settings.dart';
 import '../../schedule/providers/schedule_provider.dart';
 import '../../schedule/utils/gunun_akisi.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../board_config/presentation/idare_duyurusu_karti.dart';
 import '../providers/activity_feed_provider.dart';
 
 /// SınıfCepte - Ultra Modern Öğretmen Paneli & Bento Dashboard (UI-UX-MAX)
@@ -86,6 +87,7 @@ class DashboardScreen extends ConsumerWidget {
               await ref.read(scheduleProvider.notifier).loadLessons();
               await ref.read(examTrackingProvider.notifier).loadExams();
               ref.invalidate(gelenKutusuProvider);
+              ref.invalidate(idareDuyurulariProvider);
             } catch (e, stackTrace) {
               debugPrint('---------------- HATA DETAYI (Dashboard.refresh) ----------------');
               debugPrint('Hata Mesajı : $e');
@@ -104,6 +106,10 @@ class DashboardScreen extends ConsumerWidget {
                 // bulunmuyordu.
                 _aramaKutusu(context, isDark),
                 const SizedBox(height: 12),
+
+                // 0.1 İDAREDEN: Ana Program'ın imzalı duyurusu (28 Ekim
+                // 2026 kararı). Duyuru yoksa yer kaplamaz.
+                const IdareDuyurusuKarti(),
 
                 // 1. DİNAMİK KARŞILAMA VE GÜN BİLGİSİ HERO ALANI
                 _buildModernGreetingHero(

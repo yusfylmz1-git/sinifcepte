@@ -78,8 +78,11 @@ dependencies:
   # internetsiz calisir. Yuz tanima degil, hicbir sey saklanmaz. iOS en az
   # 15.5 istiyor (proje 13.0 idi, yukseltildi). Windows'ta yok.
   google_mlkit_face_detection: ^0.14.0
-  # (ed25519_edwards kaldirildi, 17 Ekim 2026: tahta yapilandirmasini
-  # artik telefon degil SinifCepte Ana Program imzaliyor.)
+  # Idare duyurusunun Ed25519 imzasini DOGRULAMAK icin (28 Ekim 2026).
+  # Ana Program duyuruyu imzalar; telefon acik anahtari tahta karekodundan
+  # alir ve buluttan gelen her duyuruyu kendisi dogrular. `crypto` yalniz
+  # ozet veriyor. (17 Ekim'de imzalama icin kullanilan surum kaldirilmisti.)
+  ed25519_edwards: ^0.3.2
 
   # Ogretmenin tahta acma bilgisinin (TOTP secret) guvenli saklanmasi.
   #
