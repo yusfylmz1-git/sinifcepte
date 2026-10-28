@@ -87,7 +87,6 @@ class _SchoolBindGateState extends ConsumerState<SchoolBindGate> {
             schoolId: profile.schoolId ?? '',
             fullName: profile.fullName,
             branch: profile.branch,
-            email: profile.email,
           )
           .timeout(const Duration(seconds: 5), onTimeout: () => false)
           .catchError((_) => false),
@@ -107,7 +106,6 @@ class _SchoolBindGateState extends ConsumerState<SchoolBindGate> {
             schoolId: updated.schoolId ?? '',
             fullName: updated.fullName,
             branch: updated.branch,
-            email: updated.email,
           )
           .timeout(const Duration(seconds: 5), onTimeout: () => false)
           .catchError((_) => false),

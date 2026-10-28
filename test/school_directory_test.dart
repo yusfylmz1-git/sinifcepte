@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sinifcepte/features/auth_profile/data/repositories/school_directory_repository.dart';
 
@@ -66,7 +68,6 @@ void main() {
           schoolId: 'meb_16_123',
           fullName: 'X',
           branch: 'Y',
-          email: '',
         ),
         isFalse,
       );
@@ -77,10 +78,26 @@ void main() {
           schoolId: '',
           fullName: 'X',
           branch: 'Y',
-          email: '',
         ),
         isFalse,
       );
+    });
+
+    test('Dizin kaydında e-posta yok; kayıt bütünüyle yeniden yazılır', () {
+      final veri = SchoolDirectoryRepository.kayitVerisi(
+        teacherUid: 'uid1',
+        schoolId: 'meb_16_123',
+        fullName: 'Selin Demir',
+        branch: 'Fizik',
+      );
+      expect(veri.keys.toSet(), {'teacherUid', 'schoolId', 'fullName', 'branch', 'updatedAt'});
+
+      // merge: true kalırsa eski sürümün yazdığı e-posta bulutta durur.
+      final kaynak = File(
+        'lib/features/auth_profile/data/repositories/school_directory_repository.dart',
+      ).readAsStringSync();
+      expect(kaynak, contains('merge: false'));
+      expect(kaynak, isNot(contains("'email'")));
     });
 
     test('Boş okul kimliğiyle listeleme boş döner', () async {

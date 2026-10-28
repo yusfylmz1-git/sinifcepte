@@ -373,6 +373,27 @@ void main() {
       }
     });
 
+    test('KRITIK: her etkinligin gelisim alani belli', () async {
+      // Ayristirici "Sosyal-Duygusal" (tireli) ve "Mesleki Gelişim"
+      // yazimini tanimiyordu; 127 etkinligin 38'inde alan bos kaliyordu.
+      const gecerli = {
+        'Sosyal Duygusal Gelişim',
+        'Akademik Gelişim',
+        'Mesleki Gelişim',
+      };
+      for (final kod in [
+        'ozelAnaokulu',
+        'ozelIlkokul',
+        'ozelOrtaokul',
+        'ozelMeslek',
+      ]) {
+        for (final e in await repo.specialActivities(kod)) {
+          expect(gecerli, contains(e.gelisimAlani),
+              reason: '$kod #${e.etkinlikNo}: "${e.gelisimAlani}"');
+        }
+      }
+    });
+
     test('KRITIK: icindekiler sayfasi etkinlik sayilmaz', () async {
       // Icindekiler de "Etkinlik" ve "Kazanım" kelimelerini iceriyordu;
       // ayiklanmazsa "...ları Ö-SRP Etkinlik Planı" gibi bozuk

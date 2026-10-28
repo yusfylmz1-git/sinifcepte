@@ -425,10 +425,18 @@ def ozelEgitimAyristir():
             gelisim = ''
             if mno:
                 sonrasi = bt[mno.end():mno.end() + 200]
+                # Belgeler "Sosyal-Duygusal" (tireli) ve "Mesleki Gelişim"
+                # de yaziyor; ikisini tanimayan eski desen 38 etkinlikte
+                # alani bos birakiyordu. Ortaokul Etkinlik 33'te kaynak
+                # "Meslek Gelişim" yaziyor (yazim hatasi).
                 mg = re.search(
-                    r'(Akademik|Sosyal Duygusal|Kariyer)[^\n]*', sonrasi)
+                    r'(Akademik|Sosyal[\s-]*Duygusal|Kariyer|Mesleki?)'
+                    r'\s*Gelişim\w*', sonrasi)
                 if mg:
                     gelisim = tek(mg.group(0))
+                    gelisim = re.sub(r'Sosyal[\s-]*Duygusal',
+                                     'Sosyal Duygusal', gelisim)
+                    gelisim = re.sub(r'^Meslek\s', 'Mesleki ', gelisim)
 
             cikti.append({
                 'programKodu': kod,
@@ -476,9 +484,47 @@ def yalnizTemizle():
     print(f'temizlendi: {HEDEF}')
 
 
+def yalnizOzelEgitim():
+    """Yalniz ozel egitim kayitlarini PDF'lerden yeniden uretir.
+
+    `python tool/build_rehberlik_dataset.py <klasor> --yalniz-ozel-egitim`
+    Genel etkinlik PDF'leri (~147 MB) yokken kullanilir. Yeni ayristirma
+    eskisinden gelisim alani DISINDA bir alanda ayrilirsa paket
+    yazilmaz: belge surumu degismis olabilir, elle bakilmali.
+    """
+    with gzip.open(HEDEF, 'rt', encoding='utf-8') as f:
+        paket = json.load(f)
+    eski = paket['ozelEgitim']
+    yeni = temizle(ozelEgitimAyristir())
+    anahtar = lambda x: (x['programKodu'], x['etkinlikNo'])
+    eskiler = {anahtar(x): x for x in eski}
+    farkli = []
+    for y in yeni:
+        e = eskiler.get(anahtar(y))
+        if e is None:
+            farkli.append((anahtar(y), 'yeni kayit'))
+            continue
+        for alan in y:
+            if alan != 'gelisimAlani' and y[alan] != e.get(alan):
+                farkli.append((anahtar(y), alan))
+    if len(yeni) != len(eski) or farkli:
+        print(f'! yazilmadi: eski={len(eski)} yeni={len(yeni)}')
+        for f in farkli[:20]:
+            print('  ', f)
+        return 1
+    paket['ozelEgitim'] = yeni
+    ham = json.dumps(paket, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+    with gzip.open(HEDEF, 'wb', compresslevel=9) as f:
+        f.write(ham)
+    bos = sum(1 for x in yeni if not x['gelisimAlani'])
+    print(f'ozel egitim yenilendi: {len(yeni)} etkinlik, bos gelisim alani {bos}')
+
+
 def main():
     if '--yalniz-temizle' in sys.argv:
         return yalnizTemizle()
+    if '--yalniz-ozel-egitim' in sys.argv:
+        return yalnizOzelEgitim()
     planlar = []
     for grade, yol in planKaynaklari():
         if not os.path.exists(yol):

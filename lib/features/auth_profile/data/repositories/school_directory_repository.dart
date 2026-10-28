@@ -7,13 +7,11 @@ class SchoolTeacher {
   final String uid;
   final String fullName;
   final String branch;
-  final String email;
 
   const SchoolTeacher({
     required this.uid,
     required this.fullName,
     this.branch = '',
-    this.email = '',
   });
 
   /// "Selin Demir — Fizik"
@@ -34,7 +32,7 @@ class SchoolTeacher {
 /// alışverişine gerek kalmaz.
 ///
 /// ## Gizlilik sınırı
-/// Yalnızca ad, branş ve e-posta yazılır — öğrencileri, sınıfları veya
+/// Yalnızca ad ve branş yazılır — e-postayı, öğrencileri, sınıfları veya
 /// notları asla. Aynı okuldaki öğretmenler birbirini görebilir; bu zaten
 /// gerçek hayatta da böyledir (aynı öğretmenler odasını paylaşırlar).
 /// Veli bu listeyi göremez.
@@ -64,22 +62,39 @@ class SchoolDirectoryRepository {
     required String schoolId,
     required String fullName,
     required String branch,
-    required String email,
   }) async {
     if (teacherUid.isEmpty || schoolId.isEmpty) return false;
 
+    // merge: false — kayıt bütünüyle yeniden yazılır. Eski sürümlerin
+    // yazdığı `email` alanı böylece öğretmen uygulamayı açınca silinir.
     return _client.setDoc(
       '$_collection/${docId(schoolId: schoolId, teacherUid: teacherUid)}',
+      kayitVerisi(
+        teacherUid: teacherUid,
+        schoolId: schoolId,
+        fullName: fullName,
+        branch: branch,
+      ),
+      merge: false,
+    );
+  }
+
+  /// Dizine yazılan alanların tamamı. E-posta bilerek yok: kadro seçiminde
+  /// ad ve branş yetiyor, okul kodunu seçen herkes dizini okuyabiliyor.
+  @visibleForTesting
+  static Map<String, dynamic> kayitVerisi({
+    required String teacherUid,
+    required String schoolId,
+    required String fullName,
+    required String branch,
+  }) =>
       {
         'teacherUid': teacherUid,
         'schoolId': schoolId,
         'fullName': fullName,
         'branch': branch,
-        'email': email,
         'updatedAt': DateTime.now().toIso8601String(),
-      },
-    );
-  }
+      };
 
   /// Aynı okuldaki öğretmenleri listeler.
   ///
@@ -106,7 +121,6 @@ class SchoolDirectoryRepository {
           uid: data['teacherUid'] as String? ?? '',
           fullName: data['fullName'] as String? ?? '',
           branch: data['branch'] as String? ?? '',
-          email: data['email'] as String? ?? '',
         );
       }).where((t) => t.uid.isNotEmpty).toList();
     } catch (e, stackTrace) {
