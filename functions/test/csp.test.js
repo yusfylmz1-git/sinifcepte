@@ -13,8 +13,10 @@
  *    ancak tıklanınca konsolda görünür.
  *
  * Karar (28 Eylül 2026): başlık önce yalnızca RAPORLAYAN kipte
- * yayımlanır; bir hafta tarayıcı konsolunda ihlal görünmezse zorunlu
- * (`Content-Security-Policy`) yapılır.
+ * yayımlandı (18 Ekim). 29 Ekim'de canlı panel başsız Chrome'da açıldı,
+ * konsolda ihlal yoktu; Google girişinin `/__/auth/handler` sayfasına
+ * başlık hiç uygulanmıyor. Kullanıcının "eksikleri tamamla" onayıyla
+ * ZORUNLU kipe alındı.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -242,8 +244,8 @@ const yonergeler = Object.fromEntries(
   })
 );
 
-test('KRITIK: başlık şimdilik RAPORLAYAN kipte (karar: bir hafta gözlem)', () => {
-  assert.equal(csp.key, 'Content-Security-Policy-Report-Only');
+test('KRITIK: başlık ZORUNLU kipte (29 Ekim 2026)', () => {
+  assert.equal(csp.key, 'Content-Security-Policy');
 });
 
 test('KRITIK: script-src satır içi betiğe izin vermiyor', () => {

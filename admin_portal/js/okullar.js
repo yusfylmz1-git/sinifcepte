@@ -21,13 +21,6 @@
     });
   }
 
-  const YONETICILIK = {
-    approved: '<span class="badge badge-period">Yönetici</span>',
-    pending: '<span class="badge badge-break">Başvuru bekliyor</span>',
-    rejected: '<span class="badge">Reddedildi</span>',
-    geri_alindi: '<span class="badge">Geri alındı</span>',
-  };
-
   const KAYIT_ADI = {
     school_admin_decision: 'Yöneticilik kararı',
     okul_dizininden_cikarma: 'Dizinden çıkarma',
@@ -67,20 +60,17 @@
       if (!kutu || !o) return;
       const m = (x) => this.kacisliMetin(x);
       const a = (x) => this.kacisliOznitelik(x);
-      const yoneticiSayisi = o.ogretmenler.filter((t) => t.yoneticilik === 'approved').length;
 
       const satirlar = o.ogretmenler.length
         ? o.ogretmenler.map((t) => `
             <tr>
               <td><strong>${m(t.ad)}</strong></td>
               <td>${m(t.brans) || '—'}</td>
-              <td style="font-size: 12px;">${m(t.eposta)}</td>
-              <td>${YONETICILIK[t.yoneticilik] || ''}</td>
               <td style="text-align: right;">${superMi()
                 ? `<button class="btn btn-sm btn-danger" data-eylem="dizindenCikar" data-arg="${a(t.uid)}">Dizinden çıkar</button>`
                 : ''}</td>
             </tr>`).join('')
-        : '<tr><td colspan="5" style="color: var(--text-muted);">Bu okulda SınıfCepte\'ye kayıtlı öğretmen yok.</td></tr>';
+        : '<tr><td colspan="3" style="color: var(--text-muted);">Bu okulda SınıfCepte\'ye kayıtlı öğretmen yok.</td></tr>';
 
       const kayitlar = o.kayitlar.length
         ? o.kayitlar.map((k) => `
@@ -95,11 +85,11 @@
       kutu.innerHTML = `
         <h3 style="margin: 16px 0 4px;">${m(o.okulId)}</h3>
         <p style="margin: 0 0 12px; font-size: 13px; color: var(--text-muted);">
-          ${o.ogretmenler.length} öğretmen kayıtlı · ${yoneticiSayisi} yönetici
+          ${o.ogretmenler.length} öğretmen kayıtlı
         </p>
         <div class="table-responsive">
           <table class="data-table">
-            <thead><tr><th>Ad</th><th>Branş</th><th>E-posta</th><th>Yöneticilik</th><th></th></tr></thead>
+            <thead><tr><th>Ad</th><th>Branş</th><th></th></tr></thead>
             <tbody>${satirlar}</tbody>
           </table>
         </div>
@@ -193,12 +183,8 @@
       const o = this._okul;
       const t = o?.ogretmenler.find((x) => x.uid === uid);
       if (!t) return;
-      const yonetici = t.yoneticilik === 'approved'
-        ? '\n\nBu kişi okulun YÖNETİCİSİ. Dizinden çıkarmak yöneticiliği kaldırmaz; ' +
-          'gerekiyorsa "Okul Yöneticileri" sekmesinden ayrıca geri alın.'
-        : '';
       const gerekce = prompt(
-        `${t.ad} (${t.eposta}) ${o.okulId} dizininden çıkarılacak.${yonetici}\n\n` +
+        `${t.ad} (${t.brans || 'branş yok'}) ${o.okulId} dizininden çıkarılacak.\n\n` +
           'Kişi okulunu uygulamada yeniden seçerse kayıt yeniden oluşur.\n\nGerekçe:'
       );
       if (gerekce === null) return;
@@ -231,7 +217,6 @@
         const y = kisi.yetkiler;
         const yetkiler = [
           y.adminRole ? `Panel: ${m(y.adminRole)}` : '',
-          y.schoolAdminStatus === 'approved' ? `Okul yöneticisi: ${m(y.schoolId)}` : '',
         ].filter(Boolean).join(' · ') || 'Yok';
         const okullar = kisi.okullar.length
           ? kisi.okullar.map((k) => `

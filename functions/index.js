@@ -31,23 +31,12 @@ import {
 } from './validate.js';
 import { ayristir, karsilastir, OSYM_TAKVIM_URL } from './osym_parser.js';
 import {
-  LISTE_DURUMLARI,
-  basvuruGuncellemesi,
-  basvuruKimligi,
-  basvuruOzeti,
-  kararDogrula,
-  kararUygunMu,
-  okulKimligiGecerli,
-  yeniClaimler,
-} from './okul_yonetici.js';
-import {
   cikarmaDogrula,
   dizinKimligi,
   epostaGecerli,
   kayitOzetleri,
   ogretmenOzeti,
   okulKimligiCoz,
-  yoneticilikEkle,
 } from './okullar.js';
 import { imzala, istekDogrula, kodBicimle, mesaj as destekMesaji } from './destek.js';
 import { bulutVerisiniSil } from './hesap_silme.js';
@@ -344,151 +333,6 @@ export const fetchOsymTakvim = onCall(
 );
 
 /**
- * Okul yöneticiliği başvuruları — panel listesi.
- *
- * Girdi : { durum: 'pending' | 'approved' | 'rejected' }
- * Çıktı : { ok: true, basvurular: [ { uid, ad, okulId, dizindeMi, ... } ] }
- *
- * Her başvuru için KANIT da dönüyor: başvuran o okulun öğretmen
- * dizininde (`school_teachers/{okulId}_{uid}`) kayıtlı mı? Kayıt onaysız
- * oluşuyor (Y9), yani kesin kanıt değil; ama dizinde olmayan birinin o
- * okulun yöneticisi olmak istemesi soru işaretidir.
- *
- * Okur, YAZMAZ: moderatör de görebilir; karar süper yöneticide.
- */
-export const listSchoolAdminRequests = onCall(
-  { region: BOLGE, maxInstances: 3, cors: true },
-  async (request) => {
-    const yetki = okumaYetkisi(request.auth);
-    if (!yetki.ok) {
-      throw new HttpsError(yetki.kod, yetki.mesaj);
-    }
-    const durum = request.data?.durum ?? 'pending';
-    if (!LISTE_DURUMLARI.has(durum)) {
-      throw new HttpsError('invalid-argument', `Bilinmeyen durum: ${durum}`);
-    }
-
-    const db = getFirestore();
-    // Sıralama bellekte: `where + orderBy` bileşik dizin isterdi.
-    const snap = await db
-      .collection('school_admin_requests')
-      .where('status', '==', durum)
-      .limit(200)
-      .get();
-
-    const dizinYollari = snap.docs.map((b) => {
-      const v = b.data();
-      return okulKimligiGecerli(v.school_id) && typeof v.teacher_uid === 'string'
-        ? db.doc(`school_teachers/${v.school_id}_${v.teacher_uid}`)
-        : null;
-    });
-    const okunacak = dizinYollari.filter(Boolean);
-    const dizin = okunacak.length ? await db.getAll(...okunacak) : [];
-    const kayitli = new Set(dizin.filter((s) => s.exists).map((s) => s.ref.path));
-
-    const basvurular = snap.docs.map((b, i) =>
-      basvuruOzeti(b.data(), dizinYollari[i] !== null && kayitli.has(dizinYollari[i].path))
-    );
-    // Bekleyenler en eskiden (sıra), kararlılar en yeniden.
-    basvurular.sort((a, b) =>
-      durum === 'pending' ? a.tarih.localeCompare(b.tarih) : b.kararTarihi.localeCompare(a.kararTarihi)
-    );
-    return { ok: true, basvurular };
-  }
-);
-
-/**
- * Okul yöneticiliği kararı: onay, ret ya da geri alma.
- *
- * Girdi : { uid, karar: 'onay' | 'red' | 'geri_al', gerekce? }
- * Çıktı : { ok: true, durum: 'approved' | 'rejected' }
- *
- * Y17 (ikinci yarı): eskiden yalnızca komut satırı betiği
- * (`scripts/admin/approve_school_admin.mjs`). Aynı sıra korunuyor:
- * önce claim, sonra başvuru belgesi; claim yazılamazsa belge "onaylı"
- * görünmesin.
- *
- * ## Geri alma ne zaman etkili olur
- * Claim ID token'da taşınıyor ve token saatte bir yenileniyor: öğretmen
- * en geç ~1 saat içinde yetkiyi kaybeder. Oturumunu zorla kapatmak
- * (`revokeRefreshTokens`) onu uygulamanın TAMAMINDAN atardı; bilerek
- * yapılmıyor.
- */
-export const decideSchoolAdmin = onCall(
-  { region: BOLGE, maxInstances: 3, cors: true },
-  async (request) => {
-    const yetki = yetkiKontrol(request.auth);
-    if (!yetki.ok) {
-      throw new HttpsError(yetki.kod, yetki.mesaj);
-    }
-    const k = kararDogrula(request.data);
-    if (!k.ok) {
-      throw new HttpsError(k.kod, k.mesaj);
-    }
-
-    const db = getFirestore();
-    const ref = db.collection('school_admin_requests').doc(basvuruKimligi(k.uid));
-    const belge = await ref.get();
-    if (!belge.exists) {
-      throw new HttpsError('not-found', 'Başvuru bulunamadı.');
-    }
-    const veri = belge.data();
-    const uygun = kararUygunMu(veri.status, k.karar);
-    if (!uygun.ok) {
-      throw new HttpsError(uygun.kod, uygun.mesaj);
-    }
-    if (k.karar === 'onay' && !okulKimligiGecerli(veri.school_id)) {
-      throw new HttpsError(
-        'failed-precondition',
-        `Başvurudaki okul kimliği geçersiz (${veri.school_id}). ` +
-          'Öğretmenden okulunu listeden seçip yeniden başvurmasını isteyin.'
-      );
-    }
-
-    const auth = getAuth();
-    let kullanici;
-    try {
-      kullanici = await auth.getUser(k.uid);
-    } catch {
-      throw new HttpsError('not-found', 'Kullanıcı hesabı bulunamadı (silinmiş olabilir).');
-    }
-
-    await auth.setCustomUserClaims(
-      k.uid,
-      yeniClaimler(kullanici.customClaims, k.karar, veri.school_id)
-    );
-    const guncelleme = basvuruGuncellemesi(
-      k.karar,
-      request.auth.uid,
-      k.gerekce,
-      new Date().toISOString()
-    );
-    // decided_ts: SUNUCU zaman damgası. Kural, reddedilen öğretmenin
-    // yeniden başvurusunu buna göre 24 saat bekletiyor (decided_at metin;
-    // kural metni zamana çeviremiyor).
-    await ref.update({ ...guncelleme, decided_ts: FieldValue.serverTimestamp() });
-
-    // Denetim kaydı: yayın gibi, kayıt atılamazsa karar geri alınmıyor.
-    try {
-      await db.collection('audit_logs').add({
-        tur: 'school_admin_decision',
-        uid: request.auth.uid,
-        email: request.auth.token.email ?? '',
-        hedefUid: k.uid,
-        okulId: veri.school_id ?? '',
-        karar: k.karar,
-        gerekce: k.gerekce,
-        olusturmaZamani: FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      console.error('Denetim kaydı yazılamadı:', e);
-    }
-
-    return { ok: true, durum: guncelleme.status };
-  }
-);
-
-/**
  * Kişisel veri görüntüleme kaydı.
  *
  * Panel öğretmen adı ve e-postası gösteriyor; kimin neye baktığı iz
@@ -510,10 +354,13 @@ async function goruntulemeKaydet(request, tur, hedef) {
 }
 
 /**
- * Bir okulun görünümü: kayıtlı öğretmenler, yöneticilik durumu, geçmiş.
+ * Bir okulun görünümü: kayıtlı öğretmenler ve geçmiş.
  *
  * Girdi : { okul: '775214' | 'meb_775214' }
- * Çıktı : { ok, okulId, ogretmenler: [...], basvurular: [...], kayitlar: [...] }
+ * Çıktı : { ok, okulId, ogretmenler: [...], kayitlar: [...] }
+ *
+ * Okul yöneticiliği 18 Ekim 2026'da kalktı; başvuru listesi ve
+ * yöneticilik sütunu 29 Ekim'de çıktı.
  *
  * Okur, YAZMAZ (görüntüleme kaydı hariç): moderatör de görebilir.
  */
@@ -530,24 +377,20 @@ export const schoolOverview = onCall(
     }
 
     const db = getFirestore();
-    const [dizin, basvuru, kayit] = await Promise.all([
+    const [dizin, kayit] = await Promise.all([
       db.collection('school_teachers').where('schoolId', '==', okulId).limit(500).get(),
-      db.collection('school_admin_requests').where('school_id', '==', okulId).limit(100).get(),
       db.collection('audit_logs').where('okulId', '==', okulId).limit(100).get(),
     ]);
     await goruntulemeKaydet(request, 'okul_goruntuleme', okulId);
 
-    const basvurular = basvuru.docs.map((b) => b.data());
-    const ogretmenler = yoneticilikEkle(
-      dizin.docs.map((b) => ogretmenOzeti(b.data())),
-      basvurular
-    ).sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+    const ogretmenler = dizin.docs
+      .map((b) => ogretmenOzeti(b.data()))
+      .sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
 
     return {
       ok: true,
       okulId,
       ogretmenler,
-      basvurular: basvurular.map((b) => basvuruOzeti(b, true)),
       kayitlar: kayitOzetleri(kayit.docs.map((b) => b.data())),
     };
   }
@@ -561,7 +404,7 @@ export const schoolOverview = onCall(
  *                       yetkiler, okullar } | null }
  *
  * Destek için: "hesabım çalışmıyor" diyen öğretmenin hangi okula
- * kayıtlı olduğu, yöneticiliği olup olmadığı tek bakışta görünsün.
+ * kayıtlı olduğu ve panel yetkisi tek bakışta görünsün.
  */
 export const findPerson = onCall(
   { region: BOLGE, maxInstances: 3, cors: true },
@@ -604,8 +447,6 @@ export const findPerson = onCall(
         devreDisi: Boolean(kullanici.disabled),
         yetkiler: {
           adminRole: c.adminRole ?? '',
-          schoolAdminStatus: c.schoolAdminStatus ?? '',
-          schoolId: c.schoolId ?? '',
         },
         okullar: dizin.docs.map((b) => {
           const v = b.data();
@@ -624,7 +465,7 @@ export const findPerson = onCall(
  * Ne için: okuldan ayrılan öğretmen ya da okula ait olmadığı hâlde
  * kendini eklemiş biri. Dizin kaydı onaysız oluşuyor (Y9); kişi okulunu
  * uygulamada yeniden seçerse kayıt yeniden oluşur — bu bir yasak değil,
- * temizlik. Yöneticiliği varsa bu işlem onu KALDIRMAZ (ayrı karar).
+ * temizlik.
  *
  * Yalnızca süper yönetici.
  */

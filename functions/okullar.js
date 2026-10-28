@@ -39,26 +39,8 @@ export function ogretmenOzeti(belge) {
     uid: String(d.teacherUid ?? ''),
     ad: String(d.fullName ?? ''),
     brans: String(d.branch ?? ''),
-    eposta: String(d.email ?? ''),
     guncelleme: String(d.updatedAt ?? ''),
   };
-}
-
-/**
- * Öğretmen listesine yöneticilik durumunu ekler.
- *
- * Kaynak başvuru belgeleri (`school_admin_requests`), claim değil:
- * claim'i okumak her öğretmen için bir Auth çağrısı olurdu. Belge,
- * `decideSchoolAdmin` ile claim'den hemen sonra yazılıyor.
- */
-export function yoneticilikEkle(ogretmenler, basvurular) {
-  const durum = new Map();
-  for (const b of basvurular || []) {
-    if (b?.teacher_uid) {
-      durum.set(String(b.teacher_uid), b.revoked_at ? 'geri_alindi' : String(b.status ?? ''));
-    }
-  }
-  return (ogretmenler || []).map((o) => ({ ...o, yoneticilik: durum.get(o.uid) ?? '' }));
 }
 
 /**

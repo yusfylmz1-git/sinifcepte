@@ -15,7 +15,6 @@ import {
   kayitOzetleri,
   ogretmenOzeti,
   okulKimligiCoz,
-  yoneticilikEkle,
 } from '../okullar.js';
 
 test('kurum kodu kanonik kimliğe çevriliyor', () => {
@@ -45,19 +44,8 @@ test('öğretmen özeti yalnızca gösterilecek alanlar', () => {
     teacherUid: 'u1', fullName: 'Ayşe', branch: 'Matematik', email: 'a@x.com',
     updatedAt: '2026-09-01', gizliAlan: 'x',
   });
-  assert.deepEqual(Object.keys(o).sort(), ['ad', 'brans', 'eposta', 'guncelleme', 'uid']);
-});
-
-test('yöneticilik durumu başvurudan ekleniyor; geri alınan ayırt ediliyor', () => {
-  const liste = yoneticilikEkle(
-    [{ uid: 'u1' }, { uid: 'u2' }, { uid: 'u3' }, { uid: 'u4' }],
-    [
-      { teacher_uid: 'u1', status: 'approved' },
-      { teacher_uid: 'u2', status: 'pending' },
-      { teacher_uid: 'u3', status: 'rejected', revoked_at: '2026-09-29' },
-    ]
-  );
-  assert.deepEqual(liste.map((o) => o.yoneticilik), ['approved', 'pending', 'geri_alindi', '']);
+  // E-posta dizinde artık yok (28 Ekim 2026); eski kayıttaki de gösterilmez.
+  assert.deepEqual(Object.keys(o).sort(), ['ad', 'brans', 'guncelleme', 'uid']);
 });
 
 test('kayıtlar en yeni başta; Firestore zaman damgası da okunuyor', () => {

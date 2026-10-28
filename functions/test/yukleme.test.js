@@ -12,13 +12,11 @@ test('KRITIK: index.js yükleniyor, her fonksiyon dışa aktarılıyor', async (
   process.env.GCLOUD_PROJECT ??= 'sinifcepte';
   const m = await import('../index.js');
   assert.deepEqual(Object.keys(m).sort(), [
-    'decideSchoolAdmin',
     'fetchOsymTakvim',
     'findPerson',
     'hesabimiSil',
     'idareDuyurusu',
     'issueSupportCode',
-    'listSchoolAdminRequests',
     'publishRemoteConfig',
     'readRemoteConfig',
     'removeFromSchoolDirectory',

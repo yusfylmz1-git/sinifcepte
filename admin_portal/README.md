@@ -76,3 +76,10 @@ Chrome'da açıldı. 180 düğmenin hepsi doğru eylemi çağırdı, ihlal çık
 Eski (onclick'li) panelde aynı deneme 174 ihlal verdi. Google ile giriş
 açılır penceresi bu denemede sınanamadı (hesap yok). Raporlayan kipteki
 hafta asıl bunu gösterecek.
+
+**Zorunlu kipe alındı (29 Ekim 2026).** Raporlayan kip 18 Ekim'den beri
+yayındaydı. Canlı panel başsız Chrome'da açıldı, konsolda ihlal yoktu.
+Google girişinin `/__/auth/handler` sayfasına başlık uygulanmıyor
+(Firebase'in ayrılmış yolu). Panel bozulursa ilk bakılacak yer
+konsoldaki "Content Security Policy" satırı; geri almak için anahtarı
+yeniden `Content-Security-Policy-Report-Only` yapıp hosting'i yayımlayın.
