@@ -7,4 +7,4 @@
 /// eklenti eklemek yerine tek sabit tutuluyor; `uygulama_surumu_test.dart`
 /// bu değeri `pubspec.yaml`'daki sürümle karşılaştırır. Sürüm artırılıp
 /// burası unutulursa test kırılır.
-const String uygulamaSurumu = '1.2.0';
+const String uygulamaSurumu = '1.3.0';

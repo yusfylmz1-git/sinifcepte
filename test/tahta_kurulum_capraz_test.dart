@@ -38,6 +38,16 @@ const _anaProgramTurkce = 'SCT1:meb_123456:YYILMAZ:Yusuf Yilmaz:'
 const _anaProgramOkulAdsiz =
     'SCT1:meb_775214:YYILMAZ:Yusuf Yilmaz:KRSXG5CTMVRXEZLUKRSXG5CTMVRXEZLU';
 
+/// 28 Ekim 2026: 7. alan Ana Program'ın açık anahtarı (idare duyurusu).
+/// Üretim: aynı komut + `anahtar=acik_anahtar_url(RFC 8032 Test 1 anahtarı)`.
+const _anaProgramAnahtarli = 'SCT1:meb_775214:YYILMAZ:Yusuf Yilmaz:'
+    'KRSXG5CTMVRXEZLUKRSXG5CTMVRXEZLU:Mimar Sinan Ortaokulu:'
+    '11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo';
+
+/// Okul adı yok, anahtar var: alan yerinde boş durur.
+const _anaProgramAnahtarliAdsiz = 'SCT1:meb_775214:YYILMAZ:Yusuf Yilmaz:'
+    'KRSXG5CTMVRXEZLUKRSXG5CTMVRXEZLU::11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo';
+
 void main() {
   test('KRİTİK: okul adlı karekod ayrıştırılıyor', () {
     final k = OgretmenTahtaDeposu.qrAyristir(_anaProgram)!;
@@ -52,6 +62,17 @@ void main() {
     final k = OgretmenTahtaDeposu.qrAyristir(_anaProgramTurkce)!;
     expect(k.totpSecret, 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ');
     expect(k.okulAdi, 'Sehit Ogretmen Ilkokulu');
+  });
+
+  test('KRİTİK: anahtarlı (7 alan) karekod okunuyor, anahtar saklanıyor', () {
+    final k = OgretmenTahtaDeposu.qrAyristir(_anaProgramAnahtarli)!;
+    expect(k.totpSecret, 'KRSXG5CTMVRXEZLUKRSXG5CTMVRXEZLU');
+    expect(k.okulAdi, 'Mimar Sinan Ortaokulu');
+    expect(k.anaProgramAnahtari, '11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo');
+
+    final adsiz = OgretmenTahtaDeposu.qrAyristir(_anaProgramAnahtarliAdsiz)!;
+    expect(adsiz.okulAdi, isEmpty);
+    expect(adsiz.anaProgramAnahtari, '11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo');
   });
 
   test('okul adsız (eski) biçim hâlâ okunuyor', () {
