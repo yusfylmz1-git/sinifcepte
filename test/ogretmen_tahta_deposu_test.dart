@@ -145,12 +145,16 @@ void main() {
       expect(OgretmenTahtaDeposu.qrAyristir('SCT1:okul:kod:ad'), isNull);
     });
 
-    test('altıncı alan okul adı; yedinci alan reddedilir', () {
+    test('altıncı alan okul adı; yedinci Ana Program anahtarı; sekizinci reddedilir', () {
       final k = OgretmenTahtaDeposu.qrAyristir('SCT1:okul:kod:ad:secret:Okul Adi');
       expect(k!.okulAdi, 'Okul Adi');
       expect(k.totpSecret, 'secret');
+      // 28 Ekim 2026: 7. alan idare duyurusunun doğrulama anahtarı. Geçersizse
+      // karekod yine okunur, anahtar boş kalır.
+      final yedi = OgretmenTahtaDeposu.qrAyristir('SCT1:okul:kod:ad:secret:okul:fazla')!;
+      expect(yedi.anaProgramAnahtari, isEmpty);
       expect(
-        OgretmenTahtaDeposu.qrAyristir('SCT1:okul:kod:ad:secret:okul:fazla'),
+        OgretmenTahtaDeposu.qrAyristir('SCT1:okul:kod:ad:secret:okul:anahtar:fazla'),
         isNull,
       );
     });
