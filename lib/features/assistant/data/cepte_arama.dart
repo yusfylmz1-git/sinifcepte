@@ -21,6 +21,7 @@ enum CepteKategori {
   sinif('Sınıflarım'),
   ogrenci('Öğrenciler'),
   kazanim('Kazanım ve planlar'),
+  rehberlik('Rehberlik etkinlikleri'),
   belirliGun('Belirli gün ve haftalar'),
   kulup('Sosyal kulüpler'),
   ayar('Hesap ve ayarlar');
@@ -93,6 +94,13 @@ class KazanimEylemi extends CepteEylem {
   final String dersKodu;
   final String dersAdi;
   final String yayinci;
+}
+
+/// ORGM sınıf rehberlik etkinliği; okunur hâlde açılır.
+class RehberlikEtkinligiEylemi extends CepteEylem {
+  const RehberlikEtkinligiEylemi({required this.sinif, required this.hafta});
+  final int sinif;
+  final int hafta;
 }
 
 /// Plan hazırlama (yıllık ya da günlük). Eksik bilgi varsa Cepte sorar.

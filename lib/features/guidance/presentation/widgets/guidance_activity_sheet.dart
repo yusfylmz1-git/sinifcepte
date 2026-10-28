@@ -23,15 +23,33 @@ class GuidanceActivitySheet extends StatefulWidget {
     required this.onNotKaydet,
   });
 
-  final GuidancePlanItem madde;
+  /// Cepte'den açılan okunur hâl ([oku]) için `null`: plan satırı,
+  /// uygulandı işareti ve not alanı yok.
+  final GuidancePlanItem? madde;
   final GuidanceActivity? etkinlik;
   final GuidanceLogEntry? kayit;
 
   /// Sinifta BEP plani olan ogrenci sayisi.
   final int bepliOgrenci;
 
-  final ValueChanged<bool> onDurumDegisti;
-  final Future<void> Function(String) onNotKaydet;
+  final ValueChanged<bool>? onDurumDegisti;
+  final Future<void> Function(String)? onNotKaydet;
+
+  const GuidanceActivitySheet._oku({required GuidanceActivity this.etkinlik})
+      : madde = null,
+        kayit = null,
+        bepliOgrenci = 0,
+        onDurumDegisti = null,
+        onNotKaydet = null;
+
+  /// Etkinliği plan satırı olmadan, yalnız okumak için açar (Cepte
+  /// araması). Uygulandı işareti sınıfın Rehberlik Planı'nda kalır.
+  static Future<void> oku(BuildContext context, GuidanceActivity etkinlik) {
+    return ResponsiveBottomSheet.show(
+      context: context,
+      child: GuidanceActivitySheet._oku(etkinlik: etkinlik),
+    );
+  }
 
   static Future<void> show(
     BuildContext context, {
@@ -90,8 +108,10 @@ class _GuidanceActivitySheetState extends State<GuidanceActivitySheet> {
       children: [
         _baslik(isDark),
         const SizedBox(height: 12),
-        _durumSatiri(isDark),
-        const SizedBox(height: 14),
+        if (widget.madde != null) ...[
+          _durumSatiri(isDark),
+          const SizedBox(height: 14),
+        ],
 
         if (e == null)
           _bilgiKutusu(
@@ -129,20 +149,34 @@ class _GuidanceActivitySheetState extends State<GuidanceActivitySheet> {
         ],
 
         const SizedBox(height: 6),
-        _notAlani(isDark),
+        if (widget.madde != null)
+          _notAlani(isDark)
+        else
+          _bilgiKutusu(
+            isDark,
+            'Uygulandı işaretini ve notunuzu Rehberlik › Rehberlik Planı '
+            'sekmesinden girebilirsiniz.',
+            Icons.info_outline_rounded,
+            AppColors.primary,
+          ),
       ],
     );
   }
 
   Widget _baslik(bool isDark) {
-    final ad = widget.etkinlik?.etkinlikAdi ??
-        widget.madde.etkinlikAdi ??
-        'Rehberlik Etkinliği';
+    final madde = widget.madde;
+    final e = widget.etkinlik;
+    final ad = e?.etkinlikAdi ?? madde?.etkinlikAdi ?? 'Rehberlik Etkinliği';
+    final ust = madde != null
+        ? '${madde.hafta}. hafta · ${madde.tarihAraligi}'
+        : '${e!.gradeLevel == 0 ? 'Okul öncesi' : '${e.gradeLevel}. sınıf'}'
+            '${e.hafta == null ? '' : ' · ${e.hafta}. hafta'}';
+    final kazanim = madde?.kazanim ?? e?.kazanim ?? '';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '${widget.madde.hafta}. hafta · ${widget.madde.tarihAraligi}',
+          ust,
           style: AppFonts.outfit(
             fontSize: 11,
             fontWeight: FontWeight.w600,
@@ -160,7 +194,7 @@ class _GuidanceActivitySheetState extends State<GuidanceActivitySheet> {
         ),
         const SizedBox(height: 6),
         Text(
-          widget.madde.kazanim,
+          kazanim,
           style: AppFonts.outfit(
             fontSize: 12.5,
             height: 1.35,
@@ -179,7 +213,7 @@ class _GuidanceActivitySheetState extends State<GuidanceActivitySheet> {
           child: GestureDetector(
             onTap: () {
               setState(() => _uygulandi = !_uygulandi);
-              widget.onDurumDegisti(_uygulandi);
+              widget.onDurumDegisti?.call(_uygulandi);
             },
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 10),
@@ -453,7 +487,7 @@ class _GuidanceActivitySheetState extends State<GuidanceActivitySheet> {
           alignment: Alignment.centerRight,
           child: TextButton(
             onPressed: () async {
-              await widget.onNotKaydet(_not.text.trim());
+              await widget.onNotKaydet?.call(_not.text.trim());
               if (mounted) Navigator.pop(context);
             },
             child: const Text('Kaydet'),

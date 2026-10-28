@@ -457,6 +457,7 @@ class _CepteAramaViewState extends ConsumerState<CepteAramaView> {
   static IconData _ikon(CepteHedef h) => switch (h.eylem) {
         PlanEylemi() => Icons.auto_awesome_rounded,
         KazanimEylemi() => Icons.menu_book_rounded,
+        RehberlikEtkinligiEylemi() => Icons.diversity_3_rounded,
         OgrenciEylemi() => Icons.person_rounded,
         BelirliGunEylemi() => Icons.celebration_rounded,
         KulupEylemi() => Icons.groups_rounded,

@@ -126,6 +126,24 @@ void main() {
       expect(ara('5 türkçe yıllık').first.id, startsWith('yillik:5:'));
     });
 
+    test('KRITIK: 5-A öğretmeni 5. sınıfın rehberlik etkinliklerini bulur', () {
+      final rehberlik = katalog.where((h) => h.kategori == CepteKategori.rehberlik).toList();
+      expect(rehberlik.length, greaterThanOrEqualTo(30), reason: 'ORGM 5. sınıf 34 etkinlik');
+      // Yalnız öğretmenin seviyeleri: 1. sınıfın etkinliği 5-A'ya gelmez.
+      expect(rehberlik.every((h) => h.id.startsWith('rehberlik:5:')), isTrue);
+      for (final h in rehberlik.take(5)) {
+        expect(ara(h.baslik).first.id, h.id, reason: h.baslik);
+      }
+    });
+
+    test('"rehber" Rehberlik ekranını bulur; etkinlikler listeyi doldurmaz', () {
+      final sonuc = ara('rehber');
+      expect(sonuc.first.id, 'ekran:rehberlik');
+      // Kazanımında "rehberlik servisi" geçen etkinlik çıkabilir; 34 haftanın
+      // hepsi çıkmamalı (yolda "rehberlik" sözü bu yüzden yok).
+      expect(sonuc.where((h) => h.kategori == CepteKategori.rehberlik).length, lessThanOrEqualTo(3));
+    });
+
     test('her arama hızlı (yazarken çalışıyor)', () {
       final s = Stopwatch()..start();
       for (final q in ['k', 'kr', 'kro', 'krok', 'kroki', '23 n', 'veli top', 'a']) {

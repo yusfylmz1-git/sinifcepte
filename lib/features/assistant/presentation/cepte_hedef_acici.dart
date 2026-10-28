@@ -42,7 +42,9 @@ import '../../exam_operations/presentation/views/exam_operations_menu_view.dart'
 import '../../exam_operations/presentation/views/exam_tracking_view.dart';
 import '../../exam_operations/presentation/views/project_tracking_view.dart';
 import '../../exam_operations/presentation/views/quiz_list_view.dart';
+import '../../guidance/data/repositories/guidance_plan_repository.dart';
 import '../../guidance/presentation/screens/guidance_hub_screen.dart';
+import '../../guidance/presentation/widgets/guidance_activity_sheet.dart';
 import '../../navigation/providers/navigation_provider.dart';
 import '../../outcomes/presentation/views/weekly_outcomes_view.dart';
 import '../../outcomes/providers/outcomes_provider.dart';
@@ -82,6 +84,10 @@ Future<void> cepteHedefiAc(BuildContext context, WidgetRef ref, CepteHedef h) as
       dersN.state = {'subject_code': dersKodu, 'subject_name': dersAdi, 'publisher': yayinci};
       favoriN.state = false;
       await _git(context, const WeeklyOutcomesView());
+    case RehberlikEtkinligiEylemi(:final sinif, :final hafta):
+      final e = await GuidancePlanRepository().activityFor(gradeLevel: sinif, hafta: hafta);
+      if (e == null || !context.mounted) return;
+      await GuidanceActivitySheet.oku(context, e);
     case PlanEylemi():
       // Cepte ekranı yürütür (sınıf/ders/okul türü sorulabilir).
       break;

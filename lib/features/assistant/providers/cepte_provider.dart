@@ -6,6 +6,7 @@ import '../../../data/repositories/class_repository.dart';
 import '../../../data/repositories/student_repository.dart';
 import '../../clubs/data/repositories/club_repository.dart';
 import '../../documents/data/special_days_repository.dart';
+import '../../guidance/data/repositories/guidance_plan_repository.dart';
 import '../../outcomes/data/repositories/curriculum_outcome_repository.dart';
 import '../data/cepte_arama.dart';
 import '../data/cepte_katalog.dart';
@@ -82,12 +83,13 @@ final cepteKatalogProvider = FutureProvider.autoDispose<List<CepteHedef>>((ref) 
     ]);
   });
 
+  final seviyeler = {
+    for (final s in siniflar) ?cepteSinifSeviyesi(s.name),
+  }.toList()
+    ..sort();
+
   await ekle('kazanımlar', () async {
     final repo = CurriculumOutcomeRepository();
-    final seviyeler = {
-      for (final s in siniflar) ?cepteSinifSeviyesi(s.name),
-    }.toList()
-      ..sort();
     final dersler = <({int sinif, String kod, String ad, String yayinci})>[];
     for (final seviye in seviyeler) {
       for (final d in await repo.getAvailableSubjects(seviye)) {
@@ -100,6 +102,23 @@ final cepteKatalogProvider = FutureProvider.autoDispose<List<CepteHedef>>((ref) 
       }
     }
     return cepteKazanimHedefleri(dersler);
+  });
+
+  await ekle('rehberlik etkinlikleri', () async {
+    final repo = GuidancePlanRepository();
+    return cepteRehberlikHedefleri([
+      for (final seviye in seviyeler)
+        for (final e in await repo.activitiesFor(seviye))
+          if (e.hafta != null)
+            (
+              sinif: seviye,
+              hafta: e.hafta!,
+              ad: e.etkinlikAdi,
+              kazanim: e.kazanim,
+              yeterlik: e.yeterlikAlani,
+              gelisim: e.gelisimAlani,
+            ),
+    ]);
   });
 
   return katalog;

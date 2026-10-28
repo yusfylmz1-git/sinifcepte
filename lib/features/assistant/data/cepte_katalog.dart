@@ -339,6 +339,33 @@ List<CepteHedef> cepteKazanimHedefleri(
   return liste;
 }
 
+/// ORGM sınıf rehberlik etkinlikleri, öğretmenin sınıf seviyelerinden.
+///
+/// Etkinliğin adı başlık; kazanım ve yeterlik alanı anahtar ("duygular",
+/// "zorbalık", "meslek"). Yolda "rehberlik" sözü bilerek yok: "rehber"
+/// yazan Rehberlik ekranını arıyor, 36 haftanın etkinliği listeyi
+/// doldurmasın.
+List<CepteHedef> cepteRehberlikHedefleri(
+  List<({int sinif, int hafta, String ad, String kazanim, String yeterlik, String gelisim})>
+      etkinlikler,
+) =>
+    [
+      for (final e in etkinlikler)
+        CepteHedef(
+          id: 'rehberlik:${e.sinif}:${e.hafta}',
+          baslik: e.ad,
+          yol: '${e.sinif}. sınıf · ${e.hafta}. hafta · ORGM etkinliği',
+          kategori: CepteKategori.rehberlik,
+          anahtarlar: [
+            e.kazanim,
+            if (e.yeterlik.isNotEmpty) e.yeterlik,
+            if (e.gelisim.isNotEmpty) e.gelisim,
+          ],
+          eylem: RehberlikEtkinligiEylemi(sinif: e.sinif, hafta: e.hafta),
+          oncelik: -3,
+        ),
+    ];
+
 /// Yazılan cümle bir plan ya da kazanım isteğiyse en üste konan öneri.
 ///
 /// Öğretmenin sınıflarında olmayan bir seviye de istenebilir ("7. sınıf
