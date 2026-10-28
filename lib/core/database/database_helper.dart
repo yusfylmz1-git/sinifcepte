@@ -22,6 +22,9 @@ class DatabaseHelper {
   /// Bu cihazda en son giriş yapan hesabın kimliği.
   static const String _kLastUidKey = 'sinifcepte_last_teacher_uid';
 
+  /// Hesap silinince bu kayıt da düşer (bkz. HesapSilmeServisi).
+  static const String lastUidKey = _kLastUidKey;
+
   /// Şema sürümü. Yedekten geri yüklemede "daha yeni sürümün yedeği"
   /// denetimi de buna bakar; tek yerde durur.
   static const int veritabaniSurumu = 29;

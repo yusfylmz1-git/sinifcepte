@@ -15,6 +15,8 @@ test('KRITIK: index.js yükleniyor, her fonksiyon dışa aktarılıyor', async (
     'decideSchoolAdmin',
     'fetchOsymTakvim',
     'findPerson',
+    'hesabimiSil',
+    'idareDuyurusu',
     'issueSupportCode',
     'listSchoolAdminRequests',
     'publishRemoteConfig',

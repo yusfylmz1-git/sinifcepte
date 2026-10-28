@@ -211,7 +211,8 @@ service cloud.firestore {
     // Öğretmen okulunu seçtiğinde buraya kaydolur. Amaç: sınıf öğretmeni
     // kadroyu kurarken meslektaşlarını kod alışverişi olmadan seçebilsin.
     //
-    // Gizlilik: yalnızca ad, branş ve e-posta bulunur — öğrenci, sınıf
+    // Gizlilik: yalnızca ad ve branş bulunur (e-posta 28 Ekim 2026'da
+    // çıktı; eski kayıtlarınki öğretmen uygulamayı açınca silinir) — öğrenci, sınıf
     // veya not verisi ASLA. Aynı okuldaki öğretmenler birbirini görür
     // (gerçek hayatta da öyle); veliler bu listeye erişemez.
     match /school_teachers/{id} {
@@ -646,6 +647,17 @@ service cloud.firestore {
       allow delete: if request.auth != null
         && id.matches(request.auth.uid + '_.*');
       allow update: if false;
+    }
+
+    // İdare duyurusu (28 Ekim 2026): Ana Program'dan öğretmen telefonuna.
+    //
+    // Kanal = `{okulId}_{anahtar parmak izi}`; öğretmen onu tahta
+    // karekodundan öğrenir. Yazma yalnız `idareDuyurusu` fonksiyonundan
+    // (Admin SDK, Ed25519 imzası doğrulanmış). Telefon imzayı yine kendisi
+    // doğruluyor; burada gizli bir şey yok, okul duyurusu.
+    match /okul_duyurulari/{kanal}/duyurular/{id} {
+      allow read: if request.auth != null;
+      allow write: if false;
     }
 
     match /{path=**}/staff/{staffId} {

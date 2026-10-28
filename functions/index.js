@@ -50,6 +50,8 @@ import {
   yoneticilikEkle,
 } from './okullar.js';
 import { imzala, istekDogrula, kodBicimle, mesaj as destekMesaji } from './destek.js';
+import { bulutVerisiniSil } from './hesap_silme.js';
+import { istekDogrula as duyuruIstegi, uygula as duyuruUygula } from './idare_duyurusu.js';
 
 initializeApp();
 
@@ -719,5 +721,80 @@ export const issueSupportCode = onCall(
     });
 
     return { ok: true, kod, eposta: `${i.kurumKodu}@meb.k12.tr` };
+  }
+);
+
+/**
+ * Kullanıcının kendi hesabını siler (Google Play şartı, KVKK m.7).
+ *
+ * Girdi : { onay: 'SİL' }
+ * Çıktı : { ok: true, sinif: 2, belge: 41 }
+ *
+ * Yalnızca oturumdaki kişi KENDİNİ silebilir; uid istekten değil
+ * kimlikten okunur. Önce buluttaki kayıtlar, en son Firebase hesabı
+ * silinir: hesap önce gitseydi yarıda kalan silme bir daha
+ * çağrılamazdı. Öğretmenin telefondaki öğrenci verisine buradan
+ * ulaşılmaz; onu uygulama siler.
+ *
+ * Denetim kaydında yalnız uid ve sayılar durur (e-posta yok): silme
+ * talebinin yerine getirildiğinin kanıtı.
+ */
+export const hesabimiSil = onCall(
+  { region: BOLGE, maxInstances: 10, timeoutSeconds: 300 },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError('unauthenticated', 'Oturum açılmamış.');
+    }
+    if (request.data?.onay !== 'SİL') {
+      throw new HttpsError('invalid-argument', 'Silme onayı eksik.');
+    }
+
+    const sayilar = await bulutVerisiniSil(getFirestore(), uid);
+    try {
+      await getAuth().deleteUser(uid);
+    } catch (e) {
+      if (e?.code !== 'auth/user-not-found') throw e;
+    }
+
+    try {
+      await getFirestore().collection('audit_logs').add({
+        tur: 'hesap_silme',
+        uid,
+        ...sayilar,
+        olusturmaZamani: FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      console.error('Denetim kaydı yazılamadı:', e);
+    }
+    return { ok: true, ...sayilar };
+  }
+);
+
+/**
+ * Ana Program'ın idare duyurusunu öğretmen telefonlarının okuduğu kanala
+ * yazar ya da kanaldan siler (28 Ekim 2026 kararı).
+ *
+ * Girdi : { islem: 'yayinla', okulId, id, olusturma, baslangic, bitis,
+ *           baslik, metin, acik, imza }  |  { islem: 'sil', okulId, id,
+ *           zaman, acik, imza }
+ *
+ * Oturum İSTENMEZ: Ana Program'ın Firebase hesabı yok. Kimliği Ed25519
+ * imzası kanıtlar ve yazılan kanal anahtarın parmak izini taşır.
+ * Telefon imzayı yine kendisi doğrular (`idare_duyurusu.js`).
+ */
+export const idareDuyurusu = onCall(
+  { region: BOLGE, maxInstances: 5 },
+  async (request) => {
+    const simdi = Math.floor(Date.now() / 1000);
+    const istek = duyuruIstegi(request.data, simdi);
+    if (!istek.ok) {
+      throw new HttpsError(istek.kod, istek.mesaj);
+    }
+    const sonuc = await duyuruUygula(getFirestore(), istek, simdi);
+    if (!sonuc.ok) {
+      throw new HttpsError(sonuc.kod, sonuc.mesaj);
+    }
+    return sonuc;
   }
 );

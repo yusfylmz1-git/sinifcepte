@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SınıfCepte Hesap Silme</title>
+  <!--
+    Google Play'in istediği hesap silme sayfası (28 Ekim 2026). Play
+    Console'daki "Veri güvenliği" bölümüne bu sayfanın adresi yazılır:
+    https://sinifcepte.web.app/hesap-silme.html
+
+    Betik yok; panelin CSP'si satır içi stile izin veriyor. Metin
+    uygulamadaki "Hesabımı sil" ekranıyla aynı şeyleri söylemeli
+    (hesap_silme_ekrani.dart, functions/hesap_silme.js).
+  -->
+  <style>
+    :root {
+      --zemin: #f6f7fb;
+      --kart: #ffffff;
+      --metin: #0f172a;
+      --ikincil: #475569;
+      --cizgi: #e2e8f0;
+      --vurgu: #4f46e5;
+      --uyari: #b91c1c;
+      --uyari-zemin: #fef2f2;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --zemin: #0f172a;
+        --kart: #1e293b;
+        --metin: #f1f5f9;
+        --ikincil: #94a3b8;
+        --cizgi: #334155;
+        --vurgu: #a5b4fc;
+        --uyari: #fca5a5;
+        --uyari-zemin: #3b1d1d;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px 16px 48px;
+      background: var(--zemin);
+      color: var(--metin);
+      font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    main { max-width: 680px; margin: 0 auto; }
+    h1 { font-size: 1.6rem; margin: 0 0 4px; }
+    .alt { color: var(--ikincil); margin: 0 0 24px; }
+    section {
+      background: var(--kart);
+      border: 1px solid var(--cizgi);
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin-bottom: 16px;
+    }
+    h2 { font-size: 1.1rem; margin: 0 0 10px; }
+    ol, ul { margin: 0; padding-left: 1.3em; }
+    li + li { margin-top: 6px; }
+    .uyari {
+      background: var(--uyari-zemin);
+      border-color: transparent;
+      color: var(--uyari);
+      font-weight: 600;
+    }
+    a { color: var(--vurgu); }
+    kbd {
+      font: inherit;
+      font-weight: 700;
+      padding: 0 6px;
+      border: 1px solid var(--cizgi);
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>SınıfCepte hesabınızı silme</h1>
+    <p class="alt">Öğretmen ve veli hesapları için</p>
+
+    <section class="uyari">
+      Hesabınız ve buluttaki bütün kayıtlarınız kalıcı olarak silinir.
+      Bu işlem geri alınamaz.
+    </section>
+
+    <section>
+      <h2>Uygulamadan silme</h2>
+      <ol>
+        <li>SınıfCepte uygulamasını açın.</li>
+        <li>Öğretmenseniz alttaki <strong>Profil</strong> sekmesinde
+          <strong>Hesabımı sil</strong>'e dokunun. Veliyseniz Profil
+          sayfasındaki <strong>Oturum</strong> bölümünde
+          <strong>Hesabımı Sil</strong>'e dokunun.</li>
+        <li>Onaylamak için <kbd>SİL</kbd> yazın ve
+          <strong>Hesabımı kalıcı olarak sil</strong>'e dokunun.</li>
+      </ol>
+      <p>Silme hemen yapılır. İsterseniz telefondaki verileri de aynı anda
+        silebilirsiniz.</p>
+    </section>
+
+    <section>
+      <h2>Silinenler</h2>
+      <ul>
+        <li>Öğretmen sınıflarının bulut kayıtları: duyurular, veli mesajları,
+          randevular ve durum bildirimleri.</li>
+        <li>Veli bağlantı kodları ve veli–öğrenci bağlantıları.</li>
+        <li>Okul dizinindeki ad ve branş; kadrosunda olunan sınıflardaki
+          yazışmalar.</li>
+        <li>Velinin öğretmenlerle yazışmaları, randevu ve durum bildirimleri,
+          duyuru okuma işaretleri.</li>
+        <li>Engelleme kayıtları ve destek talepleri.</li>
+        <li>SınıfCepte hesabı. Google hesabınız silinmez.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Saklananlar</h2>
+      <ul>
+        <li>Hakkınızda yapılmış içerik bildirimleri, kötüye kullanımı
+          önlemek için incelenene kadar saklanır.</li>
+        <li>Silme işleminin yapıldığını gösteren kayıt: yalnızca hesap
+          kimliği ve silinen kayıt sayısı (ad ve e-posta yok).</li>
+      </ul>
+      <p>Öğretmenin öğrenci listesi, notları ve fotoğrafları zaten buluta
+        gönderilmez; yalnızca öğretmenin telefonunda durur.</p>
+    </section>
+
+    <section>
+      <h2>Uygulamaya erişemiyorsanız</h2>
+      <p>Google hesabınızın e-posta adresinden
+        <a href="mailto:sinifcepte@gmail.com?subject=Hesap%20silme">sinifcepte@gmail.com</a>
+        adresine "hesabımı silin" diye yazın. Talebiniz en geç 30 gün
+        içinde sonuçlandırılır.</p>
+    </section>
+  </main>
+</body>
+</html>

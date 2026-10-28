@@ -171,9 +171,10 @@ class LegalDocumentScreen extends StatelessWidget {
       'Haklarınız (KVKK md. 11)',
       'Kişisel verilerinizle ilgili olarak bilgi talep etme, düzeltilmesini '
           'veya silinmesini isteme hakkına sahipsiniz.\n\n'
-          'Hesabınızın ve verilerinizin silinmesini istiyorsanız '
-          '${SupportRepository.supportEmail} adresine yazabilirsiniz. '
-          'Talebiniz en geç 30 gün içinde sonuçlandırılır.',
+          'Hesabınızı ve buluttaki verilerinizi uygulamadan silebilirsiniz: '
+          'Profil › Hesabımı sil. Uygulamaya erişemiyorsanız '
+          '${SupportRepository.supportEmail} adresine yazın; talebiniz en geç '
+          '30 gün içinde sonuçlandırılır.',
     ),
   ];
 
@@ -237,9 +238,11 @@ class LegalDocumentScreen extends StatelessWidget {
     ),
     _Section(
       'Hesabımı nasıl silerim?',
-      '${SupportRepository.supportEmail} adresine hesabınızın silinmesini '
-          'istediğinizi yazın. Talebiniz en geç 30 gün içinde '
-          'sonuçlandırılır.',
+      'Profil sekmesinde "Hesabımı sil"e dokunun ve onay için SİL yazın. '
+          'Hesabınız ve buluttaki kayıtlarınız hemen silinir; telefondaki '
+          'verileri de silmeyi seçebilirsiniz.\n\n'
+          'Uygulamaya erişemiyorsanız ${SupportRepository.supportEmail} '
+          'adresine yazın; talebiniz en geç 30 gün içinde sonuçlandırılır.',
     ),
   ];
 }

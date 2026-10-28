@@ -2304,3 +2304,32 @@ describe('19. Bildir ve engelle (Google Play kullanıcı içeriği, 18 Ekim 2026
     await assertFails(deleteDoc(doc(parentDb(), 'user_blocks', `${TEACHER_UID}_${PARENT_UID}`)));
   });
 });
+
+describe('İdare duyurusu kanalı', () => {
+  const KANAL = 'meb_775214_21fe31dfa154a261';
+
+  before(async () => {
+    await testEnv.clearFirestore();
+    await seed(async (db) => {
+      await setDoc(doc(db, 'okul_duyurulari', KANAL, 'duyurular', 'd1'), {
+        baslik: 'Öğretmenler kurulu',
+        metin: 'Cuma 15.00',
+        bitis: 1762300800,
+      });
+    });
+  });
+
+  it('oturum açmış öğretmen kanalı okur ve listeler; oturumsuz okuyamaz', async () => {
+    await assertSucceeds(getDoc(doc(teacherDb(), 'okul_duyurulari', KANAL, 'duyurular', 'd1')));
+    await assertSucceeds(getDocs(collection(teacherDb(), 'okul_duyurulari', KANAL, 'duyurular')));
+    await assertFails(getDoc(doc(anonDb(), 'okul_duyurulari', KANAL, 'duyurular', 'd1')));
+  });
+
+  it('KRİTİK: kimse istemciden duyuru yazamaz ya da silemez (yalnız fonksiyon)', async () => {
+    const sahte = { baslik: 'Yarın okul tatil', metin: '', bitis: 1762300800 };
+    await assertFails(setDoc(doc(teacherDb(), 'okul_duyurulari', KANAL, 'duyurular', 'd2'), sahte));
+    await assertFails(setDoc(doc(superAdminDb(), 'okul_duyurulari', KANAL, 'duyurular', 'd2'), sahte));
+    await assertFails(updateDoc(doc(teacherDb(), 'okul_duyurulari', KANAL, 'duyurular', 'd1'), { metin: 'x' }));
+    await assertFails(deleteDoc(doc(teacherDb(), 'okul_duyurulari', KANAL, 'duyurular', 'd1')));
+  });
+});

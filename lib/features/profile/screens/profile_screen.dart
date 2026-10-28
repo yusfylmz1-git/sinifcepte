@@ -10,6 +10,8 @@ import '../../auth_profile/presentation/views/teacher_profile_setup_view.dart';
 import '../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../board_config/presentation/tahta_kilidi_screen.dart';
 import '../../settings/screens/settings_screen.dart';
+import '../../../core/cloud/cloud_ids.dart';
+import '../../auth_profile/presentation/screens/hesap_silme_ekrani.dart';
 import '../../parent_portal/presentation/widgets/help_support_modal.dart';
 
 /// SınıfCepte - Ben sekmesi (profil, okul, yedek, ayarlar, yardım).
@@ -186,6 +188,21 @@ class ProfileScreen extends ConsumerWidget {
                 altBaslik: 'Tema ve uygulama sürümü',
                 onTap: () => ac(const SettingsScreen()),
               ),
+
+              // Google Play hesap silmeyi uygulama içinde kolay bulunur
+              // bir yerde istiyor (28 Ekim 2026). Girişsiz masaüstü
+              // kullanımında bulut hesabı yok.
+              if (CloudIds.isValidUid(teacherProfile.id)) ...[
+                const SizedBox(height: 12),
+                _satir(
+                  isDark,
+                  ikon: Icons.delete_forever_outlined,
+                  renk: AppColors.danger,
+                  baslik: 'Hesabımı sil',
+                  altBaslik: 'Hesabınızı ve bulut kayıtlarınızı kalıcı olarak silin',
+                  onTap: () => ac(const HesapSilmeEkrani(rol: HesapRolu.ogretmen)),
+                ),
+              ],
 
               _baslik(isDark, 'Yardım'),
 

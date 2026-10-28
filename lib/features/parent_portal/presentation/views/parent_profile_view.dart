@@ -10,6 +10,7 @@ import '../screens/parent_student_connect_screen.dart';
 import '../widgets/parent_app_bar.dart';
 import '../../../auth_profile/providers/user_role_provider.dart';
 import '../widgets/help_support_modal.dart';
+import '../../../auth_profile/presentation/screens/hesap_silme_ekrani.dart';
 
 /// Profil sekmesi: veli bilgileri, bağlı çocuklar ve KVKK işlemleri.
 class ParentProfileView extends ConsumerWidget {
@@ -95,6 +96,16 @@ class ParentProfileView extends ConsumerWidget {
                 color: Colors.redAccent,
                 isDark: isDark,
                 onTap: () => _confirmSignOut(context, ref),
+              ),
+              _ActionTile(
+                icon: Icons.delete_forever_outlined,
+                title: 'Hesabımı Sil',
+                subtitle: 'Hesabınızı ve bulut kayıtlarınızı kalıcı olarak silin',
+                color: Colors.red,
+                isDark: isDark,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const HesapSilmeEkrani(rol: HesapRolu.veli)),
+                ),
               ),
 
               const SizedBox(height: 24),
