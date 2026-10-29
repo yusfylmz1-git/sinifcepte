@@ -21,6 +21,7 @@ import 'package:sinifcepte/features/guidance/data/repositories/guidance_plan_rep
 import 'package:sinifcepte/features/guidance/presentation/screens/rehberlik_dosyasi_screen.dart';
 import 'package:sinifcepte/features/guidance/presentation/views/guidance_plan_view.dart';
 import 'package:sinifcepte/features/guidance/utils/rehberlik_dosyasi_pdf.dart';
+import 'package:sinifcepte/shared/widgets/gruplu_liste.dart';
 
 /// Rehberlik Dosyası (29 Ekim 2026).
 ///

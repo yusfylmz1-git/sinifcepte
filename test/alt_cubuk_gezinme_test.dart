@@ -516,7 +516,10 @@ void main() {
         child: MaterialApp(home: ExamOperationsMenuView()),
       ));
       expect(find.byType(CustomBottomNavBar), findsNothing);
-      expect(find.text('Soru Bazlı Sınav Analizi & MEB Raporları'), findsOneWidget);
+      // Satırın durumu veritabanından gelir; okuma bitmeden test bitmesin.
+      await bekleKadar(tester, () => find.textContaining('Sıradaki:').evaluate().isNotEmpty ||
+          find.textContaining('Yaklaşan sınav yok').evaluate().isNotEmpty);
+      expect(find.text('Sınav Analizleri'), findsOneWidget);
 
       await tester.tap(find.text('e-Okul Karne Görüşü'));
       await tester.pump();

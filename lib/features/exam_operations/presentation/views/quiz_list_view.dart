@@ -85,7 +85,7 @@ class _QuizListViewState extends ConsumerState<QuizListView> {
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : const Color(0xFFF6F8FC),
       appBar: const CustomAppBar(
-        title: 'Quiz & Sözlü Not Çizelgesi',
+        title: 'Quiz ve Sözlü Notlar',
         showBackButton: true,
         showProfileAvatar: false,
       ),

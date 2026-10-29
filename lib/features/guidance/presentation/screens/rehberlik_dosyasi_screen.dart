@@ -12,6 +12,7 @@ import '../../../../data/models/student_model.dart';
 import '../../../../data/repositories/student_repository.dart';
 import '../../../../shared/screens/pdf_preview_screen.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
+import '../../../../shared/widgets/gruplu_liste.dart';
 import '../../../auth_profile/data/models/teacher_profile_model.dart';
 import '../../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../../bep/data/models/bep_models.dart';
@@ -31,14 +32,6 @@ import '../../utils/rehberlik_dosyasi_pdf.dart';
 import '../../utils/sinif_risk_haritasi_pdf.dart';
 import '../rehberlik_onizleme.dart';
 import '../views/guidance_plan_view.dart';
-
-/// Grubun zaman etiketi: içindeki aylardan biri bu aysa "bu ay", bir
-/// sonraki aysa "yaklaşıyor".
-String? zamanEtiketi(List<int> aylar, DateTime simdi) {
-  if (aylar.contains(simdi.month)) return 'bu ay';
-  if (aylar.contains(simdi.month % 12 + 1)) return 'yaklaşıyor';
-  return null;
-}
 
 /// Sınıf rehberlik dosyası: ORGM'nin dosyada istediği belgeler tek yerde.
 ///
@@ -146,9 +139,9 @@ class _RehberlikDosyasiScreenState extends ConsumerState<RehberlikDosyasiScreen>
                   _haftaKarti(isDark, teacher, ogrenciler),
                   for (final g in _gruplar(teacher, ogrenciler, devamsiz.length)) ...[
                     const SizedBox(height: 18),
-                    _grupBasligi(isDark, g.baslik, g.aylar == null ? null : zamanEtiketi(g.aylar!, DateTime.now())),
+                    GrupBasligi(g.baslik, etiket: g.aylar == null ? null : zamanEtiketi(g.aylar!, DateTime.now())),
                     const SizedBox(height: 7),
-                    _grup(isDark, g.belgeler, ogrenciler.isEmpty),
+                    GrupKutusu(satirlar: [for (final b in g.belgeler) _satir(b, ogrenciler.isEmpty)]),
                   ],
                   const SizedBox(height: 14),
                   Text(
@@ -337,7 +330,6 @@ class _RehberlikDosyasiScreenState extends ConsumerState<RehberlikDosyasiScreen>
   Color _soluk(bool isDark) => isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
   Color _yuzey(bool isDark) => isDark ? const Color(0xFF1E293B) : Colors.white;
   Color _cizgi(bool isDark) => isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-  Color _uyari(bool isDark) => isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309);
 
   /// Bu haftanın etkinliği ve yılın ilerlemesi; dokununca haftalık takip açılır.
   Widget _haftaKarti(bool isDark, TeacherProfileModel teacher, List<StudentModel> ogrenciler) {
@@ -439,56 +431,14 @@ class _RehberlikDosyasiScreenState extends ConsumerState<RehberlikDosyasiScreen>
     );
   }
 
-  Widget _grupBasligi(bool isDark, String baslik, String? etiket) {
-    return Row(
-      children: [
-        Text(baslik,
-            style: AppFonts.outfit(
-                fontSize: 10.5, fontWeight: FontWeight.w800, color: _soluk(isDark), letterSpacing: 0.7)),
-        if (etiket != null) ...[
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-            decoration: BoxDecoration(
-              color: AppColors.warning.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(etiket,
-                style: AppFonts.outfit(fontSize: 10, fontWeight: FontWeight.w700, color: _uyari(isDark))),
-          ),
-        ],
-      ],
-    );
-  }
-
-  /// Bir zaman grubundaki belgeler tek yüzeyde, araları ince çizgi.
-  Widget _grup(bool isDark, List<_Belge> belgeler, bool ogrenciYok) {
-    return Material(
-      color: _yuzey(isDark),
-      borderRadius: BorderRadius.circular(14),
-      clipBehavior: Clip.antiAlias,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _cizgi(isDark)),
-        ),
-        child: Column(
-          children: [
-            for (var i = 0; i < belgeler.length; i++) ...[
-              if (i > 0) Divider(height: 1, thickness: 1, indent: 56, color: _cizgi(isDark)),
-              _satir(isDark, belgeler[i], ogrenciYok),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _satir(bool isDark, _Belge b, bool ogrenciYok) {
+  Widget _satir(_Belge b, bool ogrenciYok) {
     final engel = b.ogrenciGerekir && ogrenciYok;
-    final eksik = b.eksik || engel;
-    return InkWell(
+    return GrupSatiri(
       key: ValueKey('rehberlik_dosyasi_${b.anahtar}'),
+      ikon: b.ikon,
+      ad: b.ad,
+      alt: engel ? 'Önce sınıfa öğrenci ekleyin' : b.alt,
+      uyari: b.eksik || engel,
       onTap: b.ac == null
           ? null
           : engel
@@ -496,42 +446,6 @@ class _RehberlikDosyasiScreenState extends ConsumerState<RehberlikDosyasiScreen>
                     const SnackBar(content: Text('Bu belge için önce sınıfa öğrenci ekleyin.')),
                   )
               : b.ac,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: isDark ? 0.18 : 0.09),
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Icon(b.ikon, size: 18, color: isDark ? AppColors.primaryLight : AppColors.primary),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(b.ad, style: AppFonts.outfit(fontSize: 13, fontWeight: FontWeight.w700, color: _yazi(isDark))),
-                  const SizedBox(height: 2),
-                  Text(
-                    engel ? 'Önce sınıfa öğrenci ekleyin' : b.alt,
-                    style: AppFonts.outfit(
-                      fontSize: 11.2,
-                      fontWeight: eksik ? FontWeight.w600 : FontWeight.w400,
-                      color: eksik ? _uyari(isDark) : _soluk(isDark),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (b.ac != null)
-              Icon(Icons.chevron_right_rounded, size: 18, color: isDark ? Colors.white38 : Colors.black26),
-          ],
-        ),
-      ),
     );
   }
 }

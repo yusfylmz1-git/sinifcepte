@@ -82,7 +82,7 @@ class _ProjectTrackingViewState extends ConsumerState<ProjectTrackingView> {
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : const Color(0xFFF6F8FC),
       appBar: const CustomAppBar(
-        title: 'Proje & Ödev Değerlendirme',
+        title: 'Proje ve Ödev Değerlendirme',
         showBackButton: true,
         showProfileAvatar: false,
       ),
