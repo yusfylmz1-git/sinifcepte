@@ -88,3 +88,8 @@ scripts/maarif/generate_all_curriculum_plans.py
 test/veri/*.pdf
 test/veri/*.xlsx
 test/veri/*.xls
+
+# Yapılacaklar listesi: Claude her oturumda okur; depo herkese açık olduğu
+# için GitHub'a gitmez (29 Ekim 2026).
+YAPILACAKLAR.md
+PLAY_ONCESI_TEST_PLANI.md
