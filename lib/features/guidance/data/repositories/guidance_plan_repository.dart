@@ -22,7 +22,6 @@ class GuidancePlanRepository {
 
   static List<GuidancePlanItem>? _plan;
   static List<GuidanceActivity>? _etkinlik;
-  static List<SpecialEducationActivity>? _ozelEgitim;
   static Future<void>? _yukleniyor;
 
   final DatabaseHelper _db = DatabaseHelper.instance;
@@ -32,7 +31,7 @@ class GuidancePlanRepository {
   /// Eşzamanlı iki çağrı gelirse ikisi de aynı Future'ı bekler;
   /// aksi hâlde 2 MB'lık JSON iki kez ayrıştırılırdı.
   Future<void> _hazirla() async {
-    if (_plan != null && _etkinlik != null && _ozelEgitim != null) return;
+    if (_plan != null && _etkinlik != null) return;
     _yukleniyor ??= _oku();
     await _yukleniyor;
   }
@@ -47,16 +46,11 @@ class GuidancePlanRepository {
       _etkinlik = (j['etkinlikler'] as List? ?? [])
           .map((e) => GuidanceActivity.fromJson(e as Map<String, dynamic>))
           .toList();
-      _ozelEgitim = (j['ozelEgitim'] as List? ?? [])
-          .map((e) =>
-              SpecialEducationActivity.fromJson(e as Map<String, dynamic>))
-          .toList();
     } catch (e) {
       // Varlık okunamazsa modül boş görünür; uygulama çökmemeli.
       debugPrint('GuidancePlanRepository: varlık okunamadı ($e)');
       _plan = const [];
       _etkinlik = const [];
-      _ozelEgitim = const [];
     } finally {
       _yukleniyor = null;
     }
@@ -103,33 +97,6 @@ class GuidancePlanRepository {
   Future<bool> hasPlan(int gradeLevel) async {
     await _hazirla();
     return _plan!.any((e) => e.gradeLevel == gradeLevel);
-  }
-
-  /// Özel eğitim programının etkinlikleri.
-  ///
-  /// [programKodu]: ozelAnaokulu / ozelIlkokul / ozelOrtaokul /
-  /// ozelMeslek.
-  Future<List<SpecialEducationActivity>> specialActivities(
-      String programKodu) async {
-    await _hazirla();
-    final liste =
-        _ozelEgitim!.where((e) => e.programKodu == programKodu).toList();
-    liste.sort((a, b) => (a.etkinlikNo ?? 99).compareTo(b.etkinlikNo ?? 99));
-    return liste;
-  }
-
-  /// Elimizdeki özel eğitim programları.
-  Future<List<({String kod, String ad, int adet})>> specialPrograms() async {
-    await _hazirla();
-    final sayac = <String, ({String ad, int adet})>{};
-    for (final e in _ozelEgitim!) {
-      final v = sayac[e.programKodu];
-      sayac[e.programKodu] =
-          (ad: e.programAdi, adet: (v?.adet ?? 0) + 1);
-    }
-    return sayac.entries
-        .map((e) => (kod: e.key, ad: e.value.ad, adet: e.value.adet))
-        .toList();
   }
 
   /// BEP'li öğrenci için o haftanın uyarlama önerileri.
@@ -213,7 +180,6 @@ class GuidancePlanRepository {
   static void resetCache() {
     _plan = null;
     _etkinlik = null;
-    _ozelEgitim = null;
     _yukleniyor = null;
   }
 }

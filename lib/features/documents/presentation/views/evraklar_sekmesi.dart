@@ -113,7 +113,7 @@ class EvraklarSekmesi extends ConsumerWidget {
               isDark,
               ad: 'Rehberlik ve BEP',
               aciklama:
-                  'Sınıf rehberlik planı, BEP gelişim raporları, özel eğitim, '
+                  'BEP gelişim raporu, rehberlik dosyası (sınıf rehberlik planı), '
                   'görüşme formları',
               ikon: Icons.psychology_rounded,
               onTap: () => ac(const GuidanceHubScreen()),

@@ -43,7 +43,7 @@ void main() {
 
     expect(find.text('Uygulandı olarak işaretle'), findsNothing);
     expect(find.byType(TextField), findsNothing);
-    expect(find.textContaining('Rehberlik › Rehberlik Planı'), findsOneWidget);
+    expect(find.textContaining('Rehberlik › Rehberlik Dosyası'), findsOneWidget);
   });
 
   testWidgets('okul öncesi etkinliği "0. sınıf" yazmaz', (tester) async {

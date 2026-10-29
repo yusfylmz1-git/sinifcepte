@@ -149,12 +149,8 @@ Future<void> _ekranAc(BuildContext context, WidgetRef ref, CepteEkran ekran) asy
     CepteEkran.quizSozlu => const QuizListView(),
     CepteEkran.sinavAnalizleri => const ExamAnalysisListView(),
     CepteEkran.rehberlik => const GuidanceHubScreen(),
-    // Rehberlik ekranının sekmeleri: Özel eğitim görünümü tek başına
-    // açılınca sayfa iskeleti yoktu (siyah zemin, başlık ve geri düğmesi
-    // yok, durum çubuğunun altında; 26 Ekim 2026).
-    CepteEkran.bep => const GuidanceHubScreen(baslangicSekmesi: GuidanceHubScreen.bepSekmesi),
-    CepteEkran.ozelEgitim =>
-      const GuidanceHubScreen(baslangicSekmesi: GuidanceHubScreen.ozelEgitimSekmesi),
+    // Rehberlik sekmesiz tek liste (29 Ekim 2026); BEP en üstteki kart.
+    CepteEkran.bep => const GuidanceHubScreen(),
     CepteEkran.calismaTakvimi => const AcademicCalendarScreen(),
     CepteEkran.eokulFoto => const EokulFotoMerkeziEkrani(),
     CepteEkran.tahtaKilidi => const TahtaKilidiScreen(),

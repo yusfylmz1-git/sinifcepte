@@ -74,7 +74,7 @@ void main() {
       'ara tatil': 'ekran:calismaTakvimi',
       'bep': 'ekran:bep',
       'kaynaştırma': 'ekran:bep',
-      'özel eğitim': 'ekran:ozelEgitim',
+      'özel eğitim': 'ekran:bep',
       'tahta şifresi': 'ekran:tahtaKilidi',
       'vesikalık': 'ekran:eokulFoto',
       'zil': 'ekran:dersSaatleri',

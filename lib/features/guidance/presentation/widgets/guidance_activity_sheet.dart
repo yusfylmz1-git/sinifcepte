@@ -154,8 +154,8 @@ class _GuidanceActivitySheetState extends State<GuidanceActivitySheet> {
         else
           _bilgiKutusu(
             isDark,
-            'Uygulandı işaretini ve notunuzu Rehberlik › Rehberlik Planı '
-            'sekmesinden girebilirsiniz.',
+            'Uygulandı işaretini ve notunuzu Rehberlik › Rehberlik Dosyası '
+            'sayfasından girebilirsiniz.',
             Icons.info_outline_rounded,
             AppColors.primary,
           ),

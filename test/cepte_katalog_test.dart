@@ -75,8 +75,6 @@ void main() {
         expect(dosya, isNotNull, reason: ad);
         expect(dosya!.readAsStringSync(), contains('Scaffold('), reason: '$ad sayfa iskeletsiz açılıyor');
       }
-      expect(siniflar.contains('SpecialEducationView'), isFalse,
-          reason: 'sekme gövdesi; Rehberlik ekranı Özel Eğitim sekmesiyle açılmalı');
     });
 
     test('açıcı her eylemi karşılıyor', () {

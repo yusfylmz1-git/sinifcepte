@@ -34,7 +34,6 @@ void main() {
   /// Çip kullanan ekranlar.
   const dosyalar = [
     'lib/features/bep/presentation/widgets/bep_option_chips.dart',
-    'lib/features/guidance/presentation/views/special_education_view.dart',
   ];
 
   test('KRITIK: cip etiketlerinin rengi acikca verilmis', () {

@@ -51,11 +51,10 @@ enum CepteEkran {
   projeOdev,
   quizSozlu,
   sinavAnalizleri,
-  ozelEgitim,
 
-  /// BEP gelişim raporları (kaynaştırma öğrencileri). "Özel eğitim"den
-  /// ayrıldı (26 Ekim 2026): özel eğitim ORGM okul programlarıdır, BEP
-  /// arayan öğretmen onları görüyordu.
+  /// BEP gelişim raporları (kaynaştırma öğrencileri). Rehberlik'teki
+  /// Özel Eğitim sekmesi 29 Ekim 2026'da kalktı; "özel eğitim" arayan
+  /// öğretmen artık buraya gelir.
   bep,
   siniflarim,
   calismaTakvimi,

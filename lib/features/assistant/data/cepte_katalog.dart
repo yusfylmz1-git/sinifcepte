@@ -127,17 +127,14 @@ List<CepteHedef> cepteEkranHedefleri() => [
       ]),
       _ekran(CepteEkran.rehberlik, 'Rehberlik', 'Özet › Rehberlik', [
         'rehberlik', 'sınıf rehberlik', 'rehberlik planı', 'rehberlik etkinliği',
-        'orgm', 'rehber öğretmen', 'rehberlik çalışması',
+        'orgm', 'rehber öğretmen', 'rehberlik çalışması', 'rehberlik dosyası',
       ]),
-      // BEP ile özel eğitim ayrı (26 Ekim 2026): "bep" arayan öğretmen
-      // özel eğitim OKULLARININ ORGM programlarına düşüyordu.
-      _ekran(CepteEkran.bep, 'BEP gelişim raporları', 'Özet › Rehberlik › BEP Gelişim', [
+      // Özel Eğitim sekmesi 29 Ekim 2026'da kalktı; "özel eğitim" arayan
+      // öğretmen BEP'e gelir (kaynaştırma öğrencisinin evrakı orada).
+      _ekran(CepteEkran.bep, 'BEP gelişim raporları', 'Özet › Rehberlik › BEP Gelişim Raporu', [
         'bep', 'bep planı', 'bep raporu', 'bireyselleştirilmiş eğitim',
         'kaynaştırma', 'kaynaştırma öğrencisi', 'bütünleştirme', 'kaba değerlendirme',
-      ]),
-      _ekran(CepteEkran.ozelEgitim, 'Özel eğitim programları', 'Özet › Rehberlik › Özel Eğitim', [
-        'özel eğitim', 'özel eğitim okulu', 'özel eğitim sınıfı', 'özel eğitim programı',
-        'ram',
+        'özel eğitim', 'özel gereksinimli', 'ram',
       ]),
       _ekran(CepteEkran.sinifim, 'Rehberlik sınıfım', 'Alt çubuk › Sınıfım', [
         'sınıfım', 'sınıf yönetimi', 'sınıf evrakları', 'şubem', 'rehberlik sınıfım',

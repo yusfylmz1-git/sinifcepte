@@ -171,20 +171,15 @@ void main() {
   });
 
   group('Sinifsiz ogretmen', () {
-    test('KRITIK: ozel egitim programlari sinif OLMADAN acilabiliyor', () {
-      // ORGM programlari salt okunur kaynak; sinifla ilgileri yok.
-      // Once "once sinif ekleyin" deyip TUM ekrani kilitliyorduk;
-      // yil basinda sinifini henuz tanimlamamis ogretmen hicbir
-      // belgeye ulasamiyordu.
+    test('KRITIK: rehberlik ekrani sinif OLMADAN da aciliyor', () {
+      // Once "once sinif ekleyin" deyip TUM ekrani kilitliyorduk.
+      // Artik kartlar gorunur, kullanilamayan kart nedenini yazar
+      // (rehberlik_ekrani_test.dart bunu ekranda sinar).
       final kod = oku('lib/features/guidance/presentation/screens/'
           'guidance_hub_screen.dart');
-      // Tum govde artik `classes.isEmpty ? bos : icerik` degil.
-      expect(
-        kod.contains('child: classes.isEmpty\n            ? _buildNoClass'),
-        isFalse,
-        reason: 'ekran tumden kilitlenmemeli',
-      );
-      expect(kod, contains('const SpecialEducationView()'));
+      expect(kod.contains('_buildNoClass'), isFalse,
+          reason: 'ekran tumden kilitlenmemeli');
+      expect(kod, contains("'Önce bir sınıf ekleyin.'"));
     });
   });
 }

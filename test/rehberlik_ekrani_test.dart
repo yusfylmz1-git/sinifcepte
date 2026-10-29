@@ -18,19 +18,19 @@ import 'package:sinifcepte/data/repositories/student_repository.dart';
 import 'package:sinifcepte/features/auth_profile/data/models/teacher_profile_model.dart';
 import 'package:sinifcepte/features/bep/presentation/views/bep_list_view.dart';
 import 'package:sinifcepte/features/guidance/presentation/screens/guidance_hub_screen.dart';
-import 'package:sinifcepte/features/guidance/presentation/views/special_education_view.dart';
+import 'package:sinifcepte/features/guidance/presentation/views/guidance_plan_view.dart';
 
-/// Rehberlik ekranı sekmeyle açılabiliyor (26 Ekim 2026).
+/// Rehberlik ekranı: sekmesiz tek liste (29 Ekim 2026).
 ///
 /// ## Neden bu test var
-/// Cepte'de "bep" arayıp sonuca dokununca Rehberlik'in "Özel Eğitim" sekme
-/// gövdesi tek başına açılıyordu: sayfa iskeleti yoktu, zemin siyah,
-/// başlık ve geri düğmesi yok, çipler durum çubuğunun altında. Artık
-/// Rehberlik ekranı istenen sekmeyle açılıyor; "bep" BEP Gelişim'i,
-/// "özel eğitim" Özel Eğitim'i gösteriyor.
+/// Kullanıcı: "Özel eğitim kısmı gereksiz, kaldıralım. Sekmeye gerek yok,
+/// alt alta: en üstte BEP gelişim raporu, altında rehberlik dosyası, en
+/// altta formlar. Formlara basınca Rehberlik & Resmî Form Merkezi doğrudan
+/// açılsın." Ayrıca sınıf yokken ekran kilitlenmez; kullanılamayan kart
+/// nedenini yazar.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  AppConfig.testDbNameOverride = 'rehberlik_sekmeleri_test.db';
+  AppConfig.testDbNameOverride = 'rehberlik_ekrani_test.db';
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
 
@@ -76,36 +76,82 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
   }
 
-  int seciliSekme(WidgetTester tester) => tester.widget<TabBar>(find.byType(TabBar)).controller!.index;
-
-  testWidgets('KRITIK: Özel Eğitim sekmesiyle açılır; başlık, geri düğmesi ve sayfa zemini var', (tester) async {
-    await sayfaOlarakAc(
-      tester,
-      const GuidanceHubScreen(baslangicSekmesi: GuidanceHubScreen.ozelEgitimSekmesi),
-    );
-    expect(seciliSekme(tester), GuidanceHubScreen.ozelEgitimSekmesi);
-    expect(find.text('Rehberlik'), findsOneWidget, reason: 'sayfanın üst çubuğu');
-    expect(find.byIcon(Icons.arrow_back_ios_new_rounded), findsOneWidget);
-    expect(find.byType(SpecialEducationView), findsOneWidget);
-    expect(
-      find.ancestor(of: find.byType(SpecialEducationView), matching: find.byType(Scaffold)),
-      findsWidgets,
-      reason: 'sekme gövdesi bir sayfanın içinde',
-    );
-    await bekleKadar(tester, () => find.textContaining('gösterge').evaluate().isNotEmpty);
-    expect(find.textContaining('gösterge'), findsWidgets, reason: 'ORGM programları yüklendi');
-  });
-
-  testWidgets('varsayılan ve "bep" açılışı BEP Gelişim sekmesi', (tester) async {
-    await sayfaOlarakAc(tester, const GuidanceHubScreen());
-    expect(seciliSekme(tester), GuidanceHubScreen.bepSekmesi);
-    expect(GuidanceHubScreen.bepSekmesi, 0);
-    expect(find.text('BEP Gelişim'), findsOneWidget);
-    // Sınıf listesi okuması bitmeden test biterse kapanmış veritabanına yazar.
+  /// Sınıf ve öğrenci okuması bitmeden test biterse kapanmış veritabanına yazar.
+  Future<void> dinlen(WidgetTester tester) async {
     for (var i = 0; i < 10; i++) {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 40)));
       await tester.pump();
     }
+  }
+
+  Future<void> sinifKur(WidgetTester tester, {required bool rehberlik}) async {
+    await tester.runAsync(() async {
+      final id = await ClassRepository().insertClass(
+          ClassModel(name: '5-A', subject: 'Türkçe', academicYear: '2026-2027', isHomeroom: rehberlik));
+      await StudentRepository()
+          .insertStudent(StudentModel(classId: id, schoolNumber: 3, firstName: 'Ayşe', lastName: 'KAYA'));
+    });
+  }
+
+  bool yuklendi() =>
+      find.text('Önce bir sınıf ekleyin.').evaluate().isEmpty &&
+      find.textContaining('öğrenci yok').evaluate().isEmpty;
+
+  testWidgets('KRITIK: sekme yok; BEP Gelişim Raporu, Rehberlik Dosyası, Formlar alt alta; Özel Eğitim yok',
+      (tester) async {
+    await sayfaOlarakAc(tester, const GuidanceHubScreen());
+    await dinlen(tester);
+    expect(find.byType(TabBar), findsNothing);
+    expect(find.textContaining('Özel Eğitim'), findsNothing);
+    expect(find.text('Rehberlik'), findsOneWidget, reason: 'sayfanın üst çubuğu');
+    expect(find.byIcon(Icons.arrow_back_ios_new_rounded), findsOneWidget);
+    final y = [
+      for (final k in ['rehberlik_bep', 'rehberlik_dosyasi', 'rehberlik_formlar'])
+        tester.getTopLeft(find.byKey(ValueKey(k))).dy,
+    ];
+    expect(y[0] < y[1] && y[1] < y[2], isTrue, reason: 'sıra: BEP, dosya, formlar');
+  });
+
+  testWidgets('sınıf yokken ekran kilitlenmez; kartlar soluk ve nedenini yazar', (tester) async {
+    await sayfaOlarakAc(tester, const GuidanceHubScreen());
+    await dinlen(tester);
+    expect(find.text('Önce bir sınıf ekleyin.'), findsNWidgets(3));
+    await tester.tap(find.text('Formlar'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Rehberlik & Resmî Form Merkezi'), findsNothing);
+  });
+
+  testWidgets('KRITIK: Formlar\'a basınca Rehberlik & Resmî Form Merkezi doğrudan açılır', (tester) async {
+    await sinifKur(tester, rehberlik: true);
+    await sayfaOlarakAc(tester, const GuidanceHubScreen());
+    await bekleKadar(tester, yuklendi);
+    await tester.tap(find.text('Formlar'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Rehberlik & Resmî Form Merkezi'), findsOneWidget);
+    await dinlen(tester);
+  });
+
+  testWidgets('Rehberlik Dosyası kendi sayfasında açılır', (tester) async {
+    await sinifKur(tester, rehberlik: true);
+    await sayfaOlarakAc(tester, const GuidanceHubScreen());
+    await bekleKadar(tester, yuklendi);
+    await tester.tap(find.text('Rehberlik Dosyası'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(GuidancePlanView), findsOneWidget);
+    expect(find.text('5-A · sınıf rehberlik planı'), findsOneWidget, reason: 'sayfanın üst çubuğu');
+    await dinlen(tester);
+  });
+
+  testWidgets('branş sınıfında Rehberlik Dosyası nedenini yazar, diğerleri açık', (tester) async {
+    await sinifKur(tester, rehberlik: false);
+    await sayfaOlarakAc(tester, const GuidanceHubScreen());
+    await bekleKadar(tester, yuklendi);
+    expect(find.textContaining('rehber öğretmeni olduğunuz şube'), findsOneWidget);
+    expect(find.textContaining('öğrenci yok'), findsNothing);
+    await dinlen(tester);
   });
 
   // Kullanıcı (26 Ekim 2026): "BEP raporunda öğrenci arama yok; tek tek
