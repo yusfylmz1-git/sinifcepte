@@ -518,7 +518,8 @@ void main() {
     testWidgets('hepsi tek listede; süzgeç ve sınıf çipleri daraltır', (tester) async {
       await hazirDurumla(tester, const GelenKutusuEkrani(), _ornekDurum());
 
-      const bildirim = 'Erken çıkış: Saat 12:30 hastaneye';
+      // Bildirim satırı (DEG-9): başlıkta öğrenci · tür, altında ayrıntı.
+      const bildirim = 'Saat 12:30 hastaneye';
       const randevu = 'Konu: Ödev takibi';
       expect(find.text(bildirim), findsOneWidget);
       expect(find.text(randevu), findsOneWidget);

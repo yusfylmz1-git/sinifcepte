@@ -5,6 +5,7 @@ import '../../../../core/cloud/cloud_ids.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_fonts.dart';
 import '../../../../data/models/class_model.dart';
+import '../../../../shared/widgets/gruplu_liste.dart';
 import '../../../auth_profile/data/repositories/school_directory_repository.dart';
 import '../../../auth_profile/data/services/teacher_identity.dart';
 import '../../../auth_profile/providers/teacher_profile_provider.dart';
@@ -266,103 +267,99 @@ class _SinifKadrosuBolumuState extends ConsumerState<SinifKadrosuBolumu> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final staffAsync = ref.watch(classStaffProvider(_classCloudId));
 
+    final soluk = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    final List<Widget> uyeler = staffAsync.when(
+      loading: () => const [
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: 16),
+          child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        ),
+      ],
+      error: (e, _) => const [
+        GrupSatiri(
+          ikon: Icons.cloud_off_rounded,
+          ad: 'Kadro yüklenemedi',
+          alt: 'İnternet bağlantınızı kontrol edin',
+          uyari: true,
+        ),
+      ],
+      // Sınıf öğretmeninin kendi satırı listede kalabalık etmez.
+      data: (staff) => [for (final m in staff.where((m) => !m.isHomeroom)) _uyeSatiri(m, isDark)],
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Kadrodaki öğretmenler bu sınıfın velileriyle yazışabilir. '
-          'Duyuru yapma yetkisi yalnız sizde.',
-          style: AppFonts.outfit(fontSize: 12, color: Colors.grey, height: 1.35),
+          'Kadrodakiler bu sınıfın velileriyle yazışabilir; duyuru yalnız sizde.',
+          style: AppFonts.outfit(fontSize: 11.5, color: soluk, height: 1.35),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         if (_busy) const LinearProgressIndicator(minHeight: 2),
-        staffAsync.when(
-          loading: () => const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        GrupKutusu(satirlar: [
+          ...uyeler,
+          GrupSatiri(
+            key: const ValueKey('kadroya_ogretmen_ekle'),
+            ikon: Icons.person_add_alt_1_rounded,
+            ad: 'Okuldan öğretmen ekle',
+            alt: uyeler.isEmpty && staffAsync.hasValue
+                ? 'Henüz ders öğretmeni eklenmedi'
+                : 'Okulunuzda kayıtlı öğretmenler',
+            onTap: _busy ? null : _ekle,
           ),
-          error: (e, _) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text(
-              'Kadro yüklenemedi. İnternet bağlantınızı kontrol edin.',
-              style: AppFonts.outfit(fontSize: 12.5, color: Colors.grey),
-            ),
-          ),
-          data: (staff) {
-            // Sınıf öğretmeninin kendi satırı listede kalabalık etmez.
-            final branslar = staff.where((m) => !m.isHomeroom).toList();
-            if (branslar.isEmpty) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Text(
-                  'Henüz ders öğretmeni eklenmedi.',
-                  style: AppFonts.outfit(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white70 : AppColors.textPrimaryLight,
-                  ),
-                ),
-              );
-            }
-            return Column(
-              children: [for (final m in branslar) _uyeSatiri(m, isDark)],
-            );
-          },
-        ),
-        const SizedBox(height: 10),
-        ElevatedButton.icon(
-          key: const ValueKey('kadroya_ogretmen_ekle'),
-          onPressed: _busy ? null : _ekle,
-          icon: const Icon(Icons.person_add_alt_1_rounded, size: 19),
-          label: const Text('Okuldan öğretmen ekle'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            minimumSize: const Size.fromHeight(44),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        ),
+        ]),
       ],
     );
   }
 
   Widget _uyeSatiri(CloudStaffMember m, bool isDark) {
     final gorusme = '${m.meetingDay} ${m.meetingTime}'.trim();
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+    return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(12),
-      ),
       child: Row(
         children: [
-          const Icon(Icons.person_rounded, size: 20, color: Color(0xFF3B82F6)),
-          const SizedBox(width: 10),
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: const Color(0xFF3B82F6).withValues(alpha: isDark ? 0.2 : 0.1),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: const Icon(Icons.person_outline_rounded, size: 18, color: Color(0xFF3B82F6)),
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   m.branch.isEmpty ? m.teacherName : '${m.teacherName} · ${m.branch}',
-                  style: AppFonts.outfit(fontSize: 13.5, fontWeight: FontWeight.w600),
+                  style: AppFonts.outfit(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (gorusme.isNotEmpty)
-                  Text(
-                    'Görüşme: $gorusme',
-                    style: AppFonts.outfit(fontSize: 11.5, color: Colors.grey),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                const SizedBox(height: 2),
+                Text(
+                  gorusme.isEmpty ? 'Görüşme saati yazılmadı' : 'Görüşme: $gorusme',
+                  style: AppFonts.outfit(
+                    fontSize: 11.2,
+                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
           ),
           IconButton(
             onPressed: _busy ? null : () => _cikar(m),
             icon: const Icon(Icons.person_remove_outlined, size: 20),
-            color: Colors.redAccent,
+            color: AppColors.danger,
             tooltip: 'Kadrodan çıkar',
             visualDensity: VisualDensity.compact,
           ),

@@ -144,12 +144,14 @@ class _GelenKutusuEkraniState extends ConsumerState<GelenKutusuEkrani> {
         ),
       if (d.eksik)
         _bilgi(isDark, 'Bazı sınıflar güncellenemedi. Aşağı çekip yeniden deneyin.', uyari: true),
+      // Satırlar Veliler sayfasında gruplu listenin içinde, zeminsiz
+      // (DEG-9); burada her biri kendi kartında durur.
       if (bildirim)
         for (final b in bildirimler)
-          BildirimKarti(rapor: b.bildirim, classCloudId: b.classCloudId),
+          _kart(isDark, BildirimKarti(rapor: b.bildirim, classCloudId: b.classCloudId)),
       if (randevu)
         for (final r in randevular)
-          RandevuKarti(randevu: r.randevu, classCloudId: r.classCloudId),
+          _kart(isDark, RandevuKarti(randevu: r.randevu, classCloudId: r.classCloudId)),
       if (mesajlar)
         for (final o in sohbetler) _sohbetSatiri(isDark, o, d),
     ];
@@ -243,6 +245,15 @@ class _GelenKutusuEkraniState extends ConsumerState<GelenKutusuEkrani> {
       ),
     );
   }
+
+  Widget _kart(bool isDark, Widget icerik) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Material(
+          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          child: icerik,
+        ),
+      );
 
   Widget _sohbetSatiri(bool isDark, SohbetOzeti o, GelenKutusuDurumu d) {
     final sinif = d.sinifAdi(o.classCloudId);

@@ -6,6 +6,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_fonts.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/class_model.dart';
+import '../../../../shared/widgets/custom_app_bar.dart';
+import '../../../../shared/widgets/gruplu_liste.dart';
 import '../../../auth_profile/data/services/teacher_identity.dart';
 import '../../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../data/models/class_announcement_model.dart';
@@ -13,10 +15,14 @@ import '../../data/services/communication_ids.dart';
 import '../../providers/cloud_communication_provider.dart';
 import '../../providers/parent_portal_provider.dart';
 
-/// Sınıf duyurusu yazma penceresi (Veliler sayfasındaki "Duyuru yap").
+/// Sınıf duyurusu yazma (Veliler sayfasındaki "Duyuru yap").
 ///
-/// Eskiden veli iletişim penceresinin "Duyurular" sekmesindeydi; o
-/// pencere kalkınca buraya taşındı (18 Ekim 2026).
+/// ## Neden tam sayfa (DEG-9, 30 Ekim 2026)
+/// Kullanıcı: "duyuru yap düğmesine basınca açılan duyuru penceresi
+/// görünümü çok kötü." Küçük pencerede metin kutusu üç satırdı, tür
+/// emojili bir açılır listede saklıydı, gönder düğmesi klavyenin altında
+/// kalıyordu. Zümre/ŞÖK'te onaylanan tam sayfa kısa form düzenine geçti:
+/// tür üstte dokunmalık seçenek, metin geniş, Gönder hep altta.
 ///
 /// Yazar ve sınıf odası kimliği [TeacherIdentity.resolve] ile çözülür.
 /// Eskiden `teacher.id` kullanılıyordu; profildeki kimlik yer tutucu
@@ -26,135 +32,240 @@ Future<void> sinifDuyurusuYaz(
   BuildContext context,
   WidgetRef ref,
   ClassModel classModel,
-) {
-  final titleCtrl = TextEditingController();
-  final contentCtrl = TextEditingController();
-  String priority = 'normal';
-  // Sınav ve etkinlik duyurularında tarih sorulur; takvimde bu tarihe
-  // göre sıralanır. Ayrı bir "sınav" koleksiyonu açılmadı — duyuru
-  // altyapısı kullanıldığı için ek maliyet doğmaz.
-  DateTime? eventAt;
-  final isDark = Theme.of(context).brightness == Brightness.dark;
+) async {
+  final taslak = await Navigator.of(context).push<DuyuruTaslagi>(
+    MaterialPageRoute(builder: (_) => DuyuruYazEkrani(sinifAdi: classModel.name)),
+  );
+  if (taslak == null || !context.mounted) return;
+  await _yayinla(
+    context,
+    ref,
+    classModel,
+    title: taslak.baslik,
+    content: taslak.metin,
+    priority: taslak.tur,
+    eventAt: taslak.tarih,
+  );
+}
 
-  return showDialog<void>(
-    context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setDialogState) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          '${classModel.name} velilerine duyuru',
-          style: AppFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16),
+typedef DuyuruTaslagi = ({String baslik, String metin, String tur, DateTime? tarih});
+
+/// Duyuru türleri: değer bulutta `priority` alanına yazılır.
+const _turler = <(String, String, IconData)>[
+  ('normal', 'Duyuru', Icons.campaign_outlined),
+  ('urgent', 'Acil', Icons.priority_high_rounded),
+  ('exam', 'Sınav', Icons.edit_note_rounded),
+  ('event', 'Etkinlik', Icons.event_outlined),
+];
+
+class DuyuruYazEkrani extends StatefulWidget {
+  const DuyuruYazEkrani({super.key, required this.sinifAdi});
+
+  final String sinifAdi;
+
+  @override
+  State<DuyuruYazEkrani> createState() => _DuyuruYazEkraniState();
+}
+
+class _DuyuruYazEkraniState extends State<DuyuruYazEkrani> {
+  final _baslik = TextEditingController();
+  final _metin = TextEditingController();
+  String _tur = 'normal';
+
+  // Sınav ve etkinlik duyurularında tarih sorulur; veli takviminde bu
+  // tarihte görünür. Ayrı bir "sınav" koleksiyonu açılmadı — duyuru
+  // altyapısı kullanıldığı için ek maliyet doğmaz.
+  DateTime? _tarih;
+
+  bool get _tarihli => _tur == 'exam' || _tur == 'event';
+  bool get _hazir => _baslik.text.trim().isNotEmpty && _metin.text.trim().isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    _baslik.addListener(() => setState(() {}));
+    _metin.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _baslik.dispose();
+    _metin.dispose();
+    super.dispose();
+  }
+
+  Future<void> _tarihSec() async {
+    final now = DateTime.now();
+    final secilen = await showDatePicker(
+      context: context,
+      initialDate: _tarih ?? now.add(const Duration(days: 7)),
+      firstDate: now.subtract(const Duration(days: 1)),
+      lastDate: now.add(const Duration(days: 365)),
+      locale: const Locale('tr', 'TR'),
+    );
+    if (secilen != null) setState(() => _tarih = secilen);
+  }
+
+  void _gonder() => Navigator.of(context).pop<DuyuruTaslagi>((
+        baslik: _baslik.text.trim(),
+        metin: _metin.text.trim(),
+        tur: _tur,
+        tarih: _tarihli ? _tarih : null,
+      ));
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final soluk = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    return Scaffold(
+      backgroundColor: isDark ? AppColors.darkBackground : const Color(0xFFF8FAFC),
+      appBar: CustomAppBar(
+        title: 'Duyuru yaz',
+        subtitle: '${widget.sinifAdi} velilerine',
+        showProfileAvatar: false,
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                children: [
+                  const GrupBasligi('TÜR'),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [for (final t in _turler) _turSecenegi(isDark, t)],
+                  ),
+                  if (_tarihli) ...[
+                    const SizedBox(height: 18),
+                    GrupBasligi(_tur == 'exam' ? 'SINAV TARİHİ' : 'ETKİNLİK TARİHİ'),
+                    const SizedBox(height: 7),
+                    GrupKutusu(satirlar: [
+                      GrupSatiri(
+                        key: const ValueKey('duyuru_tarih'),
+                        ikon: Icons.event_outlined,
+                        ad: _tarih == null ? 'Tarih seçin' : AppDateFormatter.formatTurkishDate(_tarih!),
+                        alt: _tarih == null ? 'İsteğe bağlı; veli takviminde bu günde görünür' : 'Değiştirmek için dokunun',
+                        onTap: _tarihSec,
+                      ),
+                    ]),
+                  ],
+                  const SizedBox(height: 18),
+                  const GrupBasligi('BAŞLIK'),
+                  const SizedBox(height: 7),
+                  TextField(
+                    key: const ValueKey('duyuru_baslik'),
+                    controller: _baslik,
+                    // Uzunluk sınırı: sınırsız metin Firestore doküman
+                    // sınırını (1 MiB) zorluyor ve arayüzü taşırıyordu.
+                    maxLength: 100,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: _alan(isDark, 'Örn: Veli toplantısı'),
+                  ),
+                  const SizedBox(height: 6),
+                  const GrupBasligi('METİN'),
+                  const SizedBox(height: 7),
+                  TextField(
+                    key: const ValueKey('duyuru_metin'),
+                    controller: _metin,
+                    minLines: 6,
+                    maxLines: 12,
+                    maxLength: 2000,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: _alan(isDark, 'Velilere iletmek istediğiniz ayrıntılar'),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Bu sınıfa bağlı veliler uygulamayı açınca görür.',
+                    style: AppFonts.outfit(fontSize: 11.5, color: soluk),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+              child: FilledButton.icon(
+                key: const ValueKey('duyuru_gonder'),
+                onPressed: _hazir ? _gonder : null,
+                icon: const Icon(Icons.send_rounded, size: 18),
+                label: const Text('Gönder'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 14.5, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
         ),
-        content: SingleChildScrollView(
-          child: Column(
+      ),
+    );
+  }
+
+  Widget _turSecenegi(bool isDark, (String, String, IconData) t) {
+    final (deger, ad, ikon) = t;
+    final secili = _tur == deger;
+    final renk = secili
+        ? (isDark ? AppColors.primaryLight : AppColors.primary)
+        : (isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569));
+    return Material(
+      color: secili
+          ? AppColors.primary.withValues(alpha: isDark ? 0.22 : 0.10)
+          : (isDark ? const Color(0xFF1E293B) : Colors.white),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: secili
+              ? AppColors.primary.withValues(alpha: 0.7)
+              : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+        ),
+      ),
+      child: InkWell(
+        key: ValueKey('duyuru_tur_$deger'),
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => setState(() {
+          _tur = deger;
+          // Tarih yalnızca sınav ve etkinlikte anlamlı.
+          if (!_tarihli) _tarih = null;
+        }),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: titleCtrl,
-                // Uzunluk sınırı: sınırsız metin Firestore doküman
-                // sınırını (1 MiB) zorluyor ve arayüzü taşırıyordu.
-                maxLength: 100,
-                decoration: const InputDecoration(
-                  labelText: 'Duyuru Başlığı',
-                  hintText: 'Örn: Veli Toplantısı',
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: contentCtrl,
-                maxLines: 3,
-                maxLength: 2000,
-                decoration: const InputDecoration(
-                  labelText: 'Duyuru Metni',
-                  hintText: 'Detayları buraya yazın...',
-                ),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: priority,
-                decoration: const InputDecoration(labelText: 'Önem Derecesi'),
-                items: const [
-                  DropdownMenuItem(value: 'normal', child: Text('Normal Duyuru 📢')),
-                  DropdownMenuItem(value: 'urgent', child: Text('Acil Bildirim 🚨')),
-                  DropdownMenuItem(value: 'exam', child: Text('Sınav 📝')),
-                  DropdownMenuItem(value: 'event', child: Text('Etkinlik / Toplantı 📅')),
-                ],
-                onChanged: (val) {
-                  if (val != null) {
-                    setDialogState(() {
-                      priority = val;
-                      // Tarih yalnızca sınav ve etkinlikte anlamlı.
-                      if (val != 'exam' && val != 'event') eventAt = null;
-                    });
-                  }
-                },
-              ),
-              if (priority == 'exam' || priority == 'event') ...[
-                const SizedBox(height: 10),
-                InkWell(
-                  onTap: () async {
-                    final now = DateTime.now();
-                    final picked = await showDatePicker(
-                      context: ctx,
-                      initialDate: eventAt ?? now.add(const Duration(days: 7)),
-                      firstDate: now.subtract(const Duration(days: 1)),
-                      lastDate: now.add(const Duration(days: 365)),
-                      locale: const Locale('tr', 'TR'),
-                    );
-                    if (picked != null) {
-                      setDialogState(() => eventAt = picked);
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(10),
-                  child: InputDecorator(
-                    decoration: InputDecoration(
-                      labelText: priority == 'exam' ? 'Sınav Tarihi' : 'Etkinlik Tarihi',
-                      prefixIcon: const Icon(Icons.event_rounded, size: 19),
-                    ),
-                    child: Text(
-                      eventAt == null
-                          ? 'Tarih seçin (isteğe bağlı)'
-                          : AppDateFormatter.formatTurkishDate(eventAt!),
-                      style: AppFonts.outfit(
-                        fontSize: 13.5,
-                        color: eventAt == null ? Colors.grey : null,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              Icon(ikon, size: 17, color: renk),
+              const SizedBox(width: 6),
+              Text(ad,
+                  style: AppFonts.outfit(
+                      fontSize: 12.5, fontWeight: secili ? FontWeight.w700 : FontWeight.w500, color: renk)),
             ],
           ),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('İptal')),
-          ElevatedButton(
-            onPressed: () async {
-              final title = titleCtrl.text.trim();
-              final content = contentCtrl.text.trim();
-              if (title.isEmpty || content.isEmpty) return;
-              Navigator.of(ctx).pop();
-              await _yayinla(
-                context,
-                ref,
-                classModel,
-                title: title,
-                content: content,
-                priority: priority,
-                eventAt: eventAt,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Yayınla'),
-          ),
-        ],
       ),
-    ),
-  );
+    );
+  }
+
+  InputDecoration _alan(bool isDark, String ipucu) {
+    final cizgi = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    OutlineInputBorder kenar(Color c, [double w = 1]) => OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: c, width: w),
+        );
+    return InputDecoration(
+      hintText: ipucu,
+      filled: true,
+      fillColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      enabledBorder: kenar(cizgi),
+      focusedBorder: kenar(AppColors.primary, 1.5),
+      border: kenar(cizgi),
+    );
+  }
 }
 
 Future<void> _yayinla(

@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_fonts.dart';
 import '../../../../data/models/class_model.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
+import '../../../../shared/widgets/gruplu_liste.dart';
 import '../../../../shared/widgets/liste_arama_kutusu.dart';
 import '../../../auth_profile/data/services/teacher_identity.dart';
 import '../../../auth_profile/providers/teacher_profile_provider.dart';
@@ -40,6 +41,13 @@ import 'gelen_kutusu_ekrani.dart';
 /// denmemiş veli bildirimi. Mesajlar gelen kutusunda (üst çubukta da):
 /// okunmamış sayısı cihazda tutulur, sohbet açılınca sıfırlanır (18 Ekim
 /// 2026).
+///
+/// ## Gruplu liste (DEG-9, 30 Ekim 2026)
+/// Kullanıcı: "Sınıfım/Veliler bölümü çok karışık, bir düzen yok." Sayfada
+/// iki büyük düğme, ayrı ayrı kartlar, düz yazı ve tam genişlikte bir
+/// "ekle" düğmesi yan yana duruyordu. Bölüm sırası korundu; hepsi Rehberlik
+/// Dosyası ile Sınav İşlemleri'nin gruplu listesine geçti. Veli kodları
+/// üstteki bağlantı kartına, veli rehberi İletişim grubuna taşındı.
 class SinifVelileriEkrani extends ConsumerWidget {
   final ClassModel classModel;
 
@@ -56,6 +64,13 @@ class SinifVelileriEkrani extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final uid = TeacherIdentity.resolve(ref.watch(teacherProfileProvider));
     final bulutVar = CloudIds.isValidUid(uid);
+    final cls = CloudIds.classId(teacherUid: uid, localClassId: classModel.id ?? 0);
+    final rehber = GrupSatiri(
+      ikon: Icons.contact_phone_outlined,
+      ad: 'Veli rehberi',
+      alt: 'Telefonlar; arama ve WhatsApp',
+      onTap: () => _git(context, ParentContactsScreen(classModel: classModel)),
+    );
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : const Color(0xFFF8FAFC),
@@ -67,7 +82,6 @@ class SinifVelileriEkrani extends ConsumerWidget {
         child: RefreshIndicator(
           onRefresh: () async {
             if (!bulutVar) return;
-            final cls = CloudIds.classId(teacherUid: uid, localClassId: classModel.id ?? 0);
             ref.invalidate(classLinkedParentsProvider(classModel));
             ref.invalidate(classAppointmentsCloudProvider(cls));
             ref.invalidate(classStatusReportsCloudProvider(cls));
@@ -75,78 +89,53 @@ class SinifVelileriEkrani extends ConsumerWidget {
           },
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 32),
             children: [
               if (bulutVar) ...[
-                _BaglantiOzeti(classModel: classModel),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        key: const ValueKey('veliler_duyuru_yap'),
-                        onPressed: () => sinifDuyurusuYaz(context, ref, classModel),
-                        icon: const Icon(Icons.campaign_rounded, size: 19),
-                        label: const Text('Duyuru yap'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size.fromHeight(44),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _git(context, SinifDuyurulariEkrani(classModel: classModel)),
-                        icon: const Icon(Icons.history_rounded, size: 18),
-                        label: const Text('Gönderilenler'),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(44),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                _baslik(isDark, 'Yanıt bekleyenler'),
-                _Bekleyenler(classModel: classModel, uid: uid),
-                _baslik(isDark, 'Yazışmalar'),
-                _GelenKutusuSatiri(
-                  classCloudId: CloudIds.classId(teacherUid: uid, localClassId: classModel.id ?? 0),
-                ),
-                _satir(
-                  isDark,
-                  ikon: Icons.edit_note_rounded,
-                  baslik: 'Bir veliye yaz',
-                  altBaslik: 'Bağlı velilerin listesi; dokununca sohbet açılır',
-                  onTap: () => _git(context, VeliYazismalariEkrani(classModel: classModel)),
-                ),
-                _baslik(isDark, 'Derse giren öğretmenler'),
+                _BaglantiKarti(classModel: classModel),
+                const SizedBox(height: 18),
+                const GrupBasligi('DUYURULAR'),
+                const SizedBox(height: 7),
+                GrupKutusu(satirlar: [
+                  GrupSatiri(
+                    key: const ValueKey('veliler_duyuru_yap'),
+                    ikon: Icons.campaign_outlined,
+                    ad: 'Duyuru yap',
+                    alt: 'Genel, acil, sınav ya da etkinlik duyurusu',
+                    onTap: () => sinifDuyurusuYaz(context, ref, classModel),
+                  ),
+                  _GonderilenlerSatiri(classModel: classModel),
+                ]),
+                const SizedBox(height: 18),
+                _Bekleyenler(classModel: classModel, classCloudId: cls),
+                const SizedBox(height: 18),
+                const GrupBasligi('İLETİŞİM'),
+                const SizedBox(height: 7),
+                GrupKutusu(satirlar: [
+                  _GelenKutusuSatiri(classCloudId: cls),
+                  GrupSatiri(
+                    ikon: Icons.edit_note_rounded,
+                    ad: 'Bir veliye yaz',
+                    alt: 'Bağlı veliler; dokununca sohbet açılır',
+                    onTap: () => _git(context, VeliYazismalariEkrani(classModel: classModel)),
+                  ),
+                  rehber,
+                ]),
+                const SizedBox(height: 18),
+                const GrupBasligi('DERSE GİREN ÖĞRETMENLER'),
+                const SizedBox(height: 7),
                 SinifKadrosuBolumu(classModel: classModel),
-              ] else
+              ] else ...[
                 _bilgi(
                   isDark,
                   'Duyuru, mesaj ve kadro velilerle paylaşılan buluta bağlıdır; '
                   'Google ile giriş yaptığınızda açılır. Veli rehberi girişsiz de çalışır.',
                 ),
-              _baslik(isDark, 'Veli bağlantıları'),
-              if (bulutVar)
-                _satir(
-                  isDark,
-                  ikon: Icons.vpn_key_rounded,
-                  baslik: 'Veli kodları',
-                  altBaslik: 'Velinin uygulamaya bağlanma kodu; yazdır ya da paylaş',
-                  onTap: () => ClassReferenceCodesModal.show(context, classModel: classModel),
-                ),
-              _satir(
-                isDark,
-                ikon: Icons.contact_phone_rounded,
-                baslik: 'Veli rehberi',
-                altBaslik: 'Telefonlar; arama ve WhatsApp',
-                onTap: () => _git(context, ParentContactsScreen(classModel: classModel)),
-              ),
+                const SizedBox(height: 18),
+                const GrupBasligi('İLETİŞİM'),
+                const SizedBox(height: 7),
+                GrupKutusu(satirlar: [rehber]),
+              ],
             ],
           ),
         ),
@@ -158,71 +147,8 @@ class SinifVelileriEkrani extends ConsumerWidget {
 Future<void> _git(BuildContext context, Widget hedef) =>
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => hedef));
 
-/// Bölüm başlığı. toUpperCase() YOK: Dart 'i'yi 'I' yapar.
-Widget _baslik(bool isDark, String metin) => Padding(
-      padding: const EdgeInsets.fromLTRB(4, 22, 4, 8),
-      child: Text(
-        metin,
-        style: AppFonts.outfit(
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.2,
-          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-        ),
-      ),
-    );
-
-Widget _satir(
-  bool isDark, {
-  required IconData ikon,
-  required String baslik,
-  required String altBaslik,
-  required VoidCallback onTap,
-}) {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Material(
-      color: isDark ? const Color(0xFF1E293B) : Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-          child: Row(
-            children: [
-              Icon(ikon, size: 20, color: AppColors.primary),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      baslik,
-                      style: AppFonts.outfit(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w700,
-                        color: isDark ? Colors.white : const Color(0xFF0F172A),
-                      ),
-                    ),
-                    Text(
-                      altBaslik,
-                      style: AppFonts.outfit(
-                        fontSize: 11.5,
-                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right_rounded, size: 18, color: isDark ? Colors.white38 : Colors.grey),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-}
+Color _yazi(bool isDark) => isDark ? Colors.white : const Color(0xFF0F172A);
+Color _soluk(bool isDark) => isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
 Widget _bilgi(bool isDark, String metin) => Container(
       padding: const EdgeInsets.all(14),
@@ -240,6 +166,23 @@ Widget _bilgi(bool isDark, String metin) => Container(
       ),
     );
 
+/// Gruplu listedeki satırların simge kutusu; renk satırın türünü söyler.
+Widget _simge(IconData ikon, Color renk, bool isDark) => Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        color: renk.withValues(alpha: isDark ? 0.2 : 0.1),
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Icon(ikon, size: 18, color: renk),
+    );
+
+/// Satır içi düğme yazısı: temanın düğme yazı tipinden türetilir.
+/// `AppFonts.outfit` aile vermediği için düğmenin kendi yazı stilinde
+/// kullanılınca tema yazı tipi düşüyordu.
+TextStyle? _dugmeYazisi(BuildContext context) =>
+    Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 12, fontWeight: FontWeight.w700);
+
 /// "Gelen kutusu · 3 okunmamış" satırı (bu sınıfın mesajları).
 class _GelenKutusuSatiri extends ConsumerWidget {
   final String classCloudId;
@@ -248,28 +191,28 @@ class _GelenKutusuSatiri extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final d = ref.watch(gelenKutusuProvider).valueOrNull;
     final okunmamis = d == null
         ? 0
         : d.sohbetler
             .where((o) => o.classCloudId == classCloudId)
             .fold<int>(0, (t, o) => t + o.okunmamis);
-    return _satir(
-      isDark,
-      ikon: Icons.inbox_rounded,
-      baslik: okunmamis == 0 ? 'Gelen kutusu' : 'Gelen kutusu · $okunmamis okunmamış',
-      altBaslik: 'Velilerin size yazdıkları; okunmamışlar önde',
+    return GrupSatiri(
+      ikon: Icons.inbox_outlined,
+      ad: okunmamis == 0 ? 'Gelen kutusu' : 'Gelen kutusu · $okunmamis okunmamış',
+      alt: 'Velilerin size yazdıkları; okunmamışlar önde',
+      uyari: okunmamis > 0,
       onTap: () => GelenKutusuEkrani.ac(context, sinif: classCloudId),
     );
   }
 }
 
-/// "18/28 öğrencinin velisi bağlı".
-class _BaglantiOzeti extends ConsumerWidget {
+/// Veli bağlantısı: "18/28 öğrencinin velisi bağlı", ilerleme çubuğu;
+/// dokununca veli kodları açılır.
+class _BaglantiKarti extends ConsumerWidget {
   final ClassModel classModel;
 
-  const _BaglantiOzeti({required this.classModel});
+  const _BaglantiKarti({required this.classModel});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -277,19 +220,87 @@ class _BaglantiOzeti extends ConsumerWidget {
     final ogrenci = ref.watch(studentListProvider(classModel.id!)).valueOrNull?.length;
     final baglar = ref.watch(classLinkedParentsProvider(classModel)).valueOrNull;
     final bagliOgrenci = baglar?.map((l) => l.studentId).toSet().length;
+    final yuklendi = ogrenci != null && bagliOgrenci != null;
 
-    final metin = (ogrenci == null || bagliOgrenci == null)
-        ? 'Veli bağlantıları yükleniyor…'
-        : '$bagliOgrenci/$ogrenci öğrencinin velisi bağlı';
+    final metin = yuklendi ? '$bagliOgrenci/$ogrenci öğrencinin velisi bağlı' : 'Veli bağlantıları yükleniyor…';
+    final eksik = yuklendi ? (ogrenci - bagliOgrenci).clamp(0, ogrenci) : 0;
 
-    return Text(
-      metin,
-      key: const ValueKey('veli_baglanti_ozeti'),
-      style: AppFonts.outfit(
-        fontSize: 14,
-        fontWeight: FontWeight.w700,
-        color: isDark ? Colors.white : const Color(0xFF0F172A),
+    return Material(
+      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        key: const ValueKey('veli_kodlari'),
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => ClassReferenceCodesModal.show(context, classModel: classModel),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 13, 12, 13),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.45)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text('VELİ BAĞLANTISI',
+                        style: AppFonts.outfit(
+                            fontSize: 10.5, fontWeight: FontWeight.w800, color: AppColors.primary, letterSpacing: 0.6)),
+                  ),
+                  Text('Veli kodları',
+                      style: AppFonts.outfit(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                  const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.primary),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                metin,
+                key: const ValueKey('veli_baglanti_ozeti'),
+                style: AppFonts.outfit(fontSize: 15, fontWeight: FontWeight.w800, color: _yazi(isDark)),
+              ),
+              if (yuklendi && ogrenci > 0) ...[
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: (bagliOgrenci / ogrenci).clamp(0.0, 1.0),
+                    minHeight: 6,
+                    color: AppColors.success,
+                    backgroundColor: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  eksik == 0
+                      ? 'Bütün öğrencilerin velisi bağlı'
+                      : '$eksik öğrencinin velisi bağlanmadı · kodunu verin',
+                  style: AppFonts.outfit(fontSize: 11, fontWeight: FontWeight.w600, color: _soluk(isDark)),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
+    );
+  }
+}
+
+/// "Gönderilen duyurular · 3 duyuru".
+class _GonderilenlerSatiri extends ConsumerWidget {
+  final ClassModel classModel;
+
+  const _GonderilenlerSatiri({required this.classModel});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final n = ref.watch(classAnnouncementsProvider(classModel.id!)).valueOrNull?.length;
+    return GrupSatiri(
+      key: const ValueKey('veliler_gonderilenler'),
+      ikon: Icons.history_rounded,
+      ad: 'Gönderilen duyurular',
+      alt: n == null || n == 0 ? 'Okunma sayıları ve silme' : '$n duyuru · okunma sayıları ve silme',
+      onTap: () => _git(context, SinifDuyurulariEkrani(classModel: classModel)),
     );
   }
 }
@@ -297,26 +308,18 @@ class _BaglantiOzeti extends ConsumerWidget {
 /// Onay bekleyen randevular ve "görüldü" denmemiş veli bildirimleri.
 class _Bekleyenler extends ConsumerWidget {
   final ClassModel classModel;
-  final String uid;
+  final String classCloudId;
 
-  const _Bekleyenler({required this.classModel, required this.uid});
+  const _Bekleyenler({required this.classModel, required this.classCloudId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cls = CloudIds.classId(teacherUid: uid, localClassId: classModel.id ?? 0);
+    final cls = classCloudId;
     final randevular = ref.watch(classAppointmentsCloudProvider(cls));
     final bildirimler = ref.watch(classStatusReportsCloudProvider(cls));
-
-    if (randevular.isLoading || bildirimler.isLoading) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 12),
-        child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-      );
-    }
-    if (randevular.hasError || bildirimler.hasError) {
-      return _bilgi(isDark, 'Randevu ve bildirimler yüklenemedi. İnternet bağlantınızı kontrol edin.');
-    }
+    final yukleniyor = randevular.isLoading || bildirimler.isLoading;
+    final hata = randevular.hasError || bildirimler.hasError;
 
     final bekleyenRandevu = (randevular.valueOrNull ?? const <CloudAppointment>[])
         .where((a) => a.isPending)
@@ -324,29 +327,45 @@ class _Bekleyenler extends ConsumerWidget {
     final bekleyenBildirim = (bildirimler.valueOrNull ?? const <CloudStatusReport>[])
         .where((r) => !r.isAcknowledged)
         .toList();
+    final sayi = bekleyenRandevu.length + bekleyenBildirim.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (bekleyenRandevu.isEmpty && bekleyenBildirim.isEmpty)
-          _bilgi(isDark, 'Yanıt bekleyen randevu talebi ya da veli bildirimi yok.')
-        else ...[
-          for (final r in bekleyenBildirim) BildirimKarti(rapor: r, classCloudId: cls),
-          for (final a in bekleyenRandevu) RandevuKarti(randevu: a, classCloudId: cls),
-        ],
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(
-            onPressed: () => _git(context, VeliGecmisiEkrani(classModel: classModel)),
-            child: const Text('Geçmiş randevu ve bildirimler'),
-          ),
-        ),
+        GrupBasligi('YANIT BEKLEYENLER', etiket: yukleniyor || hata || sayi == 0 ? null : '$sayi yeni'),
+        const SizedBox(height: 7),
+        if (hata)
+          _bilgi(isDark, 'Randevu ve bildirimler yüklenemedi. İnternet bağlantınızı kontrol edin.')
+        else
+          GrupKutusu(satirlar: [
+            if (yukleniyor)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+              )
+            else if (sayi == 0)
+              const GrupSatiri(
+                ikon: Icons.check_circle_outline_rounded,
+                ad: 'Bekleyen yok',
+                alt: 'Randevu talebi ya da veli bildirimi gelince burada görünür',
+              )
+            else ...[
+              for (final r in bekleyenBildirim) BildirimKarti(rapor: r, classCloudId: cls),
+              for (final a in bekleyenRandevu) RandevuKarti(randevu: a, classCloudId: cls),
+            ],
+            GrupSatiri(
+              ikon: Icons.history_rounded,
+              ad: 'Geçmiş randevu ve bildirimler',
+              alt: 'Yanıtlananlar dahil',
+              onTap: () => _git(context, VeliGecmisiEkrani(classModel: classModel)),
+            ),
+          ]),
       ],
     );
   }
 }
 
-/// Veli durum bildirimi (geç gelme, erken çıkış, not) kartı.
+/// Veli durum bildirimi (geç gelme, erken çıkış, not) satırı.
 class BildirimKarti extends ConsumerWidget {
   final CloudStatusReport rapor;
   final String classCloudId;
@@ -357,65 +376,78 @@ class BildirimKarti extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final r = rapor;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(r.typeIcon, size: 18, color: r.typeColor),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '${r.studentName} · ${r.relation}: ${r.parentName}',
-                  style: AppFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
+          _simge(r.typeIcon, r.typeColor, isDark),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${r.studentName} · ${r.title}',
+                        style: AppFonts.outfit(fontSize: 13, fontWeight: FontWeight.w700, color: _yazi(isDark)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (r.isAcknowledged) ...[
+                      const SizedBox(width: 6),
+                      const Icon(Icons.check_circle_rounded, size: 14, color: AppColors.success),
+                      const SizedBox(width: 4),
+                      Text('Görüldü',
+                          style: AppFonts.outfit(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.success)),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(r.details, style: AppFonts.outfit(fontSize: 12, color: _yazi(isDark).withValues(alpha: 0.8))),
+                const SizedBox(height: 3),
+                Text(
+                  '${r.relation}: ${r.parentName} · ${DateFormat('dd.MM.yyyy HH:mm').format(r.createdAt)}',
+                  style: AppFonts.outfit(fontSize: 10.5, color: _soluk(isDark)),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              if (!r.isAcknowledged)
-                ElevatedButton(
-                  onPressed: () async {
-                    await ref.read(cloudCommunicationRepositoryProvider).acknowledgeStatusReport(
-                          classCloudId: classCloudId,
-                          reportId: r.id,
-                        );
-                    ref.invalidate(classStatusReportsCloudProvider(classCloudId));
-                    ref.invalidate(gelenKutusuProvider);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF10B981),
-                    foregroundColor: Colors.white,
-                    visualDensity: VisualDensity.compact,
+                if (!r.isAcknowledged) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton(
+                      onPressed: () async {
+                        await ref.read(cloudCommunicationRepositoryProvider).acknowledgeStatusReport(
+                              classCloudId: classCloudId,
+                              reportId: r.id,
+                            );
+                        ref.invalidate(classStatusReportsCloudProvider(classCloudId));
+                        ref.invalidate(gelenKutusuProvider);
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.success,
+                        foregroundColor: Colors.white,
+                        visualDensity: VisualDensity.compact,
+                        textStyle: _dugmeYazisi(context),
+                      ),
+                      child: const Text('Görüldü'),
+                    ),
                   ),
-                  child: const Text('Görüldü', style: TextStyle(fontSize: 11.5)),
-                )
-              else
-                const Text('Görüldü ✅',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
-            ],
+                ],
+              ],
+            ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            '${r.title}: ${r.details}',
-            style: AppFonts.outfit(fontSize: 12.5, color: isDark ? Colors.white70 : Colors.black87),
-          ),
-          const SizedBox(height: 4),
-          Text(DateFormat('dd.MM.yyyy HH:mm').format(r.createdAt),
-              style: AppFonts.outfit(fontSize: 10.5, color: Colors.grey)),
         ],
       ),
     );
   }
 }
 
-/// Veli görüşme randevusu kartı; bekleyen talepte Onayla / Reddet.
+/// Veli görüşme randevusu satırı; bekleyen talepte Onayla / Reddet.
 class RandevuKarti extends ConsumerWidget {
   final CloudAppointment randevu;
   final String classCloudId;
@@ -436,69 +468,79 @@ class RandevuKarti extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final a = randevu;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.event_note_rounded, size: 18, color: Color(0xFF3B82F6)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Randevu · ${a.studentName} · ${a.parentName} (${a.relation})',
-                  style: AppFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
+          _simge(Icons.event_note_rounded, const Color(0xFF3B82F6), isDark),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Randevu · ${a.studentName}',
+                        style: AppFonts.outfit(fontSize: 13, fontWeight: FontWeight.w700, color: _yazi(isDark)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(a.statusTitleTr,
+                        style: AppFonts.outfit(fontSize: 11, fontWeight: FontWeight.w700, color: a.statusColor)),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${DateFormat('dd.MM.yyyy').format(a.appointmentDate)} ${a.timeSlot} · ${a.teacherName}',
+                  style: AppFonts.outfit(fontSize: 12, color: _yazi(isDark).withValues(alpha: 0.8)),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              Text(a.statusTitleTr,
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: a.statusColor)),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '${a.teacherName} · ${DateFormat('dd.MM.yyyy').format(a.appointmentDate)} ${a.timeSlot}',
-            style: AppFonts.outfit(fontSize: 11.5, color: Colors.grey),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          Text('Konu: ${a.topic}',
-              style: AppFonts.outfit(fontSize: 12.5, color: isDark ? Colors.white70 : Colors.black87)),
-          if (a.isPending) ...[
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton(
-                  onPressed: () => _yanitla(ref, 'rejected'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.redAccent,
-                    side: const BorderSide(color: Colors.redAccent),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  child: const Text('Reddet', style: TextStyle(fontSize: 11.5)),
+                Text('Konu: ${a.topic}', style: AppFonts.outfit(fontSize: 12, color: _yazi(isDark).withValues(alpha: 0.8))),
+                const SizedBox(height: 3),
+                Text(
+                  '${a.relation}: ${a.parentName}',
+                  style: AppFonts.outfit(fontSize: 10.5, color: _soluk(isDark)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () => _yanitla(ref, 'confirmed'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF10B981),
-                    foregroundColor: Colors.white,
-                    visualDensity: VisualDensity.compact,
+                if (a.isPending) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      OutlinedButton(
+                        onPressed: () => _yanitla(ref, 'rejected'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.danger,
+                          side: BorderSide(color: AppColors.danger.withValues(alpha: 0.6)),
+                          visualDensity: VisualDensity.compact,
+                          textStyle: _dugmeYazisi(context),
+                        ),
+                        child: const Text('Reddet'),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: () => _yanitla(ref, 'confirmed'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.success,
+                          foregroundColor: Colors.white,
+                          visualDensity: VisualDensity.compact,
+                          textStyle: _dugmeYazisi(context),
+                        ),
+                        child: const Text('Onayla'),
+                      ),
+                    ],
                   ),
-                  child: const Text('Onayla', style: TextStyle(fontSize: 11.5)),
-                ),
+                ],
               ],
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -657,14 +699,21 @@ class VeliGecmisiEkrani extends ConsumerWidget {
       appBar: CustomAppBar(title: 'Randevu ve bildirimler', subtitle: classModel.name),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 32),
           children: [
-            _baslik(isDark, 'Veli bildirimleri'),
-            if (bildirimler.isEmpty) _bilgi(isDark, 'Veli bildirimi yok.'),
-            for (final r in bildirimler) BildirimKarti(rapor: r, classCloudId: cls),
-            _baslik(isDark, 'Randevu talepleri'),
-            if (randevular.isEmpty) _bilgi(isDark, 'Randevu talebi yok.'),
-            for (final a in randevular) RandevuKarti(randevu: a, classCloudId: cls),
+            const GrupBasligi('VELİ BİLDİRİMLERİ'),
+            const SizedBox(height: 7),
+            if (bildirimler.isEmpty)
+              _bilgi(isDark, 'Veli bildirimi yok.')
+            else
+              GrupKutusu(satirlar: [for (final r in bildirimler) BildirimKarti(rapor: r, classCloudId: cls)]),
+            const SizedBox(height: 18),
+            const GrupBasligi('RANDEVU TALEPLERİ'),
+            const SizedBox(height: 7),
+            if (randevular.isEmpty)
+              _bilgi(isDark, 'Randevu talebi yok.')
+            else
+              GrupKutusu(satirlar: [for (final a in randevular) RandevuKarti(randevu: a, classCloudId: cls)]),
           ],
         ),
       ),

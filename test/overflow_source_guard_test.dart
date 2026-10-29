@@ -76,15 +76,18 @@ void main() {
   });
 
   group('Ogretmen ekranlari', () {
-    test('KRITIK: randevu kartinda ogrenci + veli + yakinlik', () {
-      expect(
-        korumali(
-          'lib/features/parent_portal/presentation/screens/sinif_velileri_ekrani.dart',
-          r"'Randevu · ${a.studentName} · ${a.parentName} (${a.relation})',",
-        ),
-        isTrue,
-        reason: 'uc kullanici metni yan yana, Row icinde',
-      );
+    // DEG-9 (30 Ekim 2026): kartlar gruplu listenin satiri oldu; ogrenci
+    // baslikta, veli ve yakinlik alt satirda. Hepsi serbest metin.
+    test('KRITIK: randevu ve bildirim satirlarinda ogrenci, veli, yakinlik', () {
+      const yol = 'lib/features/parent_portal/presentation/screens/sinif_velileri_ekrani.dart';
+      for (final parca in [
+        r"'Randevu · ${a.studentName}',",
+        r"'${a.relation}: ${a.parentName}',",
+        r"'${r.studentName} · ${r.title}',",
+        r"'${r.relation}: ${r.parentName} · ${DateFormat('dd.MM.yyyy HH:mm').format(r.createdAt)}',",
+      ]) {
+        expect(korumali(yol, parca), isTrue, reason: parca);
+      }
     });
 
     test('KRITIK: referans kodu basligi (ogrenci adi)', () {

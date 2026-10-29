@@ -9,6 +9,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:sinifcepte/core/config/app_config.dart';
 import 'package:sinifcepte/core/database/database_helper.dart';
+import 'package:sinifcepte/core/storage/prefs_service.dart';
 import 'package:sinifcepte/data/models/class_model.dart';
 import 'package:sinifcepte/data/models/student_model.dart';
 import 'package:sinifcepte/data/repositories/class_repository.dart';
@@ -22,6 +23,7 @@ import 'package:sinifcepte/features/classes/screens/student_list_screen.dart';
 import 'package:sinifcepte/features/parent_portal/data/models/parent_link_model.dart';
 import 'package:sinifcepte/features/parent_portal/data/repositories/cloud_communication_repository.dart';
 import 'package:sinifcepte/features/parent_portal/presentation/screens/sinif_velileri_ekrani.dart';
+import 'package:sinifcepte/features/parent_portal/presentation/widgets/duyuru_penceresi.dart';
 import 'package:sinifcepte/features/parent_portal/providers/cloud_communication_provider.dart';
 import 'package:sinifcepte/features/parent_portal/providers/parent_token_provider.dart';
 
@@ -72,6 +74,8 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
+    // Önbellekteki eski örnek önceki testin duyurusunu taşır.
+    PrefsService.resetCache();
     await DatabaseHelper.instance.resetForTests();
     final rid = await ClassRepository().insertClass(const ClassModel(
         name: '5-A', subject: 'Türkçe', academicYear: '2026-2027', isHomeroom: true));
@@ -123,15 +127,21 @@ void main() {
       expect(find.byType(TabBar), findsNothing, reason: 'iç içe sekme yok');
       expect(find.byType(BottomNavigationBar), findsNothing);
 
+      // DEG-9 (30 Ekim 2026): gruplu liste; bağlantı kartı en üstte.
       final y = [
-        'Yanıt bekleyenler',
-        'Yazışmalar',
-        'Derse giren öğretmenler',
-        'Veli bağlantıları',
-      ].map((t) => tester.getTopLeft(find.text(t)).dy).toList();
+        tester.getTopLeft(find.byKey(const ValueKey('veli_baglanti_ozeti'))).dy,
+        for (final t in ['DUYURULAR', 'YANIT BEKLEYENLER', 'İLETİŞİM', 'DERSE GİREN ÖĞRETMENLER'])
+          tester.getTopLeft(find.text(t)).dy,
+      ];
       for (var i = 1; i < y.length; i++) {
         expect(y[i], greaterThan(y[i - 1]), reason: 'bölüm sırası');
       }
+      expect(find.text('2 yeni'), findsOneWidget, reason: 'bekleyen bildirim + randevu');
+      expect(find.text('1 öğrencinin velisi bağlanmadı · kodunu verin'), findsOneWidget);
+      // Eski görünüm: iki büyük düğme, "Gönderilenler", "Veli bağlantıları" başlığı.
+      expect(find.byType(ElevatedButton), findsNothing);
+      expect(find.text('Gönderilenler'), findsNothing);
+      expect(find.text('Veli bağlantıları'), findsNothing);
 
       // Kadro: branş öğretmeni listede, sınıf öğretmeninin kendi satırı yok.
       // (Bölüm açılınca sınıf öğretmeninin satırını onarır ve listeyi
@@ -159,6 +169,59 @@ void main() {
       await tester.tap(find.text('Görüldü'));
       await bekle(tester);
       expect(bulut.gorulenBildirimler, ['bildirim1']);
+    });
+
+    testWidgets('KRITIK: duyuru tam sayfada yazılır; tür seçilir, boşken gönderilmez', (tester) async {
+      await ac(tester);
+
+      await tester.tap(find.byKey(const ValueKey('veliler_duyuru_yap')));
+      await bekleKadar(tester, () => find.byType(DuyuruYazEkrani).evaluate().isNotEmpty);
+      expect(find.text('5-A velilerine'), findsOneWidget);
+
+      FilledButton gonder() => tester.widget<FilledButton>(find.byKey(const ValueKey('duyuru_gonder')));
+      expect(gonder().onPressed, isNull, reason: 'başlık ve metin boş');
+
+      // Tarih yalnız sınav ve etkinlikte sorulur.
+      expect(find.byKey(const ValueKey('duyuru_tarih')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('duyuru_tur_exam')));
+      await tester.pump();
+      expect(find.text('SINAV TARİHİ'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('duyuru_tur_normal')));
+      await tester.pump();
+      expect(find.byKey(const ValueKey('duyuru_tarih')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('duyuru_tur_exam')));
+      await tester.pump();
+
+      await tester.enterText(find.byKey(const ValueKey('duyuru_baslik')), 'Matematik 1. yazılı');
+      await tester.pump();
+      expect(gonder().onPressed, isNull, reason: 'metin boş');
+      await tester.enterText(find.byKey(const ValueKey('duyuru_metin')), 'Konular: kesirler.');
+      await tester.pump();
+      expect(gonder().onPressed, isNotNull);
+
+      await tester.tap(find.byKey(const ValueKey('duyuru_gonder')));
+      await bekleKadar(tester, () => bulut.duyurular.isNotEmpty);
+      expect(bulut.duyurular, ['Matematik 1. yazılı|Konular: kesirler.|exam|null']);
+      await bekleKadar(tester, () => find.text('Duyuru velilere gönderildi.').evaluate().isNotEmpty);
+      await bekleKadar(tester, () => find.byType(DuyuruYazEkrani).evaluate().isEmpty);
+      expect(find.byType(DuyuruYazEkrani), findsNothing, reason: 'Veliler sayfasına dönülür');
+      await bekleKadar(tester, () => find.text('1 duyuru · okunma sayıları ve silme').evaluate().isNotEmpty);
+      expect(find.text('1 duyuru · okunma sayıları ve silme'), findsOneWidget);
+      await bekle(tester);
+    });
+
+    testWidgets('duyurudan geri çıkılırsa hiçbir şey gönderilmez', (tester) async {
+      await ac(tester);
+      await tester.tap(find.byKey(const ValueKey('veliler_duyuru_yap')));
+      await bekleKadar(tester, () => find.byType(DuyuruYazEkrani).evaluate().isNotEmpty);
+      await tester.enterText(find.byKey(const ValueKey('duyuru_baslik')), 'Yarım kalan');
+      await tester.enterText(find.byKey(const ValueKey('duyuru_metin')), 'Taslak');
+      // Telefonun geri tuşu.
+      await tester.binding.handlePopRoute();
+      await bekleKadar(tester, () => find.byType(DuyuruYazEkrani).evaluate().isEmpty);
+      await bekle(tester);
+      expect(bulut.duyurular, isEmpty);
+      expect(find.text('Okunma sayıları ve silme'), findsOneWidget, reason: 'yerelde de kayıt yok');
     });
 
     testWidgets('Google girişi yoksa bulut bölümleri yerine açıklama; veli rehberi duruyor', (tester) async {
@@ -404,6 +467,22 @@ class _SahteProfil extends TeacherProfileNotifier {
 class _SahteBulut extends CloudCommunicationRepository {
   final randevuYanitlari = <String>[];
   final gorulenBildirimler = <String>[];
+  final duyurular = <String>[];
+
+  @override
+  Future<bool> publishAnnouncement({
+    required String classCloudId,
+    required String announcementId,
+    required String title,
+    required String content,
+    required String authorName,
+    required String authorUid,
+    String priority = 'normal',
+    DateTime? eventAt,
+  }) async {
+    duyurular.add('$title|$content|$priority|$eventAt');
+    return true;
+  }
 
   @override
   Future<bool> ensureClassRoom({
