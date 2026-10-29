@@ -124,27 +124,16 @@ class ParentPortalRepository {
   }
 
   /// Sınıfın Duyurularını Getirme
+  ///
+  /// ## Karşılama duyurusu kalktı (30 Ekim 2026)
+  /// Sınıfın duyurusu yoksa buraya "SınıfCepte Veli Bilgilendirme Sistemi
+  /// Başladı" adlı bir duyuru yazılıyordu. Velilere hiç gitmemişti ama
+  /// öğretmenin "Gönderilen duyurular" listesinde gönderilmiş gibi
+  /// duruyordu; silinince liste boşaldığı için yeniden yazılıyordu. Eski
+  /// cihazlarda kayıtlı kalanlar (`ann_def_` kimlikli) okurken ayıklanır.
   Future<List<ClassAnnouncementModel>> getAnnouncementsForClass(int classId) async {
     final list = await _loadAnnouncements();
-    final filtered = list.where((a) => a.classId == classId).toList();
-    // Eğer sınıf için hiç duyuru yoksa varsayılan karşılama duyurusu oluştur
-    if (filtered.isEmpty) {
-      final defaultAnn = ClassAnnouncementModel(
-        id: 'ann_def_${classId}_1',
-        classId: classId,
-        className: 'Sınıfım',
-        authorTeacherId: 'teacher_main',
-        authorTeacherName: 'Sınıf Rehber Öğretmeni',
-        title: 'SınıfCepte Veli Bilgilendirme Sistemi Başladı 🚀',
-        content: 'Değerli velilerimiz, öğrencilerimizin ders içi durumları, etkinlikleri ve sınıf duyuruları bu portal üzerinden güncel olarak paylaşılacaktır.',
-        priority: 'event',
-        createdAt: DateTime.now().subtract(const Duration(days: 1)),
-      );
-      list.add(defaultAnn);
-      await _saveAnnouncements(list);
-      return [defaultAnn];
-    }
-    return filtered;
+    return list.where((a) => a.classId == classId && !a.id.startsWith('ann_def_')).toList();
   }
 
   /// Duyuruyu "Okundu" Olarak İşaretleme (Veli)

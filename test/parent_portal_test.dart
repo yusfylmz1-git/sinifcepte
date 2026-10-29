@@ -87,6 +87,27 @@ void main() {
       expect(classAnnouncements.first.readCount, equals(2));
     });
 
+    test('KRITIK: duyurusu olmayan sınıfta liste boş; eski sahte karşılama duyurusu görünmez', () async {
+      // Eskiden boş sınıfa velilere hiç gitmemiş bir "karşılama duyurusu"
+      // yazılıyor, silinince yeniden doğuyordu (30 Ekim 2026).
+      expect(await repository.getAnnouncementsForClass(7), isEmpty);
+      expect(await repository.getAnnouncementsForClass(7), isEmpty, reason: 'ikinci okumada da üretilmez');
+
+      // Eski sürümün cihaza yazdığı kayıt.
+      await repository.createAnnouncement(ClassAnnouncementModel(
+        id: 'ann_def_7_1',
+        classId: 7,
+        className: 'Sınıfım',
+        authorTeacherId: 'teacher_main',
+        authorTeacherName: 'Sınıf Rehber Öğretmeni',
+        title: 'SınıfCepte Veli Bilgilendirme Sistemi Başladı 🚀',
+        content: 'Değerli velilerimiz…',
+        priority: 'event',
+        createdAt: DateTime(2026, 9, 1),
+      ));
+      expect(await repository.getAnnouncementsForClass(7), isEmpty);
+    });
+
     test('Teacher Contacts template generation for classroom', () async {
       final teachers = await repository.getTeacherContactsForClass(
         5,
