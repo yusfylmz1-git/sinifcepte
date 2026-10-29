@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart' show BuildContext, ScaffoldMessenger, SnackBar, Text, debugPrint;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -20,8 +21,35 @@ class SeatingPlanPdfGenerator {
     required List<StudentModel> students,
     required SeatingPlanModel plan,
   }) async {
-    final pdf = await PdfTrFonts.document();
+    try {
+      final bytes = await olustur(classModel: classModel, students: students, plan: plan);
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/Sinif_Oturma_Plani_${classModel.name}.pdf');
+      await file.writeAsBytes(bytes);
 
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          text: '${classModel.name} Sınıfı Oturma Planı Krokisi',
+        ),
+      );
+    } catch (e, stackTrace) {
+      debugPrint('Oturma planı PDF hatası: $e\n$stackTrace');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF oluşturulurken hata oluştu: $e')),
+        );
+      }
+    }
+  }
+
+  /// Krokinin PDF'i. Rehberlik dosyası önizlemede açar (29 Ekim 2026).
+  static Future<Uint8List> olustur({
+    required ClassModel classModel,
+    required List<StudentModel> students,
+    required SeatingPlanModel plan,
+  }) async {
+    final pdf = await PdfTrFonts.document();
 
     pdf.addPage(
       pw.Page(
@@ -46,25 +74,7 @@ class SeatingPlanPdfGenerator {
       ),
     );
 
-    try {
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/Sinif_Oturma_Plani_${classModel.name}.pdf');
-      await file.writeAsBytes(await PdfTrFonts.kaydet(pdf));
-
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(file.path)],
-          text: '${classModel.name} Sınıfı Oturma Planı Krokisi',
-        ),
-      );
-    } catch (e, stackTrace) {
-      debugPrint('Oturma planı PDF hatası: $e\n$stackTrace');
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('PDF oluşturulurken hata oluştu: $e')),
-        );
-      }
-    }
+    return PdfTrFonts.kaydet(pdf);
   }
 
   static pw.Widget _buildHeader(ClassModel classModel) {

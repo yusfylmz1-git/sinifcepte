@@ -18,7 +18,7 @@ import 'package:sinifcepte/data/repositories/student_repository.dart';
 import 'package:sinifcepte/features/auth_profile/data/models/teacher_profile_model.dart';
 import 'package:sinifcepte/features/bep/presentation/views/bep_list_view.dart';
 import 'package:sinifcepte/features/guidance/presentation/screens/guidance_hub_screen.dart';
-import 'package:sinifcepte/features/guidance/presentation/views/guidance_plan_view.dart';
+import 'package:sinifcepte/features/guidance/presentation/screens/rehberlik_dosyasi_screen.dart';
 
 /// Rehberlik ekranı: sekmesiz tek liste (29 Ekim 2026).
 ///
@@ -140,8 +140,9 @@ void main() {
     await tester.tap(find.text('Rehberlik Dosyası'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.byType(GuidancePlanView), findsOneWidget);
-    expect(find.text('5-A · sınıf rehberlik planı'), findsOneWidget, reason: 'sayfanın üst çubuğu');
+    expect(find.byType(RehberlikDosyasiScreen), findsOneWidget);
+    expect(find.text('5-A · 2026-2027'), findsOneWidget, reason: 'sayfanın üst çubuğu');
+    await bekleKadar(tester, () => find.byKey(const ValueKey('rehberlik_dosyasi_hafta')).evaluate().isNotEmpty);
     await dinlen(tester);
   });
 

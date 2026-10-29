@@ -81,6 +81,59 @@ class GuidancePlanItem {
   bool get uygulanabilir => siraNo != null && !tatilMi;
 }
 
+/// Takvim haftasının plandaki karşılığı.
+///
+/// [hafta]: bu takvim haftasına kadar gelmiş son plan haftası; tatil
+/// haftasında tatilden önceki hafta. [tatil]: bu hafta ders yok (ara
+/// tatil, yarıyıl ya da yaz). [tatilAdi]: plandaki tatil satırı.
+typedef PlanHaftasi = ({int hafta, bool tatil, String? tatilAdi});
+
+/// Takvim haftasını (tatiller dahil sayılır) plan haftasına çevirir.
+///
+/// ## Neden (29 Ekim 2026)
+/// `AppDateFormatter.getCurrentAcademicWeek` tatil haftalarını da sayar,
+/// plandaki hafta numarası ise tatilleri atlar: ara tatilden sonra
+/// takvimin 11. haftası planın 10. haftasıdır, yarıyıldan sonra fark
+/// üç haftaya çıkar. İkisi doğrudan karşılaştırıldığında "bu hafta"
+/// işareti kayıyor, toplu işaretleme de henüz gelmemiş haftaları
+/// "uygulandı" yapıyordu. Planda her takvim haftasının bir tarih aralığı
+/// satırı var (tatiller dahil, boşluksuz); eşleme bu sırayla yapılır.
+PlanHaftasi planHaftasi(List<GuidancePlanItem> plan, int takvimHaftasi) {
+  final araliklar = <String>[];
+  for (final m in plan) {
+    if (m.tarihAraligi.isNotEmpty && !araliklar.contains(m.tarihAraligi)) {
+      araliklar.add(m.tarihAraligi);
+    }
+  }
+  // Tarih aralığı yoksa eşlenecek bir şey yok; eski davranış.
+  if (araliklar.isEmpty) return (hafta: takvimHaftasi, tatil: false, tatilAdi: null);
+
+  final yazda = takvimHaftasi > araliklar.length;
+  final i = (takvimHaftasi - 1).clamp(0, araliklar.length - 1);
+  final gecen = araliklar.sublist(0, i + 1).toSet();
+  var hafta = 0;
+  for (final m in plan) {
+    if (gecen.contains(m.tarihAraligi) && !m.tatilMi && (m.hafta ?? 0) > hafta) {
+      hafta = m.hafta!;
+    }
+  }
+  if (yazda) return (hafta: hafta, tatil: true, tatilAdi: 'YAZ TATİLİ');
+  final tatilSatiri = plan
+      .where((m) => m.tarihAraligi == araliklar[i] && m.tatilMi)
+      .firstOrNull;
+  return (hafta: hafta, tatil: tatilSatiri != null, tatilAdi: tatilSatiri?.kazanim);
+}
+
+/// Planın 1. dönem satırları: ilk "YARIYIL" tatil satırından öncekiler.
+///
+/// Yarıyıl satırı bulunamazsa 18. haftaya kadar olanlar alınır (MEB
+/// takviminde 1. dönem 18 ders haftası).
+List<GuidancePlanItem> birinciDonemMaddeleri(List<GuidancePlanItem> plan) {
+  final i = plan.indexWhere((m) => m.tatilMi && m.kazanim.toUpperCase().contains('YARIYIL'));
+  if (i >= 0) return plan.sublist(0, i);
+  return plan.where((m) => m.hafta == null || m.hafta! <= 18).toList();
+}
+
 /// ORGM sınıf rehberlik etkinliği.
 class GuidanceActivity {
   final int gradeLevel;

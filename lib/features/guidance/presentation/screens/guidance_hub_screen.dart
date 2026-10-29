@@ -11,7 +11,7 @@ import '../../../bep/presentation/views/bep_list_view.dart';
 import '../../../classes/presentation/widgets/counseling_interview_modal.dart';
 import '../../../classes/providers/class_provider.dart';
 import '../../../classes/providers/student_provider.dart';
-import '../views/guidance_plan_view.dart';
+import 'rehberlik_dosyasi_screen.dart';
 
 /// Rehberlik iş ve işlemleri.
 ///
@@ -118,9 +118,9 @@ class _GuidanceHubScreenState extends ConsumerState<GuidanceHubScreen> {
                     icon: Icons.folder_shared_outlined,
                     color: const Color(0xFF6366F1),
                     title: 'Rehberlik Dosyası',
-                    subtitle: 'Sınıf rehberlik planı ve haftalık etkinlikler',
+                    subtitle: 'Plan, haftalık kayıtlar, listeler, risk haritası, raporlar',
                     neden: rehberDegil,
-                    onTap: () => sayfa(_RehberlikDosyasi(classModel: active!)),
+                    onTap: () => sayfa(RehberlikDosyasiScreen(classModel: active!)),
                   ),
                   const SizedBox(height: 10),
                   _GuidanceCard(
@@ -195,37 +195,6 @@ class _GuidanceHubScreenState extends ConsumerState<GuidanceHubScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Rehberlik Dosyası: sınıf rehberlik planı ve haftalık takip.
-class _RehberlikDosyasi extends ConsumerWidget {
-  const _RehberlikDosyasi({required this.classModel});
-
-  final ClassModel classModel;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Scaffold(
-      backgroundColor:
-          isDark ? AppColors.darkBackground : const Color(0xFFF8FAFC),
-      appBar: CustomAppBar(
-        title: 'Rehberlik Dosyası',
-        subtitle: '${classModel.name} · sınıf rehberlik planı',
-        showProfileAvatar: false,
-      ),
-      body: SafeArea(
-        child: GuidancePlanView(
-          classModel: classModel,
-          teacher: ref.watch(teacherProfileProvider),
-          students: ref
-                  .watch(studentListProvider(classModel.id ?? 0))
-                  .valueOrNull ??
-              const [],
-        ),
       ),
     );
   }

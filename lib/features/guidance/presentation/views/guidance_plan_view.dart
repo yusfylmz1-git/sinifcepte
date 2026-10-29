@@ -6,13 +6,11 @@ import '../../../../core/utils/date_formatter.dart';
 import '../../../../core/utils/input_sanitizer.dart';
 import '../../../../data/models/class_model.dart';
 import '../../data/models/guidance_plan_model.dart';
-import '../../../../shared/screens/pdf_preview_screen.dart';
 import '../../../auth_profile/data/models/teacher_profile_model.dart';
 import '../../../../data/models/student_model.dart';
 import '../../../bep/data/repositories/bep_repository.dart';
 import '../../data/repositories/guidance_plan_repository.dart';
-import '../../utils/guidance_plan_pdf_generator.dart';
-import '../../utils/rehberlik_etkinlik_pdf.dart';
+import '../rehberlik_onizleme.dart';
 import '../widgets/guidance_activity_sheet.dart';
 
 /// Sınıf rehberlik planı — haftalık uygulama takibi.
@@ -44,7 +42,10 @@ class _GuidancePlanViewState extends State<GuidancePlanView> {
 
   late final int _grade;
   late final String _yil;
-  late final int _buHafta;
+
+  /// Plan haftası ([planHaftasi]): takvim haftası tatilleri de sayar.
+  int _buHafta = 0;
+  bool _buHaftaTatil = false;
 
   List<GuidancePlanItem> _plan = const [];
   Map<int, GuidanceLogEntry> _kayitlar = const {};
@@ -70,7 +71,6 @@ class _GuidancePlanViewState extends State<GuidancePlanView> {
     _yil = widget.classModel.academicYear.isNotEmpty
         ? widget.classModel.academicYear
         : AppDateFormatter.academicYearLabel();
-    _buHafta = AppDateFormatter.getCurrentAcademicWeek();
     _yukle();
   }
 
@@ -89,8 +89,11 @@ class _GuidancePlanViewState extends State<GuidancePlanView> {
             .where((e) => e.planCount > 0)
             .length;
     if (!mounted) return;
+    final buHafta = planHaftasi(plan, AppDateFormatter.getCurrentAcademicWeek());
     setState(() {
       _plan = plan;
+      _buHafta = buHafta.hafta;
+      _buHaftaTatil = buHafta.tatil;
       _kayitlar = {for (final k in kayit) k.siraNo: k};
       _bepliOgrenci = bepli;
       _yukleniyor = false;
@@ -229,34 +232,18 @@ class _GuidancePlanViewState extends State<GuidancePlanView> {
     await _yukle();
   }
 
-  /// Haftaların uygulama kaydı (her hafta bir sayfa).
-  ///
-  /// Kullanıcı (29 Ekim 2026): "Her hafta çıktı alınabilir olmalı; bizde
-  /// yalnız yapıldı/yapılmadı raporu var, yapılan etkinliğin çıktısı yok."
-  Future<void> _uygulamaKaydi(List<GuidancePlanItem> maddeler, {required String baslik}) async {
-    final haftalar = <RehberlikHaftasi>[
-      for (final m in maddeler)
-        (
-          madde: m,
-          etkinlik: await _repo.activityFor(gradeLevel: _grade, hafta: m.hafta ?? 0),
-          kayit: _kayitlar[m.siraNo],
-        ),
-    ];
-    if (!mounted) return;
-    await PdfPreviewScreen.open(
-      context,
-      title: 'Rehberlik etkinliği uygulama kaydı',
-      subtitle: '${widget.classModel.name} · $baslik',
-      fileName: 'Rehberlik_Etkinlik_${widget.classModel.name}_${baslik.replaceAll(RegExp(r'[^0-9A-Za-z]+'), '_')}.pdf',
-      documentBuilder: (_) => RehberlikEtkinlikPdf.olustur(
-        haftalar: haftalar,
-        schoolName: widget.teacher.schoolName,
-        className: widget.classModel.name,
-        teacherName: widget.teacher.fullName,
-        academicYear: _yil,
-      ),
-    );
-  }
+  Future<void> _uygulamaKaydi(List<GuidancePlanItem> maddeler, {required String baslik}) =>
+      RehberlikOnizleme.uygulamaKayitlari(
+        context,
+        classModel: widget.classModel,
+        teacher: widget.teacher,
+        repo: _repo,
+        maddeler: maddeler,
+        kayitlar: _kayitlar,
+        grade: _grade,
+        yil: _yil,
+        baslik: baslik,
+      );
 
   /// PDF: yıllık takip çizelgesi ya da uygulanan haftaların kayıtları.
   Future<void> _pdf() async {
@@ -297,20 +284,14 @@ class _GuidancePlanViewState extends State<GuidancePlanView> {
       await _uygulamaKaydi(uygulananlar, baslik: 'uygulanan ${uygulananlar.length} hafta');
       return;
     }
-    await PdfPreviewScreen.open(
+    await RehberlikOnizleme.planCizelgesi(
       context,
-      title: 'Rehberlik planı',
-      subtitle: '${widget.classModel.name} · $_yil',
-      fileName: 'Rehberlik_Plani_${widget.classModel.name}.pdf',
-      documentBuilder: (_) => GuidancePlanPdfGenerator.build(
-        plan: _plan,
-        kayitlar: _kayitlar,
-        gradeLevel: _grade,
-        className: widget.classModel.name,
-        schoolName: widget.teacher.schoolName,
-        teacherName: widget.teacher.fullName,
-        academicYear: _yil,
-      ),
+      classModel: widget.classModel,
+      teacher: widget.teacher,
+      plan: _plan,
+      kayitlar: _kayitlar,
+      grade: _grade,
+      yil: _yil,
     );
   }
 
@@ -445,7 +426,7 @@ class _GuidancePlanViewState extends State<GuidancePlanView> {
           Row(
             children: [
               Text(
-                '$_yil · $_buHafta. hafta',
+                _buHaftaTatil ? '$_yil · tatil haftası' : '$_yil · $_buHafta. hafta',
                 style: AppFonts.outfit(
                   fontSize: 11,
                   color: isDark ? Colors.white54 : const Color(0xFF64748B),
@@ -552,7 +533,7 @@ class _GuidancePlanViewState extends State<GuidancePlanView> {
 
     final kayit = _kayitlar[madde.siraNo];
     final uygulandi = kayit?.uygulandi ?? false;
-    final buHaftaMi = madde.hafta == _buHafta;
+    final buHaftaMi = !_buHaftaTatil && madde.hafta == _buHafta;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
