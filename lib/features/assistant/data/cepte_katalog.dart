@@ -128,6 +128,7 @@ List<CepteHedef> cepteEkranHedefleri() => [
       _ekran(CepteEkran.rehberlik, 'Rehberlik', 'Özet › Rehberlik', [
         'rehberlik', 'sınıf rehberlik', 'rehberlik planı', 'rehberlik etkinliği',
         'orgm', 'rehber öğretmen', 'rehberlik çalışması', 'rehberlik dosyası',
+        'risk haritası', 'risk raporu', 'görüşme formu',
       ]),
       // Özel Eğitim sekmesi 29 Ekim 2026'da kalktı; "özel eğitim" arayan
       // öğretmen BEP'e gelir (kaynaştırma öğrencisinin evrakı orada).

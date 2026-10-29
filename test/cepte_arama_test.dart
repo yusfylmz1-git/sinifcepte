@@ -75,6 +75,7 @@ void main() {
       'bep': 'ekran:bep',
       'kaynaştırma': 'ekran:bep',
       'özel eğitim': 'ekran:bep',
+      'risk haritası': 'ekran:rehberlik',
       'tahta şifresi': 'ekran:tahtaKilidi',
       'vesikalık': 'ekran:eokulFoto',
       'zil': 'ekran:dersSaatleri',

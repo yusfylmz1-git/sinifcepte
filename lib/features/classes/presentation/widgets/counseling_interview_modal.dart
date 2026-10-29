@@ -9,6 +9,7 @@ import '../../utils/classroom_documents_pdf_generator.dart';
 import '../../../../shared/screens/pdf_preview_screen.dart';
 import '../../../../shared/widgets/liste_arama_kutusu.dart';
 import '../../../bep/presentation/views/bep_list_view.dart';
+import '../../../guidance/utils/sinif_risk_haritasi_pdf.dart';
 
 /// SınıfCepte - Rehberlik & Görüşme Evrakları Seçim ve Hazırlama Modalı
 class CounselingInterviewModal extends StatefulWidget {
@@ -107,7 +108,17 @@ class _CounselingInterviewModalState extends State<CounselingInterviewModal> {
       'icon': Icons.directions_bus_outlined,
       'color': const Color(0xFFEC4899),
     },
+    // Kullanıcı isteği (29 Ekim 2026). Sınıf belgesi: öğrenci seçilmez.
+    {
+      'title': 'Sınıf Risk Haritası',
+      'desc': 'Sınıf listesi ve 35 risk alanı · kasımda rehberlik servisine',
+      'icon': Icons.health_and_safety_outlined,
+      'color': const Color(0xFFEF4444),
+    },
   ];
+
+  /// Sınıfın tamamı için çıkan belgeler; öğrenci seçimi gösterilmez.
+  static const _sinifBelgeleri = {4, 5};
 
   @override
   Widget build(BuildContext context) {
@@ -186,8 +197,8 @@ class _CounselingInterviewModalState extends State<CounselingInterviewModal> {
           }),
           const SizedBox(height: 14),
 
-          // 2. Öğrenci Seçimi (Gezi hariç)
-          if (_selectedDocIndex != 4) ...[
+          // 2. Öğrenci Seçimi (sınıf belgeleri hariç)
+          if (!_sinifBelgeleri.contains(_selectedDocIndex)) ...[
             Text(
               'Öğrenci Seçimi (Opsiyonel - Boş Şablon için seçmeyin)',
               style: TextStyle(
@@ -285,6 +296,28 @@ class _CounselingInterviewModalState extends State<CounselingInterviewModal> {
             const SizedBox(height: 12),
           ],
 
+          if (_selectedDocIndex == 5) ...[
+            Container(
+              key: const ValueKey('risk_haritasi_notu'),
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '${widget.students.length} öğrenci sınıf listesinden yazılır; risk alanları '
+                'kâğıt üzerinde işaretlenir. Uygulama bu bilgiyi saklamaz. Belge gizlidir.',
+                style: AppFonts.outfit(
+                  fontSize: 11.5,
+                  height: 1.4,
+                  color: isDark ? Colors.white70 : const Color(0xFF475569),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
           // Önizleme & Yazdır Butonu
           SizedBox(
             width: double.infinity,
@@ -377,6 +410,19 @@ class _CounselingInterviewModalState extends State<CounselingInterviewModal> {
             destination: _fieldTripDestController.text.trim(),
             eventDate: _fieldTripDateController.text.trim(),
             departureReturnTime: _fieldTripTimeController.text.trim(),
+          ),
+        );
+        break;
+      case 5: // Sınıf Risk Haritası
+        PdfPreviewScreen.open(
+          context,
+          title: 'Sınıf Risk Haritası',
+          subtitle: '${widget.classModel.name} · gizli belge',
+          fileName: 'Sinif_Risk_Haritasi_${widget.classModel.name}.pdf',
+          documentBuilder: (format) => SinifRiskHaritasiPdf.olustur(
+            classModel: widget.classModel,
+            students: widget.students,
+            teacherProfile: widget.teacherProfile,
           ),
         );
         break;

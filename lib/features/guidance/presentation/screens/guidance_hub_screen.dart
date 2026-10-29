@@ -130,7 +130,7 @@ class _GuidanceHubScreenState extends ConsumerState<GuidanceHubScreen> {
                     color: const Color(0xFF3B82F6),
                     title: 'Formlar',
                     subtitle:
-                        'Veli ve öğrenci görüşme, tanıma fişi, gezi izni',
+                        'Görüşme formları, tanıma fişi, gezi izni, risk haritası',
                     neden: ogrenciYok,
                     onTap: () => CounselingInterviewModal.show(
                       context,
