@@ -77,6 +77,62 @@ def temizle(x):
         return {k: temizle(v) for k, v in x.items()}
     return x
 
+
+# PDF sayfa altligi ve sonraki bolumun basligi etkinlik metnine
+# karisiyordu (29 Ekim 2026): 241 madde "Kucuk top 52" gibi sayfa
+# numarasiyla bitiyor, 325 degerlendirme ":" ile basliyor, 73'unde
+# "Süreç (Uygulama Basamakları): 53" kalmis. Haftalik uygulama
+# kaydi PDF'inde de gorunuyordu. Silinen sayi yalniz etkinligin sayfa
+# araliginda (kaynakSayfa-1 .. +12) olursa silinir: "Çalışma Yaprağı 1"
+# gibi gercek sayilara dokunulmaz.
+SUREC_BASLIGI = re.compile(r'\s*Süreç \(Uygulama Basamakları\)\s*:?\s*\d{0,3}\s*$')
+# Sayfa adimin ortasinda bitince baslik + sayfa numarasi cumlenin ICINE
+# dusuyor: "...Daha Süreç (Uygulama Basamakları): 18 sonra öğretmenimle".
+# Bu baslik adim metninde baska turlu gecmez; her yerde silinir.
+SUREC_BASLIGI_ICERDE = re.compile(r'\s*Süreç \(Uygulama Basamakları\)\s*:?\s*\d{0,3}\s+')
+SON_SAYI = re.compile(r'(?:^|\s+)(\d{1,3})$')
+# "4 74" gibi bolunmus sayfa numarasi (474).
+SON_BOLUNMUS_SAYI = re.compile(r'(?:^|\s+)(\d{1,2})\s(\d{1,2})$')
+# Sayfa ust bilgisinden kopan tek basina madde: "HAFTA", "SINIF ETKİNLİKLERİ".
+SAYFA_UST_BILGISI = re.compile(r'^(?:\d*\.?\s*HAFTA|(?:\d+\.\s*)?SINIF ETKİNLİKLERİ)$')
+ETKINLIK_LISTELERI = ('onHazirlik', 'aracGerecler', 'surec',
+                      'ozelGereksinimUyarlamalari')
+ETKINLIK_METINLERI = ('degerlendirme', 'uygulayiciyaNot')
+
+
+def artikSil(t, ks, basIkiNokta=False):
+    """Bir metnin sonundaki sayfa numarasini ve bolum basligini siler."""
+    once = None
+    while once != t:
+        once = t
+        t = SUREC_BASLIGI.sub('', t).rstrip()
+        t = SUREC_BASLIGI_ICERDE.sub(' ', t)
+        m = SON_SAYI.search(t)
+        if m and ks and ks - 1 <= int(m.group(1)) <= ks + 12:
+            t = t[:m.start()].rstrip()
+            continue
+        m = SON_BOLUNMUS_SAYI.search(t)
+        if m and ks and ks - 1 <= int(m.group(1) + m.group(2)) <= ks + 12:
+            t = t[:m.start()].rstrip()
+    if basIkiNokta:
+        t = re.sub(r'^[\s:]+', '', t)
+    return t
+
+
+def etkinlikArtiklari(paket):
+    """Etkinlik metinlerinden PDF artiklarini ayiklar (yapi degismez)."""
+    for e in paket.get('etkinlikler', []):
+        ks = e.get('kaynakSayfa') or 0
+        for alan in ETKINLIK_LISTELERI:
+            maddeler = [artikSil(m, ks) for m in e.get(alan) or []]
+            e[alan] = [m for m in maddeler
+                       if m and not SAYFA_UST_BILGISI.match(m)]
+        for alan in ETKINLIK_METINLERI:
+            if e.get(alan):
+                e[alan] = artikSil(e[alan], ks, basIkiNokta=True)
+    return paket
+
+
 def tek(t):
     if not t:
         return ''
@@ -470,14 +526,14 @@ HEDEF = os.path.join(PROJE, 'assets', 'data', 'sinif_rehberlik_plani.json.gz')
 
 
 def yalnizTemizle():
-    """Kaynak PDF'ler yokken mevcut paketi [nrm] ile temizler.
+    """Kaynak PDF'ler yokken mevcut paketi [nrm] ve [etkinlikArtiklari] ile temizler.
 
     `python tool/build_rehberlik_dataset.py --yalniz-temizle`
     Yeniden uretimle ayni temizlik: tek kod, iki yol.
     """
     with gzip.open(HEDEF, 'rt', encoding='utf-8') as f:
         eski = json.load(f)
-    yeni = temizle(eski)
+    yeni = etkinlikArtiklari(temizle(eski))
     ham = json.dumps(yeni, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
     with gzip.open(HEDEF, 'wb', compresslevel=9) as f:
         f.write(ham)
@@ -553,13 +609,13 @@ def main():
             eslesen += 1
     print(f'eslesen     : {eslesen} / {sum(1 for p in planlar if p["siraNo"])}')
 
-    paket = temizle({
+    paket = etkinlikArtiklari(temizle({
         'surum': 1,
         'ogretimYili': '2026-2027',
         'plan': planlar,
         'etkinlikler': etkinlikler,
         'ozelEgitim': ozelEgitim,
-    })
+    }))
     ham = json.dumps(paket, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
     hedef = HEDEF
     with gzip.open(hedef, 'wb', compresslevel=9) as f:

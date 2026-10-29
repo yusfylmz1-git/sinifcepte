@@ -21,6 +21,7 @@ class GuidanceActivitySheet extends StatefulWidget {
     this.bepliOgrenci = 0,
     required this.onDurumDegisti,
     required this.onNotKaydet,
+    this.onYazdir,
   });
 
   /// Cepte'den açılan okunur hâl ([oku]) için `null`: plan satırı,
@@ -35,12 +36,16 @@ class GuidanceActivitySheet extends StatefulWidget {
   final ValueChanged<bool>? onDurumDegisti;
   final Future<void> Function(String)? onNotKaydet;
 
+  /// Haftanın uygulama kaydını PDF olarak açar; notun son hâli verilir.
+  final Future<void> Function(String not)? onYazdir;
+
   const GuidanceActivitySheet._oku({required GuidanceActivity this.etkinlik})
       : madde = null,
         kayit = null,
         bepliOgrenci = 0,
         onDurumDegisti = null,
-        onNotKaydet = null;
+        onNotKaydet = null,
+        onYazdir = null;
 
   /// Etkinliği plan satırı olmadan, yalnız okumak için açar (Cepte
   /// araması). Uygulandı işareti sınıfın Rehberlik Planı'nda kalır.
@@ -59,6 +64,7 @@ class GuidanceActivitySheet extends StatefulWidget {
     int bepliOgrenci = 0,
     required ValueChanged<bool> onDurumDegisti,
     required Future<void> Function(String) onNotKaydet,
+    Future<void> Function(String not)? onYazdir,
   }) {
     return ResponsiveBottomSheet.show(
       context: context,
@@ -69,6 +75,7 @@ class GuidanceActivitySheet extends StatefulWidget {
         bepliOgrenci: bepliOgrenci,
         onDurumDegisti: onDurumDegisti,
         onNotKaydet: onNotKaydet,
+        onYazdir: onYazdir,
       ),
     );
   }
@@ -483,15 +490,30 @@ class _GuidanceActivitySheetState extends State<GuidanceActivitySheet> {
             isDense: true,
           ),
         ),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(
-            onPressed: () async {
-              await widget.onNotKaydet?.call(_not.text.trim());
-              if (mounted) Navigator.pop(context);
-            },
-            child: const Text('Kaydet'),
-          ),
+        Row(
+          children: [
+            // Haftanın uygulama kaydı (29 Ekim 2026): yazılan not da
+            // belgeye girsin diye önce kaydedilir.
+            if (widget.onYazdir != null)
+              OutlinedButton.icon(
+                key: const ValueKey('rehberlik_hafta_pdf'),
+                onPressed: () async {
+                  final not = _not.text.trim();
+                  Navigator.pop(context);
+                  await widget.onYazdir!(not);
+                },
+                icon: const Icon(Icons.picture_as_pdf_rounded, size: 17),
+                label: Text('Uygulama kaydı (PDF)', style: AppFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600)),
+              ),
+            const Spacer(),
+            TextButton(
+              onPressed: () async {
+                await widget.onNotKaydet?.call(_not.text.trim());
+                if (mounted) Navigator.pop(context);
+              },
+              child: const Text('Kaydet'),
+            ),
+          ],
         ),
       ],
     );

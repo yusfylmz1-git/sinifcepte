@@ -12,6 +12,7 @@ import '../../../../data/models/student_model.dart';
 import '../../../bep/data/repositories/bep_repository.dart';
 import '../../data/repositories/guidance_plan_repository.dart';
 import '../../utils/guidance_plan_pdf_generator.dart';
+import '../../utils/rehberlik_etkinlik_pdf.dart';
 import '../widgets/guidance_activity_sheet.dart';
 
 /// Sınıf rehberlik planı — haftalık uygulama takibi.
@@ -139,6 +140,24 @@ class _GuidancePlanViewState extends State<GuidancePlanView> {
         ));
         await _yukle();
       },
+      onYazdir: (not) async {
+        final mevcut = _kayitlar[madde.siraNo];
+        if (not != (mevcut?.not ?? '')) {
+          await _repo.saveLog(GuidanceLogEntry(
+            classId: widget.classModel.id ?? 0,
+            academicYear: _yil,
+            gradeLevel: _grade,
+            hafta: madde.hafta ?? 0,
+            siraNo: madde.siraNo ?? 0,
+            uygulandi: mevcut?.uygulandi ?? false,
+            not: not,
+            uygulanmaTarihi: mevcut?.uygulanmaTarihi,
+            updatedAt: DateTime.now(),
+          ));
+          await _yukle();
+        }
+        await _uygulamaKaydi([madde], baslik: '${madde.hafta ?? '-'}. hafta');
+      },
     );
   }
 
@@ -210,7 +229,74 @@ class _GuidancePlanViewState extends State<GuidancePlanView> {
     await _yukle();
   }
 
+  /// Haftaların uygulama kaydı (her hafta bir sayfa).
+  ///
+  /// Kullanıcı (29 Ekim 2026): "Her hafta çıktı alınabilir olmalı; bizde
+  /// yalnız yapıldı/yapılmadı raporu var, yapılan etkinliğin çıktısı yok."
+  Future<void> _uygulamaKaydi(List<GuidancePlanItem> maddeler, {required String baslik}) async {
+    final haftalar = <RehberlikHaftasi>[
+      for (final m in maddeler)
+        (
+          madde: m,
+          etkinlik: await _repo.activityFor(gradeLevel: _grade, hafta: m.hafta ?? 0),
+          kayit: _kayitlar[m.siraNo],
+        ),
+    ];
+    if (!mounted) return;
+    await PdfPreviewScreen.open(
+      context,
+      title: 'Rehberlik etkinliği uygulama kaydı',
+      subtitle: '${widget.classModel.name} · $baslik',
+      fileName: 'Rehberlik_Etkinlik_${widget.classModel.name}_${baslik.replaceAll(RegExp(r'[^0-9A-Za-z]+'), '_')}.pdf',
+      documentBuilder: (_) => RehberlikEtkinlikPdf.olustur(
+        haftalar: haftalar,
+        schoolName: widget.teacher.schoolName,
+        className: widget.classModel.name,
+        teacherName: widget.teacher.fullName,
+        academicYear: _yil,
+      ),
+    );
+  }
+
+  /// PDF: yıllık takip çizelgesi ya da uygulanan haftaların kayıtları.
   Future<void> _pdf() async {
+    final uygulananlar = _plan
+        .where((e) => e.uygulanabilir && _kayitlar[e.siraNo]?.uygulandi == true)
+        .toList();
+    final secim = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      builder: (c) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              key: const ValueKey('rehberlik_pdf_cizelge'),
+              leading: const Icon(Icons.table_chart_outlined),
+              title: const Text('Yıllık takip çizelgesi'),
+              subtitle: const Text('36 haftanın uygulandı / uygulanmadı durumu ve notlar'),
+              onTap: () => Navigator.pop(c, 0),
+            ),
+            ListTile(
+              key: const ValueKey('rehberlik_pdf_kayitlar'),
+              enabled: uygulananlar.isNotEmpty,
+              leading: const Icon(Icons.description_outlined),
+              title: const Text('Uygulanan etkinliklerin kayıtları'),
+              subtitle: Text(uygulananlar.isEmpty
+                  ? 'Henüz uygulandı işaretli hafta yok'
+                  : '${uygulananlar.length} hafta, her hafta bir sayfa'),
+              onTap: () => Navigator.pop(c, 1),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || secim == null) return;
+    if (secim == 1) {
+      await _uygulamaKaydi(uygulananlar, baslik: 'uygulanan ${uygulananlar.length} hafta');
+      return;
+    }
     await PdfPreviewScreen.open(
       context,
       title: 'Rehberlik planı',
