@@ -52,3 +52,47 @@ GununAkisi gununAkisi(
     toplam: sirali.length,
   );
 }
+
+/// Özet'teki katılım kartının dersi ne durumda.
+enum KartDersDurumu { suAn, azOnceBitti, siradaki }
+
+/// Özet'teki katılım kartında hangi ders gösterilecek (saf hesap, test edilir).
+///
+/// ## Neden (29 Ekim 2026)
+/// Kart kendi saat hesabını yapıyordu. Günün dersleri bitince hiçbir ders
+/// bulamıyor, 1. saatin dersine düşüyordu: altta "Bugünkü 6 dersiniz
+/// bitti" yazarken üstte "SIRADAKİ DERS · 1. Ders Saati" duruyordu.
+/// Ayrıca ders başlamadan önce de "şu an derstesiniz" diyordu. Artık
+/// [gununAkisi] ile aynı saatleri ([ScheduleSettings.dersDakikalari])
+/// kullanıyor.
+///
+/// Ders bitince [pay] dakika daha "az önce bitti" diye kalır: öğretmen
+/// katılımı çoğunlukla dersin sonunda girer. Son ders bittikten [pay]
+/// dakika sonra kart kalkar.
+({int index, KartDersDurumu durum})? kartDersi(
+  Iterable<int> dersSaatleri,
+  ScheduleSettings ayar,
+  DateTime simdi, {
+  int pay = 5,
+}) {
+  final sirali = dersSaatleri.toSet().toList()..sort();
+  final dakika = simdi.hour * 60 + simdi.minute;
+  for (final i in sirali) {
+    final d = ayar.dersDakikalari(i);
+    if (d.bas <= dakika && dakika < d.bit) {
+      return (index: i, durum: KartDersDurumu.suAn);
+    }
+  }
+  for (final i in sirali.reversed) {
+    final d = ayar.dersDakikalari(i);
+    if (d.bit <= dakika && dakika <= d.bit + pay) {
+      return (index: i, durum: KartDersDurumu.azOnceBitti);
+    }
+  }
+  for (final i in sirali) {
+    if (dakika < ayar.dersDakikalari(i).bas) {
+      return (index: i, durum: KartDersDurumu.siradaki);
+    }
+  }
+  return null;
+}

@@ -345,6 +345,78 @@ void main() {
     });
   });
 
+  group('Katılım kartının dersi (DEG-6, 29 Ekim)', () {
+    // Saatler yukarıdaki grupla aynı: 1. ders 08:30-09:10, 2. 09:20-10:00 …
+    // 6. 13:15-13:55.
+    const ayar = ScheduleSettings();
+    final gun = DateTime(2026, 10, 29);
+    DateTime saat(int s, int d) => DateTime(gun.year, gun.month, gun.day, s, d);
+
+    test('KRITIK: dersler bitince kart yok (eskiden 1. saate düşüyordu)', () {
+      expect(kartDersi([0, 1, 2, 3, 4, 5], ayar, saat(14, 48)), isNull);
+    });
+
+    test('ders başlamadan "sıradaki", "şu an" değil', () {
+      final k = kartDersi([0, 1, 2], ayar, saat(8, 0))!;
+      expect(k.index, 0);
+      expect(k.durum, KartDersDurumu.siradaki);
+    });
+
+    test('ders içinde "şu an"', () {
+      final k = kartDersi([0, 1, 2], ayar, saat(9, 30))!;
+      expect(k.index, 1);
+      expect(k.durum, KartDersDurumu.suAn);
+    });
+
+    test('ders bitince 5 dakika "az önce bitti", sonra sıradaki', () {
+      final az = kartDersi([0, 1], ayar, saat(9, 12))!;
+      expect((az.index, az.durum), (0, KartDersDurumu.azOnceBitti));
+      final sonra = kartDersi([0, 1], ayar, saat(9, 16))!;
+      expect((sonra.index, sonra.durum), (1, KartDersDurumu.siradaki));
+    });
+
+    test('boş saatte sonraki ders bulunur (eskiden kart kayboluyordu)', () {
+      final k = kartDersi([0, 3], ayar, saat(9, 30))!;
+      expect((k.index, k.durum), (3, KartDersDurumu.siradaki));
+    });
+
+    test('son ders: 5 dakika "az önce bitti", sonra kart yok', () {
+      final az = kartDersi([5], ayar, saat(13, 58))!;
+      expect((az.index, az.durum), (5, KartDersDurumu.azOnceBitti));
+      expect(kartDersi([5], ayar, saat(14, 1)), isNull);
+    });
+
+    test('gün boyu günün akışıyla çelişmez', () {
+      final saatler = [0, 1, 2, 4, 5];
+      final ders = [
+        for (final i in saatler)
+          LessonModel(lessonName: 'Türkçe', className: '5-A', day: 'Perşembe', lessonHourIndex: i, color: Colors.blue),
+      ];
+      for (var dk = 7 * 60; dk <= 17 * 60; dk++) {
+        final an = saat(dk ~/ 60, dk % 60);
+        final akis = gununAkisi(ders, ayar, an);
+        final kart = kartDersi(saatler, ayar, an);
+        final ne = '${an.hour}:${an.minute}';
+        if (akis.bitti) {
+          expect(kart == null || kart.durum == KartDersDurumu.azOnceBitti, isTrue, reason: ne);
+        }
+        if (akis.dersler.isNotEmpty && akis.ilkiSuAn) {
+          expect((kart?.index, kart?.durum), (akis.dersler.first.lessonHourIndex, KartDersDurumu.suAn), reason: ne);
+        }
+        if (kart?.durum == KartDersDurumu.siradaki) {
+          expect(akis.dersler.first.lessonHourIndex, kart!.index, reason: ne);
+        }
+      }
+    });
+
+    test('depo kendi saat hesabını yapmıyor, ortak hesabı kullanıyor', () {
+      final kod = yorumsuz(oku('lib/features/attendance/data/repositories/classroom_participation_repository.dart'));
+      expect(kod, contains('kartDersi('));
+      expect(kod.contains('lessonStart'), isFalse);
+      expect(kod.contains('activeLessonIndex ?? 0'), isFalse);
+    });
+  });
+
   group('Eski yerlerin yeni evi var', () {
     // Madde → (evi olan dosya, o dosyada aranan çağrı).
     const evler = {
@@ -584,6 +656,57 @@ void main() {
 
     // Açılışta başlayan veritabanı/takvim okumaları bitmeden kap
     // kapatılırsa "dispose sonrası state" hatası test bittikten sonra düşer.
+    await bekle(tester, 30);
+  });
+
+  testWidgets('DEG-7: Özet tek yaklaşan sınav gösterir; Özet\'e basınca sayfa başına döner',
+      (tester) async {
+    tester.view.physicalSize = const Size(1080, 1600);
+    tester.view.devicePixelRatio = 2.5;
+    addTearDown(tester.view.reset);
+    final ileride = DateTime.now().add(const Duration(days: 3));
+    final kap = ProviderContainer(overrides: [
+      examTrackingProvider.overrideWith((ref) => _SahteSinavlar([
+            for (var i = 0; i < 3; i++)
+              ExamModel(id: 's$i', title: 'Deneme Sınavı $i', examDate: ileride.add(Duration(days: i)), category: 'MEB'),
+          ])),
+      dashboardFeedProvider.overrideWith((ref) async => const []),
+      activeTimetableLessonProvider.overrideWith((ref) async => null),
+      lessonClockProvider.overrideWith((ref) => Stream.value(0)),
+    ]);
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: kap,
+      child: const MaterialApp(home: MainNavigationScreen()),
+    ));
+    await bekleKadar(tester, () => find.text('Hızlı İşlemler').evaluate().isNotEmpty);
+
+    expect(find.text('Deneme Sınavı 0'), findsOneWidget, reason: 'en yakın sınav');
+    expect(find.text('Deneme Sınavı 1'), findsNothing, reason: 'yalnız bir sınav');
+    expect(find.text('Deneme Sınavı 2'), findsNothing);
+
+    ScrollController kaydirma() =>
+        tester.widget<SingleChildScrollView>(find.byKey(const ValueKey('ozet_kaydirma'))).controller!;
+    Future<void> asagi() async {
+      kaydirma().jumpTo(kaydirma().position.maxScrollExtent);
+      await tester.pump();
+      expect(kaydirma().offset, greaterThan(0), reason: 'Özet bu boyda kaymalı');
+    }
+
+    // Başka sekmeden dönüş: anında en üst.
+    await asagi();
+    await tester.tap(altCubukta('Ders Programı'));
+    await bekle(tester);
+    await tester.tap(altCubukta('Özet'));
+    await tester.pump();
+    expect(kaydirma().offset, 0);
+
+    // Özet açıkken Özet'e basmak: kayarak en üst.
+    await asagi();
+    await tester.tap(altCubukta('Özet'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(kaydirma().offset, 0);
+
     await bekle(tester, 30);
   });
 }

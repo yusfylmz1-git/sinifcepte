@@ -95,9 +95,7 @@ class DashboardScreen extends ConsumerWidget {
               debugPrint('----------------------------------------------------------------');
             }
           },
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+          child: _OzetKaydirma(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -469,6 +467,16 @@ class DashboardScreen extends ConsumerWidget {
     final lessonHour = activeLesson['lesson_hour'] as int? ?? 1;
     final classId = activeLesson['class_id'] as int;
     final isLive = activeLesson['is_live'] == true;
+    final durum = activeLesson['durum'] as KartDersDurumu? ??
+        (isLive ? KartDersDurumu.suAn : KartDersDurumu.siradaki);
+    // Ders sürerken ve az önce bittiyse yeşil (katılım girme zamanı),
+    // sıradaki ders için turuncu.
+    final vurgu = durum != KartDersDurumu.siradaki;
+    final etiket = switch (durum) {
+      KartDersDurumu.suAn => 'ŞU AN DERSTESİNİZ',
+      KartDersDurumu.azOnceBitti => 'AZ ÖNCE BİTTİ',
+      KartDersDurumu.siradaki => 'SIRADAKİ DERS',
+    };
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -476,12 +484,12 @@ class DashboardScreen extends ConsumerWidget {
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isLive ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+          color: vurgu ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
           width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: (isLive ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withValues(alpha: isDark ? 0.2 : 0.08),
+            color: (vurgu ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withValues(alpha: isDark ? 0.2 : 0.08),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -495,24 +503,28 @@ class DashboardScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
-                  color: (isLive ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withValues(alpha: isDark ? 0.25 : 0.15),
+                  color: (vurgu ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withValues(alpha: isDark ? 0.25 : 0.15),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      isLive ? Icons.bolt_rounded : Icons.schedule_rounded,
+                      switch (durum) {
+                      KartDersDurumu.suAn => Icons.bolt_rounded,
+                      KartDersDurumu.azOnceBitti => Icons.check_circle_outline_rounded,
+                      KartDersDurumu.siradaki => Icons.schedule_rounded,
+                    },
                       size: 13,
-                      color: isLive ? const Color(0xFF10B981) : const Color(0xFFD97706),
+                      color: vurgu ? const Color(0xFF10B981) : const Color(0xFFD97706),
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      isLive ? 'ŞU AN DERSTESİNİZ' : 'SIRADAKİ DERS',
+                      etiket,
                       style: AppFonts.outfit(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w800,
-                        color: isLive ? const Color(0xFF10B981) : const Color(0xFFD97706),
+                        color: vurgu ? const Color(0xFF10B981) : const Color(0xFFD97706),
                       ),
                     ),
                   ],
@@ -1045,7 +1057,9 @@ class DashboardScreen extends ConsumerWidget {
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: upcomingExams.take(3).length,
+              // Tek sınav (DEG-7, 29 Ekim 2026): kullanıcı "yalnız bir tane
+              // görünsün" dedi; sayı rozette, tamamı "Tümünü Gör"de.
+              itemCount: upcomingExams.take(1).length,
               // Satirlar arasi bosluk 8 -> 6: liste uzadikca fark buyuyor.
               separatorBuilder: (context, index) => const SizedBox(height: 6),
               itemBuilder: (context, idx) {
@@ -2061,6 +2075,52 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Özet'in kaydırması; Özet'e dönünce en üste gelir.
+///
+/// Kullanıcı isteği (DEG-7, 29 Ekim 2026): "Özet'e basınca doğrudan
+/// sayfanın üstüne gelsin, en son kaldığımız yere değil." Özet
+/// `IndexedStack` içinde açık kaldığı için kaydırma yeri korunuyordu.
+/// Başka sekmeden dönüşte anında, Özet açıkken basılınca kayarak çıkar.
+class _OzetKaydirma extends ConsumerStatefulWidget {
+  const _OzetKaydirma({required this.child});
+
+  final Widget child;
+
+  @override
+  ConsumerState<_OzetKaydirma> createState() => _OzetKaydirmaState();
+}
+
+class _OzetKaydirmaState extends ConsumerState<_OzetKaydirma> {
+  final _kaydirma = ScrollController();
+
+  @override
+  void dispose() {
+    _kaydirma.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen<int>(navigationIndexProvider, (onceki, simdi) {
+      if (simdi == AnaSekme.ozet && onceki != AnaSekme.ozet && _kaydirma.hasClients) {
+        _kaydirma.jumpTo(0);
+      }
+    });
+    ref.listen<int>(ozetBasaDonProvider, (_, _) {
+      if (_kaydirma.hasClients) {
+        _kaydirma.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      }
+    });
+    return SingleChildScrollView(
+      key: const ValueKey('ozet_kaydirma'),
+      controller: _kaydirma,
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+      child: widget.child,
     );
   }
 }

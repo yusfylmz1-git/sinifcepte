@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import '../../../../core/database/database_helper.dart';
 import '../../../schedule/models/schedule_settings.dart';
+import '../../../schedule/utils/gunun_akisi.dart';
 import '../models/classroom_participation_model.dart';
 
 /// SınıfCepte - Ders İçi Katılım & Günlük Değerlendirme Veri Havuzu (Repository)
@@ -698,56 +699,19 @@ class ClassroomParticipationRepository {
 
       if (lessonRows.isEmpty) return null;
 
-      // 1. Ayarları yükle ve dakika bazlı kesin aralığı hesapla
+      // Saat hesabı Özet'in günün akışıyla ORTAK (kartDersi). Eskiden
+      // burada ayrı hesap vardı; dersler bitince 1. saate düşüyordu.
       final settings = await ScheduleSettings.load();
-      final nowMinutes = now.hour * 60 + now.minute;
+      final secim = kartDersi(
+        lessonRows.map((l) => (l['ders_saati_index'] as int?) ?? 0),
+        settings,
+        now,
+      );
+      if (secim == null) return null;
 
-      int? activeLessonIndex;
-      int startMinutes = settings.firstLessonTime.hour * 60 + settings.firstLessonTime.minute;
-
-      for (int i = 0; i < settings.dailyLessonCount; i++) {
-        int passedMinutes = i * (settings.lessonDuration + settings.breakDuration);
-        if (settings.hasLunchBreak && i >= settings.lunchBreakAfterLesson) {
-          passedMinutes += (settings.lunchBreakDuration - settings.breakDuration);
-        }
-        final lessonStart = startMinutes + passedMinutes;
-        final lessonEnd = lessonStart + settings.lessonDuration;
-
-        // Ders sırasında veya ders bitimindeki 5 dakikalık teneffüs payında
-        if (nowMinutes >= (lessonStart - 5) && nowMinutes <= (lessonEnd + 5)) {
-          activeLessonIndex = i;
-          break;
-        }
-      }
-
-      // Eğer o an tam ders saatinde değilse ama günün ilk dersinden önceyse ilk dersi göster
-      if (activeLessonIndex == null) {
-        if (nowMinutes < startMinutes && lessonRows.isNotEmpty) {
-          activeLessonIndex = (lessonRows.first['ders_saati_index'] as int?) ?? 0;
-        }
-      }
-
-      if (activeLessonIndex == null) {
-        // Gün içinde sonraki en yakın dersi bul
-        for (int i = 0; i < settings.dailyLessonCount; i++) {
-          int passedMinutes = i * (settings.lessonDuration + settings.breakDuration);
-          if (settings.hasLunchBreak && i >= settings.lunchBreakAfterLesson) {
-            passedMinutes += (settings.lunchBreakDuration - settings.breakDuration);
-          }
-          final lessonStart = startMinutes + passedMinutes;
-          if (nowMinutes < lessonStart) {
-            final hasLesson = lessonRows.any((l) => (l['ders_saati_index'] as int?) == i);
-            if (hasLesson) {
-              activeLessonIndex = i;
-              break;
-            }
-          }
-        }
-      }
-
-      // Eşleşen dersi bul
-      final matched = lessonRows.where((l) => (l['ders_saati_index'] as int?) == (activeLessonIndex ?? 0)).firstOrNull;
+      final matched = lessonRows.where((l) => ((l['ders_saati_index'] as int?) ?? 0) == secim.index).firstOrNull;
       if (matched == null) return null;
+      final isLive = secim.durum == KartDersDurumu.suAn;
 
       // Sınıf adından class_id'yi bul
       final className = matched['sinif'] as String? ?? '';
@@ -764,7 +728,8 @@ class ClassroomParticipationRepository {
             'class_name': className,
             'subject_name': matched['ders_adi'] as String? ?? 'Ders',
             'lesson_hour': (matched['ders_saati_index'] as int? ?? 0) + 1,
-            'is_live': activeLessonIndex != null,
+            'is_live': isLive,
+            'durum': secim.durum,
           };
         }
       }
@@ -773,7 +738,8 @@ class ClassroomParticipationRepository {
         'class_name': className,
         'subject_name': matched['ders_adi'] as String? ?? 'Ders',
         'lesson_hour': (matched['ders_saati_index'] as int? ?? 0) + 1,
-        'is_live': activeLessonIndex != null,
+        'is_live': isLive,
+        'durum': secim.durum,
       };
     } catch (e, stackTrace) {
       debugPrint('detectActiveLessonFromTimetable hatası: $e\n$stackTrace');

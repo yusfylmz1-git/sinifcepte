@@ -17,3 +17,11 @@ abstract final class AnaSekme {
 
 /// Alt çubukta seçili sekme ([AnaSekme]).
 final navigationIndexProvider = StateProvider<int>((ref) => AnaSekme.ozet);
+
+/// Alt çubukta Özet'e Özet açıkken basıldı (sayaç).
+///
+/// Kullanıcı isteği (DEG-7, 29 Ekim 2026): "Özet'e basınca doğrudan
+/// sayfanın üstüne gelsin, en son kaldığımız yere değil." Başka sekmeden
+/// dönüşte Özet [navigationIndexProvider] değişiminden anlar; Özet zaten
+/// açıkken sekme değişmediği için bu sayaç artırılır.
+final ozetBasaDonProvider = StateProvider<int>((ref) => 0);

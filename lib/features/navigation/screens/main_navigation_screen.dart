@@ -189,6 +189,9 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
           currentIndex: currentIndex,
           onTap: (index) {
             try {
+              if (index == AnaSekme.ozet && currentIndex == AnaSekme.ozet) {
+                ref.read(ozetBasaDonProvider.notifier).state++;
+              }
               ref.read(navigationIndexProvider.notifier).state = index;
             } catch (e, stackTrace) {
               debugPrint('Alt Bar sekme değişimi hatası: $e\n$stackTrace');

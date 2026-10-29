@@ -14,6 +14,7 @@ import 'arti_eksi_listesi_view.dart';
 import 'class_lesson_history_view.dart';
 import '../widgets/random_student_picker_modal.dart';
 import '../widgets/participation_cumulative_reports_modal.dart';
+import '../../../schedule/utils/gunun_akisi.dart';
 
 /// SınıfCepte - Ultra Sade & Hızlı Ders İçi Katılım Hub
 class ClassroomParticipationView extends ConsumerStatefulWidget {
@@ -71,12 +72,19 @@ class _ClassroomParticipationViewState
             ref.read(selectedParticipationLessonHourProvider.notifier).state =
                 lessonHour;
           }
-          final isLive = activeLesson['is_live'] == true;
+          final ders =
+              '${activeLesson['class_name']} • ${activeLesson['subject_name']} ($lessonHour. Ders)';
+          final durum = activeLesson['durum'] as KartDersDurumu? ??
+              (activeLesson['is_live'] == true
+                  ? KartDersDurumu.suAn
+                  : KartDersDurumu.siradaki);
           if (mounted) {
             setState(() {
-              _liveLessonBanner = isLive
-                  ? '⚡ Canlı Ders: ${activeLesson['class_name']} • ${activeLesson['subject_name']} ($lessonHour. Ders)'
-                  : '🕒 Sonraki Ders: ${activeLesson['class_name']} • ${activeLesson['subject_name']} ($lessonHour. Ders)';
+              _liveLessonBanner = switch (durum) {
+                KartDersDurumu.suAn => '⚡ Canlı Ders: $ders',
+                KartDersDurumu.azOnceBitti => '✅ Az önce biten ders: $ders',
+                KartDersDurumu.siradaki => '🕒 Sonraki Ders: $ders',
+              };
             });
           }
         }
