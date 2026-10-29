@@ -4,6 +4,7 @@ import '../../../../data/models/student_model.dart';
 import '../models/exam_model.dart';
 import '../models/project_tracking_model.dart';
 import '../models/quiz_tracking_model.dart';
+import '../ogretmen_sinavlari.dart';
 
 /// SınıfCepte - Sınav İşlemleri Repository Katmanı
 class ExamOperationsRepository {
@@ -205,10 +206,15 @@ class ExamOperationsRepository {
       final favIds = (await _dbHelper.getFavoriSinavDocIds()).toSet();
       final schoolMaps = await _dbHelper.getKisiselSinavlar();
 
-      final generalExams = generalMaps.map((m) {
-        final docId = m['doc_id'] as String? ?? '';
-        return ExamModel.fromMap(m, isFav: favIds.contains(docId), isSchool: false);
-      }).toList();
+      // Süzgeç burada da: telefonda eski yayından kalan TUS, DUS, Sayıştay…
+      // kayıtları bulut temizlenip yeniden inene kadar görünmesin (DEG-11).
+      final generalExams = generalMaps
+          .map((m) {
+            final docId = m['doc_id'] as String? ?? '';
+            return ExamModel.fromMap(m, isFav: favIds.contains(docId), isSchool: false);
+          })
+          .where((e) => ogretmeniIlgilendirir(ad: e.title, kurum: e.institution))
+          .toList();
 
       final schoolExams = schoolMaps.map((m) {
         return ExamModel.fromMap(m, isFav: false, isSchool: true);

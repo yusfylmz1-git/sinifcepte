@@ -2417,76 +2417,13 @@ class DatabaseHelper {
   // --- SINAV İŞLEMLERİ 3: MERKEZİ & OKUL SINAVLARI ---
   // ==========================================
 
-  Future<void> seedGenelSinavlarIfEmpty() async {
-    try {
-      final db = await instance.database;
-      final countQuery = await db.rawQuery('SELECT COUNT(*) as c FROM genel_sinavlar');
-      final count = Sqflite.firstIntValue(countQuery) ?? 0;
-      if (count == 0) {
-        final defaultExams = [
-          {
-            'doc_id': 'meb_ortak_sinav_1',
-            'sinav_adi': '1. Dönem 1. Ortak Yazılı Sınavları (MEB Geneli)',
-            'kurum': 'MEB',
-            'sinav_tarihi': '2025-10-27T09:00:00',
-            'son_basvuru_tarihi': '2025-10-20T23:59:59',
-            'basvuru_linki': 'https://odsgm.meb.gov.tr',
-          },
-          {
-            'doc_id': 'meb_ortak_sinav_2',
-            'sinav_adi': '1. Dönem 2. Ortak Yazılı Sınavları',
-            'kurum': 'MEB',
-            'sinav_tarihi': '2025-12-22T09:00:00',
-            'son_basvuru_tarihi': '2025-12-15T23:59:59',
-            'basvuru_linki': 'https://odsgm.meb.gov.tr',
-          },
-          {
-            'doc_id': 'meb_lgs_2026',
-            'sinav_adi': 'LGS - Liselere Geçiş Sistemi Sınavı',
-            'kurum': 'MEB',
-            'sinav_tarihi': '2026-06-14T09:30:00',
-            'son_basvuru_tarihi': '2026-04-15T23:59:59',
-            'basvuru_linki': 'https://meb.gov.tr',
-          },
-          {
-            'doc_id': 'osym_yks_tyt_2026',
-            'sinav_adi': 'YKS 1. Oturum - TYT (Temel Yeterlilik Testi)',
-            'kurum': 'ÖSYM',
-            'sinav_tarihi': '2026-06-20T10:15:00',
-            'son_basvuru_tarihi': '2026-03-05T23:59:59',
-            'basvuru_linki': 'https://ais.osym.gov.tr',
-          },
-          {
-            'doc_id': 'osym_yks_ayt_2026',
-            'sinav_adi': 'YKS 2. Oturum - AYT (Alan Yeterlilik Testi)',
-            'kurum': 'ÖSYM',
-            'sinav_tarihi': '2026-06-21T10:15:00',
-            'son_basvuru_tarihi': '2026-03-05T23:59:59',
-            'basvuru_linki': 'https://ais.osym.gov.tr',
-          },
-          {
-            'doc_id': 'osym_kpss_lisans_2026',
-            'sinav_adi': 'KPSS Lisans (Genel Yetenek - Genel Kültür & ÖABT)',
-            'kurum': 'ÖSYM',
-            'sinav_tarihi': '2026-07-19T10:15:00',
-            'son_basvuru_tarihi': '2026-05-15T23:59:59',
-            'basvuru_linki': 'https://ais.osym.gov.tr',
-          },
-        ];
-
-        for (final exam in defaultExams) {
-          await db.insert('genel_sinavlar', exam);
-        }
-      }
-    } catch (e, stackTrace) {
-      debugPrint('DatabaseHelper.seedGenelSinavlarIfEmpty error: $e\n$stackTrace');
-    }
-  }
-
   Future<List<Map<String, dynamic>>> getGenelSinavlar() async {
     try {
+      // Elle yazılmış 6 sınavlık tohum KALDIRILDI (29 Ekim 2026): tarihleri
+      // eskiydi ve tablo dolu görüneceği için APK'daki temiz liste
+      // (assets/data/official_exams.json) hiç yüklenmiyordu. Tablo boşsa
+      // ExamTrackingNotifier.loadExams o listeyi yükler.
       final db = await instance.database;
-      await seedGenelSinavlarIfEmpty();
       return await db.query('genel_sinavlar', orderBy: 'sinav_tarihi ASC');
     } catch (e, stackTrace) {
       debugPrint('DatabaseHelper.getGenelSinavlar error: $e\n$stackTrace');
@@ -2568,11 +2505,20 @@ class DatabaseHelper {
     }
   }
 
-  Future<int> bulkUpsertGenelSinavlar(List<Map<String, dynamic>> examMaps) async {
+  /// Resmî sınav listesini gelen listeyle DEĞİŞTİRİR (DEG-11, 29 Ekim 2026).
+  ///
+  /// Eskiden yalnız ekleyip güncelliyordu: bulutta silinen ya da süzülen
+  /// sınav telefonda sonsuza dek kalıyordu (TUS, DUS, Sayıştay… liste
+  /// temizlendikten sonra da görünmeye devam etti). Her yayın tam listedir;
+  /// listede olmayan silinir. Favoriler ayrı tabloda durur, listede kalan
+  /// sınavın favorisi korunur. Boş liste hiçbir şeyi silmez.
+  Future<int> replaceGenelSinavlar(List<Map<String, dynamic>> examMaps) async {
+    if (examMaps.isEmpty) return 0;
     try {
       final db = await instance.database;
       int count = 0;
       await db.transaction((txn) async {
+        final gelen = <String>{};
         for (final data in examMaps) {
           final docId = data['doc_id'] as String?;
           if (docId != null) {
@@ -2582,13 +2528,22 @@ class DatabaseHelper {
             } else {
               await txn.insert('genel_sinavlar', data);
             }
+            gelen.add(docId);
             count++;
+          }
+        }
+        if (gelen.isEmpty) return;
+        final mevcut = await txn.query('genel_sinavlar', columns: ['doc_id']);
+        for (final satir in mevcut) {
+          final docId = satir['doc_id'] as String?;
+          if (docId != null && !gelen.contains(docId)) {
+            await txn.delete('genel_sinavlar', where: 'doc_id = ?', whereArgs: [docId]);
           }
         }
       });
       return count;
     } catch (e, stackTrace) {
-      debugPrint('DatabaseHelper.bulkUpsertGenelSinavlar error: $e\n$stackTrace');
+      debugPrint('DatabaseHelper.replaceGenelSinavlar error: $e\n$stackTrace');
       return 0;
     }
   }

@@ -7,6 +7,8 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sinifcepte/core/config/app_config.dart';
 import 'package:sinifcepte/core/cloud/remote_manifest_service.dart';
 import 'package:sinifcepte/core/database/database_helper.dart';
+import 'package:sinifcepte/features/exam_operations/data/ogretmen_sinavlari.dart';
+import 'package:sinifcepte/features/exam_operations/data/repositories/exam_operations_repository.dart';
 import 'package:sinifcepte/features/exam_operations/data/services/exam_sync_service.dart';
 
 /// Resmî sınav takviminin BULUTTAN gerçekten inmesi.
@@ -124,6 +126,132 @@ void main() {
 
       final yazilan = await ExamSyncService().syncFromJsonString(karisik);
       expect(yazilan, 1, reason: 'yalnızca geçerli kayıt yazılmalı');
+    });
+  });
+
+  group('Yalniz ogretmeni ilgilendiren sinavlar (DEG-11, 29 Ekim)', () {
+    // Adlar 29 Ekim 2026'da buluttaki listeden AYNEN alındı.
+    const kalan = [
+      'KPSS Kamu Personel Seçme Sınavı 2026-KPSS Lisans (Genel Yetenek-Genel Kültür)',
+      'MEB-AGS Millî Eğitim Bakanlığı Akademi Giriş Sınavı 2026-MEB-AGS',
+      'MEB-EKYS Millî Eğitim Bakanlığı Eğitim Kurumlarına Yönetici Seçme Sınavı',
+      'MEB EKYS - Eğitim Kurumlarına Yönetici Seçme Sınavı',
+      'ALES Akademik Personel ve Lisansüstü Eğitimi Giriş Sınavı 2026-ALES/3',
+      'YDS/1 - Yabancı Dil Bilgisi Seviye Tespit Sınavı',
+      'e-YDS Elektronik Yabancı Dil Sınavı e-YDS 2026/12 İngilizce',
+      'YÖKDİL Yükseköğretim Kurumları Yabancı Dil Sınavı 2026-YÖKDİL/2',
+      'YKS Yükseköğretim Kurumları Sınavı 2026-YKS 2. Oturum (AYT)',
+      'MSÜ Millî Savunma Üniversitesi Askerî Öğrenci Aday Belirleme Sınavı 2026-MSÜ',
+      'TR-YÖS Türkiye Yurt Dışından Öğrenci Kabul Sınavı 2026-TR-YÖS/2',
+      'DGS Dikey Geçiş Sınavı 2026-DGS',
+      'EKPSS Engelli Kamu Personeli Seçme Sınavı 2026-EKPSS',
+      'AGS - Akademi Giriş Sınavı',
+    ];
+    const elenen = [
+      'Sayıştay Eleme Sayıştay Başkanlığı Sayıştay Denetçi Yardımcısı Adaylığı Eleme Sınavı',
+      'DUS Diş Hekimliğinde Uzmanlık Eğitimi Giriş Sınavı 2026-DUS 2.Dönem',
+      'STS Diş Hekimliği Diş Hekimliği Alanında Yurt Dışı Yükseköğretim Diploma Denkliği',
+      'EUS Eczacılıkta Uzmanlık Eğitimi Giriş Sınavı 2026-EUS',
+      'TUS Tıpta Uzmanlık Eğitimi Giriş Sınavı 2026-TUS 2. Dönem',
+      'YDUS Tıpta Yan Dal Uzmanlık Eğitimi Giriş Sınavı 2026-YDUS',
+      'HMGS Hukuk Mesleklerine Giriş Sınavı 2026-HMGS/2',
+      'GUY Gelir İdaresi Başkanlığı Gelir Uzman Yardımcılığı Giriş Sınavı 2026-GUY/2',
+      'BKUBTS Tarım ve Orman Bakanlığı Bitki Koruma Ürünleri Bayi ve Toptancılık',
+      'İYÖS İdari Yargı Ön Sınavı 2026-İYÖS',
+      'e-YDTS Elektronik Yabancı Dil Olarak Türkçe Sınavı e-YDTS/2',
+      'e-TEP Elektronik İngilizce Yeterlik Sınavı',
+      'DİB-MBSTS Diyanet İşleri Başkanlığı Mesleki Bilgiler Seviye Tespit Sınavı',
+    ];
+
+    test('KRITIK: tip, dis, eczacilik, Sayistay, hukuk sinavlari elenir', () {
+      for (final ad in elenen) {
+        expect(ogretmeniIlgilendirir(ad: ad, kurum: 'ÖSYM'), isFalse, reason: ad);
+      }
+      for (final ad in kalan) {
+        expect(ogretmeniIlgilendirir(ad: ad, kurum: 'ÖSYM'), isTrue, reason: ad);
+      }
+    });
+
+    test('MEB sinavlari suzulmez (elle secilmis liste)', () {
+      for (final (ad, kurum) in const [
+        ('MTSK e-Sınavı (Ehliyet Teori Oturumları)', 'MTSK'),
+        ('LGS - Liselere Geçiş Sistemi Sınavı', 'MEB'),
+        ('AÖF Bahar Dönemi Ara Sınavları (Gözetmenlik & Görev)', 'AÖF'),
+      ]) {
+        expect(ogretmeniIlgilendirir(ad: ad, kurum: kurum), isTrue, reason: ad);
+      }
+    });
+
+    test('liste sunucudaki ayristiriciyla ayni', () {
+      // functions/osym_parser.js OGRETMEN_SINAVLARI anahtarları.
+      final js = File('functions/osym_parser.js').readAsStringSync();
+      final blok = js.substring(js.indexOf('const OGRETMEN_SINAVLARI'), js.indexOf(']);', js.indexOf('const OGRETMEN_SINAVLARI')));
+      final anahtarlar = RegExp(r"\['([^']+)',").allMatches(blok).map((m) => m.group(1)!).toList();
+      expect(anahtarlar, hasLength(12));
+      for (final k in anahtarlar) {
+        expect(ogretmeniIlgilendirir(ad: '$k Örnek Sınavı 2026-$k', kurum: 'ÖSYM'), isTrue, reason: k);
+      }
+    });
+
+    test('APK icindeki temiz listenin hepsi suzgecten gecer', () {
+      final liste = jsonDecode(File('assets/data/official_exams.json').readAsStringSync()) as List;
+      for (final s in liste.cast<Map<String, dynamic>>()) {
+        expect(ogretmeniIlgilendirir(ad: s['title'] as String, kurum: s['institution'] as String), isTrue,
+            reason: s['title'] as String);
+      }
+    });
+
+    String liste(List<(String, String)> sinavlar) => jsonEncode([
+          for (final (id, ad) in sinavlar)
+            {'doc_id': id, 'title': ad, 'institution': 'ÖSYM', 'examDate': '2026-11-22T09:00:00.000'},
+        ]);
+
+    test('KRITIK: ilgisiz sinav buluttan gelse de yazilmaz', () async {
+      final yazilan = await ExamSyncService().syncFromJsonString(liste([
+        ('osym_yds_20261122', 'YDS Yabancı Dil Bilgisi Seviye Tespit Sınavı 2026-YDS/2'),
+        ('osym_dus_20261101', 'DUS Diş Hekimliğinde Uzmanlık Eğitimi Giriş Sınavı 2026-DUS 2.Dönem'),
+      ]));
+      expect(yazilan, 1);
+      final db = await DatabaseHelper.instance.database;
+      final satir = await db.query('genel_sinavlar');
+      expect(satir.map((r) => r['doc_id']), ['osym_yds_20261122']);
+    });
+
+    test('KRITIK: listeden cikan eski sinav telefondan silinir, favori korunur', () async {
+      await ExamSyncService().syncFromJsonString(liste([
+        ('osym_yds_20261122', 'YDS Yabancı Dil Bilgisi Seviye Tespit Sınavı 2026-YDS/2'),
+        ('osym_ales_20261129', 'ALES Akademik Personel ve Lisansüstü Eğitimi Giriş Sınavı 2026-ALES/3'),
+      ]));
+      final db = await DatabaseHelper.instance.database;
+      await db.insert('favori_sinavlar', {'doc_id': 'osym_yds_20261122'});
+
+      await ExamSyncService().syncFromJsonString(liste([
+        ('osym_yds_20261122', 'YDS Yabancı Dil Bilgisi Seviye Tespit Sınavı 2026-YDS/2'),
+      ]));
+      final satir = await db.query('genel_sinavlar');
+      expect(satir.map((r) => r['doc_id']), ['osym_yds_20261122'], reason: 'ALES listeden çıktı');
+      expect(await db.query('favori_sinavlar'), hasLength(1));
+    });
+
+    test('bos liste hicbir seyi silmez', () async {
+      await ExamSyncService().syncFromJsonString(payload());
+      expect(await ExamSyncService().syncFromJsonString('[]'), 0);
+      final db = await DatabaseHelper.instance.database;
+      expect(await db.query('genel_sinavlar'), hasLength(1));
+    });
+
+    test('KRITIK: telefonda kalmis eski kayit listede gorunmez', () async {
+      // Eski sürüm (yalnız ekleyen) bu satırları yazmıştı.
+      final db = await DatabaseHelper.instance.database;
+      for (final (id, ad) in const [
+        ('osym_sayistay_20261031', 'Sayıştay Eleme Sayıştay Başkanlığı Sayıştay Denetçi Yardımcısı Adaylığı Eleme Sınavı'),
+        ('osym_kpss_20261101', 'KPSS Kamu Personel Seçme Sınavı 2026-KPSS Din Hizmetleri Alan Bilgisi Testi (DHBT)'),
+      ]) {
+        await db.insert('genel_sinavlar',
+            {'doc_id': id, 'sinav_adi': ad, 'kurum': 'ÖSYM', 'sinav_tarihi': '2026-11-01T09:00:00.000'});
+      }
+      final sinavlar = await ExamOperationsRepository().getAllExams();
+      expect(sinavlar.map((e) => e.id), ['osym_kpss_20261101']);
     });
   });
 

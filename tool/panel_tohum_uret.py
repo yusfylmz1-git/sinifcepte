@@ -20,6 +20,11 @@ P = KOK + r'\admin_portal\js\exams_manager.js'
 s = io.open(P, encoding='utf-8').read()
 
 bas = s.index('  getDefaultSeeds() {')
+# Ustteki belge yorumu da URETILEN parcaya dahil; yoksa her calistirmada
+# yorum bir kez daha eklenirdi (29 Ekim 2026'da oldu).
+yorum = s.rfind('  /**', 0, bas)
+if yorum != -1 and s[yorum:bas].rstrip().endswith('*/'):
+    bas = yorum
 son_isaret = s.index('];', bas)
 son = s.index('\n  }', son_isaret) + len('\n  }')
 

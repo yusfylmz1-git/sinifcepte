@@ -213,7 +213,7 @@ class ExamsManager {
         category: 'official',
       },
       {
-        doc_id: 'osym_yks_20260620',
+        doc_id: 'osym_yks_20260620_o1',
         title: 'YKS - Yükseköğretim Kurumları Sınavı — 1. Oturum (TYT)',
         institution: 'ÖSYM',
         examDate: '2026-06-20T09:00:00.000',
@@ -223,7 +223,7 @@ class ExamsManager {
         category: 'ÖSYM',
       },
       {
-        doc_id: 'osym_yks_20260621',
+        doc_id: 'osym_yks_20260621_o2',
         title: 'YKS - Yükseköğretim Kurumları Sınavı — 2. Oturum (AYT)',
         institution: 'ÖSYM',
         examDate: '2026-06-21T09:00:00.000',
@@ -233,7 +233,7 @@ class ExamsManager {
         category: 'ÖSYM',
       },
       {
-        doc_id: 'osym_yks_20260621',
+        doc_id: 'osym_yks_20260621_o3',
         title: 'YKS - Yükseköğretim Kurumları Sınavı — 3. Oturum (YDT)',
         institution: 'ÖSYM',
         examDate: '2026-06-21T09:00:00.000',

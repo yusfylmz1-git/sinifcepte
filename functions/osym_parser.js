@@ -207,7 +207,7 @@ function kisaKod(ad) {
  * @param {string} html Ham sayfa.
  * @returns {{ok: true, sinavlar: Array} | {ok: false, mesaj: string}}
  */
-export function ayristir(html) {
+export function ayristir(html, simdi = new Date()) {
   // Boyut yalnızca "sayfa hiç gelmemiş" durumunu yakalar. Asıl ölçüt
   // tablonun varlığı — sayfa küçülse bile tablo doğruysa ayrıştırılır.
   if (typeof html !== 'string' || html.length < 80) {
@@ -293,8 +293,14 @@ export function ayristir(html) {
 
     const kod = kisaKod(ad);
 
+    // Aynı gün iki oturum (YKS AYT ile YDT, 21 Haziran) aynı kimliği
+    // alıyordu: ikincisi birincinin üstüne yazılıyor, telefonda biri
+    // kayboluyordu (29 Ekim 2026). Oturum numarası kimliğe eklenir.
+    const oturum = /(\d+)\.\s*Oturum/i.exec(ad);
+    const oturumEki = oturum ? `_o${oturum[1]}` : '';
+
     sinavlar.push({
-      doc_id: `osym_${kod}_${tarih.slice(0, 10).replace(/-/g, '')}`,
+      doc_id: `osym_${kod}_${tarih.slice(0, 10).replace(/-/g, '')}${oturumEki}`,
       title: adiKisalt(ad),
       institution: 'ÖSYM',
       examDate: tarih,
@@ -307,13 +313,15 @@ export function ayristir(html) {
   }
 
   // e-YDS yılda dokuz kez yapılıyor; hepsini listelemek öğretmenin
-  // takvimini boğuyor. En yakın iki oturum yeterli — kaçıran zaten
-  // ÖSYM sayfasına bakar.
+  // takvimini boğuyor. En yakın iki YAKLAŞAN oturum yeterli — kaçıran
+  // zaten ÖSYM sayfasına bakar. Eskiden geçmiş oturumlar da sayılıyordu:
+  // ekimde çekilen takvimde ocak ve şubat kalıyor, aralık eleniyordu.
+  const bugun = simdi.toISOString().slice(0, 10);
   const eYdsler = sinavlar.filter((x) => x.title.startsWith('e-YDS'));
   if (eYdsler.length > 2) {
     const tutulacak = new Set(
       eYdsler
-        .slice()
+        .filter((x) => x.examDate.slice(0, 10) >= bugun)
         .sort((a, b) => a.examDate.localeCompare(b.examDate))
         .slice(0, 2)
         .map((x) => x.doc_id)

@@ -208,3 +208,38 @@ test('tumu elenirse aciklayici mesaj veriliyor', () => {
   assert.equal(r.ok, false);
   assert.match(r.mesaj, /ilgilendirmiyor/);
 });
+
+/** Aynı gün iki YKS oturumu ve yılın dört e-YDS'si (29 Ekim 2026). */
+const OTURUMLAR = `
+<table>
+  <tr><th>S&#x131;nav Ad&#x131;</th><th>S&#x131;nav Tarihi</th><th>Ba&#x15F;vuru</th></tr>
+  <tr><td>YKS Y&#xFC;ksek&#xF6;&#x11F;retim Kurumlar&#x131; S&#x131;nav&#x131; 2026-YKS 2. Oturum (AYT)</td>
+      <td>21.06.2026</td><td>-</td></tr>
+  <tr><td>YKS Y&#xFC;ksek&#xF6;&#x11F;retim Kurumlar&#x131; S&#x131;nav&#x131; 2026-YKS 3. Oturum (YDT)</td>
+      <td>21.06.2026</td><td>-</td></tr>
+  <tr><td>e-YDS Elektronik Yabanc&#x131; Dil S&#x131;nav&#x131; e-YDS 2026/1 &#x130;ngilizce</td>
+      <td>24.01.2026</td><td>-</td></tr>
+  <tr><td>e-YDS Elektronik Yabanc&#x131; Dil S&#x131;nav&#x131; e-YDS 2026/2 &#x130;ngilizce</td>
+      <td>14.02.2026</td><td>-</td></tr>
+  <tr><td>e-YDS Elektronik Yabanc&#x131; Dil S&#x131;nav&#x131; e-YDS 2026/11 &#x130;ngilizce</td>
+      <td>17.10.2026</td><td>-</td></tr>
+  <tr><td>e-YDS Elektronik Yabanc&#x131; Dil S&#x131;nav&#x131; e-YDS 2026/12 &#x130;ngilizce</td>
+      <td>19.12.2026</td><td>-</td></tr>
+  <tr><td>e-YDS Elektronik Yabanc&#x131; Dil S&#x131;nav&#x131; e-YDS 2027/1 &#x130;ngilizce</td>
+      <td>23.01.2027</td><td>-</td></tr>
+</table>`;
+
+test('KRITIK: ayni gunun iki oturumu ayri kimlik alir', () => {
+  // Kimlik çakışınca telefonda YDT, AYT'nin üstüne yazılıyordu.
+  const r = ayristir(OTURUMLAR, new Date('2026-05-01T12:00:00Z'));
+  const yks = r.sinavlar.filter((s) => s.title.startsWith('YKS'));
+  assert.equal(yks.length, 2);
+  assert.notEqual(yks[0].doc_id, yks[1].doc_id);
+  assert.deepEqual(yks.map((s) => s.doc_id).sort(), ['osym_yks_20260621_o2', 'osym_yks_20260621_o3']);
+});
+
+test('KRITIK: e-YDS en yakin iki YAKLASAN oturum (gecmis sayilmaz)', () => {
+  const r = ayristir(OTURUMLAR, new Date('2026-10-29T12:00:00Z'));
+  const eyds = r.sinavlar.filter((s) => s.title.startsWith('e-YDS')).map((s) => s.examDate.slice(0, 10));
+  assert.deepEqual(eyds.sort(), ['2026-12-19', '2027-01-23']);
+});

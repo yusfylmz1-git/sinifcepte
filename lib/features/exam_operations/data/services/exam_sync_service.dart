@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/database/database_helper.dart';
-import '../models/exam_model.dart';
+import '../ogretmen_sinavlari.dart';
 
 final examSyncServiceProvider = Provider<ExamSyncService>((ref) {
   return ExamSyncService();
@@ -46,7 +46,12 @@ class ExamSyncService {
           final deadline = item['applicationDeadline'] as String? ?? item['son_basvuru_tarihi'] as String?;
           final url = item['applicationUrl'] as String? ?? item['basvuru_linki'] as String? ?? '';
 
-          if (docId.isNotEmpty && title.isNotEmpty && examDate.isNotEmpty) {
+          // Öğretmeni ilgilendirmeyen ÖSYM sınavı (TUS, DUS, Sayıştay…)
+          // hiç yazılmaz (DEG-11).
+          if (docId.isNotEmpty &&
+              title.isNotEmpty &&
+              examDate.isNotEmpty &&
+              ogretmeniIlgilendirir(ad: title, kurum: institution)) {
             examMaps.add({
               'doc_id': docId,
               'sinav_adi': title,
@@ -59,25 +64,16 @@ class ExamSyncService {
         }
       }
 
+      // Gelen liste TAMDIR: listede olmayan eski sınav silinir (DEG-11).
+      // Boş liste hiçbir şeyi silmez; bozuk yayın eldekini korur.
       if (examMaps.isNotEmpty) {
-        final count = await _dbHelper.bulkUpsertGenelSinavlar(examMaps);
+        final count = await _dbHelper.replaceGenelSinavlar(examMaps);
         debugPrint('ExamSyncService: $count resmî sınav başarıyla yerel veritabanına senkronize edildi.');
         return count;
       }
       return 0;
     } catch (e, stackTrace) {
       debugPrint('ExamSyncService.syncFromJsonString error: $e\n$stackTrace');
-      return 0;
-    }
-  }
-
-  /// 3. Model Listesini Doğrudan Senkronize Et
-  Future<int> syncExamModels(List<ExamModel> exams) async {
-    try {
-      final examMaps = exams.map((e) => e.toMap()).toList();
-      return await _dbHelper.bulkUpsertGenelSinavlar(examMaps);
-    } catch (e, stackTrace) {
-      debugPrint('ExamSyncService.syncExamModels error: $e\n$stackTrace');
       return 0;
     }
   }
