@@ -1030,12 +1030,19 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                         onPressed: () async {
                           final title = titleController.text.trim();
                           if (title.isNotEmpty) {
-                            await ref.read(examTrackingProvider.notifier).addSchoolExam(
+                            final kaydedildi = await ref.read(examTrackingProvider.notifier).addSchoolExam(
                                   title: title,
                                   examDate: selectedDate,
                                   className: selectedClassName,
                                 );
                             if (ctx.mounted) Navigator.pop(ctx);
+                            // Kayıt düşerse pencere sessizce kapanıyor, sınav
+                            // listeye gelmiyordu (29 Ekim 2026).
+                            if (!kaydedildi && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Sınav kaydedilemedi. Lütfen tekrar deneyin.')),
+                              );
+                            }
                           }
                         },
                         style: ElevatedButton.styleFrom(

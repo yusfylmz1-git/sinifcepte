@@ -282,6 +282,11 @@ class DatabaseHelper {
     await ogrenciFotoTablolariniKur(db);
     // Arti-eksi listesi (29): ayni sebeple her acilista da.
     await artiEksiTablosunuKur(db);
+    // Okul sinavinin sinifi (29 Ekim 2026): surum 13 gocu sutunu yalniz
+    // YUKSELTILEN cihazlara ekliyordu, sifirdan kurulumda tablo sutunsuz
+    // olusuyordu ve "Okulum" sinavi hic kaydedilemiyordu. Sutunsuz
+    // kurulmus cihazlar burada onarilir.
+    await _safeAddColumn(db, 'kisisel_sinavlar', 'sinif', 'TEXT');
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -538,7 +543,8 @@ class DatabaseHelper {
         kurum $textType,
         sinav_tarihi $textType,
         son_basvuru_tarihi $textNullable,
-        basvuru_linki $textNullable
+        basvuru_linki $textNullable,
+        sinif $textNullable
       )
     ''');
 
