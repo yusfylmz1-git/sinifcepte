@@ -111,6 +111,12 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     await DatabaseHelper.instance.resetForTests();
+    // Veritabanı gerçek zamanda açılsın. Açma, kapama ve silme dosya
+    // yolu başına tek kilit kullanır; açılış bir ekranın sahte saatinde
+    // başlar ve test bitmeden tamamlanmazsa kilit hiç bırakılmaz,
+    // sonraki testin silmesi sonsuza dek bekler. Tam takımın yükü altında
+    // 31 Ekim'de iki turda beş test 10'ar dakika takıldı.
+    await DatabaseHelper.instance.database;
   });
 
   group('Üç çizgili menü yok', () {
@@ -526,13 +532,23 @@ void main() {
       tester.view.physicalSize = const Size(1080, 3200);
       tester.view.devicePixelRatio = 2;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(const ProviderScope(
-        child: MaterialApp(home: ExamOperationsMenuView()),
+      final kap = ProviderContainer();
+      await tester.pumpWidget(UncontrolledProviderScope(
+        container: kap,
+        child: const MaterialApp(home: ExamOperationsMenuView()),
       ));
       expect(find.byType(CustomBottomNavBar), findsNothing);
       // Satırın durumu veritabanından gelir; okuma bitmeden test bitmesin.
-      await bekleKadar(tester, () => find.textContaining('Sıradaki:').evaluate().isNotEmpty ||
-          find.textContaining('Yaklaşan sınav yok').evaluate().isNotEmpty);
+      // "Yaklaşan sınav yok" boş başlangıç durumunda da yazar; asıl işaret
+      // sınav listesinin yazılıp okunmuş olması. Yazma tek işlemdir (sil +
+      // ekle); yarıda kalırsa sonraki testin kapatması onu bekler.
+      await bekleKadar(tester, () => kap.read(examTrackingProvider).exams.isNotEmpty);
+      expect(kap.read(examTrackingProvider).exams, isNotEmpty,
+          reason: 'sınav listesi yüklenmedi');
+      expect(
+          find.textContaining('Sıradaki:').evaluate().isNotEmpty ||
+              find.textContaining('Yaklaşan sınav yok').evaluate().isNotEmpty,
+          isTrue);
       expect(find.text('Sınav Analizleri'), findsOneWidget);
 
       await tester.tap(find.text('e-Okul Karne Görüşü'));
