@@ -211,7 +211,8 @@ test('Ders seçilince tüm haftalar tek sayfada görünür', () => {
 
   om.renderTable('ALL', 5, 'MAT', 'ALL', 'ALL', '');
   const rows = (dom.html.match(/<tr/g) || []).length;
-  assert.strictEqual(rows, 39, `39 hafta bekleniyordu, ${rows} geldi`);
+  // 2026-2027: 14 Eylül - 25 Haziran, 41 takvim haftası.
+  assert.strictEqual(rows, 41, `41 hafta bekleniyordu, ${rows} geldi`);
   assert.ok(!dom.info.includes('gösteriliyor'), 'gereksiz kirpma uyarisi var');
 });
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/date_formatter.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../../shared/widgets/glass_card.dart';
 import '../../providers/outcomes_provider.dart';
@@ -90,7 +91,7 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                currentWeek >= 40
+                currentWeek > AppDateFormatter.toplamHafta()
                     ? 'Yaz Tatili kartına yönlendirildi 🏖️'
                     : 'Aktif haftaya ($currentWeek. Hafta) yönlendirildi 🎯',
                 style: const TextStyle(fontWeight: FontWeight.w600),

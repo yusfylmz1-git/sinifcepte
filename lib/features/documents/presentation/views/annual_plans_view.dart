@@ -249,22 +249,11 @@ class _AnnualPlansViewState extends ConsumerState<AnnualPlansView> {
         ));
       }
 
-      // Yıl sonu değerlendirme haftası: son ders haftası 35 ise 36. hafta
-      // eklenir. Önceden `length == 35` şartına bakılıyordu; tatil
-      // süzgeci hafta düşürdüğünde (28, 33 gibi) bu şart tutmuyor ama
-      // ekran yine "36 Hafta Tam Akış" diyordu.
-      if (planListesi.isNotEmpty) {
-        final sonHafta = PlanWeekBuilder.dersHaftaNo(dersSatirlari.last);
-        if (sonHafta == 35) {
-          planListesi.add(PlanWeekBuilder.yilSonuHaftasi(
-            haftaNo: 36,
-            sinif: _seciliSinif,
-            dersKodu: _seciliDersKodu ?? '',
-            dersAdi: _seciliDersAdi ?? 'Ders',
-            takvimdenTarih: AppDateFormatter.getWeekDateRangeText,
-          ));
-        }
-      }
+      // Yıl sonu haftası artık veriden gelir: takvim resmî tebliğe göre
+      // (2026-2027: 41 hafta, 37 ders haftası) ve resmî planların son
+      // iki haftası pakette. Eskiden son ders haftası 35 ise uydurma bir
+      // "36. hafta" ekleniyor, tarihi de takvimin 36. haftasından
+      // (17-21 Mayıs) basılıyordu.
 
       setState(() {
         _haftalikPlanlar = planListesi;

@@ -189,44 +189,8 @@ void main() {
     });
   });
 
-  group('Yil sonu haftasi', () {
-    test('KRITIK: tarih SABIT degil, takvimden gelir', () {
-      // Gunluk ekranda `'14 - 18 Haziran 2027'` diye sabitlenmisti;
-      // 2027-2028'de yanlis basacakti.
-      final plan = PlanWeekBuilder.yilSonuHaftasi(
-        haftaNo: 36,
-        sinif: 5,
-        dersKodu: 'TURKCE',
-        dersAdi: 'Türkçe',
-        takvimdenTarih: takvim,
-      );
-      expect((plan['meta'] as Map)['tarih_araligi'], '36. hafta tarihi');
-      expect((plan['meta'] as Map)['tarih_araligi'], isNot(contains('2027')));
-    });
-
-    test('Yil sonu haftasi da gercek ders saatini tasir', () {
-      final plan = PlanWeekBuilder.yilSonuHaftasi(
-        haftaNo: 36,
-        sinif: 5,
-        dersKodu: 'TURKCE',
-        dersAdi: 'Türkçe',
-        takvimdenTarih: takvim,
-      );
-      expect((plan['meta'] as Map)['ders_saati'], '6');
-    });
-
-    test('Ayrintili yil sonu haftasi gunluk alanlari tasir', () {
-      final plan = PlanWeekBuilder.yilSonuHaftasi(
-        haftaNo: 36,
-        sinif: 5,
-        dersKodu: 'TURKCE',
-        dersAdi: 'Türkçe',
-        takvimdenTarih: takvim,
-        ayrintili: true,
-      );
-      final surecMap = plan['ogretim_sureci'] as Map<String, dynamic>;
-      expect(surecMap['dikkat_cekme'], isNotEmpty);
-      expect(surecMap['farklilastirma'], isA<Map>());
-    });
-  });
+  // 'Yil sonu haftasi' grubu 30 Ekim 2026'da kalktı: uydurma 36. hafta
+  // artık üretilmiyor (bkz. test/akademik_takvim_test.dart). O testler
+  // sahte takvim fonksiyonu verdiği için yanlış tarihi (17-21 Mayıs)
+  // hiç göremiyordu.
 }

@@ -25,7 +25,12 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from academic_calendar import TOTAL_WEEKS, build_calendar, parse_academic_year  # noqa: E402
+from academic_calendar import (  # noqa: E402
+    DEFAULT_TOTAL_WEEKS,
+    build_calendar,
+    parse_academic_year,
+    total_weeks,
+)
 from outcome_parts import outcome_codes, parse_outcomes  # noqa: E402
 from pedagogy import build_meta  # noqa: E402
 from turkish_text import (  # noqa: E402
@@ -236,9 +241,15 @@ def count_stale_dates(records: list[dict]) -> int:
 # Doğrulama
 # --------------------------------------------------------------------------
 
-def validate(records: list[dict]) -> list[str]:
-    """Yayına engel olacak veri hatalarını döner. Boş liste = temiz."""
+def validate(records: list[dict], weeks_in_year: int | None = None) -> list[str]:
+    """Yayına engel olacak veri hatalarını döner. Boş liste = temiz.
+
+    [weeks_in_year] verilmezse kayıtların öğretim yılının takviminden okunur.
+    """
     problems: list[str] = []
+    if weeks_in_year is None:
+        year = next((r.get("academicYear") for r in records if r.get("academicYear")), None)
+        weeks_in_year = total_weeks(year) if year else DEFAULT_TOTAL_WEEKS
 
     ids = [r.get("id") for r in records]
     duplicates = {i for i in ids if i and ids.count(i) > 1}
@@ -253,22 +264,22 @@ def validate(records: list[dict]) -> list[str]:
     if missing_id:
         problems.append(f"{missing_id} kaydın 'id' alanı boş.")
 
-    # Her ders grubu 39 haftayı eksiksiz kapsamalı
+    # Her ders grubu yılın bütün takvim haftalarını eksiksiz kapsamalı
     groups: dict[tuple, set[int]] = {}
     for r in records:
         key = (r.get("gradeLevel"), r.get("subjectCode"), r.get("publisher"))
         groups.setdefault(key, set()).add(r.get("weekNumber"))
 
-    incomplete = [k for k, weeks in groups.items() if weeks != set(range(1, TOTAL_WEEKS + 1))]
+    incomplete = [k for k, weeks in groups.items() if weeks != set(range(1, weeks_in_year + 1))]
     if incomplete:
         sample = "; ".join(f"{k[0]}. sınıf {k[1]} ({k[2]})" for k in incomplete[:3])
         problems.append(
-            f"{len(incomplete)} ders grubunda 39 haftanın tamamı yok (örn: {sample})."
+            f"{len(incomplete)} ders grubunda {weeks_in_year} haftanın tamamı yok (örn: {sample})."
         )
 
     for r in records:
         week = r.get("weekNumber")
-        if not isinstance(week, int) or not 1 <= week <= TOTAL_WEEKS:
+        if not isinstance(week, int) or not 1 <= week <= weeks_in_year:
             problems.append(f"Geçersiz hafta numarası: {r.get('id')} -> {week}")
             break
 
@@ -394,7 +405,7 @@ def rebuild(records: list[dict], academic_year: str) -> list[dict]:
         if fold(publisher) in ("meb yayinlari", "meb yayınları"):
             publisher = ""
         week = int(record.get("weekNumber") or 1)
-        if not 1 <= week <= TOTAL_WEEKS:
+        if not 1 <= week <= len(calendar):
             continue
 
         # ADA Yayinlari plani ayri bir DERS degil; ayni Turkce dersinin
@@ -655,7 +666,7 @@ def _fill_missing_weeks(records: list[dict], calendar: dict, academic_year: str,
 
     MEB'in resmî taslak yıllık planları yalnızca ders yapılan haftaları
     satır olarak yazar; ara tatil ve yarıyıl haftaları listede yoktur.
-    Uygulama 39 haftalık akışı gösterdiği için bu boşluklar takvimden
+    Uygulama yılın bütün takvim haftalarını gösterdiği için bu boşluklar takvimden
     doldurulur. İçerik UYDURULMAZ: tatil haftası tatil kartı olur,
     diğerleri boş ders haftası olarak işaretlenir.
     """
@@ -668,7 +679,7 @@ def _fill_missing_weeks(records: list[dict], calendar: dict, academic_year: str,
 
     for key, items in groups.items():
         present = {item["weekNumber"] for item in items}
-        missing = [w for w in range(1, TOTAL_WEEKS + 1) if w not in present]
+        missing = [w for w in range(1, len(calendar) + 1) if w not in present]
         if not missing:
             continue
 
@@ -914,13 +925,14 @@ def main() -> int:
     if stale_before:
         print(f"Eski tarih temizligi: {stale_before} -> {stale_after} kayit")
 
-    problems = validate(records)
+    weeks_in_year = total_weeks(args.year)
+    problems = validate(records, weeks_in_year)
     if problems:
         print("\nDOGRULAMA HATALARI:")
         for problem in problems:
             print(f"  - {problem}")
         return 1
-    print("Dogrulama           : temiz (kimlik cakismasi yok, 39 hafta tam)")
+    print(f"Dogrulama           : temiz (kimlik cakismasi yok, {weeks_in_year} hafta tam)")
 
     repeats = repetition_report(records)
     if repeats:

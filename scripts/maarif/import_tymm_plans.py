@@ -39,7 +39,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from academic_calendar import TOTAL_WEEKS, build_calendar  # noqa: E402
+from academic_calendar import MAX_WEEKS, build_calendar  # noqa: E402
 from outcome_parts import find_code_positions  # noqa: E402
 from turkish_text import fold  # noqa: E402
 
@@ -400,19 +400,19 @@ def parse_week_label(value: str) -> int | None:
     match = re.match(r"\s*(\d{1,2})\s*\.?\s*(?:hafta|week)", text, re.IGNORECASE)
     if match:
         week = int(match.group(1))
-        return week if 1 <= week <= TOTAL_WEEKS else None
+        return week if 1 <= week <= MAX_WEEKS else None
     # Ingilizce planlarda sayi SONRA gelir: "Week 1: 14-18 September".
     # Turkce kalip ("1. Hafta") bunu yakalamiyordu ve CYDEM sayfalari
     # basliklari okunsa bile tek kayit uretmiyordu.
     match = re.match(r"\s*week\s*(\d{1,2})", text, re.IGNORECASE)
     if match:
         week = int(match.group(1))
-        return week if 1 <= week <= TOTAL_WEEKS else None
+        return week if 1 <= week <= MAX_WEEKS else None
     # Almanca: "1. Woche: 14.-18. September"
     match = re.match(r"\s*(\d{1,2})\s*\.?\s*woche", text, re.IGNORECASE)
     if match:
         week = int(match.group(1))
-        return week if 1 <= week <= TOTAL_WEEKS else None
+        return week if 1 <= week <= MAX_WEEKS else None
     return None
 
 
@@ -439,6 +439,35 @@ def parse_week(value: str, date_index: dict[tuple[int, int], int] | None = None)
         if start and start in date_index:
             return date_index[start]
     return parse_week_label(value)
+
+
+# Satırın tarihi öğretim yılının dışında: blok hiçbir haftaya yazılmaz.
+TAKVIM_DISI = -1
+
+
+def _akademik_sira(gun_ay: tuple[int, int]) -> tuple[int, int]:
+    """(gün, ay) -> öğretim yılı içindeki sıra (ağustos başta, temmuz sonda)."""
+    gun, ay = gun_ay
+    return (ay - 8) % 12, gun
+
+
+def takvim_disinda(value: str, date_index: dict[tuple[int, int], int] | None) -> bool:
+    """Hücrede tarih var ve öğretim yılı takviminin DIŞINDA mı?
+
+    Böyle bir satırda parse_week etikete düşer. Etiket DERS haftasıdır
+    (resmî planlar "36. Hafta: 14-18 Haziran" yazar), takvim haftası
+    sanılırsa dolu bir haftaya (17-21 Mayıs) çarpar ve ilk gelen
+    kazandığı için sessizce atılır. 39 haftalık takvimde 101 planın son
+    iki haftası böyle kayboldu. Takvim kısa kalırsa artık uyarı çıkar.
+    """
+    if not date_index:
+        return False
+    start = parse_week_start(value)
+    if not start or start in date_index:
+        return False
+    siralar = [_akademik_sira(k) for k in date_index]
+    sira = _akademik_sira(start)
+    return sira < min(siralar) or sira > max(siralar)
 
 
 
@@ -734,21 +763,30 @@ def read_sheet(worksheet, sheet_name: str, course_slug: str,
     current_week_num: int | None = None
     current_rows: list[tuple] = []
     otp_inferred = False
+    toplam_hafta = max(date_index.values()) if date_index else MAX_WEEKS
 
     for row in rows[header_index + 1:]:
         if not any(row):
             continue
-        week = parse_week(cell(row, "week"), date_index)
+        hafta_hucresi = cell(row, "week")
+        if takvim_disinda(hafta_hucresi, date_index):
+            problems.append(
+                f"{filename} / {sheet_name}: '{hafta_hucresi[:40]}' ogretim yili "
+                "takviminin disinda (overrides endDate dogru mu?), atlandi"
+            )
+            week = TAKVIM_DISI
+        else:
+            week = parse_week(hafta_hucresi, date_index)
         if week is not None:
             otp_inferred = False
-        elif current_week_num is not None:
+        elif current_week_num is not None and current_week_num > 0:
             # MEB Excel planlarında (örn. BTY ve Fen) MEB bazı haftalarda
             # 'OKUL TEMELLİ PLANLAMA*' başlığı atıp hafta hücresini boş bırakmakta,
             # alt satırda ise o haftanın ders konusunu ve kazanımını vermektedir.
             # Bu durum bir sonraki haftanın başlangıcıdır.
             r_str = " ".join(str(c) for c in row if c is not None).lower()
             if "okul temelli" in r_str and not otp_inferred:
-                if current_week_num + 1 <= TOTAL_WEEKS:
+                if current_week_num + 1 <= toplam_hafta:
                     week = current_week_num + 1
                     otp_inferred = True
 
@@ -772,7 +810,7 @@ def read_sheet(worksheet, sheet_name: str, course_slug: str,
     last_diff = ""
 
     for week, w_rows in week_blocks:
-        if week in seen:
+        if week == TAKVIM_DISI or week in seen:
             continue
         seen.add(week)
 
@@ -879,7 +917,7 @@ def read_sheet(worksheet, sheet_name: str, course_slug: str,
             "sourceSheet": sheet_name,
         })
 
-    records = _spread_long_outcomes(records)
+    records = _spread_long_outcomes(records, toplam_hafta)
 
     # Beceri ayiricisi YALNIZCA parcalama icin vardi; nihai metne
     # sizmamali. Gorunmez bir karakter resmi evraga ve ogretmenin
@@ -898,7 +936,7 @@ def read_sheet(worksheet, sheet_name: str, course_slug: str,
     return records, problems
 
 
-def _spread_long_outcomes(records: list[dict]) -> list[dict]:
+def _spread_long_outcomes(records: list[dict], total_weeks: int = MAX_WEEKS) -> list[dict]:
     """Ünite başına tek hücrede toplanmış kazanımları haftalara dağıtır.
 
     Kaynak, ünitenin tüm kazanımlarını ilk haftaya yazıp sonraki haftaları
@@ -925,10 +963,10 @@ def _spread_long_outcomes(records: list[dict]) -> list[dict]:
         # Blok, bir sonraki kayda kadar sürer.
         start = record["weekNumber"]
         end = (ordered[index + 1]["weekNumber"] if index + 1 < len(ordered)
-               else TOTAL_WEEKS + 1)
-        # Blok kendi aralığının dışına taşmamalı: 39 haftalık takvimde
-        # 52. hafta diye bir şey yok ve boru hattı böyle kayıtları eler.
-        span = max(1, min(end - start, len(parts), TOTAL_WEEKS + 1 - start))
+               else total_weeks + 1)
+        # Blok kendi aralığının dışına taşmamalı: takvimde 52. hafta diye
+        # bir şey yok ve boru hattı böyle kayıtları eler.
+        span = max(1, min(end - start, len(parts), total_weeks + 1 - start))
 
         # Parçaları span kadar gruba böl.
         per = max(1, -(-len(parts) // span))

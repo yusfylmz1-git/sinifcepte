@@ -193,7 +193,7 @@ void main() {
 
       expect(metin.contains('15.10.2026 - 20.03.2027'), isTrue,
           reason: 'öğretmenin tarihi belgeye çıkmıyor');
-      expect(metin.contains('11.06.2027'), isFalse,
+      expect(metin.contains('25.06.2027'), isFalse,
           reason: 'hesaplanan bitiş hâlâ basılıyor');
     });
 
@@ -202,9 +202,10 @@ void main() {
       final goals = await amacKur(plan);
       final metin = await pdfMetni(plan, goals: goals);
 
-      // Tarih artik okul takviminden hesaplaniyor: eylulun ikinci
-      // pazartesisi + 39 hafta. Once her yil 01.09 - 31.05 sabitiydi.
-      expect(metin.contains('14.09.2026 - 11.06.2027'), isTrue);
+      // Tarih okul takviminden: acilis pazartesisi ve karne gunu
+      // (2026-2027 resmi: 25 Haziran). Once her yil 01.09 - 31.05
+      // sabitiydi, sonra '+39 hafta' 11 Haziran'i veriyordu.
+      expect(metin.contains('14.09.2026 - 25.06.2027'), isTrue);
     });
 
     test('tek taraf girilirse oteki hesaptan tamamlanir', () async {
@@ -216,7 +217,7 @@ void main() {
       final metin = await pdfMetni((await repo.getPlan(plan.id!))!,
           goals: goals);
 
-      expect(metin.contains('01.11.2026 - 11.06.2027'), isTrue,
+      expect(metin.contains('01.11.2026 - 25.06.2027'), isTrue,
           reason: 'yarım tarih belgeyi bozuyor');
     });
   });

@@ -63,7 +63,7 @@ class DashboardScreen extends ConsumerWidget {
     final akis = gununAkisi(todayLessons, scheduleSettings, now);
 
     final currentAcademicWeek = AppDateFormatter.getCurrentAcademicWeek(targetDate: now);
-    final isSummerHoliday = currentAcademicWeek >= 40;
+    final isSummerHoliday = currentAcademicWeek > AppDateFormatter.toplamHafta(now);
     final isWeekend = now.weekday == DateTime.saturday || now.weekday == DateTime.sunday;
     final todayCalendarEvent = ref.watch(todayCalendarEventProvider);
     final isOfficialHoliday = todayCalendarEvent != null &&

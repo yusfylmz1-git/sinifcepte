@@ -35,6 +35,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from academic_calendar import DEFAULT_TOTAL_WEEKS, total_weeks  # noqa: E402
 from build_curriculum import is_unplanned  # noqa: E402
 from outcome_parts import outcome_codes  # noqa: E402
 from turkish_text import fold  # noqa: E402
@@ -122,8 +123,12 @@ class GroupReport:
                       if STALE_DATE.search(r.get("outcomeDescription") or "")]
         self.estimated = any(r.get("isEstimatedSchedule") for r in self.records)
 
+        # Beklenen hafta sayısı kaydın öğretim yılının takviminden gelir
+        # (sabit 39 hiçbir yıla uymuyordu; bkz. academic_calendar).
+        year = records[0].get("academicYear")
+        expected = total_weeks(year) if year else DEFAULT_TOTAL_WEEKS
         weeks = {r["weekNumber"] for r in self.records}
-        self.missing_weeks = sorted(set(range(1, 40)) - weeks)
+        self.missing_weeks = sorted(set(range(1, expected + 1)) - weeks)
 
     @property
     def uniqueness(self) -> float:

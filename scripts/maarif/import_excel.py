@@ -28,7 +28,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from academic_calendar import TOTAL_WEEKS  # noqa: E402
+from academic_calendar import DEFAULT_TOTAL_WEEKS, total_weeks  # noqa: E402
 
 try:
     import openpyxl
@@ -120,7 +120,8 @@ def locate_columns(rows: list[tuple]) -> tuple[int, dict[str, int]]:
     return -1, {}
 
 
-def read_sheet(worksheet, sheet_name: str) -> tuple[list[dict], list[str]]:
+def read_sheet(worksheet, sheet_name: str,
+               weeks_in_year: int = DEFAULT_TOTAL_WEEKS) -> tuple[list[dict], list[str]]:
     problems: list[str] = []
     rows = list(worksheet.iter_rows(values_only=True))
     if len(rows) < 2:
@@ -150,7 +151,7 @@ def read_sheet(worksheet, sheet_name: str) -> tuple[list[dict], list[str]]:
         if not week_match:
             continue  # hafta numarası olmayan satır plan satırı değildir
         week = int(week_match.group())
-        if not 1 <= week <= TOTAL_WEEKS:
+        if not 1 <= week <= weeks_in_year:
             problems.append(f"{sheet_name}: geçersiz hafta {week}, satır atlandı")
             continue
         if week in seen_weeks:
@@ -178,13 +179,13 @@ def read_sheet(worksheet, sheet_name: str) -> tuple[list[dict], list[str]]:
             "sourceSheet": sheet_name,
         })
 
-    missing = sorted(set(range(1, TOTAL_WEEKS + 1)) - seen_weeks)
+    missing = sorted(set(range(1, weeks_in_year + 1)) - seen_weeks)
     if missing:
         problems.append(
             f"{sheet_name}: {len(missing)} hafta eksik ({', '.join(map(str, missing[:6]))}"
             f"{'...' if len(missing) > 6 else ''}) - boş kayıtla tamamlandı"
         )
-        # Boru hattı 39 haftanın tamamını ister; eksikler BOŞ olarak eklenir,
+        # Boru hattı yılın bütün haftalarını ister; eksikler BOŞ olarak eklenir,
         # sahte içerik uydurulmaz.
         for week in missing:
             template = records[0] if records else {}
@@ -205,13 +206,14 @@ def read_sheet(worksheet, sheet_name: str) -> tuple[list[dict], list[str]]:
 
 
 def import_workbook(path: str, skip_sheets: tuple[str, ...] = (),
-                    keep_variants: bool = False) -> tuple[list[dict], list[str]]:
+                    keep_variants: bool = False,
+                    weeks_in_year: int = DEFAULT_TOTAL_WEEKS) -> tuple[list[dict], list[str]]:
     workbook = openpyxl.load_workbook(path, read_only=True, data_only=True)
     all_records: list[dict] = []
     all_problems: list[str] = []
 
     # '5-İngilizce-ÇYDEM' ve '5-İngilizce-ÇYDEM_2' aynı dersin iki kopyasıdır.
-    # İkisi de alınırsa aynı ders grubu 39 yerine 78 hafta görünür ve
+    # İkisi de alınırsa aynı ders grubu iki kat hafta görünür ve
     # kazanımlar tekrar ediyormuş gibi raporlanır. Varsayılan olarak en çok
     # dolu haftası olan varyant seçilir.
     by_group: dict[tuple, list[tuple[str, list[dict]]]] = {}
@@ -219,7 +221,7 @@ def import_workbook(path: str, skip_sheets: tuple[str, ...] = (),
     for sheet_name in workbook.sheetnames:
         if sheet_name in skip_sheets or sheet_name.startswith("~"):
             continue
-        records, problems = read_sheet(workbook[sheet_name], sheet_name)
+        records, problems = read_sheet(workbook[sheet_name], sheet_name, weeks_in_year)
         all_problems.extend(problems)
         if not records:
             continue
@@ -263,6 +265,8 @@ def main() -> int:
                         help="Atlanacak sekme adları")
     parser.add_argument("--keep-variants", action="store_true",
                         help="Kopya sekmeleri ('_2') ayıklama, hepsini al")
+    parser.add_argument("--year", default="2026-2027",
+                        help="Öğretim yılı; hafta sayısı takviminden okunur")
     args = parser.parse_args()
 
     if not os.path.exists(args.excel):
@@ -270,7 +274,8 @@ def main() -> int:
         return 1
 
     print(f"Okunuyor: {args.excel}")
-    records, problems = import_workbook(args.excel, tuple(args.skip), args.keep_variants)
+    records, problems = import_workbook(args.excel, tuple(args.skip), args.keep_variants,
+                                        total_weeks(args.year))
 
     groups = {(r["gradeLevel"], r["subjectName"], r["publisher"]) for r in records}
     placeholders = sum(1 for r in records if r.get("isPlaceholder"))

@@ -1,6 +1,7 @@
 {
-  "_comment": "MEB 2026-2027 resmî çalışma takvimi. MEB TYMM çerçeve planlarıyla %100 uyumlu tatil haftaları.",
+  "_comment": "MEB 2026-2027 resmî çalışma takvimi (genelge 13 Haziran 2026, meb.gov.tr haber 41057). endDate karne günü; hafta sayısı ondan hesaplanır (41).",
   "startDate": "2026-09-14",
+  "endDate": "2027-06-25",
   "secondTermStartWeek": 22,
   "holidayWeeks": {
     "10": "1. Dönem Ara Tatili",
@@ -9,7 +10,7 @@
     "26": "2. Dönem Ara Tatili"
   },
   "otpWeeks": [],
-  "socialEventWeeks": [19, 39],
+  "socialEventWeeks": [19, 41],
   "weekNotes": {
     "10": "1. Dönem Ara Tatili",
     "19": "1. Dönem Sonu & Sosyal Etkinlikler",
@@ -17,6 +18,6 @@
     "26": "2. Dönem Ara Tatili (Ramazan Bayramı)",
     "32": "23 Nisan Ulusal Egemenlik",
     "36": "19 Mayıs Atatürk'ü Anma",
-    "39": "Kapanış & Karne Haftası"
+    "41": "Kapanış & Karne Haftası"
   }
 }

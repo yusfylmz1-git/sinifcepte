@@ -47,11 +47,42 @@ class AppDateFormatter {
     return '${gunAyYil(d)}, $saat:$dakika';
   }
 
+  /// MEB'in tebliğle duyurduğu öğretim yılları: açılış pazartesisi ve
+  /// karne cuması. Anahtar açılış yılı.
+  ///
+  /// ## Neden tablo (30 Ekim 2026)
+  /// Yılın sonu kuraldan çıkmaz. Burada sabit "39 hafta" vardı; 2026-2027
+  /// ise 41 hafta (karne 25 Haziran 2027), 2025-2026 42 hafta sürdü. 39
+  /// varsayımıyla 14-25 Haziran "yaz tatili" görünüyor, kazanım paketi de
+  /// resmî planların son iki haftasını atıyordu.
+  ///
+  /// Kazanım boru hattının takvimiyle (`scripts/maarif/overrides/<yıl>.json`)
+  /// aynı olmalı; `test/akademik_takvim_test.dart` karşılaştırır. Tabloda
+  /// olmayan yıl kuralla ve [varsayilanHaftaSayisi] ile hesaplanır.
+  static final Map<int, ({DateTime acilis, DateTime kapanis})> _resmiYillar = {
+    // Geçen yıldan devreden BEP planları bu bitişi basar.
+    2025: (acilis: DateTime(2025, 9, 8), kapanis: DateTime(2026, 6, 26)),
+    2026: (acilis: DateTime(2026, 9, 14), kapanis: DateTime(2027, 6, 25)),
+  };
+
+  /// Test ve boru hattı karşılaştırması için tablonun salt okunur hâli.
+  static Map<int, ({DateTime acilis, DateTime kapanis})> get resmiYillar =>
+      Map.unmodifiable(_resmiYillar);
+
+  /// Tabloda olmayan yılın takvim haftası sayısı (son yıllar 41-42).
+  static const int varsayilanHaftaSayisi = 41;
+
+  /// Gün farkı yaz saatinden etkilenmesin diye UTC gün.
+  static DateTime _gun(DateTime d) => DateTime.utc(d.year, d.month, d.day);
+
   /// Verilen veya aktif tarihe göre MEB Eğitim-Öğretim Yılı Başlangıcı (Eylül Pazartesi)
   static DateTime getAcademicYearStartDate([DateTime? targetDate]) {
     final now = targetDate ?? DateTime.now();
     // Eğer ay Ağustos veya sonrası ise (>= 8) o yılın Eylül'ü, değilse önceki yılın Eylül'ü
     final year = (now.month >= 8) ? now.year : now.year - 1;
+
+    final resmi = _resmiYillar[year];
+    if (resmi != null) return resmi.acilis;
 
     // MEB Standart Başlangıcı: Eylül'ün 2. Pazartesisi (8 - 14 Eylül aralığı)
     final sep1 = DateTime(year, 9, 1);
@@ -70,11 +101,31 @@ class AppDateFormatter {
     return '$start-${start + 1}';
   }
 
-  /// Bugün hangi akademik haftada? (1 - 39: Ders/Ara Tatil Haftaları, 40: Yaz Tatili)
+  /// Öğretim yılının son günü (karne cuması).
+  static DateTime dersYiliSonu([DateTime? targetDate]) {
+    final acilis = getAcademicYearStartDate(targetDate);
+    final resmi = _resmiYillar[acilis.year];
+    if (resmi != null) return resmi.kapanis;
+    return DateTime(acilis.year, acilis.month, acilis.day + varsayilanHaftaSayisi * 7 - 3);
+  }
+
+  /// Öğretim yılının takvim haftası sayısı (ara tatil ve yarıyıl dahil).
+  static int toplamHafta([DateTime? targetDate]) {
+    final acilis = getAcademicYearStartDate(targetDate);
+    return _gun(dersYiliSonu(targetDate)).difference(_gun(acilis)).inDays ~/ 7 + 1;
+  }
+
+  /// Yaz tatili kartının hafta numarası: yılın son haftasının bir fazlası.
+  static int yazTatiliHaftasi([DateTime? targetDate]) => toplamHafta(targetDate) + 1;
+
+  /// Bugün hangi akademik haftada? (1 - [toplamHafta]: ders ve ara tatil
+  /// haftaları, [yazTatiliHaftasi]: yaz tatili)
   static int getCurrentAcademicWeek({DateTime? targetDate}) {
     final now = targetDate ?? DateTime.now();
     final startDate = getAcademicYearStartDate(now);
-    final endDate = startDate.add(const Duration(days: 39 * 7 - 3)); // 39. Hafta Cuma günü
+    final toplam = toplamHafta(now);
+    final bugun = _gun(now);
+    final sonGun = _gun(dersYiliSonu(now));
 
     // 1. Yeni eğitim öğretim yılına hazırlık dönemi (Ağustos ve Eylül ayı açılış öncesi):
     // Öğretmenlerin planlama yapabilmesi için doğrudan 1. Haftaya (14 - 18 Eylül) odaklan
@@ -82,29 +133,33 @@ class AppDateFormatter {
       return 1;
     }
 
-    // 2. Eğitim-öğretim dönemi içindeyse aktif haftayı hesapla (1 - 39)
-    if (!now.isBefore(startDate) && !now.isAfter(endDate)) {
-      final differenceInDays = now.difference(startDate).inDays;
-      final weekNumber = (differenceInDays / 7).floor() + 1;
-      return weekNumber.clamp(1, 39);
+    // 2. Eğitim-öğretim dönemi içindeyse aktif haftayı hesapla. Gün
+    // olarak karşılaştırılır: karne cuması öğleden sonra da ders yılıdır
+    // (eski hesap saat 00.00'ı sınır alıyor, cumayı tatile atıyordu).
+    if (!now.isBefore(startDate) && !bugun.isAfter(sonGun)) {
+      final differenceInDays = bugun.difference(_gun(startDate)).inDays;
+      final weekNumber = differenceInDays ~/ 7 + 1;
+      return weekNumber.clamp(1, toplam);
     }
 
-    // 3. Yaz tatili dönemi (Haziran sonu ve Temmuz)
-    if (now.isAfter(endDate) || now.month == 7 || now.month == 6) {
-      return 40; // Yaz Tatili Kartı
+    // 3. Yaz tatili dönemi (karneden sonra ve Temmuz)
+    if (bugun.isAfter(sonGun) || now.month == 7 || now.month == 6) {
+      return toplam + 1; // Yaz Tatili Kartı
     }
 
     return 1;
   }
 
-  /// Verilen akademik hafta nosuna göre (1-39 ve 40: Yaz Tatili) başlangıç ve bitiş tarih aralığı metni
+  /// Verilen akademik hafta nosuna göre (1-[toplamHafta] ve yaz tatili)
+  /// başlangıç ve bitiş tarih aralığı metni
   static String getWeekDateRangeText(int weekNumber, {DateTime? targetDate}) {
     final startDate = getAcademicYearStartDate(targetDate);
 
-    // 40. Hafta: Yaz Tatili Aralığı
-    if (weekNumber >= 40) {
-      final endDate = startDate.add(const Duration(days: 39 * 7 - 3));
-      final nextStart = startDate.add(const Duration(days: 365));
+    // Son haftadan sonrası: Yaz Tatili Aralığı (karneden sonraki gün ->
+    // yeni yılın açılışından önceki gün)
+    if (weekNumber > toplamHafta(targetDate)) {
+      final endDate = dersYiliSonu(targetDate);
+      final nextStart = getAcademicYearStartDate(DateTime(startDate.year + 1, 8, 15));
       try {
         final startStr = gunAy(endDate.add(const Duration(days: 1)));
         final endStr = gunAyYil(nextStart.subtract(const Duration(days: 1)));

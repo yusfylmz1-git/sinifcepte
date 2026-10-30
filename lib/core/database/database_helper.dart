@@ -1771,6 +1771,7 @@ class DatabaseHelper {
   /// | 4 | MEB TYMM 2026-2027 takvim hizalaması ve BTY/Fen OTP hafta onarımı |
   /// | 5 | MEB TYMM eksiksiz plan entegrasyonu ve Planlanmamış Hafta/OTP temizliği |
   /// | 6 | teaching_week_number geriye dönük doldurma (plan üretimi bu sütuna bağlandı) |
+  /// | 9 | Takvim 41 hafta (karne 25 Haziran 2027): resmî planların 14-25 Haziran haftaları eklendi |
   ///
   /// ## 6'ya neden çıkıldı
   /// `teaching_week_number` sütunu tabloya ALTER TABLE ile sonradan
@@ -1780,7 +1781,7 @@ class DatabaseHelper {
   /// tatil süzgecini bu sütuna bağlayınca tüm satırlar elendi ve ekran
   /// "plan bulunamadı" dedi — cihazda bire bir gözlendi. Sürümü artırmak
   /// yeniden tohumlamayı tetikler ve sütunu doldurur.
-  static const int kazanimPaketSurumu = 8;
+  static const int kazanimPaketSurumu = 9;
 
   static const String _kKazanimPaketKey = 'curriculum_asset_version';
 

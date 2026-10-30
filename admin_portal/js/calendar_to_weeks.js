@@ -4,13 +4,16 @@
  * Panelde MEB takvimi ile kazanım kartları BİRBİRİNDEN BAĞIMSIZ iki sistemdi:
  * takvim sayfasında ara tatili değiştirmek kartlardaki tatil haftalarını
  * etkilemiyordu. Bu modül takvim olaylarını tek doğruluk kaynağı yapar ve
- * kartların ihtiyaç duyduğu 39 haftalık yapıyı türetir.
+ * kartların ihtiyaç duyduğu haftalık yapıyı türetir. Hafta sayısı takvimdeki
+ * yıl sonu (karne) olayından gelir; olay yoksa DEFAULT_WEEKS.
  *
  * Üretilen yapı, Python tarafındaki scripts/maarif/academic_calendar.py
  * çıktısıyla aynı biçimdedir; ikisi de overrides JSON'una çevrilebilir.
  */
 class CalendarToWeeks {
-  static TOTAL_WEEKS = 39;
+  // 30 Ekim 2026'ya kadar sabit 39 idi; hiçbir yıla uymuyordu (2026-2027:
+  // 14 Eylül - 25 Haziran = 41 hafta). Python tarafı: academic_calendar.py.
+  static DEFAULT_WEEKS = 41;
 
   static MONTHS = [
     'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -57,7 +60,7 @@ class CalendarToWeeks {
   }
 
   /**
-   * Takvim olaylarından 39 haftalık yapıyı üretir.
+   * Takvim olaylarından haftalık yapıyı üretir.
    *
    * @param {Array} events  CalendarManager.getEvents() çıktısı
    * @returns {{weeks: Array, startDate: string, warnings: string[]}}
@@ -89,11 +92,27 @@ class CalendarToWeeks {
     // 2) Eğitime ara verilen aralıklar: ara tatil ve sömestr
     const breaks = list.filter((e) => e.category === 'breakHoliday');
 
-    // 3) 39 haftayı kur; her haftayı tatil aralıklarıyla karşılaştır
+    // 3) Yılın uzunluğu: yıl sonu (karne) olayının haftası.
+    const closing = list.find(
+      (e) => e.category === 'period' && /(yılı sonu|kapanış|karne)/i.test(e.title || '')
+    );
+    let totalWeeks = this.DEFAULT_WEEKS;
+    let endDate = null;
+    if (closing) {
+      const closingMonday = this.mondayOf(this.parseDate(closing.startDate));
+      totalWeeks = Math.round((closingMonday - startMonday) / (7 * 864e5)) + 1;
+      endDate = this.formatDate(this.addDays(closingMonday, 4));
+    } else {
+      warnings.push(
+        `Takvimde yıl sonu (karne) olayı yok; ${this.DEFAULT_WEEKS} hafta varsayıldı.`
+      );
+    }
+
+    // 4) Haftaları kur; her haftayı tatil aralıklarıyla karşılaştır
     const weeks = [];
     let teachingWeek = 0;
 
-    for (let weekNo = 1; weekNo <= this.TOTAL_WEEKS; weekNo += 1) {
+    for (let weekNo = 1; weekNo <= totalWeeks; weekNo += 1) {
       const start = this.addDays(startMonday, (weekNo - 1) * 7);
       const end = this.addDays(start, 4); // Pazartesi - Cuma
 
@@ -122,21 +141,11 @@ class CalendarToWeeks {
       });
     }
 
-    // 4) Takvimin kapanışı 39. haftayla uyuşuyor mu?
-    const closing = list.find(
-      (e) => e.category === 'period' && /(yılı sonu|kapanış|karne)/i.test(e.title || '')
-    );
-    if (closing) {
-      const closingDate = this.parseDate(closing.startDate);
-      const lastWeekEnd = this.parseDate(weeks[this.TOTAL_WEEKS - 1].endDate);
-      const driftDays = Math.round((closingDate - lastWeekEnd) / 864e5);
-      if (Math.abs(driftDays) > 3) {
-        warnings.push(
-          `Takvimdeki yıl sonu (${closing.startDate}) ile 39. haftanın bitişi ` +
-            `(${weeks[this.TOTAL_WEEKS - 1].endDate}) ${Math.abs(driftDays)} gün farklı. ` +
-            'Ara tatil tarihlerini veya açılış gününü kontrol edin.'
-        );
-      }
+    // 5) Karne cuma değilse uyar (Python endDate'i cuma ister).
+    if (closing && this.parseDate(closing.startDate).getDay() !== 5) {
+      warnings.push(
+        `Yıl sonu (${closing.startDate}) cuma değil; o haftanın cuması (${endDate}) kabul edildi.`
+      );
     }
 
     const holidayCount = weeks.filter((w) => w.isHolidayWeek).length;
@@ -144,7 +153,7 @@ class CalendarToWeeks {
       warnings.push('Takvimde hiçbir ara tatil/sömestr haftası bulunamadı.');
     }
 
-    return { weeks, startDate: this.formatDate(startMonday), warnings };
+    return { weeks, startDate: this.formatDate(startMonday), endDate, warnings };
   }
 
   /**
@@ -152,7 +161,7 @@ class CalendarToWeeks {
    * Bu JSON `scripts/maarif/overrides/<yıl>.json` olarak kaydedilir.
    */
   static toOverrideJson(events, academicYear, options = {}) {
-    const { weeks, startDate, warnings } = this.buildWeeks(events);
+    const { weeks, startDate, endDate, warnings } = this.buildWeeks(events);
     if (!weeks.length) return { override: null, warnings };
 
     const holidayWeeks = {};
@@ -178,6 +187,7 @@ class CalendarToWeeks {
           `${academicYear} - SınıfCepte admin panelindeki MEB takviminden üretildi. ` +
           'scripts/maarif/overrides/ altına kaydedin.',
         startDate,
+        ...(endDate ? { endDate } : {}),
         secondTermStartWeek,
         holidayWeeks,
         otpWeeks: options.otpWeeks || [],

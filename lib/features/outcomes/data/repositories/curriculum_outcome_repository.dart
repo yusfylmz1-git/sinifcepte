@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../../../core/storage/prefs_service.dart';
 import '../../../../core/database/database_helper.dart';
+import '../../../../core/utils/date_formatter.dart';
 import '../models/curriculum_outcome_model.dart';
 
 /// SınıfCepte - Müfredat ve Kazanım Veri Deposu (Yüksek Performanslı In-Memory Caching)
@@ -66,21 +67,24 @@ class CurriculumOutcomeRepository {
 
     final list = rawList.map((m) => CurriculumOutcomeModel.fromMap(m)).toList();
 
-    // 40. Hafta: Resmî Yaz Tatili ve Dinlenme Dönemi Bilgilendirme Kartı
+    // Son haftadan sonra: Resmî Yaz Tatili ve Dinlenme Dönemi Bilgilendirme Kartı
+    // (hafta numarası takvimden; 2026-2027'de 42. Yıl 41 hafta olduğu
+    // için sabit 40 artık gerçek bir ders haftasıdır.)
     if (searchQuery == null || searchQuery.isEmpty || searchQuery.toLowerCase().contains('tatil') || searchQuery.toLowerCase().contains('yaz')) {
       final subjectName = list.isNotEmpty ? list.first.subjectName : 'Ders';
+      final yazHaftasi = AppDateFormatter.yazTatiliHaftasi();
       list.add(CurriculumOutcomeModel(
-        docId: 'plan_${gradeLevel}_${subjectCode}_summer_40',
+        docId: 'plan_${gradeLevel}_${subjectCode}_summer_$yazHaftasi',
         gradeLevel: gradeLevel,
         subjectCode: subjectCode,
         subjectName: subjectName,
         publisher: publisher ?? 'MEB Yayınları',
         fullTitle: '$gradeLevel. Sınıf - $subjectName - Yaz Tatili',
-        weekNumber: 40,
+        weekNumber: yazHaftasi,
         unitTitle: '🏖️ Yaz Tatili & Dinlenme Dönemi',
         topicTitle: 'Yaz Tatili',
         outcomeDescription:
-            '39 haftalık resmî eğitim ve öğretim maratonu başarıyla tamamlanmıştır! Tüm öğretmen ve öğrencilerimize sağlık, mutluluk ve huzur dolu bir yaz tatili dileriz. 🌴☀️🎈',
+            'Eğitim ve öğretim yılı başarıyla tamamlanmıştır! Tüm öğretmen ve öğrencilerimize sağlık, mutluluk ve huzur dolu bir yaz tatili dileriz. 🌴☀️🎈',
         isHolidayWeek: true,
         holidayNote: 'Yaz Tatili',
       ));

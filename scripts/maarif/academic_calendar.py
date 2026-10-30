@@ -18,7 +18,22 @@ import json
 import os
 import re
 
-TOTAL_WEEKS = 39
+# Yılın takvim haftası sayısı TEBLİĞDEN gelir (overrides "endDate").
+#
+# 30 Ekim 2026'ya kadar burada sabit 39 vardı ve hiçbir yıla uymuyordu:
+# 2026-2027 41 hafta (14 Eylül - 25 Haziran), 2025-2026 42 hafta sürdü.
+# Sonuç: resmî planların 14-25 Haziran satırlarının tarihi takvimde
+# bulunamadı, etiketteki ders haftası numarası (36, 37) takvim haftası
+# sanıldı ve dolu haftalara (17-28 Mayıs) çarpıp sessizce atıldı. 101
+# resmî planın son iki haftası pakete hiç girmedi; yıllık plan 11
+# Haziran'da "Kapanış & Karne" yazarak bitiyordu.
+#
+# DEFAULT_TOTAL_WEEKS yalnız endDate girilmemiş yıl içindir.
+DEFAULT_TOTAL_WEEKS = 41
+
+# Etiket ayrıştırmada akıl sağlığı sınırı ("52. hafta" gibi çöpü eler).
+# Yılın gerçek uzunluğu değildir; onun için total_weeks().
+MAX_WEEKS = 44
 
 OVERRIDE_DIR = os.path.join(os.path.dirname(__file__), "overrides")
 
@@ -80,24 +95,52 @@ def format_range(start: datetime.date, end: datetime.date) -> str:
     return f"{start.day} - {end.day} {TURKISH_MONTHS[start.month]} {start.year}"
 
 
-def build_calendar(academic_year: str) -> dict[int, dict]:
-    """Bir eğitim öğretim yılının 39 haftasını üretir.
-
-    Dönen sözlük: {hafta_no: {start, end, formatted, month, term,
-                              is_holiday, is_otp, is_social_event,
-                              holiday_note, teaching_week}}
-    """
+def _start_monday(academic_year: str, overrides: dict) -> datetime.date:
     start_year, _ = parse_academic_year(academic_year)
-    overrides = load_overrides(academic_year)
-
     if overrides.get("startDate"):
         start_monday = datetime.date.fromisoformat(overrides["startDate"])
         if start_monday.weekday() != 0:
             raise CalendarError(
                 f"{academic_year} startDate pazartesi olmalı: {overrides['startDate']}"
             )
-    else:
-        start_monday = default_start_monday(start_year)
+        return start_monday
+    return default_start_monday(start_year)
+
+
+def _total_weeks(academic_year: str, overrides: dict, start_monday: datetime.date) -> int:
+    if not overrides.get("endDate"):
+        return DEFAULT_TOTAL_WEEKS
+    end = datetime.date.fromisoformat(overrides["endDate"])
+    if end.weekday() != 4:
+        raise CalendarError(
+            f"{academic_year} endDate cuma olmalı (karne günü): {overrides['endDate']}"
+        )
+    weeks = (end - start_monday).days // 7 + 1
+    if not 30 <= weeks <= MAX_WEEKS:
+        raise CalendarError(
+            f"{academic_year} startDate-endDate arası {weeks} hafta; tarihleri denetleyin."
+        )
+    return weeks
+
+
+def total_weeks(academic_year: str) -> int:
+    """Yılın takvim haftası sayısı (tatil haftaları dahil)."""
+    overrides = load_overrides(academic_year)
+    return _total_weeks(academic_year, overrides, _start_monday(academic_year, overrides))
+
+
+def build_calendar(academic_year: str) -> dict[int, dict]:
+    """Bir eğitim öğretim yılının bütün takvim haftalarını üretir.
+
+    Hafta sayısı overrides'taki endDate'ten gelir (bkz. total_weeks).
+
+    Dönen sözlük: {hafta_no: {start, end, formatted, month, term,
+                              is_holiday, is_otp, is_social_event,
+                              holiday_note, teaching_week}}
+    """
+    overrides = load_overrides(academic_year)
+    start_monday = _start_monday(academic_year, overrides)
+    weeks_in_year = _total_weeks(academic_year, overrides, start_monday)
 
     holiday_weeks = {int(k): v for k, v in (overrides.get("holidayWeeks") or {}).items()}
     otp_weeks = set(overrides.get("otpWeeks") or [])
@@ -108,7 +151,7 @@ def build_calendar(academic_year: str) -> dict[int, dict]:
     calendar: dict[int, dict] = {}
     teaching_week = 0
 
-    for week in range(1, TOTAL_WEEKS + 1):
+    for week in range(1, weeks_in_year + 1):
         start = start_monday + datetime.timedelta(days=(week - 1) * 7)
         end = start + datetime.timedelta(days=4)  # Pazartesi - Cuma
 
@@ -146,7 +189,7 @@ def build_calendar(academic_year: str) -> dict[int, dict]:
 
 def summer_break_text(academic_year: str) -> str:
     calendar = build_calendar(academic_year)
-    last_end = datetime.date.fromisoformat(calendar[TOTAL_WEEKS]["end"])
+    last_end = datetime.date.fromisoformat(calendar[len(calendar)]["end"])
     start = last_end + datetime.timedelta(days=3)
     _, end_year = parse_academic_year(academic_year)
     next_open = default_start_monday(end_year)

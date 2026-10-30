@@ -255,20 +255,11 @@ class _DailyPlansViewState extends ConsumerState<DailyPlansView> {
         ));
       }
 
-      // 3. Son ders haftası 35 ise yıl sonu değerlendirme haftası eklenir.
-      if (planListesi.isNotEmpty) {
-        final sonHafta = PlanWeekBuilder.dersHaftaNo(dersSatirlari.last);
-        if (sonHafta == 35) {
-          planListesi.add(PlanWeekBuilder.yilSonuHaftasi(
-            haftaNo: 36,
-            sinif: _seciliSinif,
-            dersKodu: _seciliDersKodu ?? '',
-            dersAdi: _seciliDersAdi ?? 'Ders',
-            takvimdenTarih: AppDateFormatter.getWeekDateRangeText,
-            ayrintili: true,
-          ));
-        }
-      }
+      // Yıl sonu haftası artık veriden gelir: takvim resmî tebliğe göre
+      // (2026-2027: 41 hafta, 37 ders haftası) ve resmî planların son
+      // iki haftası pakette. Eskiden son ders haftası 35 ise uydurma bir
+      // "36. hafta" ekleniyor, tarihi de takvimin 36. haftasından
+      // (17-21 Mayıs) basılıyordu.
 
       setState(() {
         _haftalikPlanlar = planListesi;

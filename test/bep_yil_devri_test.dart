@@ -239,16 +239,18 @@ void main() {
       // Once kaba bir sabitti: her yil 01.09 - 31.05. Gercek okul ne
       // 1 Eylul'de acilir ne 31 Mayis'ta kapanir.
       expect(BepPdfGenerator.planDateRange('2026-2027', 'Eylül'),
-          '14.09.2026 - 11.06.2027');
+          '14.09.2026 - 25.06.2027');
+      // Bitis karne gunu (resmi takvim). '+39 hafta' 25.06.2027 ve
+      // 05.06.2026 veriyordu; gercekte 25.06.2027 ve 26.06.2026.
       expect(BepPdfGenerator.planDateRange('2025-2026', 'Eylül'),
-          '08.09.2025 - 05.06.2026');
+          '08.09.2025 - 26.06.2026');
     });
 
     test('KRITIK: donem ortasinda baslayan plan', () async {
       // Subat'ta acilan BEP: baslangic o ayin ilk is gunu, bitis
       // yine ogretim yilinin sonu.
       final a = BepPdfGenerator.planDateRange('2026-2027', 'Şubat');
-      expect(a.endsWith('11.06.2027'), isTrue, reason: 'bitiş değişmemeli');
+      expect(a.endsWith('25.06.2027'), isTrue, reason: 'bitiş değişmemeli');
       expect(a.startsWith('01.02.2027'), isTrue, reason: '1 Şubat 2027 pazartesi');
     });
 
@@ -265,7 +267,7 @@ void main() {
       ));
       final metin = await pdfMetni(plan, await repo.longGoals(plan.id!));
 
-      expect(metin.contains('14.09.2026 - 11.06.2027'), isTrue);
+      expect(metin.contains('14.09.2026 - 25.06.2027'), isTrue);
       expect(metin.contains('31.05.2027'), isFalse,
           reason: 'eski kaba hesap hâlâ basılıyor');
     });

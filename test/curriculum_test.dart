@@ -140,18 +140,21 @@ void main() {
   });
 
   group('AppDateFormatter Testleri', () {
-    test('39+1 haftalık takvim sınırları ve Yaz Tatili doğru hesaplanmalı', () {
+    test('Takvim sınırları ve Yaz Tatili doğru hesaplanmalı', () {
       final week1 = AppDateFormatter.getCurrentAcademicWeek(targetDate: DateTime(2025, 9, 8));
       expect(week1, 1);
 
-      // Yaz tatili (Temmuz / Ağustos) -> 40. Hafta
+      // Yaz tatili (Temmuz) -> son haftanın bir fazlası (sabit 40 değil;
+      // yılın uzunluğu takvimden, bkz. akademik_takvim_test.dart)
       final summerWeek = AppDateFormatter.getCurrentAcademicWeek(targetDate: DateTime(2026, 7, 15));
-      expect(summerWeek, 40);
+      expect(summerWeek, AppDateFormatter.yazTatiliHaftasi(DateTime(2026, 7, 15)));
 
       final dateRange1 = AppDateFormatter.getWeekDateRangeText(1, targetDate: DateTime(2025, 9, 8));
       expect(dateRange1.contains('Eylül'), true);
 
-      final summerRange = AppDateFormatter.getWeekDateRangeText(40, targetDate: DateTime(2025, 9, 8));
+      final summerRange = AppDateFormatter.getWeekDateRangeText(
+          AppDateFormatter.yazTatiliHaftasi(DateTime(2025, 9, 8)),
+          targetDate: DateTime(2025, 9, 8));
       expect(summerRange.isNotEmpty, true);
     });
   });

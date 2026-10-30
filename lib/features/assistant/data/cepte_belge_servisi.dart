@@ -189,18 +189,11 @@ class CepteBelgeServisi {
       ));
     }
 
-    // Son ders haftası 35 ise yıl sonu değerlendirme haftası eklenir.
-    final sonHafta = PlanWeekBuilder.dersHaftaNo(dersHaftalari.last);
-    if (sonHafta == 35) {
-      planlar.add(PlanWeekBuilder.yilSonuHaftasi(
-        haftaNo: 36,
-        sinif: sinif,
-        dersKodu: '${ders['subject_code']}',
-        dersAdi: dersAdi.isEmpty ? kod : dersAdi,
-        takvimdenTarih: takvimdenTarih,
-        ayrintili: ayrintili,
-      ));
-    }
+    // Yıl sonu haftası artık veriden gelir: takvim resmî tebliğe göre
+    // (2026-2027: 41 hafta, 37 ders haftası) ve resmî planların son
+    // iki haftası pakette. Eskiden son ders haftası 35 ise uydurma bir
+    // "36. hafta" ekleniyor, tarihi de takvimin 36. haftasından
+    // (17-21 Mayıs) basılıyordu.
 
     return CepteBelgeSonucu.hazir(
       planlar: planlar,

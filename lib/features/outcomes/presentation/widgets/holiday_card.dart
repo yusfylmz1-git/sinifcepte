@@ -21,7 +21,7 @@ class HolidayCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final dateRangeText = AppDateFormatter.getWeekDateRangeText(outcome.weekNumber);
 
-    final isSummer = outcome.weekNumber >= 40 ||
+    final isSummer = outcome.weekNumber > AppDateFormatter.toplamHafta() ||
         outcome.unitTitle.toLowerCase().contains('yaz');
     final isWinter = outcome.unitTitle.toLowerCase().contains('yarıyıl') ||
         outcome.unitTitle.toLowerCase().contains('sömestr');

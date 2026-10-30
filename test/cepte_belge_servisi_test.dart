@@ -56,15 +56,18 @@ void main() {
   }
 
   group('Belge uretimi', () {
-    test('KRITIK: ekran acmadan 36 haftalik plan kurulur', () async {
+    test('KRITIK: ekran acmadan plan kurulur, uydurma hafta eklenmez', () async {
       final sonuc = await servis().planHazirla(
         CepteCozumleyici.coz('5. sınıf türkçe yıllık plan'),
         ayrintili: false,
       );
 
       expect(sonuc.basarili, isTrue);
-      expect(sonuc.planlar, hasLength(36),
-          reason: '35 ders haftasi + yil sonu degerlendirme haftasi');
+      // Plan verideki ders haftasi kadardir (burada sahte 35 hafta;
+      // gercek pakette 37). Eskiden son hafta 35 ise uydurma bir "yil
+      // sonu haftasi" ekleniyor, tarihi de 17-21 Mayis basiliyordu.
+      expect(sonuc.planlar, hasLength(35),
+          reason: 'uydurma yil sonu haftasi eklenmemeli');
       expect(sonuc.dersAdi, 'Türkçe');
       expect(sonuc.sinif, 5);
     });

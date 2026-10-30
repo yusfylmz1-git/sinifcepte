@@ -107,6 +107,15 @@ def main() -> int:
     ):
         return 1
 
+    # Seçmelilerin kazanımları ders haftalarına takvimden dağıtılır; takvim
+    # değişince (ör. yıl sonu tarihi) bu dosya da yenilenmeli.
+    if not calistir(
+        "3/5  Secmeli ders planlari uretiliyor",
+        "build_elective_plans.py",
+        "--year", args.year,
+    ):
+        return 1
+
     if not calistir("4/5  Kaynaklar birlestiriliyor", "merge_sources.py"):
         return 1
 

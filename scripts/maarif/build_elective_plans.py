@@ -33,7 +33,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from academic_calendar import TOTAL_WEEKS, build_calendar  # noqa: E402
+from academic_calendar import build_calendar  # noqa: E402
 from turkish_text import detect_category  # noqa: E402
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))

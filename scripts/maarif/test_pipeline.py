@@ -7,6 +7,7 @@ SınıfCepte müfredat boru hattı testleri.
 from __future__ import annotations
 
 import datetime
+import json
 import os
 import re
 import sys
@@ -14,13 +15,14 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import academic_calendar  # noqa: E402
 from academic_calendar import (  # noqa: E402
-    TOTAL_WEEKS,
     CalendarError,
     build_calendar,
     default_start_monday,
     format_range,
     parse_academic_year,
+    total_weeks,
 )
 from build_curriculum import rebuild, strip_stale_dates, validate  # noqa: E402
 from turkish_text import detect_category, detect_subject_code, fold  # noqa: E402
@@ -87,7 +89,7 @@ class CalendarTests(unittest.TestCase):
     def test_all_weeks_start_on_monday(self):
         for year in ["2026-2027", "2027-2028", "2030-2031"]:
             calendar = build_calendar(year)
-            self.assertEqual(len(calendar), TOTAL_WEEKS)
+            self.assertEqual(len(calendar), total_weeks(year))
             for week, info in calendar.items():
                 start = datetime.date.fromisoformat(info["start"])
                 with self.subTest(year=year, week=week):
@@ -96,23 +98,33 @@ class CalendarTests(unittest.TestCase):
     def test_weeks_are_consecutive(self):
         calendar = build_calendar("2026-2027")
         previous = None
-        for week in range(1, TOTAL_WEEKS + 1):
+        for week in range(1, len(calendar) + 1):
             start = datetime.date.fromisoformat(calendar[week]["start"])
             if previous is not None:
                 self.assertEqual((start - previous).days, 7)
             previous = start
 
     def test_2026_matches_official_meb_dates(self):
-        """Elle yazılmış eski tabloyla birebir uyum (regresyon koruması)."""
+        """MEB genelgesi (13 Haziran 2026) ile birebir uyum.
+
+        Ders başı 14 Eylül, ara tatiller 16-20 Kasım ve 8-12 Mart, yarıyıl
+        25 Ocak - 5 Şubat, karne 25 Haziran 2027. Eski test 39 haftalık
+        varsayımı (11 Haziran) ve eski tatil haftalarını bekliyordu; takvim
+        resmîye çekilince kırık kalmıştı.
+        """
         calendar = build_calendar("2026-2027")
+        self.assertEqual(len(calendar), 41)
         self.assertEqual(calendar[1]["start"], "2026-09-14")
-        self.assertEqual(calendar[39]["end"], "2027-06-11")
-        self.assertTrue(calendar[10]["is_holiday"])
-        self.assertTrue(calendar[19]["is_holiday"])
-        self.assertTrue(calendar[20]["is_holiday"])
-        self.assertTrue(calendar[28]["is_holiday"])
-        self.assertTrue(calendar[8]["is_otp"])
-        self.assertTrue(calendar[18]["is_social_event"])
+        self.assertEqual(calendar[41]["end"], "2027-06-25")
+        tatiller = {w for w, info in calendar.items() if info["is_holiday"]}
+        self.assertEqual(tatiller, {10, 20, 21, 26})
+        self.assertEqual(calendar[10]["start"], "2026-11-16")
+        self.assertEqual(calendar[20]["start"], "2027-01-25")
+        self.assertEqual(calendar[21]["end"], "2027-02-05")
+        self.assertEqual(calendar[26]["start"], "2027-03-08")
+        self.assertTrue(calendar[41]["is_social_event"])
+        self.assertIn("Karne", calendar[41]["formatted"])
+        self.assertNotIn("Karne", calendar[39]["formatted"])
 
     def test_holidays_do_not_consume_teaching_weeks(self):
         calendar = build_calendar("2026-2027")
@@ -120,8 +132,9 @@ class CalendarTests(unittest.TestCase):
             if info["is_holiday"]:
                 self.assertIsNone(info["teaching_week"])
         teaching = [i["teaching_week"] for i in calendar.values() if i["teaching_week"]]
-        # 39 takvim haftası - 4 tatil haftası = 35 ders haftası
-        self.assertEqual(max(teaching), 35)
+        # 41 takvim haftası - 4 tatil haftası = 37 ders haftası. Resmî
+        # planlar da son satıra "37. Hafta: 21-25 Haziran" yazar.
+        self.assertEqual(max(teaching), 37)
         self.assertEqual(teaching, sorted(teaching))
 
     def test_second_monday_rule(self):
@@ -139,12 +152,36 @@ class CalendarTests(unittest.TestCase):
             format_range(datetime.date(2026, 12, 28), datetime.date(2027, 1, 1)),
             "28 Aralık 2026 - 1 Ocak 2027")
 
+    def test_end_date_sets_week_count(self):
+        """Hafta sayısı tebliğdeki karne gününden hesaplanır."""
+        import tempfile
+        eski = academic_calendar.OVERRIDE_DIR
+        with tempfile.TemporaryDirectory() as dizin:
+            academic_calendar.OVERRIDE_DIR = dizin
+            try:
+                def yaz(veri):
+                    with open(os.path.join(dizin, "2030-2031.json"), "w", encoding="utf-8") as f:
+                        json.dump(veri, f)
+
+                yaz({"startDate": "2030-09-09", "endDate": "2031-06-27"})
+                self.assertEqual(total_weeks("2030-2031"), 42)
+                self.assertEqual(build_calendar("2030-2031")[42]["end"], "2031-06-27")
+
+                yaz({"startDate": "2030-09-09"})
+                self.assertEqual(total_weeks("2030-2031"), academic_calendar.DEFAULT_TOTAL_WEEKS)
+
+                yaz({"startDate": "2030-09-09", "endDate": "2031-06-26"})  # perşembe
+                with self.assertRaises(CalendarError):
+                    total_weeks("2030-2031")
+            finally:
+                academic_calendar.OVERRIDE_DIR = eski
+
 
 def _sample_records() -> list[dict]:
-    """İki dersin 39 haftası; ders adları eski hatayı tetikleyen biçimde."""
+    """İki dersin bütün haftaları; ders adları eski hatayı tetikleyen biçimde."""
     records = []
     for name in ["İNGİLİZCE", "T.C. İNKILAP TARİHİ VE ATATÜRKÇÜLÜK"]:
-        for week in range(1, TOTAL_WEEKS + 1):
+        for week in range(1, total_weeks("2026-2027") + 1):
             records.append({
                 "gradeLevel": 8,
                 "subjectName": name,
@@ -176,7 +213,7 @@ class RebuildTests(unittest.TestCase):
     def test_validate_catches_missing_weeks(self):
         rebuilt = rebuild(_sample_records(), "2026-2027")
         problems = validate(rebuilt[:-1])
-        self.assertTrue(any("39 haftanın tamamı yok" in p for p in problems))
+        self.assertTrue(any("41 haftanın tamamı yok" in p for p in problems))
 
     def test_year_change_rewrites_dates_and_year(self):
         rebuilt = rebuild(_sample_records(), "2027-2028")
@@ -268,7 +305,7 @@ class ExcelImportTests(unittest.TestCase):
     def test_imported_records_pass_pipeline(self):
         """İçe aktarıcı çıktısı doğrudan boru hattına verilebilmeli."""
         records = []
-        for week in range(1, TOTAL_WEEKS + 1):
+        for week in range(1, total_weeks("2026-2027") + 1):
             records.append({
                 "gradeLevel": 8,
                 "subjectName": "İNGILIZCE",
@@ -297,12 +334,39 @@ class TymmPlanImportTests(unittest.TestCase):
         self.extract_code = extract_code
         self.parse_week = parse_week
 
+    def test_june_rows_land_on_their_own_weeks(self):
+        """Resmî planların son iki satırı 40. ve 41. takvim haftasına oturur.
+
+        30 Ekim 2026'ya kadar takvim 39 haftaydı: bu satırların tarihi
+        bulunamıyor, etiketteki ders haftası (36, 37) takvim haftası
+        sanılıp 17-28 Mayıs'a çarpıyor ve sessizce atılıyordu.
+        """
+        from import_tymm_plans import build_date_index
+        index = build_date_index("2026-2027")
+        self.assertEqual(self.parse_week("35. Hafta:  7-11 Haziran", index), 39)
+        self.assertEqual(self.parse_week("36. Hafta:  14-18 Haziran", index), 40)
+        self.assertEqual(self.parse_week("37. Hafta:  21-25 Haziran", index), 41)
+
+    def test_date_outside_calendar_is_not_filed_under_label(self):
+        """Takvim kısa kalırsa satır etiket haftasına YAZILMAZ, uyarı çıkar."""
+        from import_tymm_plans import build_date_index, takvim_disinda
+        tam = build_date_index("2026-2027")
+        kisa = {k: w for k, w in tam.items() if w <= 39}  # eski 39 haftalık takvim
+        self.assertTrue(takvim_disinda("36. Hafta:  14-18 Haziran", kisa))
+        self.assertFalse(takvim_disinda("36. Hafta:  14-18 Haziran", tam))
+        # Yıl içinde ama hafta sonuna (19 Eylül cumartesi) düşen tarih
+        # eskisi gibi etikete düşer; yalnız yılın DIŞI ayıklanır.
+        self.assertFalse(takvim_disinda("2. Hafta: 19-25 Eylül", tam))
+        self.assertTrue(takvim_disinda("1. Hafta: 7-11 Eylül", tam))  # açılıştan önce
+        # Tarihsiz etiket takvim dışı sayılmaz.
+        self.assertFalse(takvim_disinda("12. Hafta", kisa))
+
     def test_week_parsing(self):
         self.assertEqual(self.parse_week("1. Hafta:  14-18 Eylül"), 1)
         self.assertEqual(self.parse_week("28. Hafta: 22-26 Mart"), 28)
         self.assertIsNone(self.parse_week("EYLÜL"))
         self.assertIsNone(self.parse_week(""))
-        # 39 haftanın dışı kabul edilmez
+        # Akıl sağlığı sınırının dışı kabul edilmez
         self.assertIsNone(self.parse_week("45. Hafta"))
 
     def test_grade_from_sheet_name(self):
@@ -705,6 +769,11 @@ class SuggestedActivityTests(unittest.TestCase):
             records = json.load(handle)
 
         otp = [r for r in records if r.get("isOtpWeek")]
+        # OTP haftası takvimden gelir; 2026-2027 resmî takviminde yok
+        # (overrides otpWeeks: []). Bu test o zamandan beri düşüyordu.
+        year = records[0].get("academicYear", "2026-2027")
+        if not any(info["is_otp"] for info in build_calendar(year).values()):
+            self.skipTest(f"{year} takviminde OTP haftası yok")
         self.assertTrue(otp, "OTP kaydı yok")
         with_items = [r for r in otp if r.get("suggestedActivities")]
         self.assertEqual(len(with_items), len(otp),
@@ -929,7 +998,12 @@ class OutcomeCodeFormatTests(unittest.TestCase):
 
         ratios = [len(set(v)) / len(v) for v in groups.values() if v]
         average = sum(ratios) / len(ratios)
-        self.assertGreater(average, 0.6,
+        # Tek metnin bütün haftalara yapıştığı hata ~%3 verir. Eşik 0.6
+        # idi; 30 Ekim 2026'da takvim 41 haftaya çıkınca gelen 14-18 ve
+        # 21-25 Haziran haftalarında resmî planlar önceki haftanın
+        # kazanımını sürdürüyor (38 grubun 24-26'sında). 1-38. haftalarda
+        # oran değişmedi (%60.85); tamamı %59.3.
+        self.assertGreater(average, 0.55,
                            f"İHÖ çeşitliliği yalnızca %{average * 100:.0f}")
 
 
@@ -1034,7 +1108,7 @@ class DataAuditTests(unittest.TestCase):
                   for r in self.reports if r.status() == "HATA"]
         self.assertEqual(broken[:5], [], f"{len(broken)} grupta hata var")
 
-    def test_every_group_covers_all_39_weeks(self):
+    def test_every_group_covers_all_weeks(self):
         missing = [(r.grade, r.subject, len(r.missing_weeks))
                    for r in self.reports if r.missing_weeks]
         self.assertEqual(missing[:5], [], f"{len(missing)} grupta hafta eksik")

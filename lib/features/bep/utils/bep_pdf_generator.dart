@@ -504,8 +504,9 @@ class BepPdfGenerator {
     final acilis = AppDateFormatter.getAcademicYearStartDate(
       DateTime(y1, 9, 20),
     );
-    // 39. haftanin cumasi: ilk gun pazartesi, +39 hafta -3 gun.
-    final kapanis = acilis.add(const Duration(days: 39 * 7 - 3));
+    // Karne cumasi (resmi takvimden; sabit 39 hafta 11 Haziran'i
+    // veriyordu, 2026-2027'de karne 25 Haziran).
+    final kapanis = AppDateFormatter.dersYiliSonu(DateTime(y1, 9, 20));
 
     const aylar = {
       'Eylül': 9,

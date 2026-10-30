@@ -60,12 +60,14 @@ class CalendarWizard {
     // ve bu yüzden tüm tatiller bir hafta ileri kayıyordu.
     const weekMonday = (weekNo) => addDays(donem1Start, (weekNo - 1) * 7);
 
-    // MEB standart yapısı (39 takvim haftası):
+    // Varsayılan yapı (41 takvim haftası). Yalnız taslaktır: MEB tarihleri
+    // her yıl tebliğle belirler, gerçek takvim elle düzeltilmeli.
+    // 2026-2027 resmî: 10, 20-21, 26. hafta tatil; karne 41. hafta.
     //   10. hafta        -> 1. Dönem Ara Tatili
     //   19-20. hafta     -> Yarıyıl (sömestr) tatili, 2 hafta
     //   21. hafta        -> 2. Dönem başlangıcı
     //   28. hafta        -> 2. Dönem Ara Tatili
-    //   39. hafta Cuma   -> Kapanış / karne
+    //   41. hafta Cuma   -> Kapanış / karne
     const araTatil1Start = weekMonday(10);
     const araTatil1End = addDays(araTatil1Start, 4); // Cuma
 
@@ -77,8 +79,8 @@ class CalendarWizard {
     const araTatil2Start = weekMonday(28);
     const araTatil2End = addDays(araTatil2Start, 4);
 
-    // Kapanış: 39. haftanın Cuma günü
-    const kapanisDate = addDays(weekMonday(39), 4);
+    // Kapanış: 41. haftanın Cuma günü (39 hiçbir yıla uymuyordu)
+    const kapanisDate = addDays(weekMonday(41), 4);
 
     // Dini Bayramlar
     const religious = this.getReligiousHolidays(nextYear);

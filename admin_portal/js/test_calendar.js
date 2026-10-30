@@ -66,11 +66,11 @@ test('2. Dönem Ara Tatili 28. haftaya denk gelir', () => {
   assert.strictEqual(item.startDate, '2027-03-22');
 });
 
-test('Yıl sonu 39. haftanın cuması olur', () => {
+test('Yıl sonu 41. haftanın cuması olur (2026-2027 resmî: 25 Haziran)', () => {
   const events = CalendarWizard.generateFullCalendar('2026-09-14', '2026-2027');
   const item = events.find((e) => e.title.includes('Yılı Sonu'));
-  assert.strictEqual(weekOf(item.startDate, '2026-09-14'), 39);
-  assert.strictEqual(item.startDate, '2027-06-11');
+  assert.strictEqual(weekOf(item.startDate, '2026-09-14'), 41);
+  assert.strictEqual(item.startDate, '2027-06-25');
 });
 
 test('Tüm dönüm noktaları pazartesi başlar (yıl sonu hariç)', () => {
@@ -91,13 +91,14 @@ test('Standart takvimden 10, 19, 20, 28 tatil haftaları çıkar', () => {
   assert.deepStrictEqual(holidays, [10, 19, 20, 28]);
 });
 
-test('39 takvim haftası, 35 ders haftası üretilir', () => {
+test('41 takvim haftası, 37 ders haftası üretilir (karne olayından)', () => {
   const events = CalendarWizard.generateFullCalendar('2026-09-14', '2026-2027');
-  const { weeks } = CalendarToWeeks.buildWeeks(events);
-  assert.strictEqual(weeks.length, 39);
+  const { weeks, endDate } = CalendarToWeeks.buildWeeks(events);
+  assert.strictEqual(weeks.length, 41);
+  assert.strictEqual(endDate, '2027-06-25');
   const teaching = weeks.filter((w) => w.teachingWeekNumber !== null);
-  assert.strictEqual(teaching.length, 35);
-  assert.strictEqual(Math.max(...teaching.map((w) => w.teachingWeekNumber)), 35);
+  assert.strictEqual(teaching.length, 37);
+  assert.strictEqual(Math.max(...teaching.map((w) => w.teachingWeekNumber)), 37);
 });
 
 test('Tatil haftaları ders sırasını ilerletmez', () => {
@@ -136,7 +137,7 @@ test('Takvimde tatil taşınınca hafta yapısı da taşınır', () => {
 test('Açılış pazartesi değilse uyarır ama üretmeye devam eder', () => {
   const events = CalendarWizard.generateFullCalendar('2026-09-16', '2026-2027');
   const { weeks, warnings } = CalendarToWeeks.buildWeeks(events);
-  assert.strictEqual(weeks.length, 39);
+  assert.strictEqual(weeks.length, 41);
   assert.ok(warnings.some((w) => w.includes('pazartesi değil')));
 });
 
@@ -155,6 +156,7 @@ test('Python boru hattının beklediği alanları üretir', () => {
     socialEventWeeks: [18, 37],
   });
   assert.strictEqual(override.startDate, '2026-09-14');
+  assert.strictEqual(override.endDate, '2027-06-25');
   assert.strictEqual(override.secondTermStartWeek, 21);
   assert.deepStrictEqual(Object.keys(override.holidayWeeks).map(Number), [10, 19, 20, 28]);
   assert.deepStrictEqual(override.otpWeeks, [8, 17, 29]);
