@@ -79,6 +79,13 @@ class NotificationService {
     }
   }
 
+  /// "24 saat kala" uyarısının dakikası önemli değil: kesin olmayan kip
+  /// izin istemez, Android 12+ en geç bir saat içinde çalar. Kesin kip
+  /// Play'de yalnız alarm/takvim uygulamalarına verilen izni ister
+  /// (bkz. AndroidManifest.xml).
+  static const AndroidScheduleMode _zamanlamaKipi =
+      AndroidScheduleMode.inexactAllowWhileIdle;
+
   /// Favori Sınav İçin "Son 24 Saat Kala" Zamanlanmış Bildirimleri Kur
   /// Hem "Son Başvuru Tarihine 24 Saat Kala" hem de "Sınav Gününe 24 Saat Kala" hatırlatma yapar.
   Future<void> scheduleExamReminder24h(ExamModel exam) async {
@@ -119,7 +126,7 @@ class NotificationService {
               '📝 "${exam.title}" resmî başvuruları yarın sona eriyor. Başvurunuzu tamamlamayı unutmayın!',
               tzDeadlineDate,
               platformDetails,
-              androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+              androidScheduleMode: _zamanlamaKipi,
               uiLocalNotificationDateInterpretation:
                   UILocalNotificationDateInterpretation.absoluteTime,
               payload: 'exam_${exam.id}',
@@ -142,7 +149,7 @@ class NotificationService {
             '⭐ "${exam.title}" sınavına 24 saat kaldı. Başarılar dileriz! 🎯',
             tzExamDate,
             platformDetails,
-            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+            androidScheduleMode: _zamanlamaKipi,
             uiLocalNotificationDateInterpretation:
                 UILocalNotificationDateInterpretation.absoluteTime,
             payload: 'exam_${exam.id}',

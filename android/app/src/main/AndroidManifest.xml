@@ -3,24 +3,20 @@
          SESSIZCE calismaz: kullanici hicbir sey gormez, hata da almaz. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Kesin zamanli alarm (Android 12+).
+    <!-- Kesin zamanli alarm izni (USE_EXACT_ALARM / SCHEDULE_EXACT_ALARM)
+         BILEREK YOK (30 Ekim 2026).
 
-         `NotificationService` `AndroidScheduleMode.exactAllowWhileIdle`
-         kullaniyor. Bu izinler olmadan Android 12+ cihazlarda alarm
-         KURULMUYOR ve hata da atmiyor: sinav hatirlatmasi sessizce hic
-         gelmiyordu (bagimsiz incelemede bildirildi, 19 Eylul 2026'da
-         dogrulandi — manifestte hicbiri yoktu).
+         Tek zamanli bildirim favori sinavin "24 saat kala" uyarisi;
+         dakikasi onemli degil. `NotificationService` kesin olmayan kip
+         (inexactAllowWhileIdle) kullanir: Android 12+ alarmi hic erken
+         calmaz, en gec bir saat icinde calar ve izin istemez.
 
-         USE_EXACT_ALARM: takvim/alarm islevi olan uygulamalar icin;
-         kullanicidan ayrica izin istemez. Sinav ve ders hatirlatmasi
-         bu tanima giriyor.
-
-         SCHEDULE_EXACT_ALARM: Android 12 (API 31-32) icin geri uyum;
-         orada USE_EXACT_ALARM yok. -->
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-    <uses-permission
-        android:name="android.permission.SCHEDULE_EXACT_ALARM"
-        android:maxSdkVersion="32" />
+         19 Eylul'de kesin kip izinsiz kullaniliyordu, alarm sessizce
+         kurulmuyordu; o zaman USE_EXACT_ALARM eklenmisti. Play bu izni
+         yalniz alarm saati ve takvim uygulamalarina veriyor, ayrica beyan
+         istiyor; ders hatirlatmasi da yok. Kesin kip geri gelirse izin de
+         gelmeli, yoksa hatirlatma yine sessizce kaybolur
+         (test/bildirim_izni_test.dart). -->
 
     <!-- Yeniden baslatmadan sonra alarmlari geri kur.
 
