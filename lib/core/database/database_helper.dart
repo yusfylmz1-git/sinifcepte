@@ -9,6 +9,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../config/app_config.dart';
 import '../../features/outcomes/data/models/curriculum_outcome_model.dart';
+import '../../features/academic_calendar/data/meb_calisma_takvimi.dart';
 import '../../features/attendance/data/arti_eksi_semasi.dart';
 import '../../features/student_photos/data/ogrenci_foto_semasi.dart';
 import '../utils/gzip_asset.dart';
@@ -287,6 +288,9 @@ class DatabaseHelper {
     // olusuyordu ve "Okulum" sinavi hic kaydedilemiyordu. Sutunsuz
     // kurulmus cihazlar burada onarilir.
     await _safeAddColumn(db, 'kisisel_sinavlar', 'sinif', 'TEXT');
+    // Çalışma takvimi (30 Ekim 2026): kurulumda yalnız 2025-2026
+    // tohumlanıyordu; eski cihazlara bu yılın olayları burada eklenir.
+    await mebTakviminiTohumla(db);
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -761,147 +765,9 @@ class DatabaseHelper {
     await ogrenciFotoTablolariniKur(db);
     await artiEksiTablosunuKur(db);
 
-    // D. 2025-2026 Resmî MEB Çalışma Takvimi Tohumlama (Seed Data)
-    final calendarCountQuery = await db.rawQuery('SELECT COUNT(*) as c FROM academic_calendar_events');
-    final calendarCount = Sqflite.firstIntValue(calendarCountQuery) ?? 0;
-    if (calendarCount == 0) {
-      final meb2025_2026Events = [
-        {
-          'doc_id': 'meb_2025_donem1_baslangic',
-          'title': '1. Dönem Ders Başlangıcı',
-          'description': '2025-2026 Eğitim Öğretim Yılı 1. Dönem Açılışı',
-          'start_date': '2025-09-14T08:00:00',
-          'end_date': '2025-09-14T17:00:00',
-          'category': 'period',
-          'academic_year': '2025-2026',
-          'is_official_holiday': 0,
-        },
-        {
-          'doc_id': 'meb_2025_29ekim',
-          'title': '29 Ekim Cumhuriyet Bayramı',
-          'description': 'Cumhuriyetimizin Kuruluş Yıldönümü Resmî Tatili',
-          'start_date': '2025-10-29T00:00:00',
-          'end_date': '2025-10-29T23:59:59',
-          'category': 'officialHoliday',
-          'academic_year': '2025-2026',
-          'is_official_holiday': 1,
-        },
-        {
-          'doc_id': 'meb_2025_ara_tatil_1',
-          'title': '1. Dönem Ara Tatili',
-          'description': 'Kasım Ara Tatil Haftası (Öğrenciler ve Öğretmenler Dinlenme/Seminer)',
-          'start_date': '2025-11-10T00:00:00',
-          'end_date': '2025-11-14T23:59:59',
-          'category': 'breakHoliday',
-          'academic_year': '2025-2026',
-          'is_official_holiday': 1,
-        },
-        {
-          'doc_id': 'meb_2026_yilbasi',
-          'title': 'Yılbaşı Tatili',
-          'description': '1 Ocak Resmî Tatil',
-          'start_date': '2026-01-01T00:00:00',
-          'end_date': '2026-01-01T23:59:59',
-          'category': 'officialHoliday',
-          'academic_year': '2025-2026',
-          'is_official_holiday': 1,
-        },
-        {
-          'doc_id': 'meb_2026_somestr',
-          'title': 'Yarıyıl (Sömestr) Tatili',
-          'description': '1. Dönem Sonu Karneler ve 2 Haftalık Yarıyıl Dinlenme Tatili',
-          'start_date': '2026-01-19T00:00:00',
-          'end_date': '2026-01-30T23:59:59',
-          'category': 'breakHoliday',
-          'academic_year': '2025-2026',
-          'is_official_holiday': 1,
-        },
-        {
-          'doc_id': 'meb_2026_donem2_baslangic',
-          'title': '2. Dönem Ders Başlangıcı',
-          'description': '2025-2026 Eğitim Öğretim Yılı 2. Dönem Açılışı',
-          'start_date': '2026-02-02T08:00:00',
-          'end_date': '2026-02-02T17:00:00',
-          'category': 'period',
-          'academic_year': '2025-2026',
-          'is_official_holiday': 0,
-        },
-        {
-          'doc_id': 'meb_2026_ramazan_bayrami',
-          'title': 'Ramazan Bayramı Tatili',
-          'description': 'Ramazan Bayramı Resmî Tatil Günleri',
-          'start_date': '2026-03-20T00:00:00',
-          'end_date': '2026-03-22T23:59:59',
-          'category': 'officialHoliday',
-          'academic_year': '2025-2026',
-          'is_official_holiday': 1,
-        },
-        {
-          'doc_id': 'meb_2026_ara_tatil_2',
-          'title': '2. Dönem Ara Tatili',
-          'description': 'Nisan Ara Tatil Haftası',
-          'start_date': '2026-04-06T00:00:00',
-          'end_date': '2026-04-10T23:59:59',
-          'category': 'breakHoliday',
-          'academic_year': '2025-2026',
-          'is_official_holiday': 1,
-        },
-        {
-          'doc_id': 'meb_2026_23nisan',
-          'title': '23 Nisan Ulusal Egemenlik ve Çocuk Bayramı',
-          'description': 'Resmî Bayram ve Tatil',
-          'start_date': '2026-04-23T00:00:00',
-          'end_date': '2026-04-23T23:59:59',
-          'category': 'officialHoliday',
-          'academic_year': '2025-2026',
-          'is_official_holiday': 1,
-        },
-        {
-          'doc_id': 'meb_2026_1mayis',
-          'title': '1 Mayıs Emek ve Dayanışma Günü',
-          'description': 'Resmî Tatil',
-          'start_date': '2026-05-01T00:00:00',
-          'end_date': '2026-05-01T23:59:59',
-          'category': 'officialHoliday',
-          'academic_year': '2025-2026',
-          'is_official_holiday': 1,
-        },
-        {
-          'doc_id': 'meb_2026_19mayis',
-          'title': '19 Mayıs Atatürk\'ü Anma, Gençlik ve Spor Bayramı',
-          'description': 'Resmî Bayram ve Tatil',
-          'start_date': '2026-05-19T00:00:00',
-          'end_date': '2026-05-19T23:59:59',
-          'category': 'officialHoliday',
-          'academic_year': '2025-2026',
-          'is_official_holiday': 1,
-        },
-        {
-          'doc_id': 'meb_2026_kurban_bayrami',
-          'title': 'Kurban Bayramı Tatili',
-          'description': 'Kurban Bayramı Resmî Tatil Günleri',
-          'start_date': '2026-05-27T00:00:00',
-          'end_date': '2026-05-30T23:59:59',
-          'category': 'officialHoliday',
-          'academic_year': '2025-2026',
-          'is_official_holiday': 1,
-        },
-        {
-          'doc_id': 'meb_2026_donem2_kapanis',
-          'title': 'Eğitim Öğretim Yılı Sonu (Karne Günü)',
-          'description': '2025-2026 Eğitim Öğretim Yılı Kapanışı ve Yaz Tatili Başlangıcı',
-          'start_date': '2026-06-19T08:00:00',
-          'end_date': '2026-06-19T17:00:00',
-          'category': 'period',
-          'academic_year': '2025-2026',
-          'is_official_holiday': 0,
-        },
-      ];
-
-      for (final ev in meb2025_2026Events) {
-        await db.insert('academic_calendar_events', ev);
-      }
-    }
+    // D. MEB çalışma takvimi (bu yılın resmî olayları; bkz.
+    // meb_calisma_takvimi.dart). Eskiden burada yalnız 2025-2026 vardı.
+    await mebTakviminiTohumla(db);
   }
 
 

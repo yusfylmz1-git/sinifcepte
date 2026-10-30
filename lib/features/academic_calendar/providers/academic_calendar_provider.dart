@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/database_helper.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../data/models/academic_calendar_event_model.dart';
 
 /// SınıfCepte - MEB Akademik Takvim Sağlayıcısı
@@ -33,10 +34,12 @@ class AcademicCalendarNotifier
     loadEvents();
   }
 
-  Future<void> loadEvents({String academicYear = '2025-2026'}) async {
+  /// [academicYear] verilmezse bugünün öğretim yılı. Burada sabit
+  /// '2025-2026' vardı: 2026-2027'de Özet hiçbir tatili tanımıyordu.
+  Future<void> loadEvents({String? academicYear}) async {
     try {
-      final rawList = await DatabaseHelper.instance
-          .academicCalendarGetir(academicYear: academicYear);
+      final rawList = await DatabaseHelper.instance.academicCalendarGetir(
+          academicYear: academicYear ?? AppDateFormatter.academicYearLabel());
       // Okuma sürerken sağlayıcı kapanmış olabilir (hesap değişimi).
       if (!mounted) return;
 
