@@ -9,6 +9,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:sinifcepte/core/config/app_config.dart';
 import 'package:sinifcepte/core/database/database_helper.dart';
+import 'package:sinifcepte/features/documents/data/special_days_repository.dart';
 import 'package:sinifcepte/data/models/class_model.dart';
 import 'package:sinifcepte/data/repositories/class_repository.dart';
 import 'package:sinifcepte/features/analytics/presentation/widgets/class_report_card_comments_modal.dart';
@@ -92,6 +93,11 @@ void main() {
       find.descendant(of: find.byType(CustomBottomNavBar), matching: find.text(ad));
 
   setUpAll(() async {
+    // Evraklar'daki belirli gün satırı listeyi paylaşılan bir yüklemeyle
+    // okur. Yükleme bir testin sahte saatinde başlarsa test bitince yarıda
+    // kalır ve listeyi bekleyen sonraki testler (Özet akışı) takılır;
+    // burada gerçek zamanda önceden yüklenir.
+    await SpecialDaysRepository().all();
     // Gerçek yazı tipi: test yazı tipinde her harf kare çizilir, telefonda
     // sığan satırlar taşmış görünür. Telefondaki Roboto yerine pakete gömülü
     // Noto Sans yüklenir; biraz daha geniştir, burada sığan telefonda da
@@ -485,12 +491,18 @@ void main() {
 
       expect(find.text('Evraklarım'), findsOneWidget, reason: 'sayfanın kendi üst çubuğu');
       expect(find.byIcon(Icons.arrow_back_ios_new_rounded), findsOneWidget);
+      // DEG-1 (30 Ekim 2026): her belge tek dokunuşta; Kurul Tutanakları
+      // ve Sınav İşlemleri ara sayfaları buradan açılmaz.
       for (final ad in [
         'Öğretmen Dosyası',
         'Yıllık Planlar',
         'Günlük Planlar',
-        'Kurul Tutanakları',
-        'Sınav İşlemleri',
+        'Zümre Öğretmenler Kurulu',
+        'Şube Öğretmenler Kurulu',
+        'Sınav Analizleri',
+        'e-Okul Karne Görüşü',
+        'Quiz ve Sözlü Notlar',
+        'Proje ve Ödev Değerlendirme',
         'Rehberlik ve BEP',
         'Belirli Gün ve Haftalar',
         'Sosyal Kulüpler',
@@ -499,6 +511,8 @@ void main() {
       ]) {
         expect(find.text(ad), findsOneWidget, reason: ad);
       }
+      expect(find.text('Kurul Tutanakları'), findsNothing);
+      expect(find.text('Sınav İşlemleri'), findsNothing);
 
       await tester.tap(find.text('Sınıf Evrakları'));
       await bekleKadar(tester, () => find.text('Henüz Sınıf Bulunmuyor').evaluate().isNotEmpty);

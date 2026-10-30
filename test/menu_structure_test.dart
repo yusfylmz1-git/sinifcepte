@@ -74,11 +74,14 @@ void main() {
       expect(kod.contains("'title': 'Evraklarım'"), isFalse);
     });
 
-    test('KRITIK: kurul tutanaklari Evraklar sayfasinda', () {
-      // Tek yerden acilir: sinifa BAGLI OLMAYAN evraklarin yani.
+    test('KRITIK: kurul tutanaklari Evraklar sayfasinda, ara sayfasiz', () {
+      // Tek yerden acilir: sinifa BAGLI OLMAYAN evraklarin yani. DEG-1
+      // (30 Ekim 2026): "Kurul Tutanaklari" ara sayfasi atlandi; zumre ve
+      // SOK tek dokunusta acilir (ara sayfa Cepte aramasi icin duruyor).
       final kod = oku(evraklar);
-      expect(kod, contains("ad: 'Kurul Tutanakları'"));
-      expect(kod, contains('DocumentsHubView'));
+      expect(kod, contains('CouncilMinutesView.open(context, CouncilKind.zumre)'));
+      expect(kod, contains('CouncilMinutesView.open(context, CouncilKind.sok)'));
+      expect(kod.contains('DocumentsHubView'), isFalse);
     });
 
     test('KRITIK: sinif evraklari Evraklar`da gosteriliyor, evine goturuyor', () {
@@ -117,9 +120,12 @@ void main() {
       for (final baslik in ['Diğer Evraklar', 'Cepte']) {
         expect(kod.contains("'title': '$baslik'"), isFalse, reason: baslik);
       }
+      // Evraklar'da sinav belgeleri dogrudan (DEG-1); Sinav Islemleri
+      // sayfasi Ozet'teki dugmeden acilir.
       final ev = oku(evraklar);
       expect(ev, contains('GuidanceHubScreen'));
-      expect(ev, contains('ExamOperationsMenuView'));
+      expect(ev, contains('ExamAnalysisListView'));
+      expect(ev, contains('ClassReportCardCommentsModal.show(context)'));
       expect(kod, contains('CepteAramaView'),
           reason: 'Cepte arama kutusu ana sayfanin tepesinde olmali');
     });

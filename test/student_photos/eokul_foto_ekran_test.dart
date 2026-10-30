@@ -15,6 +15,7 @@ import 'package:sinifcepte/data/models/class_model.dart';
 import 'package:sinifcepte/data/models/student_model.dart';
 import 'package:sinifcepte/data/repositories/class_repository.dart';
 import 'package:sinifcepte/data/repositories/student_repository.dart';
+import 'package:sinifcepte/features/documents/data/special_days_repository.dart';
 import 'package:sinifcepte/features/documents/presentation/views/evraklar_sekmesi.dart';
 import 'package:sinifcepte/features/student_photos/data/foto_alici.dart';
 import 'package:sinifcepte/features/student_photos/data/foto_depolama.dart';
@@ -36,6 +37,10 @@ void main() {
   AppConfig.testDbNameOverride = 'eokul_foto_ekran_test.db';
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
+
+  // Evraklar'daki belirli gün satırının listesi gerçek zamanda yüklensin;
+  // sahte saatte başlayan yükleme test bitince yarıda kalır.
+  setUpAll(() => SpecialDaysRepository().all());
 
   late Directory kok;
   late FotoDepolama depolama;
@@ -112,7 +117,7 @@ void main() {
       await tester.pumpWidget(sahne(const EvraklarSekmesi()));
       await tester.pumpAndSettle();
 
-      const baslik = 'Okul etkinlikleri ve idari işler';
+      const baslik = 'OKUL ETKİNLİKLERİ VE İDARİ İŞLER';
       expect(find.text(baslik), findsOneWidget);
       expect(find.textContaining('IDARI'), findsNothing, reason: 'Türkçe İ tuzağı');
       final baslikY = tester.getTopLeft(find.text(baslik)).dy;

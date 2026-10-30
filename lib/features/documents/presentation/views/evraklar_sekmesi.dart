@@ -2,16 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_fonts.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
-import '../../../clubs/presentation/screens/clubs_hub_screen.dart';
-import '../../../exam_operations/presentation/views/exam_operations_menu_view.dart';
-import '../../../guidance/presentation/screens/guidance_hub_screen.dart';
+import '../../../../shared/widgets/gruplu_liste.dart';
+import '../../../analytics/presentation/views/exam_analysis_list_view.dart';
+import '../../../analytics/presentation/widgets/class_report_card_comments_modal.dart';
 import '../../../classes/screens/class_list_screen.dart';
+import '../../../clubs/presentation/screens/clubs_hub_screen.dart';
+import '../../../exam_operations/presentation/views/project_tracking_view.dart';
+import '../../../exam_operations/presentation/views/quiz_list_view.dart';
+import '../../../guidance/presentation/screens/guidance_hub_screen.dart';
 import '../../../student_photos/presentation/eokul_foto_merkezi_ekrani.dart';
+import '../../data/council_minutes.dart';
+import '../../data/special_days_repository.dart';
 import 'annual_plans_view.dart';
+import 'council_minutes_view.dart';
 import 'daily_plans_view.dart';
-import 'documents_hub_view.dart';
 import 'special_days_view.dart';
 import 'teacher_file_view.dart';
 
@@ -27,9 +32,18 @@ import 'teacher_file_view.dart';
 /// 17 Ekim'de alt çubukta sekmeydi; 26 Ekim 2026'dan beri Özet'teki
 /// "Evraklar" düğmesinden sayfa olarak açılır (kullanıcı kararı).
 ///
+/// ## Her belge tek dokunuşta (DEG-1, 30 Ekim 2026)
+/// Kullanıcı başka bir uygulamanın evrak düzenini gösterdi: "adam düzenini
+/// çok güzel kurmuş, bizde çok karışık." Bizde kartların çoğu bir ara
+/// merkez açıyordu (Kurul Tutanakları → iki tutanak, Sınav İşlemleri →
+/// beş iş); belgeye iki-üç dokunuşta varılıyordu. Akış alındı, görünüş
+/// alınmadı: belgeler Rehberlik Dosyası'ndaki gruplu listede, her satır
+/// doğrudan belgeyi açar. Rehberlik tek satır kaldı: belgeleri sınıf
+/// seçilerek üretilir, seçici kendi sayfasında.
+///
 /// Sınıfa BAĞLI evraklar (oturma planı, nöbetçi listesi, öğrenci listesi,
 /// veli rehberi) buraya taşınmaz: önce "hangi sınıf?" sorusunu gerektirir,
-/// evleri sınıf sayfası. Son kart öğretmeni sınıf listesine götürür; aynı
+/// evleri sınıf sayfası. Son satır öğretmeni sınıf listesine götürür; aynı
 /// ekranı ikinci bir kapıdan açmaz.
 class EvraklarSekmesi extends ConsumerWidget {
   const EvraklarSekmesi({super.key});
@@ -52,195 +66,186 @@ class EvraklarSekmesi extends ConsumerWidget {
           isDark ? AppColors.darkBackground : const Color(0xFFF8FAFC),
       appBar: const CustomAppBar(
         title: 'Evraklarım',
-        subtitle: 'Dosya, plan, sınav ve rehberlik evrakları',
+        subtitle: 'Dosya, plan, kurul, sınav ve rehberlik evrakları',
       ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 32),
           children: [
-            _baslik(isDark, 'Dosya ve planlar'),
-            // Teftişte ilk istenen dosya bu; listenin başında durur.
-            _kart(
-              isDark,
-              ad: 'Öğretmen Dosyası',
-              aciklama:
-                  'Kapak, Atatürk köşesi, İstiklâl Marşı, özlük künyesi · '
-                  '13 resmî evrak',
-              ikon: Icons.badge_outlined,
-              onTap: () => ac(const TeacherFileView()),
-            ),
-            _kart(
-              isDark,
-              ad: 'Yıllık Planlar',
-              aciklama:
-                  'Ünitelendirilmiş yıllık ders planı taslağı · MEB TYMM uyumlu, '
-                  'A4 yatay PDF çıktısı · zümre onayı gerekir',
-              ikon: Icons.calendar_month_rounded,
-              onTap: () => ac(const AnnualPlansView()),
-            ),
-            _kart(
-              isDark,
-              ad: 'Günlük Planlar',
-              aciklama:
-                  'TYMM ders işleniş planı taslağı · Seviye, sınıf ve branş '
-                  'bazlı PDF çıktısı · zümre onayı gerekir',
-              ikon: Icons.menu_book_rounded,
-              onTap: () => ac(const DailyPlansView()),
-            ),
-            _kart(
-              isDark,
-              ad: 'Kurul Tutanakları',
-              aciklama:
-                  'Zümre öğretmenler kurulu · şube öğretmenler kurulu (ŞÖK) · '
-                  'gündem hazır, kararı düzenleyip yazdırın',
-              ikon: Icons.groups_rounded,
-              onTap: () => ac(const DocumentsHubView()),
-            ),
-            _baslik(isDark, 'Sınav ve rehberlik'),
-            // Raporların ayrı bir merkezi yok: soru analizi ve karne
-            // görüşü Sınav İşlemleri'nde, katılım raporları Ders İçi
-            // Katılım'da (belge, onu üreten işin yanında durur).
-            _kart(
-              isDark,
-              ad: 'Sınav İşlemleri',
-              aciklama:
-                  'Quiz ve sözlü notları, proje, sınav takvimi · soru analizi '
-                  've e-Okul karne görüşü',
-              ikon: Icons.assignment_rounded,
-              onTap: () => ac(const ExamOperationsMenuView()),
-            ),
-            _kart(
-              isDark,
-              ad: 'Rehberlik ve BEP',
-              aciklama:
-                  'BEP gelişim raporu, rehberlik dosyası (sınıf rehberlik planı), '
-                  'görüşme formları',
-              ikon: Icons.psychology_rounded,
-              onTap: () => ac(const GuidanceHubScreen()),
-            ),
-            _baslik(isDark, 'Okul etkinlikleri ve idari işler'),
-            _kart(
-              isDark,
-              ad: 'Belirli Gün ve Haftalar',
-              aciklama: 'Çizelge · etkinlik planı, çalışma raporu, pano PDF',
-              ikon: Icons.event_available_rounded,
-              onTap: () => ac(const SpecialDaysView()),
-            ),
-            _kart(
-              isDark,
-              ad: 'Sosyal Kulüpler',
-              aciklama:
-                  'EK-4 çizelgesi · yıllık plan, üye listesi, faaliyet raporu',
-              ikon: Icons.groups_2_outlined,
-              onTap: () => ac(const ClubsHubScreen()),
-            ),
-            _kart(
-              isDark,
-              ad: 'e-Okul Foto',
-              aciklama: 'Öğrenci fotoğrafı, tam 133×171 piksel',
-              ikon: Icons.photo_camera_front_outlined,
-              onTap: () => ac(const EokulFotoMerkeziEkrani()),
-            ),
-            const SizedBox(height: 8),
-            _kart(
-              isDark,
-              ad: 'Sınıf Evrakları',
-              aciklama:
-                  'Oturma planı, nöbetçi listesi, öğrenci listesi, veli rehberi · '
-                  'her sınıfın kendi sayfasında',
-              ikon: Icons.class_outlined,
-              onTap: () => ClassListScreen.ac(context),
-            ),
+            const GrupBasligi('DOSYA VE PLANLAR'),
+            const SizedBox(height: 7),
+            GrupKutusu(satirlar: [
+              // Teftişte ilk istenen dosya bu; listenin başında durur.
+              GrupSatiri(
+                key: const ValueKey('evrak_ogretmen_dosyasi'),
+                ikon: Icons.badge_outlined,
+                ad: 'Öğretmen Dosyası',
+                alt: '13 resmî evrak · kapak, künye, İstiklâl Marşı',
+                onTap: () => ac(const TeacherFileView()),
+              ),
+              GrupSatiri(
+                key: const ValueKey('evrak_yillik_plan'),
+                ikon: Icons.calendar_month_outlined,
+                ad: 'Yıllık Planlar',
+                alt: 'Ünitelendirilmiş plan taslağı · A4 yatay PDF',
+                onTap: () => ac(const AnnualPlansView()),
+              ),
+              GrupSatiri(
+                key: const ValueKey('evrak_gunluk_plan'),
+                ikon: Icons.menu_book_outlined,
+                ad: 'Günlük Planlar',
+                alt: 'Ders işleniş planı · sınıf ve hafta bazlı PDF',
+                onTap: () => ac(const DailyPlansView()),
+              ),
+            ]),
+            const SizedBox(height: 18),
+            const GrupBasligi('KURULLAR'),
+            const SizedBox(height: 7),
+            GrupKutusu(satirlar: [
+              GrupSatiri(
+                key: const ValueKey('evrak_zumre'),
+                ikon: Icons.groups_outlined,
+                ad: 'Zümre Öğretmenler Kurulu',
+                alt: 'Sene başı, 2. dönem ve yıl sonu gündemi hazır',
+                onTap: () => CouncilMinutesView.open(context, CouncilKind.zumre),
+              ),
+              GrupSatiri(
+                key: const ValueKey('evrak_sok'),
+                ikon: Icons.account_tree_outlined,
+                ad: 'Şube Öğretmenler Kurulu',
+                alt: 'Şube kadrosu, imza sirküsü, öğrenci ızgarası',
+                onTap: () => CouncilMinutesView.open(context, CouncilKind.sok),
+              ),
+            ]),
+            const SizedBox(height: 18),
+            const GrupBasligi('SINAV VE DEĞERLENDİRME'),
+            const SizedBox(height: 7),
+            GrupKutusu(satirlar: [
+              GrupSatiri(
+                key: const ValueKey('evrak_sinav_analizi'),
+                ikon: Icons.insights_outlined,
+                ad: 'Sınav Analizleri',
+                alt: 'Soru bazlı başarı ve MEB analiz raporu',
+                onTap: () => ac(const ExamAnalysisListView()),
+              ),
+              GrupSatiri(
+                key: const ValueKey('evrak_karne_gorusu'),
+                ikon: Icons.rate_review_outlined,
+                ad: 'e-Okul Karne Görüşü',
+                alt: 'Ders içi katılımdan görüş ve katılım puanı',
+                onTap: () => ClassReportCardCommentsModal.show(context),
+              ),
+              GrupSatiri(
+                key: const ValueKey('evrak_quiz'),
+                ikon: Icons.table_chart_outlined,
+                ad: 'Quiz ve Sözlü Notlar',
+                alt: 'Her quiz bir sütun, ortalama kendiliğinden',
+                onTap: () => ac(const QuizListView()),
+              ),
+              GrupSatiri(
+                key: const ValueKey('evrak_proje'),
+                ikon: Icons.assignment_turned_in_outlined,
+                ad: 'Proje ve Ödev Değerlendirme',
+                alt: 'Konu, teslim ve 100 puanlık ölçekle puanlama',
+                onTap: () => ac(const ProjectTrackingView()),
+              ),
+            ]),
+            const SizedBox(height: 18),
+            const GrupBasligi('REHBERLİK'),
+            const SizedBox(height: 7),
+            GrupKutusu(satirlar: [
+              GrupSatiri(
+                key: const ValueKey('evrak_rehberlik'),
+                ikon: Icons.psychology_outlined,
+                ad: 'Rehberlik ve BEP',
+                alt: 'BEP, rehberlik dosyası, görüşme formları',
+                onTap: () => ac(const GuidanceHubScreen()),
+              ),
+            ]),
+            const SizedBox(height: 18),
+            const GrupBasligi('OKUL ETKİNLİKLERİ VE İDARİ İŞLER'),
+            const SizedBox(height: 7),
+            GrupKutusu(satirlar: [
+              _BelirliGunSatiri(onTap: () => ac(const SpecialDaysView())),
+              GrupSatiri(
+                key: const ValueKey('evrak_kulupler'),
+                ikon: Icons.groups_2_outlined,
+                ad: 'Sosyal Kulüpler',
+                alt: 'EK-4 çizelgesi, yıllık plan, faaliyet raporu',
+                onTap: () => ac(const ClubsHubScreen()),
+              ),
+              GrupSatiri(
+                key: const ValueKey('evrak_eokul_foto'),
+                ikon: Icons.photo_camera_front_outlined,
+                ad: 'e-Okul Foto',
+                alt: 'Öğrenci fotoğrafı, tam 133×171 piksel',
+                onTap: () => ac(const EokulFotoMerkeziEkrani()),
+              ),
+            ]),
+            const SizedBox(height: 18),
+            const GrupBasligi('SINIFA BAĞLI EVRAKLAR'),
+            const SizedBox(height: 7),
+            GrupKutusu(satirlar: [
+              GrupSatiri(
+                key: const ValueKey('evrak_sinif'),
+                ikon: Icons.class_outlined,
+                ad: 'Sınıf Evrakları',
+                alt: 'Sınıf seçip açılır: oturma planı, listeler',
+                onTap: () => ClassListScreen.ac(context),
+              ),
+            ]),
           ],
         ),
       ),
     );
   }
+}
 
-  /// Bölüm başlığı. toUpperCase() YOK: Dart 'i'yi 'I' yapar.
-  Widget _baslik(bool isDark, String metin) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 14, 4, 8),
-      child: Text(
-        metin,
-        style: AppFonts.outfit(
-          fontSize: 12.5,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.2,
-          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-        ),
+/// "Belirli Gün ve Haftalar" satırı; altında yaklaşan etkinlikli gün.
+class _BelirliGunSatiri extends StatefulWidget {
+  const _BelirliGunSatiri({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  State<_BelirliGunSatiri> createState() => _BelirliGunSatiriState();
+}
+
+class _BelirliGunSatiriState extends State<_BelirliGunSatiri> {
+  late final Future<String?> _siradaki = _bul();
+
+  /// Önümüzdeki iki haftada pano/tören çalışması yapılan ilk gün.
+  Future<String?> _bul() async =>
+      siradakiBelirliGun(await SpecialDaysRepository().upcoming(gunSayisi: 14), DateTime.now());
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String?>(
+      future: _siradaki,
+      builder: (context, s) => GrupSatiri(
+        key: const ValueKey('evrak_belirli_gunler'),
+        ikon: Icons.event_available_outlined,
+        ad: 'Belirli Gün ve Haftalar',
+        alt: s.data ?? 'Çizelge, etkinlik planı, çalışma raporu, pano',
+        onTap: widget.onTap,
       ),
     );
   }
+}
 
-  Widget _kart(
-    bool isDark, {
-    required String ad,
-    required String aciklama,
-    required IconData ikon,
-    required VoidCallback onTap,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E293B) : Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color:
-                    isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(ikon, size: 19, color: AppColors.primary),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        ad,
-                        style: AppFonts.outfit(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
-                          color:
-                              isDark ? Colors.white : const Color(0xFF0F172A),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        aciklama,
-                        style: AppFonts.outfit(
-                          fontSize: 11.5,
-                          color: isDark
-                              ? const Color(0xFF94A3B8)
-                              : const Color(0xFF64748B),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.chevron_right_rounded,
-                    size: 18, color: isDark ? Colors.white38 : Colors.grey),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+/// Belirli Gün satırının durumu: [yakin] içindeki ilk etkinlikli gün ve
+/// ona kalan süre; yoksa `null`.
+String? siradakiBelirliGun(List<({SpecialDay madde, DateTime tarih})> yakin, DateTime bugun) {
+  final ilk = yakin.where((y) => y.madde.etkinlikli).firstOrNull;
+  if (ilk == null) return null;
+  final gun = DateTime(ilk.tarih.year, ilk.tarih.month, ilk.tarih.day)
+      .difference(DateTime(bugun.year, bugun.month, bugun.day))
+      .inDays;
+  // Bir hafta bugünden önce başladıysa `upcoming` ilk gününü bugün verir.
+  final ne = gun == 0
+      ? (ilk.madde.tur == 'aralik' ? 'bu hafta' : 'bugün')
+      : gun == 1
+          ? 'yarın'
+          : '$gun gün sonra';
+  return 'Sıradaki: ${ilk.madde.ad} · $ne';
 }
