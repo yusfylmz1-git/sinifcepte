@@ -224,6 +224,11 @@ class ExamTrackingNotifier extends StateNotifier<ExamTrackingState> {
 
       final id = await _repository.addSchoolExam(exam);
       if (id > 0) {
+        // Ekleme penceresi "bildirim kurulacak" diyor: okul sınavı
+        // favori olarak başlar, loadExams hatırlatmayı kurar. Öğretmen
+        // istemezse satırdaki ⭐ ile kapatır. 31 Ekim 2026'ya kadar
+        // pencere söz veriyor ama hiçbir bildirim kurulmuyordu.
+        await _repository.setFavorite(exam.id, true);
         await loadExams();
         return true;
       }
@@ -236,6 +241,12 @@ class ExamTrackingNotifier extends StateNotifier<ExamTrackingState> {
 
   Future<bool> deleteSchoolExam(int id) async {
     try {
+      // Silinen sınavın hatırlatması çalmasın, favori kaydı da artmasın.
+      final sinav = state.exams.where((e) => e.isSchoolExam && e.intId == id).firstOrNull;
+      if (sinav != null) {
+        await NotificationService.instance.cancelExamReminder(sinav);
+        await _repository.setFavorite(sinav.id, false);
+      }
       await _repository.deleteSchoolExam(id);
       await loadExams();
       return true;

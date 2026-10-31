@@ -88,11 +88,14 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
       }
 
       // 2. Sınav Gününe 24 Saat Kaldı Uyarısı
+      // Gün farkına bakıyor, saate değil: yarın akşamki sınava "24 saatten
+      // az kaldı" demek yanlıştı.
       if (exam.daysRemaining <= 1) {
+        final bugun = exam.daysRemaining == 0;
         notifications.add({
           'type': 'exam_24h',
-          'title': '⏳ Sınava Son 24 Saat!',
-          'subtitle': '⭐ "${exam.title}" sınavına 24 saatten az bir süre kaldı.',
+          'title': bugun ? '⏳ Sınav Bugün!' : '⏳ Sınav Yarın!',
+          'subtitle': '⭐ "${exam.title}" ${bugun ? 'bugün' : 'yarın'}.',
           'exam': exam,
           'isUrgent': true,
         });

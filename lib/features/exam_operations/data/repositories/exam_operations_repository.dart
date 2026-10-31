@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../../../../core/database/database_helper.dart';
+import '../../../../core/database/legacy_crud_methods.dart';
 import '../../../../data/models/student_model.dart';
 import '../models/exam_model.dart';
 import '../models/project_tracking_model.dart';
@@ -216,8 +217,10 @@ class ExamOperationsRepository {
           .where((e) => ogretmeniIlgilendirir(ad: e.title, kurum: e.institution))
           .toList();
 
+      // Okul sınavının favorisi de aynı tabloda, kimliği `okul_…`.
       final schoolExams = schoolMaps.map((m) {
-        return ExamModel.fromMap(m, isFav: false, isSchool: true);
+        final sinav = ExamModel.fromMap(m, isSchool: true);
+        return sinav.copyWith(isFavorite: favIds.contains(sinav.id));
       }).toList();
 
       final all = [...generalExams, ...schoolExams];
@@ -238,10 +241,26 @@ class ExamOperationsRepository {
     }
   }
 
+  /// Sınavı favoriye ekler ya da çıkarır (aç/kapa değil, istenen duruma).
+  Future<void> setFavorite(String docId, bool favori) async {
+    try {
+      if (favori) {
+        await _dbHelper.favoriEkle(docId);
+      } else {
+        await _dbHelper.favoriCikar(docId);
+      }
+    } catch (e, stackTrace) {
+      debugPrint('ExamOperationsRepository.setFavorite error: $e\n$stackTrace');
+    }
+  }
+
   Future<int> addSchoolExam(ExamModel exam) async {
     try {
       return await _dbHelper.addKisiselSinav({
-        'doc_id': 'okul_${DateTime.now().millisecondsSinceEpoch}',
+        // Çağıranın verdiği kimlik korunur: favori ve bildirim bu kimliğe
+        // bağlanıyor. Eskiden burada yeniden üretiliyordu, milisaniye
+        // farkıyla sağlayıcının kimliği tutmayabilirdi.
+        'doc_id': exam.id.isNotEmpty ? exam.id : 'okul_${DateTime.now().millisecondsSinceEpoch}',
         'sinav_adi': exam.title,
         'kurum': 'OKUL',
         'sinav_tarihi': exam.examDate.toIso8601String(),

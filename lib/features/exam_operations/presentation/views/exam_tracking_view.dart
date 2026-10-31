@@ -473,6 +473,20 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
               ),
             ],
 
+            // Okul sınavında da ⭐ var: hatırlatmayı açıp kapatır (31 Ekim
+            // 2026'ya kadar yalnız resmî sınavlarda vardı).
+            InkWell(
+              onTap: () => ref.read(examTrackingProvider.notifier).toggleFavorite(exam.id),
+              borderRadius: BorderRadius.circular(14),
+              child: Padding(
+                padding: const EdgeInsets.all(3.5),
+                child: Icon(
+                  exam.isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
+                  color: exam.isFavorite ? Colors.amber : (isDark ? Colors.white30 : Colors.grey.shade400),
+                  size: 18,
+                ),
+              ),
+            ),
             if (isSchool && exam.intId != null)
               InkWell(
                 onTap: () => _confirmDeleteSchoolExam(context, exam),
@@ -480,19 +494,6 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                 child: Padding(
                   padding: const EdgeInsets.all(3.5),
                   child: Icon(Icons.delete_outline_rounded, size: 16, color: Colors.red.shade400),
-                ),
-              )
-            else
-              InkWell(
-                onTap: () => ref.read(examTrackingProvider.notifier).toggleFavorite(exam.id),
-                borderRadius: BorderRadius.circular(14),
-                child: Padding(
-                  padding: const EdgeInsets.all(3.5),
-                  child: Icon(
-                    exam.isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
-                    color: exam.isFavorite ? Colors.amber : (isDark ? Colors.white30 : Colors.grey.shade400),
-                    size: 18,
-                  ),
                 ),
               ),
           ],
@@ -638,7 +639,11 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
   void _showAddSchoolExamModal(BuildContext context, bool isDark) {
     final titleController = TextEditingController();
     String? selectedClassName;
-    DateTime selectedDate = DateTime.now().add(const Duration(days: 7));
+    // Saatsiz (gece yarısı): tarih değiştirilmeden kaydedilince sınav
+    // açılış anının saatini taşıyor, listede "(14:23)" gibi uydurma bir
+    // saatle görünüyordu.
+    final bugun = DateTime.now();
+    DateTime selectedDate = DateTime(bugun.year, bugun.month, bugun.day + 7);
     final classesAsync = ref.read(classListProvider);
 
     showModalBottomSheet(
@@ -996,7 +1001,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Sınav gününe 24 saat kala otomatik alarm bildirimi kurulacaktır.',
+                              "Sınavdan bir gün önce sabah 08.00'de hatırlatma gelir. İstemezseniz listede ⭐'ı kapatın.",
                               style: AppFonts.outfit(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,

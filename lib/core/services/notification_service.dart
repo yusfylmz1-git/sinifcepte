@@ -86,8 +86,25 @@ class NotificationService {
   static const AndroidScheduleMode _zamanlamaKipi =
       AndroidScheduleMode.inexactAllowWhileIdle;
 
+  /// Sınav günü hatırlatmasının çalacağı an.
+  ///
+  /// Saati bilinen sınavda (ÖSYM 10.15 gibi) tam 24 saat önce. Saati
+  /// bilinmeyen sınavda (okul yazılısı, MEB ortak sınavı; tarih seçici
+  /// gece yarısını verir, ekran da 00.00'ı "saatsiz" gösterir) bir gün
+  /// önce sabah 08.00: "24 saat önce" gece yarısına düşerdi, oysa
+  /// öğretmen öğrencilere "yarın sınav var" demek için okulda olmalı.
+  @visibleForTesting
+  static DateTime sinavGunuHatirlatmaAni(DateTime sinav) {
+    if (sinav.hour == 0 && sinav.minute == 0) {
+      return DateTime(sinav.year, sinav.month, sinav.day - 1, 8);
+    }
+    return sinav.subtract(const Duration(hours: 24));
+  }
+
   /// Favori Sınav İçin "Son 24 Saat Kala" Zamanlanmış Bildirimleri Kur
   /// Hem "Son Başvuru Tarihine 24 Saat Kala" hem de "Sınav Gününe 24 Saat Kala" hatırlatma yapar.
+  /// Okul sınavı ve saati bilinmeyen sınav bir gün önce sabah hatırlatılır
+  /// (bkz. [sinavGunuHatirlatmaAni]).
   Future<void> scheduleExamReminder24h(ExamModel exam) async {
     try {
       final now = DateTime.now();
@@ -137,16 +154,22 @@ class NotificationService {
       }
 
       // 2. SINAV GÜNÜNE 24 SAAT KALA BİLDİRİMİ
-      final examScheduleDate = exam.examDate.subtract(const Duration(hours: 24));
+      final examScheduleDate = sinavGunuHatirlatmaAni(exam.examDate);
       if (examScheduleDate.isAfter(now)) {
         final examNotificationId = '${exam.id}_exam'.hashCode & 0x7fffffff;
         final tzExamDate = tz.TZDateTime.from(examScheduleDate, tz.local);
+        // Okul yazılısını öğretmen yaptırıyor, girmiyor: "başarılar"
+        // ve "24 saat kaldı" ona göre değil.
+        final yarinSinavVar = exam.isSchoolExam ||
+            (exam.examDate.hour == 0 && exam.examDate.minute == 0);
 
         if (!kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isMacOS)) {
           await _notificationsPlugin.zonedSchedule(
             examNotificationId,
-            '⏳ Sınava Son 24 Saat!',
-            '⭐ "${exam.title}" sınavına 24 saat kaldı. Başarılar dileriz! 🎯',
+            yarinSinavVar ? '📝 Yarın Sınav Var' : '⏳ Sınava Son 24 Saat!',
+            yarinSinavVar
+                ? '"${exam.title}" yarın.'
+                : '⭐ "${exam.title}" sınavına 24 saat kaldı. Başarılar dileriz! 🎯',
             tzExamDate,
             platformDetails,
             androidScheduleMode: _zamanlamaKipi,
@@ -154,7 +177,7 @@ class NotificationService {
                 UILocalNotificationDateInterpretation.absoluteTime,
             payload: 'exam_${exam.id}',
           );
-          debugPrint('NotificationService: "${exam.title}" için sınav gününe 24 saat kala bildirim kuruldu ($examScheduleDate).');
+          debugPrint('NotificationService: "${exam.title}" için sınav günü hatırlatması kuruldu ($examScheduleDate).');
         }
       }
     } catch (e, stackTrace) {
