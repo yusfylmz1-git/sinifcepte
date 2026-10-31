@@ -146,6 +146,67 @@ class ExamTextParser {
     return `${String(saat).padStart(2, '0')}:${m[2]}`;
   }
 
+  /** Türkçe harfleri ASCII'ye katlar, kimlik (doc_id) parçası için. */
+  static kimlikParcasi(metin) {
+    return this.kucult(metin)
+      .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i')
+      .replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+  }
+
+  /**
+   * ÖDSGM ortak yazılı takviminin bir tablo satırı.
+   *
+   * ## Neden ayrı
+   * Resmî takvim (ör. 2026-2027) tablo: başlık ("1. Dönem 1. Yazılı
+   * Sınavları") ayrı satırda, altında "6. Sınıf Matematik 11 Kasım 2026
+   * Çarşamba". Satırda "dönem" ya da "ortak" geçmediği için genel
+   * kurallar hiçbirini tanımıyordu; "sınav" kelimesi de olmadığından
+   * "tanınmayan" listesine bile düşmüyordu (31 Ekim 2026).
+   *
+   * Her sınıf-ders ayrı kayıt: ortak sınav 6. sınıf matematikçisini
+   * ilgilendirir, 10. sınıf edebiyatçısını değil. Öğretmen kendininkini
+   * ⭐'lar.
+   *
+   * Saat yazmıyorsa 00:00 ("saati bilinmiyor"): uygulama saati
+   * göstermez, hatırlatmayı bir gün önce sabah kurar. Uydurma 09:00
+   * telefonda "(09:00)" diye görünürdü.
+   */
+  static ortakSatiri(parca, kucuk, tarih, bolum) {
+    const sinifEk = /^(\d{1,2})\.?\s*sınıf\s+/.exec(kucuk);
+    if (!sinifEk) return null;
+    const sinif = parseInt(sinifEk[1], 10);
+    if (sinif < 1 || sinif > 12) return null;
+
+    // kucult harf sayısını korur: konumlar asıl metinde de geçerli.
+    const tarihBasi = kucuk.search(
+      /\d{1,2}(?:\s*[-–]\s*\d{1,2})?\s+(?:ocak|şubat|mart|nisan|mayıs|haziran|temmuz|ağustos|eylül|ekim|kasım|aralık)\s+\d{4}|\d{1,2}\.\d{1,2}\.\d{4}/
+    );
+    if (tarihBasi <= sinifEk[0].length) return null;
+    const ders = parca.slice(sinifEk[0].length, tarihBasi).trim();
+    if (!ders) return null;
+
+    // Yalnız açıkça yazılmış saat: "11.11.2026" saat sanılmasın.
+    const s = /saat\s*(\d{1,2})[.:](\d{2})|\b(\d{1,2}):(\d{2})\b/.exec(kucuk);
+    const saat = s
+      ? `${String(s[1] ?? s[3]).padStart(2, '0')}:${s[2] ?? s[4]}`
+      : '00:00';
+
+    return {
+      doc_id: `meb_ortak_${sinif}_${this.kimlikParcasi(ders)}_${tarih.replace(/-/g, '')}`,
+      title: `${sinif}. Sınıf ${ders} Ortak Yazılısı`,
+      institution: 'MEB',
+      examDate: `${tarih}T${saat}:00.000`,
+      applicationDeadline: null,
+      applicationUrl: 'https://odsgm.meb.gov.tr',
+      description: `Ülke geneli ortak yazılı sınavı (${bolum}).`,
+      category: 'MEB',
+      kaynakSatir: parca.slice(0, 120),
+      yil: tarih.slice(0, 4),
+    };
+  }
+
   /**
    * Duyuru metnini ayrıştırır.
    *
@@ -176,10 +237,28 @@ class ExamTextParser {
     const bulunanlar = new Map();
     const taninmayan = [];
 
+    // Ortak yazılı takvimi mi? Tablo satırları ancak o zaman okunur:
+    // "8. Sınıf … 14 Haziran" bursluluk duyurusunda başka anlam taşır.
+    const ortakBelge = /ortak\s*(yazılı|sınav)/.test(this.kucult(hamMetin));
+    let bolum = null; // "1. Dönem 1. Yazılı"
+
     for (const parca of parcalar) {
       const kucuk = this.kucult(parca);
       const tarih = this.tarihBul(parca);
-      if (!tarih) continue;
+
+      if (!tarih) {
+        const baslik = /(\d)\.?\s*dönem\s*(\d)\.?\s*(?:ortak\s*)?yazılı/.exec(kucuk);
+        if (baslik) bolum = `${baslik[1]}. Dönem ${baslik[2]}. Yazılı`;
+        continue;
+      }
+
+      if (ortakBelge && bolum) {
+        const satir = this.ortakSatiri(parca, kucuk, tarih, bolum);
+        if (satir) {
+          bulunanlar.set(satir.doc_id, satir);
+          continue;
+        }
+      }
 
       let eslesti = false;
       for (const kural of this.kurallar) {
@@ -209,7 +288,9 @@ class ExamTextParser {
 
       // Tarihi var ama hangi sınav olduğu anlaşılmadı: yöneticiye
       // gösteriliyor, sessizce atılmıyor.
-      if (!eslesti && /sınav|yazılı|değerlendirme/.test(kucuk)) {
+      // Ortak yazılı belgesinde tarihli her satır sınavdır, "sınav"
+      // kelimesi geçmese de.
+      if (!eslesti && (ortakBelge || /sınav|yazılı|değerlendirme/.test(kucuk))) {
         taninmayan.push({ satir: parca.slice(0, 120), tarih });
       }
     }

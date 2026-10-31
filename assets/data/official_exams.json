@@ -1,25 +1,5 @@
 [
   {
-    "doc_id": "meb_ortak_yazili_1_2025",
-    "title": "1. Dönem 1. Ortak Yazılı Sınavları (MEB Geneli)",
-    "institution": "MEB",
-    "examDate": "2025-10-27T09:00:00.000",
-    "applicationDeadline": "2025-10-20T23:59:59.000",
-    "applicationUrl": "https://odsgm.meb.gov.tr",
-    "description": "6. ve 9. sınıflar Türkçe ve Matematik ortak yazılı sınavı",
-    "category": "official"
-  },
-  {
-    "doc_id": "meb_ortak_yazili_2_2025",
-    "title": "1. Dönem 2. Ortak Yazılı Sınavları",
-    "institution": "MEB",
-    "examDate": "2025-12-22T09:00:00.000",
-    "applicationDeadline": "2025-12-15T23:59:59.000",
-    "applicationUrl": "https://odsgm.meb.gov.tr",
-    "description": "Ülke geneli ve il geneli 1. dönem 2. yazılı sınavları",
-    "category": "official"
-  },
-  {
     "doc_id": "osym_eyds_20260124",
     "title": "e-YDS - Elektronik Yabancı Dil Sınavı",
     "institution": "ÖSYM",
@@ -330,6 +310,26 @@
     "description": "Kamu personeli seçme sınavı; öğretmenler görev alır."
   },
   {
+    "doc_id": "meb_ortak_6_matematik_20261111",
+    "title": "6. Sınıf Matematik Ortak Yazılısı",
+    "institution": "MEB",
+    "examDate": "2026-11-11T00:00:00.000",
+    "applicationDeadline": null,
+    "applicationUrl": "https://odsgm.meb.gov.tr",
+    "description": "Ülke geneli ortak yazılı sınavı (1. Dönem 1. Yazılı).",
+    "category": "MEB"
+  },
+  {
+    "doc_id": "meb_ortak_10_turk_dili_ve_edebiyati_20261112",
+    "title": "10. Sınıf Türk Dili ve Edebiyatı Ortak Yazılısı",
+    "institution": "MEB",
+    "examDate": "2026-11-12T00:00:00.000",
+    "applicationDeadline": null,
+    "applicationUrl": "https://odsgm.meb.gov.tr",
+    "description": "Ülke geneli ortak yazılı sınavı (1. Dönem 1. Yazılı).",
+    "category": "MEB"
+  },
+  {
     "doc_id": "osym_yds_20261122",
     "title": "YDS - Yabancı Dil Sınavı",
     "institution": "ÖSYM",
@@ -348,5 +348,65 @@
     "applicationUrl": "https://ais.osym.gov.tr",
     "category": "ÖSYM",
     "description": "Lisansüstü eğitim ve akademik kadro giriş sınavı."
+  },
+  {
+    "doc_id": "meb_ortak_7_turkce_20270105",
+    "title": "7. Sınıf Türkçe Ortak Yazılısı",
+    "institution": "MEB",
+    "examDate": "2027-01-05T00:00:00.000",
+    "applicationDeadline": null,
+    "applicationUrl": "https://odsgm.meb.gov.tr",
+    "description": "Ülke geneli ortak yazılı sınavı (1. Dönem 2. Yazılı).",
+    "category": "MEB"
+  },
+  {
+    "doc_id": "meb_ortak_9_matematik_20270106",
+    "title": "9. Sınıf Matematik Ortak Yazılısı",
+    "institution": "MEB",
+    "examDate": "2027-01-06T00:00:00.000",
+    "applicationDeadline": null,
+    "applicationUrl": "https://odsgm.meb.gov.tr",
+    "description": "Ülke geneli ortak yazılı sınavı (1. Dönem 2. Yazılı).",
+    "category": "MEB"
+  },
+  {
+    "doc_id": "meb_ortak_7_matematik_20270406",
+    "title": "7. Sınıf Matematik Ortak Yazılısı",
+    "institution": "MEB",
+    "examDate": "2027-04-06T00:00:00.000",
+    "applicationDeadline": null,
+    "applicationUrl": "https://odsgm.meb.gov.tr",
+    "description": "Ülke geneli ortak yazılı sınavı (2. Dönem 1. Yazılı).",
+    "category": "MEB"
+  },
+  {
+    "doc_id": "meb_ortak_9_turk_dili_ve_edebiyati_20270407",
+    "title": "9. Sınıf Türk Dili ve Edebiyatı Ortak Yazılısı",
+    "institution": "MEB",
+    "examDate": "2027-04-07T00:00:00.000",
+    "applicationDeadline": null,
+    "applicationUrl": "https://odsgm.meb.gov.tr",
+    "description": "Ülke geneli ortak yazılı sınavı (2. Dönem 1. Yazılı).",
+    "category": "MEB"
+  },
+  {
+    "doc_id": "meb_ortak_6_turkce_20270608",
+    "title": "6. Sınıf Türkçe Ortak Yazılısı",
+    "institution": "MEB",
+    "examDate": "2027-06-08T00:00:00.000",
+    "applicationDeadline": null,
+    "applicationUrl": "https://odsgm.meb.gov.tr",
+    "description": "Ülke geneli ortak yazılı sınavı (2. Dönem 2. Yazılı).",
+    "category": "MEB"
+  },
+  {
+    "doc_id": "meb_ortak_10_matematik_20270609",
+    "title": "10. Sınıf Matematik Ortak Yazılısı",
+    "institution": "MEB",
+    "examDate": "2027-06-09T00:00:00.000",
+    "applicationDeadline": null,
+    "applicationUrl": "https://odsgm.meb.gov.tr",
+    "description": "Ülke geneli ortak yazılı sınavı (2. Dönem 2. Yazılı).",
+    "category": "MEB"
   }
 ]
