@@ -81,6 +81,11 @@ class CrashReporter {
   /// Bir hatayı kaydeder. Firebase hazır değilse tamponlar.
   static void record(Object error, StackTrace? stack, {String? reason}) {
     debugPrint('ÇÖKME KAYDI [${reason ?? "-"}]: $error');
+    // Telefon testinde `adb logcat` yalnız bunu görür (Crashlytics
+    // panosu gecikmeli). Yığının baş satırları hatanın dosyasını verir;
+    // tamamı Crashlytics'e gidiyor.
+    final ilk = ilkSatirlar(stack);
+    if (ilk.isNotEmpty) debugPrint('ÇÖKME YIĞINI:\n$ilk');
 
     if (!_firebaseReady) {
       if (_pending.length < _maxPending) {
@@ -105,6 +110,19 @@ class CrashReporter {
     unawaited(
       FirebaseCrashlytics.instance.log(message).catchError((_) {}),
     );
+  }
+
+  /// Yığın izinin ilk [adet] satırı (çatının kendi satırları hariç).
+  @visibleForTesting
+  static String ilkSatirlar(StackTrace? stack, {int adet = 8}) {
+    if (stack == null) return '';
+    return stack
+        .toString()
+        .split('\n')
+        .where((s) => s.trim().isNotEmpty)
+        .where((s) => !s.contains('package:flutter/') && !s.contains('dart:async'))
+        .take(adet)
+        .join('\n');
   }
 
   /// Test ve gözlem için: bekleyen hata sayısı.
