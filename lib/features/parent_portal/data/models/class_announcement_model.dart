@@ -113,7 +113,7 @@ class ClassAnnouncementModel {
       content: map['content']?.toString() ?? '',
       priority: map['priority']?.toString() ?? 'normal',
       eventDate: map['event_date'] != null ? DateTime.tryParse(map['event_date'].toString()) : null,
-      createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'].toString()) : DateTime.now(),
+      createdAt: DateTime.tryParse('${map['created_at'] ?? ''}') ?? DateTime.now(),
       readByParentUserIds: (map['read_by_parent_user_ids'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??

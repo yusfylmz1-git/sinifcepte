@@ -111,13 +111,14 @@ class _ExamAnalysisEditorViewState extends ConsumerState<ExamAnalysisEditorView>
         _studentScoreControllers[i] = TextEditingController(text: '');
       }
 
+      if (!mounted) return;
       setState(() {
         _studentScores = loaded;
         _isLoadingStudents = false;
       });
     } catch (e, stackTrace) {
       debugPrint('Öğrenci yükleme hatası: $e\n$stackTrace');
-      setState(() => _isLoadingStudents = false);
+      if (mounted) setState(() => _isLoadingStudents = false);
     }
   }
 
@@ -369,6 +370,7 @@ class _ExamAnalysisEditorViewState extends ConsumerState<ExamAnalysisEditorView>
                             if (val != null) {
                               setState(() {
                                 _selectedClassName = val;
+                                // denetim: orelse-yok — val bu listenin öğesinden geliyor
                                 final matched = classes.firstWhere((c) => c.name == val);
                                 if (_subjectController.text.isEmpty || _subjectController.text == 'Ders') {
                                   _subjectController.text = matched.subject;

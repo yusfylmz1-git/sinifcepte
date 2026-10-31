@@ -17,6 +17,7 @@ class InputSanitizer {
         .replaceAll('ç', 'Ç')
         .replaceAll('ö', 'Ö')
         .replaceAll('ü', 'Ü')
+        // denetim: turkce-buyuk — Türkçe harfler yukarıda elle çevrildi
         .toUpperCase();
 
     // 2. Özel format kontrolü: (Sayı veya Sayı Okunuşu) + (Noktalama/Boşluk) + (Tek Harf)

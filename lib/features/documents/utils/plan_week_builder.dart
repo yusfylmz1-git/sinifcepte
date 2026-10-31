@@ -1,4 +1,5 @@
 import '../../outcomes/data/models/curriculum_outcome_model.dart';
+import '../../../core/utils/name_formatter.dart';
 
 /// Yıllık ve günlük plan ekranlarının ORTAK hafta üretimi.
 ///
@@ -118,6 +119,7 @@ class PlanWeekBuilder {
   /// Bilinmeyen ders için null döner; çağıran taraf kolonu boş bırakıp
   /// öğretmenin doldurmasını ister — yanlış sayı basmaktan iyidir.
   static int? haftalikDersSaati(int sinif, String dersKodu) {
+    // denetim: turkce-buyuk — MEB ders kodu, ASCII
     final kod = dersKodu.toUpperCase();
 
     // İlkokul (1-4)
@@ -361,14 +363,14 @@ class PlanWeekBuilder {
     final bool gercekIcerik = parcalar.isNotEmpty ||
         (kazanimKodu.isNotEmpty && kazanimKodu != 'TATIL') ||
         (rawDesc.isNotEmpty &&
-            !rawDesc.toLowerCase().contains('planlanmamış') &&
-            !rawDesc.toLowerCase().contains('kazanım belirtilmemiş'));
+            !rawDesc.toLowerTr().contains('planlanmamış') &&
+            !rawDesc.toLowerTr().contains('kazanım belirtilmemiş'));
 
     // Yalnızca gerçek konu/kazanım YOKSA zümre planlaması (OTP) sayılır.
     final bool otpHaftasi = !gercekIcerik &&
-        (rawUnitTitle.toLowerCase().contains('planlanmamış') ||
-            rawTopicTitle.toLowerCase().contains('planlanmamış') ||
-            rawDesc.toLowerCase().contains('planlanmamış') ||
+        (rawUnitTitle.toLowerTr().contains('planlanmamış') ||
+            rawTopicTitle.toLowerTr().contains('planlanmamış') ||
+            rawDesc.toLowerTr().contains('planlanmamış') ||
             rawUnitTitle.toLowerCase().contains('okul temelli') ||
             rawTopicTitle.toLowerCase().contains('okul temelli'));
 
@@ -415,8 +417,8 @@ class PlanWeekBuilder {
         }
       }
     } else if (rawDesc.isNotEmpty &&
-        !rawDesc.toLowerCase().contains('planlanmamış') &&
-        !rawDesc.toLowerCase().contains('kazanım belirtilmemiş')) {
+        !rawDesc.toLowerTr().contains('planlanmamış') &&
+        !rawDesc.toLowerTr().contains('kazanım belirtilmemiş')) {
       ciktilar.add(rawDesc);
     } else if (otpHaftasi) {
       ciktilar.add(

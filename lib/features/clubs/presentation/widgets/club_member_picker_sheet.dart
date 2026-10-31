@@ -10,6 +10,7 @@ import '../../../classes/providers/class_provider.dart';
 import '../../../classes/providers/student_provider.dart';
 import '../../data/models/club_model.dart';
 import '../../providers/club_provider.dart';
+import '../../../../core/utils/name_formatter.dart';
 
 /// Kulübe üye ekleme sayfası.
 ///
@@ -421,7 +422,7 @@ class _ClubMemberPickerSheetState
                 shape: BoxShape.circle,
               ),
               child: Text(
-                ad.isEmpty ? '?' : ad[0].toUpperCase(),
+                ad.isEmpty ? '?' : ad[0].toUpperTr(),
                 style: AppFonts.outfit(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,

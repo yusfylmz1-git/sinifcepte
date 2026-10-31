@@ -462,8 +462,8 @@ class _AnnualPlansViewState extends ConsumerState<AnnualPlansView> {
                             }).toList(),
                             onChanged: (yeniAnahtar) {
                               if (yeniAnahtar == null || yeniAnahtar == _seciliAnahtar) return;
-                              final ders = _mevcutDersler
-                                  .firstWhere((d) => _dersAnahtari(d) == yeniAnahtar);
+                              // denetim: orelse-yok — anahtar bu listenin öğesinden geliyor
+                              final ders = _mevcutDersler.firstWhere((d) => _dersAnahtari(d) == yeniAnahtar);
                               setState(() {
                                 _seciliDersKodu = ders['subject_code'] as String?;
                                 _seciliDersAdi = ders['subject_name'] as String?;

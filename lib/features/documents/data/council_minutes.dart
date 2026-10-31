@@ -9,6 +9,7 @@ library;
 
 import '../../../core/utils/input_sanitizer.dart';
 import '../../../core/utils/turkish_text.dart';
+import '../../../core/utils/name_formatter.dart';
 
 /// Kurul türü.
 enum CouncilKind {
@@ -164,10 +165,10 @@ class CouncilMinutes {
     required String branch,
     String? className,
   }) {
-    final periodText = periodLabel(period).toUpperCase();
+    final periodText = periodLabel(period).toUpperTr();
     if (kind == CouncilKind.sok) {
       final cls = (className ?? '').trim();
-      final head = cls.isEmpty ? 'ŞUBE' : cls.toUpperCase();
+      final head = cls.isEmpty ? 'ŞUBE' : cls.toUpperTr();
       return '$head ŞUBE ÖĞRETMENLER KURULU ($periodText) TOPLANTI TUTANAĞI';
     }
     final cleaned = stripRoleSuffix(branch);
@@ -175,7 +176,7 @@ class CouncilMinutes {
     if (isClassroomTeacher(cleaned) && grade != null) {
       return '$grade. SINIFLAR ZÜMRE ÖĞRETMENLER KURULU ($periodText) TOPLANTI TUTANAĞI';
     }
-    final subject = cleaned.trim().isEmpty ? 'ALAN' : cleaned.trim().toUpperCase();
+    final subject = cleaned.trim().isEmpty ? 'ALAN' : cleaned.trim().toUpperTr();
     return '$subject ZÜMRE ÖĞRETMENLER KURULU ($periodText) TOPLANTI TUTANAĞI';
   }
 

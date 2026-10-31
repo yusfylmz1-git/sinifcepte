@@ -7,6 +7,7 @@ import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../classes/providers/class_provider.dart';
 import '../../data/models/exam_model.dart';
 import '../../providers/exam_tracking_provider.dart';
+import '../../../../core/utils/name_formatter.dart';
 
 /// SınıfCepte - 3/3: MEB / ÖSYM Sınav Takibi & Okulum Yazılı Sınavları (Şirin & Kompakt Tasarım)
 class ExamTrackingView extends ConsumerStatefulWidget {
@@ -30,7 +31,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
       currentExams = examState.officialExams;
       if (_selectedInstitution != 'all') {
         currentExams = currentExams
-            .where((e) => e.institution.toUpperCase().contains(_selectedInstitution.toUpperCase()))
+            .where((e) => e.institution.toUpperTr().contains(_selectedInstitution.toUpperTr()))
             .toList();
       }
     } else if (_selectedTab == 1) {
@@ -570,7 +571,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
 
   Color _getInstitutionColor(String inst, bool isSchool) {
     if (isSchool) return const Color(0xFFD97706);
-    final upper = inst.toUpperCase();
+    final upper = inst.toUpperTr();
     if (upper.contains('MTSK') || upper.contains('EHLİYET')) return const Color(0xFF059669);
     if (upper.contains('E-SINAV') || upper.contains('E-YDS') || upper.contains('ESINAV')) return const Color(0xFF0284C7);
     if (upper.contains('BİLSEM') || upper.contains('BILSEM')) return const Color(0xFF9333EA);
@@ -585,7 +586,7 @@ class _ExamTrackingViewState extends ConsumerState<ExamTrackingView> {
 
   String _getInstitutionEmoji(String inst, bool isSchool) {
     if (isSchool) return '🏫';
-    final upper = inst.toUpperCase();
+    final upper = inst.toUpperTr();
     if (upper.contains('MTSK') || upper.contains('EHLİYET')) return '🚗';
     if (upper.contains('E-SINAV') || upper.contains('E-YDS') || upper.contains('ESINAV')) return '💻';
     if (upper.contains('BİLSEM') || upper.contains('BILSEM')) return '💡';

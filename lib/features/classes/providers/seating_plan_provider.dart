@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../data/models/student_model.dart';
 import '../models/seating_plan_model.dart';
 import '../data/services/seating_plan_service.dart';
+import '../../../core/utils/name_formatter.dart';
 
 final seatingPlanProvider = StateNotifierProvider.family<SeatingPlanNotifier, AsyncValue<SeatingPlanModel>, int>((ref, classId) {
   return SeatingPlanNotifier(ref.read(seatingPlanServiceProvider), classId);
@@ -22,13 +23,13 @@ class SeatingPlanNotifier extends StateNotifier<AsyncValue<SeatingPlanModel>> {
       state = const AsyncValue.loading();
       final plan = await _service.getSeatingPlan(_classId);
       if (plan != null) {
-        state = AsyncValue.data(plan);
+        if (mounted) state = AsyncValue.data(plan);
       } else {
-        state = AsyncValue.data(SeatingPlanModel(classId: _classId));
+        if (mounted) state = AsyncValue.data(SeatingPlanModel(classId: _classId));
       }
     } catch (e, st) {
       debugPrint('Oturma planı yükleme hatası: $e\n$st');
-      state = AsyncValue.error(e, st);
+      if (mounted) state = AsyncValue.error(e, st);
     }
   }
 
@@ -38,7 +39,7 @@ class SeatingPlanNotifier extends StateNotifier<AsyncValue<SeatingPlanModel>> {
     if (currentPlan == null || studentCount <= 0) return;
 
     final blocks = currentPlan.columns; // Blok sayısı (2, 3, 4)
-    final seatsPerRow = blocks * 2; // Her satırdaki koltuk sayısı
+    final seatsPerRow = max(2, blocks * 2); // Her satırdaki koltuk sayısı (bozuk kayıtta 0 blok bölmeyi düşürmesin)
     final requiredRows = max(4, (studentCount / seatsPerRow).ceil());
 
     if (currentPlan.rows < requiredRows) {
@@ -74,7 +75,7 @@ class SeatingPlanNotifier extends StateNotifier<AsyncValue<SeatingPlanModel>> {
     final currentPlan = state.value;
     if (currentPlan == null) return;
 
-    final seatsPerRow = blockCount * 2;
+    final seatsPerRow = max(2, blockCount * 2);
     final requiredRows = max(4, (studentCount / seatsPerRow).ceil());
 
     // Yeni blok sayısına sığmayan eski atamaları güvenle temizle veya koru
@@ -230,7 +231,7 @@ class SeatingPlanNotifier extends StateNotifier<AsyncValue<SeatingPlanModel>> {
 
     // Önce kapasitenin yeterli olduğundan emin ol
     final blocks = currentPlan.columns;
-    final seatsPerRow = blocks * 2;
+    final seatsPerRow = max(2, blocks * 2);
     final requiredRows = max(currentPlan.rows, (students.length / seatsPerRow).ceil());
 
     final positions = _getAllSeatPositions(blocks, requiredRows);
@@ -252,7 +253,7 @@ class SeatingPlanNotifier extends StateNotifier<AsyncValue<SeatingPlanModel>> {
     if (currentPlan == null) return;
 
     final blocks = currentPlan.columns;
-    final seatsPerRow = blocks * 2;
+    final seatsPerRow = max(2, blocks * 2);
     final requiredRows = max(currentPlan.rows, (students.length / seatsPerRow).ceil());
 
     // Cinsiyeti 'Kiz'/'Erkek' olarak yazmayan ogrenciler (e-Okul listesinde
@@ -260,11 +261,11 @@ class SeatingPlanNotifier extends StateNotifier<AsyncValue<SeatingPlanModel>> {
     // disinda kaliyor, ekranda kayboluyordu. Artik erkek kumesine
     // eklenerek mutlaka bir koltuk aliyorlar.
     final girls = students
-        .where((s) => s.gender.toLowerCase().contains('kız'))
+        .where((s) => s.gender.toLowerTr().contains('kız'))
         .toList()
       ..shuffle(Random());
     final boys = students
-        .where((s) => !s.gender.toLowerCase().contains('kız'))
+        .where((s) => !s.gender.toLowerTr().contains('kız'))
         .toList()
       ..shuffle(Random());
 
@@ -307,7 +308,7 @@ class SeatingPlanNotifier extends StateNotifier<AsyncValue<SeatingPlanModel>> {
     if (currentPlan == null) return;
 
     final blocks = currentPlan.columns;
-    final seatsPerRow = blocks * 2;
+    final seatsPerRow = max(2, blocks * 2);
     final requiredRows = max(currentPlan.rows, (students.length / seatsPerRow).ceil());
 
     final positions = _getAllSeatPositions(blocks, requiredRows);
@@ -330,7 +331,7 @@ class SeatingPlanNotifier extends StateNotifier<AsyncValue<SeatingPlanModel>> {
     if (currentPlan == null) return;
 
     final blocks = currentPlan.columns;
-    final seatsPerRow = blocks * 2;
+    final seatsPerRow = max(2, blocks * 2);
     final requiredRows = max(currentPlan.rows, (students.length / seatsPerRow).ceil());
 
     final positions = _getAllSeatPositions(blocks, requiredRows);

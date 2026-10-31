@@ -66,6 +66,19 @@ String trLower(String s) {
   return b.toString();
 }
 
+/// Ekrana ve belgeye giden metinde `toUpperCase()` yerine.
+///
+/// Dart Türkçe bilmez: "Ali".toUpperCase() → "ALI", "Pazartesi" →
+/// "PAZARTESI". Resmî belgede ad ve gün böyle basılıyordu. Kodlarda
+/// (veli kodu, ders kodu) `toUpperCase()` doğrudur: orada "i" → "I".
+extension TurkceBuyukHarf on String {
+  String toUpperTr() => trUpper(this);
+
+  /// "KIZ".toLowerCase() → "kiz": 'kız' ile eşleşmiyordu. Türkçe sözcükle
+  /// karşılaştırırken bu; arama kutusunda `trContains`.
+  String toLowerTr() => trLower(this);
+}
+
 /// Ad-soyad biçimlendirici.
 class NameFormatter {
   NameFormatter._();

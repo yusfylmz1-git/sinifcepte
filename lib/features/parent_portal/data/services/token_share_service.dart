@@ -9,6 +9,7 @@ import '../../../../data/models/student_model.dart';
 import '../../../auth_profile/data/models/teacher_profile_model.dart';
 import '../models/parent_token_model.dart';
 import '../../../../core/pdf/pdf_tr_fonts.dart';
+import '../../../../core/utils/name_formatter.dart';
 
 /// Veli baglanti kodunun paylasimi ve PDF ciktisi.
 ///
@@ -335,7 +336,7 @@ Sayın Velimiz,
     if (parts.length <= 1) return trimmed;
     final firstName = parts.sublist(0, parts.length - 1).join(' ');
     final lastName = parts.last;
-    final initial = lastName.isNotEmpty ? '${lastName[0].toUpperCase()}.' : '';
+    final initial = lastName.isNotEmpty ? '${lastName[0].toUpperTr()}.' : '';
     return '$firstName $initial'.trim();
   }
 

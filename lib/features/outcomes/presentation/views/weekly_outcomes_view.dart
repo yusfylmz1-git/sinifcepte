@@ -7,6 +7,8 @@ import '../../../../shared/widgets/glass_card.dart';
 import '../../providers/outcomes_provider.dart';
 import '../widgets/holiday_card.dart';
 import '../widgets/outcome_carousel_card.dart';
+import '../../../../core/utils/turkish_text.dart';
+import '../../../../core/utils/name_formatter.dart';
 
 /// SınıfCepte - Resmî MEB Maarif Modeli 39+1 Haftalık Kazanımlar Modülü
 class WeeklyOutcomesView extends ConsumerStatefulWidget {
@@ -851,7 +853,8 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
 
       // Arama Kontrolü
       if (searchLower.isNotEmpty) {
-        final matches = name.contains(searchLower) || code.contains(searchLower) || publisher.contains(searchLower);
+        // "Isil"/"ışıl", "turkce"/"Türkçe" aynı sayılsın.
+        final matches = trContains(name, searchLower) || trContains(code, searchLower) || trContains(publisher, searchLower);
         if (!matches) return false;
       }
 
@@ -1189,7 +1192,7 @@ class _WeeklyOutcomesViewState extends ConsumerState<WeeklyOutcomesView> {
 
                   // Görüntülenecek Başlık (Örn: "Türkçe (Anıttepe Yay.)" veya "Türkçe")
                   String displayTitle = subjectName;
-                  if (publisher.toLowerCase().contains('anıt') || publisher.toLowerCase().contains('anittepe')) {
+                  if (publisher.toLowerTr().contains('anıt') || publisher.toLowerTr().contains('anittepe')) {
                     displayTitle = '$subjectName (Anıttepe Yay.)';
                   } else if (publisher.toLowerCase().contains('koza')) {
                     displayTitle = '$subjectName (Koza Yayınları)';

@@ -139,6 +139,7 @@ class AlbumYerlesimi {
         fotoGenislik: fg,
         fotoYukseklik: fy,
         kartYukseklik: ky,
+        // denetim: sifira-bolme — kart yüksekliği ve aralık pozitif
         sayfadaSatir: ((icY + aralik) / (ky + aralik)).floor(),
         olcek: o,
         olcekDusuruldu: o != a.olcek,

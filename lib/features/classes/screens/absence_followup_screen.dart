@@ -14,6 +14,7 @@ import '../../parent_portal/data/services/phone_formatter.dart';
 import '../providers/absence_followup_provider.dart';
 import '../providers/student_provider.dart';
 import '../utils/classroom_documents_pdf_generator.dart';
+import '../../../core/utils/turkish_text.dart';
 
 /// Devamsız Öğrenci Takip Ekranı.
 ///
@@ -117,15 +118,15 @@ class _AbsenceFollowupScreenState extends ConsumerState<AbsenceFollowupScreen> {
   }
 
   List<AbsenceFollowupEntry> _applyFilters(List<AbsenceFollowupEntry> all) {
-    final q = _searchQuery.trim().toLowerCase();
+    final q = _searchQuery.trim();
     return all.where((e) {
       if (_reasonFilter != null && e.followup.reason != _reasonFilter) {
         return false;
       }
       if (q.isEmpty) return true;
-      return e.fullName.toLowerCase().contains(q) ||
+      return trContains(e.fullName, q) ||
           '${e.schoolNumber}'.contains(q) ||
-          (e.parentName ?? '').toLowerCase().contains(q) ||
+          trContains(e.parentName ?? '', q) ||
           (e.parentPhone ?? '').contains(q);
     }).toList();
   }

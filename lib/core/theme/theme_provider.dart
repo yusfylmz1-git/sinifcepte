@@ -18,6 +18,7 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   Future<void> _loadThemeMode() async {
     try {
       final prefs = await PrefsService.instance();
+      if (!mounted) return;
       final savedTheme = prefs?.getString(_key);
       if (savedTheme != null) {
         switch (savedTheme) {

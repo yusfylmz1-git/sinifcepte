@@ -48,9 +48,9 @@ class ClubListNotifier extends StateNotifier<AsyncValue<List<ClubModel>>> {
     state = const AsyncValue.loading();
     try {
       final liste = await _repo.kulupler(ogretimYili: _ogretimYili);
-      state = AsyncValue.data(liste);
+      if (mounted) state = AsyncValue.data(liste);
     } catch (e, s) {
-      state = AsyncValue.error(e, s);
+      if (mounted) state = AsyncValue.error(e, s);
     }
   }
 

@@ -27,6 +27,7 @@ final RegExp _ogretmenSinavi = RegExp(
 );
 
 bool ogretmeniIlgilendirir({required String ad, required String kurum}) {
+  // denetim: turkce-buyuk — ASCII 'OSYM' yazımı aranıyor
   final osym = kurum.contains('ÖSYM') || kurum.toUpperCase().contains('OSYM');
   if (!osym) return true;
   return _ogretmenSinavi.hasMatch(ad.trim());

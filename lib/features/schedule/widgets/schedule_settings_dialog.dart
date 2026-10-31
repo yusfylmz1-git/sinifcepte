@@ -155,7 +155,7 @@ class _ScheduleSettingsDialogState extends State<ScheduleSettingsDialog> {
                           context: context,
                           initialTime: _firstLessonTime,
                         );
-                        if (picked != null) {
+                        if (picked != null && mounted) {
                           setState(() => _firstLessonTime = picked);
                         }
                       },

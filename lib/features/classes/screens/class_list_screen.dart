@@ -356,6 +356,7 @@ class ClassListScreen extends ConsumerWidget {
           onPressed: selectedId == null
               ? null
               : () async {
+                  // denetim: orelse-yok — selectedId bu listeden seçildi
                   final targetClass = classes.firstWhere((c) => c.id == selectedId);
                   Navigator.pop(ctx);
 

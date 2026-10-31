@@ -504,7 +504,7 @@ class _CouncilMinutesViewState extends ConsumerState<CouncilMinutesView> {
       ])
         (l, ad, l == _kademe),
     ]);
-    if (k == null) return;
+    if (k == null || !mounted) return;
     setState(() => _kademeSecimi = k);
   }
 
@@ -512,7 +512,7 @@ class _CouncilMinutesViewState extends ConsumerState<CouncilMinutesView> {
     final b = await _listedenSec<String>('Ders', [
       for (final b in _branslar) (b, b, b == _branch),
     ]);
-    if (b == null) return;
+    if (b == null || !mounted) return;
     setState(() {
       _branch = b;
       if (!CouncilMinutes.isClassroomTeacher(_branch)) _class = null;
@@ -525,7 +525,7 @@ class _CouncilMinutesViewState extends ConsumerState<CouncilMinutesView> {
         if (c.id != null)
           (c.id!, '${c.name}${c.subject.trim().isEmpty ? '' : ' · ${c.subject}'}', c.id == _class?.id),
     ]);
-    if (id == null) return;
+    if (id == null || !mounted) return;
     setState(() {
       _class = _classes.where((c) => c.id == id).firstOrNull;
       _yer.text = CouncilMinutes.defaultLocation(widget.kind, _class?.name);
@@ -539,7 +539,7 @@ class _CouncilMinutesViewState extends ConsumerState<CouncilMinutesView> {
       firstDate: DateTime(_tarih.year - 1),
       lastDate: DateTime(_tarih.year + 1, 12, 31),
     );
-    if (t != null) setState(() => _tarih = t);
+    if (t != null && mounted) setState(() => _tarih = t);
   }
 
   Future<void> _saatSec() async {
@@ -551,7 +551,7 @@ class _CouncilMinutesViewState extends ConsumerState<CouncilMinutesView> {
         child: child!,
       ),
     );
-    if (s != null) setState(() => _saat = s);
+    if (s != null && mounted) setState(() => _saat = s);
   }
 
   /// Yer: yazılabilir; okulda en çok kullanılan yerler tek dokunuşla.

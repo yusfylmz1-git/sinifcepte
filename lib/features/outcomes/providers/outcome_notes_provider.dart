@@ -21,10 +21,10 @@ class OutcomeNotesNotifier extends StateNotifier<Map<int, String>> {
         subjectCode: subjectCode,
         publisher: publisher,
       );
-      state = notes;
+      if (mounted) state = notes;
     } catch (e, stackTrace) {
       debugPrint('OutcomeNotesNotifier.loadNotesForSubject error: $e\n$stackTrace');
-      state = {};
+      if (mounted) state = {};
     }
   }
 
@@ -51,7 +51,7 @@ class OutcomeNotesNotifier extends StateNotifier<Map<int, String>> {
       } else {
         updated[weekNumber] = noteText.trim();
       }
-      state = updated;
+      if (mounted) state = updated;
     } catch (e, stackTrace) {
       debugPrint('OutcomeNotesNotifier.saveNote error: $e\n$stackTrace');
     }
@@ -74,7 +74,7 @@ class OutcomeNotesNotifier extends StateNotifier<Map<int, String>> {
 
       final updated = Map<int, String>.from(state);
       updated.remove(weekNumber);
-      state = updated;
+      if (mounted) state = updated;
     } catch (e, stackTrace) {
       debugPrint('OutcomeNotesNotifier.deleteNote error: $e\n$stackTrace');
     }

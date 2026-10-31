@@ -8,6 +8,7 @@ import '../providers/student_provider.dart';
 import '../providers/seating_plan_provider.dart';
 import '../utils/seating_plan_pdf_generator.dart';
 import '../../../core/utils/turkish_text.dart';
+import '../../../core/utils/name_formatter.dart';
 
 /// SınıfCepte - Mobil Uyumlu Gerçekçi Sınıf Oturma Planı Ekranı (Sıfır Overflow Garantili)
 class SeatingPlanScreen extends ConsumerStatefulWidget {
@@ -581,7 +582,7 @@ class _SeatingPlanScreenState extends ConsumerState<SeatingPlanScreen> {
 
         if (student != null) {
           // DOLU KOLTUK
-          final isGirl = student.gender.toLowerCase().contains('kız');
+          final isGirl = student.gender.toLowerTr().contains('kız');
           final bgColor = isGirl ? const Color(0xFFEC4899) : const Color(0xFF2563EB);
 
           final cardContent = Container(
@@ -759,7 +760,7 @@ class _SeatingPlanScreenState extends ConsumerState<SeatingPlanScreen> {
               Row(
                 children: [
                   CircleAvatar(
-                    backgroundColor: student.gender.toLowerCase().contains('kız') ? Colors.pinkAccent : Colors.blueAccent,
+                    backgroundColor: student.gender.toLowerTr().contains('kız') ? Colors.pinkAccent : Colors.blueAccent,
                     child: const Icon(Icons.person, color: Colors.white),
                   ),
                   const SizedBox(width: 12),
@@ -897,7 +898,7 @@ class _SeatingPlanScreenState extends ConsumerState<SeatingPlanScreen> {
                             separatorBuilder: (_, _) => const Divider(height: 1),
                             itemBuilder: (context, index) {
                               final s = filtered[index];
-                              final isGirl = s.gender.toLowerCase().contains('kız');
+                              final isGirl = s.gender.toLowerTr().contains('kız');
 
                               return ListTile(
                                 leading: CircleAvatar(

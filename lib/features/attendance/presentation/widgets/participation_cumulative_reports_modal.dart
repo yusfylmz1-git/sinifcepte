@@ -651,7 +651,7 @@ class _ParticipationCumulativeReportsModalState
                       cancelText: 'Vazgeç',
                       confirmText: 'Seç',
                     );
-                    if (picked != null) {
+                    if (picked != null && mounted) {
                       setState(() => _meetingDate = picked);
                       _loadMeetingData();
                     }

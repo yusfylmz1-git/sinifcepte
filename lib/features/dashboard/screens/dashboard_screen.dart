@@ -29,6 +29,7 @@ import '../../schedule/utils/gunun_akisi.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../board_config/presentation/idare_duyurusu_karti.dart';
 import '../providers/activity_feed_provider.dart';
+import '../../../core/utils/name_formatter.dart';
 
 /// SınıfCepte - Ultra Modern Öğretmen Paneli & Bento Dashboard (UI-UX-MAX)
 class DashboardScreen extends ConsumerWidget {
@@ -1079,7 +1080,7 @@ class DashboardScreen extends ConsumerWidget {
     Color instColor;
     String instLabel;
 
-    switch (exam.institution.toUpperCase()) {
+    switch (exam.institution.toUpperTr()) {
       case 'MEB':
         instColor = const Color(0xFF2563EB);
         instLabel = '🏛️ MEB';

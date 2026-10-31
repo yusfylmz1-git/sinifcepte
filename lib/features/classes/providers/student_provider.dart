@@ -27,13 +27,13 @@ class StudentListNotifier extends StateNotifier<AsyncValue<List<StudentModel>>> 
     try {
       state = const AsyncValue.loading();
       final students = await _repository.getStudentsByClassId(classId);
-      state = AsyncValue.data(students);
+      if (mounted) state = AsyncValue.data(students);
     } catch (e, st) {
       debugPrint('---------------- HATA DETAYI (StudentList.loadStudents) ----------------');
       debugPrint('Hata Mesajı : $e');
       debugPrint('Kod Satırı   : $st');
       debugPrint('-----------------------------------------------------------------------');
-      state = AsyncValue.error(e, st);
+      if (mounted) state = AsyncValue.error(e, st);
     }
   }
 
@@ -133,6 +133,7 @@ class StudentListNotifier extends StateNotifier<AsyncValue<List<StudentModel>>> 
       final currentStudents = state.value;
       if (currentStudents == null) return false;
 
+      // denetim: orelse-yok — bulunamazsa catch false döndürür
       final student = currentStudents.firstWhere((s) => s.id == studentId);
       final updatedStudent = student.copyWith(
         parentName: parentName,

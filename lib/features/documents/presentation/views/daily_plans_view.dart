@@ -10,6 +10,7 @@ import '../../../classes/providers/class_provider.dart';
 import '../../../auth_profile/providers/teacher_profile_provider.dart';
 import '../../utils/daily_plan_pdf_generator.dart';
 import '../../utils/plan_week_builder.dart';
+import '../../../../core/utils/name_formatter.dart';
 
 /// SınıfCepte - MEB TYMM Günlük Ders Planları Ekranı
 ///
@@ -362,7 +363,7 @@ class _DailyPlansViewState extends ConsumerState<DailyPlansView> {
     final academicYear = '${AppDateFormatter.academicYearLabel()} Eğitim-Öğretim Yılı';
 
     final okulAdi = teacher.schoolName.trim().isNotEmpty
-        ? teacher.schoolName.trim().toUpperCase()
+        ? teacher.schoolName.trim().toUpperTr()
         : 'T.C. MİLLÎ EĞİTİM BAKANLIĞI';
     final ogretmenAdi = teacher.fullName.trim().isNotEmpty
         ? teacher.fullName.trim()

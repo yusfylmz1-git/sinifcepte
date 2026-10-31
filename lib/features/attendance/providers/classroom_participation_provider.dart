@@ -185,12 +185,12 @@ class ClassroomParticipationNotifier
         subjectName: subjectName,
         className: className,
       );
-      state = AsyncValue.data(session);
+      if (mounted) state = AsyncValue.data(session);
     } catch (e, stackTrace) {
       debugPrint(
         'ClassroomParticipationNotifier.loadSession hatası: $e\n$stackTrace',
       );
-      state = AsyncValue.error(e, stackTrace);
+      if (mounted) state = AsyncValue.error(e, stackTrace);
     }
   }
 
@@ -521,7 +521,7 @@ class ClassroomParticipationNotifier
 
     try {
       final newId = await _repo.saveSession(current);
-      state = AsyncValue.data(current.copyWith(id: newId));
+      if (mounted) state = AsyncValue.data(current.copyWith(id: newId));
       // Kayıt başarılı: artık kaydedilmemiş değişiklik yok.
       _hasUnsavedChanges = false;
       return true;

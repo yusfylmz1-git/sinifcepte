@@ -11,6 +11,7 @@ import '../screens/parent_student_connect_screen.dart';
 import '../widgets/parent_app_bar.dart';
 import '../../providers/notification_provider.dart';
 import '../screens/notification_center_screen.dart';
+import '../../../../core/utils/name_formatter.dart';
 
 /// Özet sekmesi: velinin bağlı çocukları kart olarak listelenir.
 ///
@@ -254,9 +255,9 @@ class _Avatar extends StatelessWidget {
   String get _initials {
     final parts = name.trim().split(RegExp(r'\s+'));
     if (parts.isEmpty || parts.first.isEmpty) return '?';
-    if (parts.length == 1) return parts.first.characters.first.toUpperCase();
+    if (parts.length == 1) return parts.first.characters.first.toUpperTr();
     return (parts.first.characters.first + parts.last.characters.first)
-        .toUpperCase();
+        .toUpperTr();
   }
 
   @override

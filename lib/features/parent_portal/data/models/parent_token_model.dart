@@ -125,6 +125,7 @@ class ParentTokenModel {
   /// - '8A-9402'    -> 'SC-8A-9402'
   /// - '8a9402'     -> 'SC-8A-9402'
   static String normalizeCode(String input) {
+    // denetim: turkce-buyuk — kod üretimiyle aynı dönüşüm (parent_token_repository)
     var raw = input.trim().toUpperCase().replaceAll(' ', '');
     raw = raw.replaceAll('İ', 'I').replaceAll('ı', 'I');
     if (raw.isEmpty) return '';

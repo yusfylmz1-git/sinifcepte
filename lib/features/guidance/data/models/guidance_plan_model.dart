@@ -13,6 +13,8 @@
 /// otomatik cevaplayabiliyoruz.
 library;
 
+import '../../../../core/utils/name_formatter.dart';
+
 /// Plandaki bir satır: kazanım, idari iş veya tatil.
 class GuidancePlanItem {
   /// 0 = okul öncesi, 1-12 sınıf düzeyi.
@@ -129,7 +131,7 @@ PlanHaftasi planHaftasi(List<GuidancePlanItem> plan, int takvimHaftasi) {
 /// Yarıyıl satırı bulunamazsa 18. haftaya kadar olanlar alınır (MEB
 /// takviminde 1. dönem 18 ders haftası).
 List<GuidancePlanItem> birinciDonemMaddeleri(List<GuidancePlanItem> plan) {
-  final i = plan.indexWhere((m) => m.tatilMi && m.kazanim.toUpperCase().contains('YARIYIL'));
+  final i = plan.indexWhere((m) => m.tatilMi && m.kazanim.toUpperTr().contains('YARIYIL'));
   if (i >= 0) return plan.sublist(0, i);
   return plan.where((m) => m.hafta == null || m.hafta! <= 18).toList();
 }

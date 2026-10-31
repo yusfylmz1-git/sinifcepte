@@ -50,6 +50,7 @@ class TahtaTotp {
         .trim()
         .replaceAll(' ', '')
         .replaceAll('-', '')
+        // denetim: turkce-buyuk — Base32 anahtar, ASCII
         .toUpperCase();
 
     if (temiz.isEmpty) {

@@ -9,6 +9,7 @@ import '../../auth_profile/data/models/teacher_profile_model.dart';
 import '../../../../shared/screens/pdf_preview_screen.dart';
 import '../../../core/pdf/pdf_tr_fonts.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../core/utils/name_formatter.dart';
 
 /// SınıfCepte - T.C. Millî Eğitim Bakanlığı Resmî Standartlarına %100 Uyumlu PDF Motoru
 /// Resmî Yazışmalarda Uygulanacak Usul ve Esaslar Hakkında Yönetmelik & MEB Matbu Evrak Formatı.
@@ -83,8 +84,8 @@ class ClassroomDocumentsPdfGenerator {
               return [
                 '${index + 1}',
                 s.schoolNumber > 0 ? '${s.schoolNumber}' : '-',
-                s.fullName.toUpperCase(),
-                s.gender.toUpperCase(),
+                s.fullName.toUpperTr(),
+                s.gender.toUpperTr(),
                 '',
               ];
             }),
@@ -117,7 +118,7 @@ class ClassroomDocumentsPdfGenerator {
         margin: const pw.EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         header: (pw.Context ctx) => _buildOfficialHeader(
           schoolName: teacherProfile.schoolName,
-          title: '${classModel.name} SINIFI ${classModel.subject.toUpperCase()} DERSİ DERS İÇİ ETKİNLİK VE DEĞERLENDİRME ÇİZELGESİ',
+          title: '${classModel.name} SINIFI ${classModel.subject.toUpperTr()} DERSİ DERS İÇİ ETKİNLİK VE DEĞERLENDİRME ÇİZELGESİ',
           academicYear: ogretimYili(classModel),
           documentCode: 'MEB.DEĞ.02',
         ),
@@ -172,7 +173,7 @@ class ClassroomDocumentsPdfGenerator {
               return [
                 '${index + 1}',
                 s.schoolNumber > 0 ? '${s.schoolNumber}' : '-',
-                s.fullName.toUpperCase(),
+                s.fullName.toUpperTr(),
                 '',
                 '',
                 '',
@@ -258,7 +259,7 @@ class ClassroomDocumentsPdfGenerator {
                   final assignedStudents = dayAssignments[day] ?? [];
                   final row = <String>[day];
                   for (int i = 0; i < dailyDutyCount; i++) {
-                    row.add(i < assignedStudents.length ? assignedStudents[i].toUpperCase() : '');
+                    row.add(i < assignedStudents.length ? assignedStudents[i].toUpperTr() : '');
                   }
                   row.add('${classModel.name} Dersliği & Havalandırma');
                   row.add('');
@@ -336,7 +337,7 @@ class ClassroomDocumentsPdfGenerator {
               children: [
                 pw.Expanded(
                   child: pw.Text(
-                    'T.C. $resolvedSchool'.toUpperCase(),
+                    'T.C. $resolvedSchool'.toUpperTr(),
                     maxLines: 1,
                     style: pw.TextStyle(fontSize: 6.8, fontWeight: pw.FontWeight.bold, color: PdfColors.black),
                   ),
@@ -470,7 +471,7 @@ class ClassroomDocumentsPdfGenerator {
               children: [
                 pw.Text('T.C.', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
                 pw.Text('MİLLÎ EĞİTİM BAKANLIĞI', style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold)),
-                pw.Text(resolvedSchool.toUpperCase(), style: pw.TextStyle(fontSize: 11.5, fontWeight: pw.FontWeight.bold)),
+                pw.Text(resolvedSchool.toUpperTr(), style: pw.TextStyle(fontSize: 11.5, fontWeight: pw.FontWeight.bold)),
                 pw.SizedBox(height: 4),
                 pw.Text(ogretimYili(classModel), style: const pw.TextStyle(fontSize: 8.5)),
                 pw.SizedBox(height: 6),
@@ -717,7 +718,7 @@ class ClassroomDocumentsPdfGenerator {
               return [
                 '${index + 1}',
                 s.schoolNumber > 0 ? '${s.schoolNumber}' : '-',
-                s.fullName.toUpperCase(),
+                s.fullName.toUpperTr(),
                 '',
                 '',
                 '',
@@ -771,7 +772,7 @@ class ClassroomDocumentsPdfGenerator {
                     decoration: const pw.BoxDecoration(color: PdfColors.grey300),
                     children: [
                       _buildTableCell('ÖĞRENCİ ADI SOYADI', isHeader: true),
-                      _buildTableCell(student?.fullName.toUpperCase() ?? '...................................................'),
+                      _buildTableCell(student?.fullName.toUpperTr() ?? '...................................................'),
                       _buildTableCell('OKUL NO / SINIF', isHeader: true),
                       _buildTableCell('${student != null && student.schoolNumber > 0 ? student.schoolNumber : "......"} / ${classModel.name}'),
                     ],
@@ -833,14 +834,14 @@ class ClassroomDocumentsPdfGenerator {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.center,
                     children: [
-                      pw.Text(parentName?.isNotEmpty == true ? parentName!.toUpperCase() : 'GÖRÜŞÜLEN VELİ', style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
+                      pw.Text(parentName?.isNotEmpty == true ? parentName!.toUpperTr() : 'GÖRÜŞÜLEN VELİ', style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
                       pw.Text('İmza: .............................', style: const pw.TextStyle(fontSize: 7.5)),
                     ],
                   ),
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.center,
                     children: [
-                      pw.Text(teacherProfile.fullName.isNotEmpty ? teacherProfile.fullName.toUpperCase() : 'SINIF REHBER ÖĞRETMENİ', style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
+                      pw.Text(teacherProfile.fullName.isNotEmpty ? teacherProfile.fullName.toUpperTr() : 'SINIF REHBER ÖĞRETMENİ', style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
                       pw.Text('Sınıf Rehber Öğretmeni', style: const pw.TextStyle(fontSize: 7.5)),
                       pw.Text('İmza: .............................', style: const pw.TextStyle(fontSize: 7.5)),
                     ],
@@ -906,7 +907,7 @@ class ClassroomDocumentsPdfGenerator {
                     decoration: const pw.BoxDecoration(color: PdfColors.grey300),
                     children: [
                       _buildTableCell('ÖĞRENCİ ADI SOYADI', isHeader: true),
-                      _buildTableCell(student?.fullName.toUpperCase() ?? '...................................................'),
+                      _buildTableCell(student?.fullName.toUpperTr() ?? '...................................................'),
                       _buildTableCell('OKUL NO / ŞUBE', isHeader: true),
                       _buildTableCell('${student != null && student.schoolNumber > 0 ? student.schoolNumber : "......"} / ${classModel.name}'),
                     ],
@@ -962,14 +963,14 @@ class ClassroomDocumentsPdfGenerator {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.center,
                     children: [
-                      pw.Text(student?.fullName.toUpperCase() ?? 'GÖRÜŞÜLEN ÖĞRENCİ', style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
+                      pw.Text(student?.fullName.toUpperTr() ?? 'GÖRÜŞÜLEN ÖĞRENCİ', style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
                       pw.Text('İmza: .............................', style: const pw.TextStyle(fontSize: 7.5)),
                     ],
                   ),
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.center,
                     children: [
-                      pw.Text(teacherProfile.fullName.isNotEmpty ? teacherProfile.fullName.toUpperCase() : 'SINIF REHBER ÖĞRETMENİ', style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
+                      pw.Text(teacherProfile.fullName.isNotEmpty ? teacherProfile.fullName.toUpperTr() : 'SINIF REHBER ÖĞRETMENİ', style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
                       pw.Text('Sınıf Rehber Öğretmeni', style: const pw.TextStyle(fontSize: 7.5)),
                       pw.Text('İmza: .............................', style: const pw.TextStyle(fontSize: 7.5)),
                     ],
@@ -1031,7 +1032,7 @@ class ClassroomDocumentsPdfGenerator {
                 decoration: const pw.BoxDecoration(color: PdfColors.grey300),
                 children: [
                   _buildTableCell('ÖĞRENCİ ADI SOYADI', isHeader: true),
-                  _buildTableCell(student?.fullName.toUpperCase() ?? '...................................................'),
+                  _buildTableCell(student?.fullName.toUpperTr() ?? '...................................................'),
                   _buildTableCell('OKUL NO / SINIF', isHeader: true),
                   _buildTableCell('${student != null && student.schoolNumber > 0 ? student.schoolNumber : "......"} / ${classModel.name}'),
                 ],
@@ -1039,7 +1040,7 @@ class ClassroomDocumentsPdfGenerator {
               pw.TableRow(
                 children: [
                   _buildTableCell('DERS ADI', isHeader: true),
-                  _buildTableCell(resolvedSubject.toUpperCase()),
+                  _buildTableCell(resolvedSubject.toUpperTr()),
                   _buildTableCell('RAM KARAR VE TANISI', isHeader: true),
                   _buildTableCell(ramDecision ?? 'Hafif Düzey / Kaynaştırma Eğitimi'),
                 ],
@@ -1126,13 +1127,13 @@ class ClassroomDocumentsPdfGenerator {
                 children: [
                   pw.TableRow(children: [
                     _buildTableCell('ADI VE SOYADI', isHeader: true),
-                    _buildTableCell(student?.fullName.toUpperCase() ?? '...................................................'),
+                    _buildTableCell(student?.fullName.toUpperTr() ?? '...................................................'),
                     _buildTableCell('OKUL NO / SINIFI', isHeader: true),
                     _buildTableCell('${student != null && student.schoolNumber > 0 ? student.schoolNumber : "......"} / ${classModel.name}'),
                   ]),
                   pw.TableRow(children: [
                     _buildTableCell('CİNSİYETİ', isHeader: true),
-                    _buildTableCell(student?.gender.toUpperCase() ?? '[  ] Kız    [  ] Erkek'),
+                    _buildTableCell(student?.gender.toUpperTr() ?? '[  ] Kız    [  ] Erkek'),
                     _buildTableCell('DOĞUM TARİHİ / YERİ', isHeader: true),
                     _buildTableCell('..... / ..... / 20.....  /  .....................'),
                   ]),
@@ -1257,7 +1258,7 @@ class ClassroomDocumentsPdfGenerator {
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text('T.C. $resolvedSchool'.toUpperCase(), style: pw.TextStyle(fontSize: 7.8, fontWeight: pw.FontWeight.bold)),
+                pw.Text('T.C. $resolvedSchool'.toUpperTr(), style: pw.TextStyle(fontSize: 7.8, fontWeight: pw.FontWeight.bold)),
                 pw.Text('✂ Kesim Çizgisi', style: const pw.TextStyle(fontSize: 6.8)),
               ],
             ),
@@ -1271,7 +1272,7 @@ class ClassroomDocumentsPdfGenerator {
             ),
             pw.SizedBox(height: 4),
             pw.Text(
-              '${resolvedSchool.toUpperCase()} MÜDÜRLÜĞÜNE,',
+              '${resolvedSchool.toUpperTr()} MÜDÜRLÜĞÜNE,',
               style: pw.TextStyle(fontSize: 7.8, fontWeight: pw.FontWeight.bold),
             ),
             pw.SizedBox(height: 2),
@@ -1403,7 +1404,7 @@ class ClassroomDocumentsPdfGenerator {
               return [
                 '${index + 1}',
                 s.schoolNumber > 0 ? '${s.schoolNumber}' : '-',
-                s.fullName.toUpperCase(),
+                s.fullName.toUpperTr(),
                 '',
                 'Üye',
               ];
@@ -1476,7 +1477,7 @@ class ClassroomDocumentsPdfGenerator {
               return [
                 '${index + 1}',
                 s.schoolNumber > 0 ? '${s.schoolNumber}' : '-',
-                s.fullName.toUpperCase(),
+                s.fullName.toUpperTr(),
                 s.parentPhone?.isNotEmpty == true ? s.parentPhone! : '-',
                 s.notes?.isNotEmpty == true ? s.notes! : '-',
               ];
@@ -1792,7 +1793,7 @@ class ClassroomDocumentsPdfGenerator {
     required String academicYear,
     String? documentCode,
   }) {
-    final resolvedSchool = schoolName.isNotEmpty ? schoolName.toUpperCase() : '................................................... OKULU MÜDÜRLÜĞÜ';
+    final resolvedSchool = schoolName.isNotEmpty ? schoolName.toUpperTr() : '................................................... OKULU MÜDÜRLÜĞÜ';
 
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.center,
@@ -1905,8 +1906,8 @@ class ClassroomDocumentsPdfGenerator {
   }
 
   static pw.Widget _buildClassSummaryStats(List<StudentModel> students) {
-    final girls = students.where((s) => s.gender.toLowerCase().contains('kız')).length;
-    final boys = students.where((s) => s.gender.toLowerCase().contains('erkek')).length;
+    final girls = students.where((s) => s.gender.toLowerTr().contains('kız')).length;
+    final boys = students.where((s) => s.gender.toLowerTr().contains('erkek')).length;
     final total = students.length;
 
     return pw.Container(

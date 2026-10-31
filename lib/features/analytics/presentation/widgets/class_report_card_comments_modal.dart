@@ -839,6 +839,7 @@ class _ClassReportCardCommentsModalState
                                         onPressed: () async {
                                           HapticFeedback.lightImpact();
                                           await WhatsAppShareService.copyToClipboard(comment);
+                                          if (!mounted) return;
                                           setState(() {
                                             _copiedStudentIds.add(sId);
                                           });

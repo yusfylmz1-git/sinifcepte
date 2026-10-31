@@ -185,6 +185,7 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
           inputStudentNumber: inputNumber,
         );
 
+        if (!mounted) return;
         if (!verifyResult.isSuccess || verifyResult.token == null) {
           setState(() {
             _isLoading = false;
@@ -248,6 +249,7 @@ class _ParentStudentConnectScreenState extends ConsumerState<ParentStudentConnec
         );
 
         if (link == null) {
+          if (!mounted) return;
           setState(() {
             _isLoading = false;
             _errorMessage = 'Bağlantı kaydedilemedi. Lütfen tekrar deneyin.';

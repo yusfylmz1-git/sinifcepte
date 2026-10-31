@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import '../../../../core/utils/name_formatter.dart';
+import '../../../../core/utils/turkish_text.dart';
 
 /// Kura: **en az söz almış** öğrenciler arasından rastgele seçer.
 ///
@@ -158,10 +159,11 @@ class StudentParticipationEvaluation {
       customTags.isNotEmpty ||
       (note != null && note!.trim().isNotEmpty);
 
-  bool get isFemale =>
-      gender.toLowerCase().contains('kız') ||
-      gender.toLowerCase().contains('kadin') ||
-      gender.toLowerCase().contains('female');
+  bool get isFemale {
+    // "KIZ".toLowerCase() → "kiz"; katlama üç yazımı da yakalar.
+    final g = trFold(gender);
+    return g.contains('kiz') || g.contains('kadin') || g.contains('female');
+  }
 
   /// Örn: "Ahmet Yılmaz" -> "Ahmet Y."
   /// Dar alanlar için: **Yusuf Y.**

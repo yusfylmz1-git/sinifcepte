@@ -8,6 +8,7 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/student_model.dart';
 import '../../outcomes/data/models/curriculum_outcome_model.dart';
 import '../data/models/bep_models.dart';
+import '../../../core/utils/name_formatter.dart';
 
 class BepPdfGenerator {
   BepPdfGenerator._();
@@ -41,7 +42,7 @@ class BepPdfGenerator {
     final pdf = await PdfTrFonts.document();
     final school = (plan.schoolName.isNotEmpty ? plan.schoolName : schoolName)
         .trim()
-        .toUpperCase();
+        .toUpperTr();
     // Ogretmenin girdigi tarih varsa o basilir; yoksa ogretim yili ve
     // baslangic ayindan hesaplanir (eski davranis).
     final dates = planDates(plan);

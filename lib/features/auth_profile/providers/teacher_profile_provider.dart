@@ -92,21 +92,23 @@ class TeacherProfileNotifier extends StateNotifier<TeacherProfileModel> {
       final email = prefs.getString(_key('profil_email', uid)) ?? state.email;
       final photoUrl = prefs.getString(_key('profil_foto', uid)) ?? state.photoUrl;
 
-      state = state.copyWith(
-        id: id,
-        firstName: firstName,
-        lastName: lastName,
-        gender: gender,
-        branch: branch,
-        schoolName: schoolName,
-        city: city,
-        district: district,
-        schoolId: schoolId,
-        schoolType: schoolType,
-        schoolPrincipalName: schoolPrincipalName,
-        email: email,
-        photoUrl: photoUrl,
-      );
+      if (mounted) {
+        state = state.copyWith(
+          id: id,
+          firstName: firstName,
+          lastName: lastName,
+          gender: gender,
+          branch: branch,
+          schoolName: schoolName,
+          city: city,
+          district: district,
+          schoolId: schoolId,
+          schoolType: schoolType,
+          schoolPrincipalName: schoolPrincipalName,
+          email: email,
+          photoUrl: photoUrl,
+        );
+      }
     } catch (e, stackTrace) {
       debugPrint('Profil SharedPreferences yükleme hatası: $e\n$stackTrace');
     }
@@ -145,7 +147,7 @@ class TeacherProfileNotifier extends StateNotifier<TeacherProfileModel> {
         await prefs.setString(_key('profil_foto', uid), updated.photoUrl!);
       }
 
-      state = updated;
+      if (mounted) state = updated;
       return true;
     } catch (e, stackTrace) {
       debugPrint('Profil kaydetme hatası: $e\n$stackTrace');
@@ -191,16 +193,18 @@ class TeacherProfileNotifier extends StateNotifier<TeacherProfileModel> {
       // okul bilgisi hic okunmaz — okul her defasinda yeniden sorulur.
       _loadFuture = null;
 
-      state = const TeacherProfileModel(
-        id: 'local_teacher',
-        firstName: '',
-        lastName: '',
-        gender: 'Erkek',
-        branch: '',
-        schoolName: '',
-        schoolPrincipalName: '',
-        email: '',
-      );
+      if (mounted) {
+        state = const TeacherProfileModel(
+          id: 'local_teacher',
+          firstName: '',
+          lastName: '',
+          gender: 'Erkek',
+          branch: '',
+          schoolName: '',
+          schoolPrincipalName: '',
+          email: '',
+        );
+      }
     } catch (e, stackTrace) {
       debugPrint('Oturum kapatma hatası: $e\n$stackTrace');
     }

@@ -124,6 +124,7 @@ class CostProjection {
   }) {
     final perTeacher =
         teacherUsage.writes + parentsPerTeacher * parentUsage.writes;
+    // denetim: sifira-bolme — kullanım profilleri sıfırdan büyük sabitler
     return FirestoreFreeTier.dailyWrites ~/ perTeacher;
   }
 
@@ -135,6 +136,7 @@ class CostProjection {
   }) {
     final perTeacher =
         teacherUsage.reads + parentsPerTeacher * parentUsage.reads;
+    // denetim: sifira-bolme — kullanım profilleri sıfırdan büyük sabitler
     return FirestoreFreeTier.dailyReads ~/ perTeacher;
   }
 

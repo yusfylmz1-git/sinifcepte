@@ -65,6 +65,8 @@ class ParentTokenRepository {
         .replaceAll('/', '')
         .replaceAll(' ', '')
         .replaceAll('.', '')
+        // denetim: turkce-buyuk — veli kodunun parçası; girdi de toUpperCase
+        // ile büyütülüyor (parent_token_model). Değişirse eski kodlar tutmaz.
         .toUpperCase()
         .trim();
     return clean.isNotEmpty ? clean : 'OKUL';

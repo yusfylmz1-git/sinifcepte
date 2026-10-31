@@ -9,6 +9,7 @@ import '../../providers/exam_analysis_provider.dart';
 import '../../utils/exam_analysis_pdf_generator.dart';
 import 'exam_analysis_detail_view.dart';
 import 'exam_analysis_editor_view.dart';
+import '../../../../core/utils/turkish_text.dart';
 
 /// SınıfCepte - Kayıtlı Sınav Analizleri Listesi (UI-UX-MAX)
 class ExamAnalysisListView extends ConsumerStatefulWidget {
@@ -45,9 +46,9 @@ class _ExamAnalysisListViewState extends ConsumerState<ExamAnalysisListView> {
             final filteredExams = exams.where((e) {
               final matchesClass = _selectedClassFilter == 'Tümü' || e.className == _selectedClassFilter;
               final matchesSearch = _searchQuery.isEmpty ||
-                  e.examTitle.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                  e.subjectName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                  e.className.toLowerCase().contains(_searchQuery.toLowerCase());
+                  trContains(e.examTitle, _searchQuery) ||
+                  trContains(e.subjectName, _searchQuery) ||
+                  trContains(e.className, _searchQuery);
               return matchesClass && matchesSearch;
             }).toList();
 

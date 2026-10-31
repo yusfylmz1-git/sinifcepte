@@ -27,13 +27,13 @@ class ExamAnalysisListNotifier extends StateNotifier<AsyncValue<List<ExamAnalysi
     try {
       state = const AsyncValue.loading();
       final exams = await _repository.getAllExams();
-      state = AsyncValue.data(exams);
+      if (mounted) state = AsyncValue.data(exams);
     } catch (e, st) {
       debugPrint('---------------- HATA DETAYI (ExamAnalysisList.loadExams) ----------------');
       debugPrint('Hata Mesajı : $e');
       debugPrint('Kod Satırı   : $st');
       debugPrint('--------------------------------------------------------------------------');
-      state = AsyncValue.error(e, st);
+      if (mounted) state = AsyncValue.error(e, st);
     }
   }
 

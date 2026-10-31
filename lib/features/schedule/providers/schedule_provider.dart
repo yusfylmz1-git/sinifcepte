@@ -20,7 +20,7 @@ class ScheduleSettingsNotifier extends StateNotifier<ScheduleSettings> {
   Future<void> loadSettings() async {
     try {
       final loaded = await ScheduleSettings.load();
-      state = loaded;
+      if (mounted) state = loaded;
     } catch (e, stackTrace) {
       debugPrint('---------------- HATA DETAYI (ScheduleSettingsNotifier.load) ----------------');
       debugPrint('Hata Mesajı : $e');
@@ -58,9 +58,9 @@ class ScheduleNotifier extends StateNotifier<List<LessonModel>> {
     try {
       final list = await DatabaseHelper.instance.dersleriGetir();
       if (list.isNotEmpty) {
-        state = list.map((x) => LessonModel.fromMap(x)).toList();
+        if (mounted) state = list.map((x) => LessonModel.fromMap(x)).toList();
       } else {
-        state = [];
+        if (mounted) state = [];
       }
     } catch (e, stackTrace) {
       debugPrint('---------------- HATA DETAYI (ScheduleNotifier.loadLessons) ----------------');
@@ -78,12 +78,12 @@ class ScheduleNotifier extends StateNotifier<List<LessonModel>> {
 
       if (existing != null && existing.id != null) {
         await DatabaseHelper.instance.dersSil(existing.id!);
-        state = state.where((l) => l.id != existing.id).toList();
+        if (mounted) state = state.where((l) => l.id != existing.id).toList();
       }
 
       final int id = await DatabaseHelper.instance.dersEkle(lesson.toMap());
       final newLesson = lesson.copyWith(id: id);
-      state = [...state, newLesson];
+      if (mounted) state = [...state, newLesson];
       return true;
     } catch (e, stackTrace) {
       debugPrint('---------------- HATA DETAYI (ScheduleNotifier.addLesson) ----------------');
@@ -97,7 +97,7 @@ class ScheduleNotifier extends StateNotifier<List<LessonModel>> {
   Future<bool> deleteLesson(int id) async {
     try {
       await DatabaseHelper.instance.dersSil(id);
-      state = state.where((d) => d.id != id).toList();
+      if (mounted) state = state.where((d) => d.id != id).toList();
       return true;
     } catch (e, stackTrace) {
       debugPrint('---------------- HATA DETAYI (ScheduleNotifier.deleteLesson) ----------------');
@@ -111,10 +111,12 @@ class ScheduleNotifier extends StateNotifier<List<LessonModel>> {
   Future<bool> updateLesson(LessonModel lesson) async {
     try {
       await DatabaseHelper.instance.dersGuncelle(lesson.toMap());
-      state = [
-        for (final d in state)
-          if (d.id == lesson.id) lesson else d,
-      ];
+      if (mounted) {
+        state = [
+          for (final d in state)
+            if (d.id == lesson.id) lesson else d,
+        ];
+      }
       return true;
     } catch (e, stackTrace) {
       debugPrint('---------------- HATA DETAYI (ScheduleNotifier.updateLesson) ----------------');

@@ -63,7 +63,7 @@ class AcademicCalendarNotifier
     try {
       final id = await DatabaseHelper.instance.academicCalendarEkle(event.toMap());
       if (id > 0) {
-        state = [...state, event.copyWith(id: id)];
+        if (mounted) state = [...state, event.copyWith(id: id)];
         return true;
       }
       return false;
@@ -80,7 +80,7 @@ class AcademicCalendarNotifier
     try {
       final maps = cloudEvents.map((e) => e.toMap()).toList();
       await DatabaseHelper.instance.academicCalendarTopluGuncelle(maps);
-      state = cloudEvents;
+      if (mounted) state = cloudEvents;
     } catch (e, stackTrace) {
       debugPrint('---------------- HATA DETAYI (AcademicCalendarNotifier.syncFromCloud) ----------------');
       debugPrint('Hata Mesajı : $e');

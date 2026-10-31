@@ -9,6 +9,7 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../shared/screens/pdf_preview_screen.dart';
 import '../../auth_profile/data/models/teacher_profile_model.dart';
 import '../data/models/club_model.dart';
+import '../../../core/utils/name_formatter.dart';
 
 /// Sosyal kulüp resmî evrakları.
 ///
@@ -251,7 +252,7 @@ class ClubPdfGenerator {
                   [
                     '${i + 1}',
                     uyeler[i].okulNo > 0 ? '${uyeler[i].okulNo}' : '-',
-                    uyeler[i].adSoyad.toUpperCase(),
+                    uyeler[i].adSoyad.toUpperTr(),
                     uyeler[i].sinifAdi.isNotEmpty ? uyeler[i].sinifAdi : '-',
                     uyeler[i].gorev,
                     // İmza sütunu elle doldurulur.
@@ -459,7 +460,7 @@ class ClubPdfGenerator {
     required bool ilkSayfaMi,
   }) {
     final okul = schoolName.isNotEmpty
-        ? schoolName.toUpperCase()
+        ? schoolName.toUpperTr()
         : '................................................... OKULU MÜDÜRLÜĞÜ';
 
     return pw.Column(

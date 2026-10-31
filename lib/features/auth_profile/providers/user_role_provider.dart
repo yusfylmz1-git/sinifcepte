@@ -67,20 +67,20 @@ class UserRoleNotifier extends StateNotifier<UserRoleState> {
 
       // Yükleme sürerken kullanıcı seçim yaptıysa onun kararı geçerlidir.
       if (_roleExplicitlySelected) {
-        state = state.copyWith(isInitialized: true);
+        if (mounted) state = state.copyWith(isInitialized: true);
         return;
       }
 
       if (savedRoleStr == 'teacher') {
-        state = state.copyWith(role: UserRole.teacher, isInitialized: true);
+        if (mounted) state = state.copyWith(role: UserRole.teacher, isInitialized: true);
       } else if (savedRoleStr == 'parent') {
-        state = state.copyWith(role: UserRole.parent, isInitialized: true);
+        if (mounted) state = state.copyWith(role: UserRole.parent, isInitialized: true);
       } else {
-        state = state.copyWith(role: UserRole.none, isInitialized: true);
+        if (mounted) state = state.copyWith(role: UserRole.none, isInitialized: true);
       }
     } catch (e, stackTrace) {
       debugPrint('Kullanıcı rolü yükleme hatası: $e\n$stackTrace');
-      state = state.copyWith(isInitialized: true);
+      if (mounted) state = state.copyWith(isInitialized: true);
     }
   }
 

@@ -80,17 +80,21 @@ class ProjectTrackingNotifier extends StateNotifier<ProjectTrackingState> {
       await _repository.initProjectTakipForClass(className, subject, students);
       final projects = await _repository.getProjectTakipList(className, subject);
 
-      state = state.copyWith(
-        projects: projects,
-        criteria: criteria,
-        isLoading: false,
-      );
+      if (mounted) {
+        state = state.copyWith(
+          projects: projects,
+          criteria: criteria,
+          isLoading: false,
+        );
+      }
     } catch (e, stackTrace) {
       debugPrint('ProjectTrackingNotifier.loadProjects error: $e\n$stackTrace');
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: 'Projeler yüklenirken hata: $e',
-      );
+      if (mounted) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'Projeler yüklenirken hata: $e',
+        );
+      }
     }
   }
 
@@ -129,7 +133,7 @@ class ProjectTrackingNotifier extends StateNotifier<ProjectTrackingState> {
   Future<Map<int, int>> loadProjectScores(int projectId) async {
     try {
       final scores = await _repository.getProjectPuanlari(projectId);
-      state = state.copyWith(activeScores: scores);
+      if (mounted) state = state.copyWith(activeScores: scores);
       return scores;
     } catch (e, stackTrace) {
       debugPrint('ProjectTrackingNotifier.loadProjectScores error: $e\n$stackTrace');
@@ -160,7 +164,7 @@ class ProjectTrackingNotifier extends StateNotifier<ProjectTrackingState> {
         return p;
       }).toList();
 
-      state = state.copyWith(projects: updatedList, activeScores: criteriaScores);
+      if (mounted) state = state.copyWith(projects: updatedList, activeScores: criteriaScores);
       return true;
     } catch (e, stackTrace) {
       debugPrint('ProjectTrackingNotifier.saveEvaluation error: $e\n$stackTrace');

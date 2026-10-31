@@ -103,7 +103,7 @@ class _DuyuruYazEkraniState extends State<DuyuruYazEkrani> {
       lastDate: now.add(const Duration(days: 365)),
       locale: const Locale('tr', 'TR'),
     );
-    if (secilen != null) setState(() => _tarih = secilen);
+    if (secilen != null && mounted) setState(() => _tarih = secilen);
   }
 
   void _gonder() => Navigator.of(context).pop<DuyuruTaslagi>((

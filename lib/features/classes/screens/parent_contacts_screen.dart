@@ -10,6 +10,7 @@ import '../utils/parent_contacts_pdf_generator.dart';
 import '../../parent_portal/data/services/phone_formatter.dart';
 import '../../../core/utils/search_debouncer.dart';
 import '../../../core/utils/turkish_text.dart';
+import '../../../core/utils/name_formatter.dart';
 
 /// Türkiye Telefon Numarası Otomatik Maskeleme Formatlayıcısı
 /// Örn: 5321234567 -> 0 (532) 123 45 67 veya 05321234567 -> 0 (532) 123 45 67
@@ -326,7 +327,7 @@ class _ParentContactsScreenState extends ConsumerState<ParentContactsScreen> {
     required StudentModel student,
     required bool isDark,
   }) {
-    final isGirl = student.gender.toLowerCase().contains('kız');
+    final isGirl = student.gender.toLowerTr().contains('kız');
     final avatarBg = isGirl ? Colors.pink.shade100 : Colors.blue.shade100;
     final avatarColor = isGirl ? Colors.pink.shade800 : Colors.blue.shade800;
 
@@ -592,7 +593,7 @@ class _ParentContactsScreenState extends ConsumerState<ParentContactsScreen> {
           builder: (context, setModalState) {
             final isDark = Theme.of(context).brightness == Brightness.dark;
             final student = sortedStudents[currentIndex];
-            final isGirl = student.gender.toLowerCase().contains('kız');
+            final isGirl = student.gender.toLowerTr().contains('kız');
             final progress = (currentIndex + 1) / sortedStudents.length;
 
             Future<bool> validateAndSaveCurrent() async {

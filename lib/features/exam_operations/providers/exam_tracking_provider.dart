@@ -118,17 +118,19 @@ class ExamTrackingNotifier extends StateNotifier<ExamTrackingState> {
         exams = await _repository.getAllExams();
       }
 
-      state = state.copyWith(exams: exams, isLoading: false);
+      if (mounted) state = state.copyWith(exams: exams, isLoading: false);
 
       // Favori sınavların bildirimlerini arka planda senkronize et
       final favExams = exams.where((ExamModel e) => e.isFavorite).toList();
       NotificationService.instance.syncAllFavoriteExamReminders(favExams);
     } catch (e, stackTrace) {
       debugPrint('ExamTrackingNotifier.loadExams error: $e\n$stackTrace');
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: 'Sınavlar yüklenirken hata: $e',
-      );
+      if (mounted) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'Sınavlar yüklenirken hata: $e',
+        );
+      }
     }
   }
 

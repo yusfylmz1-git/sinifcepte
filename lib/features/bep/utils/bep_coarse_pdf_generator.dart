@@ -6,6 +6,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../../../core/pdf/pdf_tr_fonts.dart';
 import '../../../data/models/student_model.dart';
 import '../data/models/bep_models.dart';
+import '../../../core/utils/name_formatter.dart';
 
 /// Kaba Değerlendirme Formu (KDF).
 ///
@@ -47,7 +48,7 @@ class BepCoarsePdfGenerator {
 
     final okul = (plan.schoolName.isNotEmpty ? plan.schoolName : schoolName)
         .trim()
-        .toUpperCase();
+        .toUpperTr();
 
     // Uzun amaç başlığına göre gruplanır — ERBAA'daki düzen de bu.
     // `unit_title` tabloda zaten tutuluyor.

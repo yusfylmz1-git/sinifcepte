@@ -1,3 +1,4 @@
+// denetim-dosya: sifira-bolme — ölçek enKucukOlcek'e kıstırılır (> 0)
 import 'dart:math' as math;
 
 import 'foto_isleme.dart';

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../shared/widgets/glass_card.dart';
 import '../../data/models/curriculum_outcome_model.dart';
+import '../../../../core/utils/name_formatter.dart';
 
 /// SınıfCepte - 39+1 Haftalık Müfredat Akışı Tatil Kartı (Ultra Responsive & Sıfır Taşma)
 class HolidayCard extends StatelessWidget {
@@ -22,10 +23,10 @@ class HolidayCard extends StatelessWidget {
     final dateRangeText = AppDateFormatter.getWeekDateRangeText(outcome.weekNumber);
 
     final isSummer = outcome.weekNumber > AppDateFormatter.toplamHafta() ||
-        outcome.unitTitle.toLowerCase().contains('yaz');
-    final isWinter = outcome.unitTitle.toLowerCase().contains('yarıyıl') ||
-        outcome.unitTitle.toLowerCase().contains('sömestr');
-    final isSpring = outcome.unitTitle.toLowerCase().contains('2. dönem ara tatil');
+        outcome.unitTitle.toLowerTr().contains('yaz');
+    final isWinter = outcome.unitTitle.toLowerTr().contains('yarıyıl') ||
+        outcome.unitTitle.toLowerTr().contains('sömestr');
+    final isSpring = outcome.unitTitle.toLowerTr().contains('2. dönem ara tatil');
 
     final gradientColors = isSummer
         ? [const Color(0xFFF59E0B), const Color(0xFFEA580C)]

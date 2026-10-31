@@ -57,13 +57,13 @@ class FavoriteSubjectsNotifier extends StateNotifier<Set<String>> {
 
   Future<void> _loadFavorites() async {
     final favs = await _repo.getFavoriteSubjectKeys();
-    state = favs;
+    if (mounted) state = favs;
   }
 
   Future<void> toggleFavorite(int gradeLevel, String subjectCode, String publisher) async {
     await _repo.toggleFavoriteSubject(gradeLevel, subjectCode, publisher);
     final favs = await _repo.getFavoriteSubjectKeys();
-    state = favs;
+    if (mounted) state = favs;
   }
 
   bool isFav(int gradeLevel, String subjectCode, String publisher) {

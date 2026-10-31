@@ -8,6 +8,7 @@ import '../models/lesson_model.dart';
 import '../models/schedule_settings.dart';
 import '../providers/schedule_provider.dart';
 import '../utils/schedule_pdf_generator.dart';
+import '../../../core/utils/name_formatter.dart';
 
 /// SınıfCepte - Haftalık Ders Programı Matris Tablosu & Canlı Önizleme Ekranı
 /// Dikey, Yatay ve Tablet ekranlarında %100 responsive çalışır.
@@ -229,7 +230,7 @@ class _ScheduleTablePreviewScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  school.toUpperCase(),
+                  school.toUpperTr(),
                   style: AppFonts.outfit(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -489,7 +490,7 @@ class _ScheduleTablePreviewScreenState
           ..._weekDays.map((day) {
             return Expanded(
               child: Text(
-                day.toUpperCase(),
+                day.toUpperTr(),
                 textAlign: TextAlign.center,
                 style: AppFonts.outfit(
                   fontSize: 11,

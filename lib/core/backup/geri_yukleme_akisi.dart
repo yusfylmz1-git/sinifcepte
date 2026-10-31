@@ -63,6 +63,7 @@ class GeriYuklemeEkraniState extends ConsumerState<GeriYuklemeEkrani> {
   @visibleForTesting
   Future<void> incele(String yol) async {
     await _hazir?.temizle();
+    if (!mounted) return;
     setState(() {
       _hazir = null;
       _anladim = false;

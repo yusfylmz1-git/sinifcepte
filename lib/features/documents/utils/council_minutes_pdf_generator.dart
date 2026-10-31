@@ -6,6 +6,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../../../core/pdf/pdf_tr_fonts.dart';
 import '../../../data/models/student_model.dart';
 import '../data/council_minutes.dart';
+import '../../../core/utils/name_formatter.dart';
 
 /// Zümre / ŞÖK taslak tutanak PDF'i.
 class CouncilMinutesPdfGenerator {
@@ -112,7 +113,7 @@ class CouncilMinutesPdfGenerator {
             district: district,
             academicYear: academicYear,
             title:
-                '${(className ?? '').toUpperCase()} ŞÖK ÖĞRENCİ DEĞERLENDİRME IZGARASI',
+                '${(className ?? '').toUpperTr()} ŞÖK ÖĞRENCİ DEĞERLENDİRME IZGARASI',
           ),
           footer: (ctx) => _footer(ctx),
           build: (ctx) => [
@@ -144,12 +145,12 @@ class CouncilMinutesPdfGenerator {
   }) {
     final school = schoolName.trim().isEmpty
         ? '................................................... OKULU MÜDÜRLÜĞÜ'
-        : (schoolName.toUpperCase().endsWith('MÜDÜRLÜĞÜ')
-            ? schoolName.toUpperCase()
-            : '${schoolName.toUpperCase()} MÜDÜRLÜĞÜ');
+        : (schoolName.toUpperTr().endsWith('MÜDÜRLÜĞÜ')
+            ? schoolName.toUpperTr()
+            : '${schoolName.toUpperTr()} MÜDÜRLÜĞÜ');
     final loc = [
-      if (district != null && district.trim().isNotEmpty) district.trim().toUpperCase(),
-      if (city != null && city.trim().isNotEmpty) city.trim().toUpperCase(),
+      if (district != null && district.trim().isNotEmpty) district.trim().toUpperTr(),
+      if (city != null && city.trim().isNotEmpty) city.trim().toUpperTr(),
     ].join(' / ');
 
     return pw.Column(
@@ -397,7 +398,7 @@ class CouncilMinutesPdfGenerator {
               [
                 '${i + 1}',
                 students[i].schoolNumber > 0 ? '${students[i].schoolNumber}' : '',
-                students[i].fullName.toUpperCase(),
+                students[i].fullName.toUpperTr(),
                 '',
                 '',
                 '',

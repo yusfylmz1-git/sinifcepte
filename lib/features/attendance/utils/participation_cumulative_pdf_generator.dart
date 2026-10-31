@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../../core/pdf/pdf_tr_fonts.dart';
+import '../../../core/utils/name_formatter.dart';
 
 /// SınıfCepte - Resmî MEB Dönem Sonu / Yıl Sonu ve Veli Toplantısı Kümülatif PDF Motoru
 class ParticipationCumulativePdfGenerator {
@@ -103,7 +104,7 @@ class ParticipationCumulativePdfGenerator {
                 children: [
                   pw.Text('T.C.', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
                   pw.Text('MİLLÎ EĞİTİM BAKANLIĞI', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
-                  pw.Text(resolvedSchool.toUpperCase(), style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
+                  pw.Text(resolvedSchool.toUpperTr(), style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
                   pw.SizedBox(height: 4),
                   pw.Text(
                     'DÖNEM SONU DERS İÇİ KATILIM, ÖDEV VE GELİŞİM RESMÎ ÇİZELGESİ',
@@ -302,7 +303,7 @@ class ParticipationCumulativePdfGenerator {
             pw.Center(
               child: pw.Column(
                 children: [
-                  pw.Text(resolvedSchool.toUpperCase(), style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
+                  pw.Text(resolvedSchool.toUpperTr(), style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
                   pw.SizedBox(height: 2),
                   pw.Text(
                     'VELİ TOPLANTISI DERS İÇİ KATILIM, ÖDEV VE PERFORMANS KILAVUZU',
@@ -442,7 +443,7 @@ class ParticipationCumulativePdfGenerator {
               pw.Center(
                 child: pw.Column(
                   children: [
-                    pw.Text(resolvedSchool.toUpperCase(), style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
+                    pw.Text(resolvedSchool.toUpperTr(), style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
                     pw.SizedBox(height: 2),
                     pw.Text(
                       'BİREYSEL ÖĞRENCİ GELİŞİM VE DERS İÇİ KATILIM ÖZETİ',

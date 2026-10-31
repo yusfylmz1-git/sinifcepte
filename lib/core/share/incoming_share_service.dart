@@ -17,6 +17,7 @@ class IncomingShareService {
 
   static const MethodChannel _channel = MethodChannel('sinifcepte/incoming_share');
 
+  // denetim: kapatilmayan — uygulama ömrü boyunca yaşayan tekil servis
   final StreamController<String> _files = StreamController<String>.broadcast();
 
   bool _attached = false;

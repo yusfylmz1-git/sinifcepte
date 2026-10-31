@@ -167,7 +167,7 @@ class ParentStatusReportModel {
       title: map['title']?.toString() ?? '',
       details: map['details']?.toString() ?? '',
       timeInfo: map['time_info']?.toString(),
-      createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'].toString()) : DateTime.now(),
+      createdAt: DateTime.tryParse('${map['created_at'] ?? ''}') ?? DateTime.now(),
       status: map['status']?.toString() ?? 'pending',
       teacherAcknowledgedAt: map['teacher_acknowledged_at'] != null
           ? DateTime.tryParse(map['teacher_acknowledged_at'].toString())

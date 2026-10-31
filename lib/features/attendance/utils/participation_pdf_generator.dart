@@ -4,6 +4,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../data/models/classroom_participation_model.dart';
 import '../../../core/pdf/pdf_tr_fonts.dart';
+import '../../../core/utils/name_formatter.dart';
 
 /// SınıfCepte - Resmî MEB Ders İçi Katılım & Gelişim PDF Rapor Motoru
 class ParticipationPdfGenerator {
@@ -60,7 +61,7 @@ class ParticipationPdfGenerator {
                     style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12),
                   ),
                   pw.Text(
-                    resolvedSchoolName.toUpperCase(),
+                    resolvedSchoolName.toUpperTr(),
                     style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13),
                   ),
                   pw.SizedBox(height: 4),

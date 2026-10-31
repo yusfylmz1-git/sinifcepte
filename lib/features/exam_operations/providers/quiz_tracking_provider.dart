@@ -112,26 +112,30 @@ class QuizTableNotifier extends StateNotifier<QuizTableState> {
 
       final cizelge = await _repository.getOrCreateQuizCizelge(className, subject);
       if (cizelge.id == null) {
-        state = state.copyWith(isLoading: false, errorMessage: 'Çizelge oluşturulamadı');
+        if (mounted) state = state.copyWith(isLoading: false, errorMessage: 'Çizelge oluşturulamadı');
         return;
       }
 
       final columns = await _repository.getQuizKolonlari(cizelge.id!);
       final scores = await _repository.getQuizNotlariForCizelge(cizelge.id!);
 
-      state = state.copyWith(
-        cizelge: cizelge,
-        columns: columns,
-        studentScores: scores,
-        students: students,
-        isLoading: false,
-      );
+      if (mounted) {
+        state = state.copyWith(
+          cizelge: cizelge,
+          columns: columns,
+          studentScores: scores,
+          students: students,
+          isLoading: false,
+        );
+      }
     } catch (e, stackTrace) {
       debugPrint('QuizTableNotifier.loadTable error: $e\n$stackTrace');
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: 'Veriler yüklenirken hata oluştu: $e',
-      );
+      if (mounted) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'Veriler yüklenirken hata oluştu: $e',
+        );
+      }
     }
   }
 
@@ -155,7 +159,7 @@ class QuizTableNotifier extends StateNotifier<QuizTableState> {
       final id = await _repository.addQuizKolon(newKolon);
       if (id > 0) {
         final columns = await _repository.getQuizKolonlari(state.cizelge!.id!);
-        state = state.copyWith(columns: columns);
+        if (mounted) state = state.copyWith(columns: columns);
         return true;
       }
       return false;
@@ -172,7 +176,7 @@ class QuizTableNotifier extends StateNotifier<QuizTableState> {
       await _repository.deleteQuizKolon(columnId);
       final columns = await _repository.getQuizKolonlari(state.cizelge!.id!);
       final scores = await _repository.getQuizNotlariForCizelge(state.cizelge!.id!);
-      state = state.copyWith(columns: columns, studentScores: scores);
+      if (mounted) state = state.copyWith(columns: columns, studentScores: scores);
       return true;
     } catch (e, stackTrace) {
       debugPrint('QuizTableNotifier.deleteColumn error: $e\n$stackTrace');

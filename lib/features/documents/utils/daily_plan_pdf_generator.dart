@@ -5,6 +5,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../../../core/pdf/pdf_tr_fonts.dart';
 import '../../auth_profile/data/models/teacher_profile_model.dart';
+import '../../../core/utils/name_formatter.dart';
 
 /// SınıfCepte - MEB Türkiye Yüzyılı Maarif Modeli (TYMM) Günlük Ders Planı PDF Üreticisi
 class DailyPlanPdfGenerator {
@@ -42,7 +43,7 @@ class DailyPlanPdfGenerator {
     final pdf = await PdfTrFonts.document();
 
     final okulAdi = teacher.schoolName.trim().isNotEmpty
-        ? teacher.schoolName.trim().toUpperCase()
+        ? teacher.schoolName.trim().toUpperTr()
         : 'T.C. MİLLÎ EĞİTİM BAKANLIĞI';
     final ogretmenAdi = teacher.fullName.trim().isNotEmpty
         ? teacher.fullName.trim()
@@ -143,7 +144,7 @@ class DailyPlanPdfGenerator {
     final genelFarklilastirma = farklilastirma['genel_aciklama']?.toString() ?? '';
 
     final okulAdi = teacher.schoolName.trim().isNotEmpty
-        ? teacher.schoolName.trim().toUpperCase()
+        ? teacher.schoolName.trim().toUpperTr()
         : 'T.C. MİLLÎ EĞİTİM BAKANLIĞI';
     final ogretmenAdi = teacher.fullName.trim().isNotEmpty
         ? teacher.fullName.trim()
@@ -332,7 +333,7 @@ class DailyPlanPdfGenerator {
                 ),
                 child: pw.Column(
                   children: [
-                    pw.Text('DERS: ${ders.toUpperCase()}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                    pw.Text('DERS: ${ders.toUpperTr()}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
                     pw.SizedBox(height: 4),
                     pw.Text('SINIF: $sinif', style: const pw.TextStyle(fontSize: 11)),
                     pw.SizedBox(height: 4),

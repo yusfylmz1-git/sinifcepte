@@ -11,6 +11,7 @@ import '../../providers/parent_token_provider.dart';
 import '../../providers/unread_messages_provider.dart';
 import '../widgets/parent_app_bar.dart';
 import '../widgets/parent_teacher_chat_modal.dart';
+import '../../../../core/utils/name_formatter.dart';
 
 /// Mesajlar sekmesi.
 ///
@@ -310,9 +311,9 @@ class _TeacherList extends StatelessWidget {
   static String _initials(String name) {
     final parts = name.trim().split(RegExp(r'\s+'));
     if (parts.isEmpty || parts.first.isEmpty) return '?';
-    if (parts.length == 1) return parts.first.characters.first.toUpperCase();
+    if (parts.length == 1) return parts.first.characters.first.toUpperTr();
     return (parts.first.characters.first + parts.last.characters.first)
-        .toUpperCase();
+        .toUpperTr();
   }
 }
 

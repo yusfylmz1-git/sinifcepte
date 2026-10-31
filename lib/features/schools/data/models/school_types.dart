@@ -1,3 +1,5 @@
+import '../../../../core/utils/name_formatter.dart';
+
 /// Tek okul türü tablosu (modal, normalizer, shard).
 class SchoolTypes {
   SchoolTypes._();
@@ -21,7 +23,7 @@ class SchoolTypes {
   static const filterChips = <String>[allFilter, ...values];
 
   static String inferFromName(String rawName) {
-    final n = rawName.toLowerCase();
+    final n = rawName.toLowerTr();
     if (n.contains('bilsem') || n.contains('bilim ve sanat')) return 'BİLSEM';
     if (n.contains('özel') || n.contains('kolej')) return 'Özel Okul / Kolej';
     if (n.contains('sosyal bilimler')) return 'Sosyal Bilimler Lisesi';
@@ -44,7 +46,7 @@ class SchoolTypes {
   }
 
   static bool isExcludedInstitution(String rawName) {
-    final n = rawName.toLowerCase();
+    final n = rawName.toLowerTr();
     if (n.contains('milli eğitim müdürlüğü') || n.contains('mem ')) return true;
     if (n.contains('ilçe milli') || n.contains('il milli')) return true;
     if (n.contains('bakanlık')) return true;

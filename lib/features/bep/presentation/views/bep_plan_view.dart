@@ -320,7 +320,7 @@ class _BepPlanViewState extends State<BepPlanView>
         ],
       ),
     );
-    if (onay != true) return;
+    if (onay != true || !mounted) return;
 
     setState(() => _busy = true);
     try {

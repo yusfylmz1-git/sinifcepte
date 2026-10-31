@@ -1,3 +1,5 @@
+import '../../../../core/utils/name_formatter.dart';
+
 /// SınıfCepte - MEB / ÖSYM / Okul Sınav Takip Modeli
 class ExamModel {
   final String id;
@@ -57,7 +59,7 @@ class ExamModel {
       examDate: DateTime.tryParse(dateStr) ?? DateTime.now(),
       applicationDeadline: deadlineStr != null ? DateTime.tryParse(deadlineStr) : null,
       applicationLink: map['basvuru_linki'] as String?,
-      category: isSchool ? 'OKUL' : (inst.toUpperCase().contains('ÖSYM') ? 'OSYM' : 'MEB'),
+      category: isSchool ? 'OKUL' : (inst.toUpperTr().contains('ÖSYM') ? 'OSYM' : 'MEB'),
       isFavorite: isFav,
       isSchoolExam: isSchool,
       className: map['sinif'] as String?,

@@ -28,6 +28,7 @@ const Duration kLessonClockInterval = Duration(minutes: 5);
 int currentBucket({DateTime? at, Duration interval = kLessonClockInterval}) {
   final now = at ?? DateTime.now();
   final dayMinutes = now.hour * 60 + now.minute;
+  // denetim: sifira-bolme — dilim boyu kLessonClockInterval (5 dk); 1 dk altı verilmez
   final bucketInDay = dayMinutes ~/ interval.inMinutes;
 
   // Gün de anahtara katılmalı: yoksa ertesi günün aynı saati aynı dilim
@@ -36,5 +37,6 @@ int currentBucket({DateTime? at, Duration interval = kLessonClockInterval}) {
   final epochDay =
       DateTime(now.year, now.month, now.day).millisecondsSinceEpoch ~/ 86400000;
 
+  // denetim: sifira-bolme — yukarıdaki dilim boyu
   return epochDay * (1440 ~/ interval.inMinutes) + bucketInDay;
 }

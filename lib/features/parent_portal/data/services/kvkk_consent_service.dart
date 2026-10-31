@@ -36,7 +36,7 @@ class ConsentLogModel {
       id: map['id']?.toString() ?? '',
       userId: map['user_id']?.toString() ?? '',
       consentVersion: map['consent_version']?.toString() ?? 'v1.0',
-      consentedAt: map['consented_at'] != null ? DateTime.parse(map['consented_at'].toString()) : DateTime.now(),
+      consentedAt: DateTime.tryParse('${map['consented_at'] ?? ''}') ?? DateTime.now(),
       deviceLocale: map['device_locale']?.toString() ?? 'tr_TR',
       scope: (map['scope'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
     );
@@ -87,7 +87,7 @@ class AuditLogModel {
       targetId: map['target_id']?.toString() ?? '',
       schoolId: map['school_id']?.toString(),
       details: map['details']?.toString(),
-      timestamp: map['timestamp'] != null ? DateTime.parse(map['timestamp'].toString()) : DateTime.now(),
+      timestamp: DateTime.tryParse('${map['timestamp'] ?? ''}') ?? DateTime.now(),
     );
   }
 }

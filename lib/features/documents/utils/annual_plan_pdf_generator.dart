@@ -21,6 +21,7 @@ class AnnualPlanPdfGenerator {
         .replaceAll('ş', 'Ş')
         .replaceAll('ö', 'Ö')
         .replaceAll('ç', 'Ç')
+        // denetim: turkce-buyuk — Türkçe harfler yukarıda elle çevrildi
         .toUpperCase();
   }
 

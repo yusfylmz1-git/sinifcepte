@@ -151,13 +151,11 @@ class ParentAppointmentModel {
       relation: map['relation']?.toString() ?? 'Veli',
       teacherName: map['teacher_name']?.toString() ?? '',
       branch: map['branch']?.toString() ?? '',
-      appointmentDate: map['appointment_date'] != null
-          ? DateTime.parse(map['appointment_date'].toString())
-          : DateTime.now(),
+      appointmentDate: DateTime.tryParse('${map['appointment_date'] ?? ''}') ?? DateTime.now(),
       timeSlot: map['time_slot']?.toString() ?? '13:30 - 14:00',
       topic: map['topic']?.toString() ?? '',
       status: map['status']?.toString() ?? 'pending',
-      createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'].toString()) : DateTime.now(),
+      createdAt: DateTime.tryParse('${map['created_at'] ?? ''}') ?? DateTime.now(),
       responseNote: map['response_note']?.toString(),
     );
   }

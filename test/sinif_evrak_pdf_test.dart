@@ -132,7 +132,11 @@ void main() {
       final t = await metin(b);
 
       // Okul adı büyük harfe çevriliyor; kelimeler ayrı satırda.
-      expect(t.contains('ŞEHIT'), isTrue, reason: 'okul adı bozuk');
+      // 31 Ekim'e kadar 'ŞEHIT' basılıyordu (Dart toUpperCase "i" → "I")
+      // ve bu test onu doğru sanıyordu; Türkçe büyük harf "İ".
+      expect(t.contains('ŞEHİT'), isTrue, reason: 'okul adı bozuk');
+      expect(t.contains('ŞEHIT'), isFalse,
+          reason: 'Türkçe "i" büyük harfte "I" basıldı (toUpperTr kullanılmalı)');
       expect(t.contains('ÖĞRETMEN'), isTrue, reason: '"Ö"/"Ğ" bozuk');
       expect(t.contains('İLKOKULU'), isTrue, reason: '"İ" bozuk');
       expect(t.contains('Muğdat'), isTrue, reason: 'müdür adı bozuk');

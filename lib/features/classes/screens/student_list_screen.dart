@@ -23,6 +23,7 @@ import '../../student_photos/presentation/sinif_foto_ekrani.dart';
 import '../../student_photos/presentation/widgets/ogrenci_foto_kucuk.dart';
 import '../presentation/widgets/sinif_seridi.dart';
 import '../utils/classroom_documents_pdf_generator.dart';
+import '../../../core/utils/name_formatter.dart';
 
 /// Sınıf sayfası: öğrenci listesi ve üstte sınıfın işleri.
 ///
@@ -393,24 +394,24 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                                       decoration: BoxDecoration(
                                         color: isSelected 
                                           ? AppColors.primary.withValues(alpha: 0.15)
-                                          : student.gender.toLowerCase().contains('kız') 
+                                          : student.gender.toLowerTr().contains('kız') 
                                             ? Colors.pink.withValues(alpha: 0.15) 
                                             : Colors.blue.withValues(alpha: 0.15),
                                         shape: BoxShape.circle,
                                         border: Border.all(
                                           color: isSelected 
                                             ? AppColors.primary.withValues(alpha: 0.5)
-                                            : student.gender.toLowerCase().contains('kız') 
+                                            : student.gender.toLowerTr().contains('kız') 
                                               ? Colors.pink.withValues(alpha: 0.3) 
                                               : Colors.blue.withValues(alpha: 0.3),
                                           width: 1.5,
                                         ),
                                       ),
                                       child: Icon(
-                                        student.gender.toLowerCase().contains('kız') ? Icons.face_3_rounded : Icons.face_6_rounded,
+                                        student.gender.toLowerTr().contains('kız') ? Icons.face_3_rounded : Icons.face_6_rounded,
                                         color: isSelected 
                                           ? AppColors.primary 
-                                          : student.gender.toLowerCase().contains('kız') ? Colors.pinkAccent : Colors.blueAccent,
+                                          : student.gender.toLowerTr().contains('kız') ? Colors.pinkAccent : Colors.blueAccent,
                                         size: 20,
                                       ),
                                     ),
@@ -762,8 +763,8 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
 
   /// "28 öğrenci · 15 kız · 13 erkek"
   String _sayilar(List<StudentModel> ogrenciler) {
-    final kiz = ogrenciler.where((o) => o.gender.toLowerCase().contains('kız')).length;
-    final erkek = ogrenciler.where((o) => o.gender.toLowerCase().contains('erkek')).length;
+    final kiz = ogrenciler.where((o) => o.gender.toLowerTr().contains('kız')).length;
+    final erkek = ogrenciler.where((o) => o.gender.toLowerTr().contains('erkek')).length;
     return '${ogrenciler.length} öğrenci · $kiz kız · $erkek erkek';
   }
 
@@ -1093,6 +1094,7 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
                 onPressed: selectedTargetClassId == null
                     ? null
                     : () async {
+                        // denetim: orelse-yok — kimlik bu listeden seçildi
                         final targetClass = otherClasses.firstWhere((c) => c.id == selectedTargetClassId);
                         Navigator.pop(ctx);
 
@@ -1235,8 +1237,8 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
               ElevatedButton(
                 onPressed: () async {
                   Navigator.of(ctx).pop();
-                  final target = availableClasses
-                      .firstWhere((c) => c.id == selectedClassId);
+                  // denetim: orelse-yok — kimlik bu listeden seçildi
+                  final target = availableClasses.firstWhere((c) => c.id == selectedClassId);
                   await ref
                       .read(studentListProvider(widget.classModel.id!).notifier)
                       .moveStudentsBatch(selectedIds, selectedClassId);

@@ -532,6 +532,7 @@ class _StudentImportPreviewViewState extends ConsumerState<StudentImportPreviewV
         final existingStudents = await repository.getStudentsByClassId(targetClassId);
         final existingNumbers = existingStudents.map((s) => s.schoolNumber).toSet();
 
+        if (!mounted) return;
         final duplicateDrafts = selectedDrafts.where((d) => existingNumbers.contains(d.schoolNumber)).toList();
         if (duplicateDrafts.isNotEmpty) {
           _showModernSnackBar(

@@ -422,7 +422,7 @@ class _SchoolSelectionModalState extends ConsumerState<SchoolSelectionModal> {
 
                 final queryText = _searchController.text.trim();
                 final bool showQuickAdd = queryText.length >= 3 &&
-                    !schools.any((s) => s.name.toLowerCase().trim() == queryText.toLowerCase());
+                    !schools.any((s) => trFold(s.name.trim()) == trFold(queryText));
 
                 final totalItems = schools.length + 1 + (showQuickAdd ? 1 : 0);
 

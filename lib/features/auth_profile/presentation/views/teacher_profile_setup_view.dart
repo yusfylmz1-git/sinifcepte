@@ -344,7 +344,7 @@ class _TeacherProfileSetupViewState extends ConsumerState<TeacherProfileSetupVie
                                 InkWell(
                                   onTap: () async {
                                     final picked = await SchoolSelectionModal.show(context);
-                                    if (picked != null) {
+                                    if (picked != null && mounted) {
                                       setState(() {
                                         _schoolNameController.text = picked.name;
                                         _selectedCity = picked.city;
@@ -388,7 +388,7 @@ class _TeacherProfileSetupViewState extends ConsumerState<TeacherProfileSetupVie
                               readOnly: true,
                               onTap: () async {
                                 final picked = await SchoolSelectionModal.show(context);
-                                if (picked != null) {
+                                if (picked != null && mounted) {
                                   setState(() {
                                     _schoolNameController.text = picked.name;
                                     _selectedCity = picked.city;
@@ -409,7 +409,7 @@ class _TeacherProfileSetupViewState extends ConsumerState<TeacherProfileSetupVie
                                   tooltip: 'Okul Seçim Modalı',
                                   onPressed: () async {
                                     final picked = await SchoolSelectionModal.show(context);
-                                    if (picked != null) {
+                                    if (picked != null && mounted) {
                                       setState(() {
                                         _schoolNameController.text = picked.name;
                                         _selectedCity = picked.city;

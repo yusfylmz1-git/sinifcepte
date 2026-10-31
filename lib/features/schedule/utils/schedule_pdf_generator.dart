@@ -6,6 +6,7 @@ import '../../auth_profile/data/models/teacher_profile_model.dart';
 import '../models/lesson_model.dart';
 import '../models/schedule_settings.dart';
 import '../../../core/pdf/pdf_tr_fonts.dart';
+import '../../../core/utils/name_formatter.dart';
 
 /// SınıfCepte - MEB Standartlarında A4 Haftalık Ders Programı PDF Üreticisi
 class SchedulePdfGenerator {
@@ -78,7 +79,7 @@ class SchedulePdfGenerator {
   static pw.Widget _buildHeader(
     TeacherProfileModel profile,
   ) {
-    final school = profile.schoolName.isNotEmpty ? profile.schoolName.toUpperCase() : 'MİLLÎ EĞİTİM BAKANLIĞI';
+    final school = profile.schoolName.isNotEmpty ? profile.schoolName.toUpperTr() : 'MİLLÎ EĞİTİM BAKANLIĞI';
     final teacher = profile.fullName.isNotEmpty ? profile.fullName : 'Öğretmen';
     final branch = profile.branch.isNotEmpty ? profile.branch : 'Branş Belirtilmedi';
 

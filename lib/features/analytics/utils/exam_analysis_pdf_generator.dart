@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../auth_profile/data/models/teacher_profile_model.dart';
 import '../data/models/exam_analysis_model.dart';
 import '../../../core/pdf/pdf_tr_fonts.dart';
+import '../../../core/utils/name_formatter.dart';
 
 /// SınıfCepte - MEB Uyumlu Resmî Sınav Analiz Raporu PDF Motoru
 class ExamAnalysisPdfGenerator {
@@ -93,7 +94,7 @@ class ExamAnalysisPdfGenerator {
     required ExamAnalysisModel exam,
   }) {
     final schoolName = teacherProfile.schoolName.isNotEmpty
-        ? teacherProfile.schoolName.toUpperCase()
+        ? teacherProfile.schoolName.toUpperTr()
         : 'T.C. MİLLÎ EĞİTİM BAKANLIĞI';
 
     return pw.Column(
@@ -104,7 +105,7 @@ class ExamAnalysisPdfGenerator {
         pw.Text(schoolName, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 2),
         pw.Text(
-          '${exam.className} SINIFI ${exam.subjectName.toUpperCase()} DERSİ ${exam.examTitle.toUpperCase()} SINAV ANALİZ VE DEĞERLENDİRME FORMU',
+          '${exam.className} SINIFI ${exam.subjectName.toUpperTr()} DERSİ ${exam.examTitle.toUpperTr()} SINAV ANALİZ VE DEĞERLENDİRME FORMU',
           style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
           textAlign: pw.TextAlign.center,
         ),

@@ -10,6 +10,7 @@ import '../../../../data/models/class_model.dart';
 import 'classroom_documents_pdf_generator.dart';
 import '../models/seating_plan_model.dart';
 import '../../../core/pdf/pdf_tr_fonts.dart';
+import '../../../core/utils/name_formatter.dart';
 
 /// Gerçekçi Sınıf Oturma Planı A4 PDF Motoru
 class SeatingPlanPdfGenerator {
@@ -267,7 +268,7 @@ class SeatingPlanPdfGenerator {
 
   static pw.Widget _buildPdfSeat(StudentModel? student, double deskHeight, double fontSize) {
     if (student != null) {
-      final isGirl = student.gender.toLowerCase().contains('kız');
+      final isGirl = student.gender.toLowerTr().contains('kız');
       final bgColor = isGirl ? PdfColors.pink50 : PdfColors.blue50;
       final borderColor = isGirl ? PdfColors.pink400 : PdfColors.blue400;
 

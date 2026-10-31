@@ -24,6 +24,7 @@ class UniqueOutcomeHit {
   String get label {
     if (code.isEmpty) return description;
     final d = description.trim();
+    // denetim: turkce-buyuk — kazanım kodu karşılaştırması, iki taraf aynı dönüşüm
     if (d.toUpperCase().startsWith(code.toUpperCase())) return d;
     return '$code  $d';
   }
@@ -122,6 +123,7 @@ bool _isNonInstructionalWeek(Map<String, dynamic> m) {
 }
 
 String normalizeOutcomeCode(String raw) {
+  // denetim: turkce-buyuk — kazanım kodu (T.D.5.3), ASCII
   return raw.trim().toUpperCase().replaceAll(RegExp(r'\.+$'), '');
 }
 

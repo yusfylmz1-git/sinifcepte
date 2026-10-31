@@ -95,7 +95,7 @@ class _TeacherFileInfoViewState extends State<TeacherFileInfoView> {
       lastDate: DateTime(simdi.year + 1, 12, 31),
       helpText: 'Tarih seçin',
     );
-    if (secilen == null) return;
+    if (secilen == null || !mounted) return;
     String iki(int n) => n.toString().padLeft(2, '0');
     setState(() {
       hedef.text =
