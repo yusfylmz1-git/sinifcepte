@@ -61,7 +61,10 @@ class AdminApp {
     this.updateDashboardStats();
     if (tabId === 'calendar') this.calendarManager.renderTable();
     if (tabId === 'outcomes') this.refreshOutcomesTable();
-    if (tabId === 'exams') this.renderExamsTable();
+    if (tabId === 'exams') {
+      this.renderExamsTable();
+      this.sinavlariCanlidanAl().catch(() => {});
+    }
     if (tabId === 'manifest') {
       this.manifestManager.renderAnnouncementsTable();
       this.renderManifestUI();
@@ -1418,6 +1421,25 @@ class AdminApp {
    * Yayin `publishRemoteConfig` fonksiyonundan gecer ve YALNIZCA
    * `exams_version` + `exams_payload` gonderir (K8).
    */
+  /**
+   * Sınav sekmesi açılınca canlı listeyi okur; bu tarayıcının listesi
+   * eski bir yayından türediyse canlıyla değiştirir (bkz.
+   * `ExamsManager.canliylaEsitle`).
+   */
+  async sinavlariCanlidanAl() {
+    const canli = await this.canliOku();
+    const durum = this.examsManager.canliylaEsitle(canli.exams_version, canli.exams_payload);
+    if (durum === 'yenilendi') {
+      this.renderExamsTable();
+      this.updateDashboardStats();
+      this.showToast(
+        `Sınav listesi canlıdan yüklendi (v${canli.exams_version}, ` +
+          `${this.examsManager.getAllExams().length} sınav).`,
+        'info'
+      );
+    }
+  }
+
   async publishExamsToMobile() {
     const sinavSayisi = this.examsManager.getAllExams().length;
     if (sinavSayisi === 0) {
@@ -1444,6 +1466,23 @@ class AdminApp {
       // başlıyordu. Yerel sayaç yalnızca yayın BAŞARILI olunca
       // ilerliyor; başarısız yayında "zaten güncel" sanılmıyor.
       const canli = await this.canliOku();
+
+      // Bu arada başka yerden yayın yapıldıysa bu liste eskidir ve
+      // yayın canlıdaki sınavları silerdi: yayınlama, önce yenile.
+      if (this.examsManager.kaynakSurum() !== String(canli.exams_version ?? '')) {
+        const durum = this.examsManager.canliylaEsitle(canli.exams_version, canli.exams_payload);
+        if (durum === 'yenilendi') {
+          this.renderExamsTable();
+          this.updateDashboardStats();
+          this.showToast(
+            `Bu arada başka yerden sınav yayınlanmış (v${canli.exams_version}). ` +
+              'Liste canlıdan yenilendi; değişikliklerinizi kontrol edip yeniden yayınlayın.',
+            'warning'
+          );
+          return;
+        }
+      }
+
       const yeniSurum = (Number.parseInt(canli.exams_version ?? '1', 10) || 1) + 1;
 
       // YALNIZCA sınav parametreleri. Eskiden yerel kaydın tamamı
@@ -1453,6 +1492,7 @@ class AdminApp {
         exams_payload: JSON.stringify(this.examsManager.getAllExams()),
       });
       this.canli.exams_version = String(yeniSurum);
+      this.examsManager.kaynakSurumYaz(yeniSurum);
       this.manifestManager.canliUygula(this.canli);
 
       this.updateDashboardStats();

@@ -10,7 +10,7 @@ class ExamsManager {
   }
 
   /**
-   * Varsayilan sinav takvimi — 41 sinav.
+   * Varsayilan sinav takvimi — 43 sinav.
    *
    * ## Bu liste ELLE DUZENLENMEZ
    * `assets/data/official_exams.json` dosyasindan uretiliyor; APK ile
@@ -407,6 +407,15 @@ class ExamsManager {
         category: 'MEB',
       },
       {
+        doc_id: 'meb_iokbs_bursluluk_2027',
+        title: 'İOKBS - MEB İlköğretim ve Ortaöğretim Bursluluk Sınavı',
+        institution: 'MEB',
+        examDate: '2027-04-25T00:00:00.000',
+        applicationUrl: 'https://odsgm.meb.gov.tr',
+        description: '5, 6, 7, 8, 9, 10, 11. sınıflar ve hazırlık sınıfı için devlet bursluluk sınavı',
+        category: 'MEB',
+      },
+      {
         doc_id: 'meb_ortak_6_turkce_20270608',
         title: '6. Sınıf Türkçe Ortak Yazılısı',
         institution: 'MEB',
@@ -422,6 +431,15 @@ class ExamsManager {
         examDate: '2027-06-09T00:00:00.000',
         applicationUrl: 'https://odsgm.meb.gov.tr',
         description: 'Ülke geneli ortak yazılı sınavı (2. Dönem 2. Yazılı).',
+        category: 'MEB',
+      },
+      {
+        doc_id: 'meb_lgs_2027',
+        title: 'LGS - Liselere Geçiş Sistemi Sınavı',
+        institution: 'MEB',
+        examDate: '2027-06-13T00:00:00.000',
+        applicationUrl: 'https://e-okul.meb.gov.tr',
+        description: '8. sınıf öğrencileri için merkezî sınav',
         category: 'MEB',
       },
     ];
@@ -464,6 +482,46 @@ class ExamsManager {
     // yaşamasına yol açıyordu.
     localStorage.setItem('sinifcepte_admin_exams_v5', JSON.stringify(this.exams));
     localStorage.setItem('sinifcepte_admin_exams', JSON.stringify(this.exams));
+  }
+
+  /**
+   * Yerel listenin türediği canlı `exams_version`.
+   *
+   * ## Neden (31 Ekim 2026)
+   * Yayın canlı listeyi bu tarayıcının listesiyle DEĞİŞTİRİYOR. Panel
+   * açılışta canlıyı okumuyordu: başka yerden (ya da komut satırından)
+   * eklenen sınavlar bir sonraki panel yayınında siliniyordu; yeni
+   * tarayıcıda liste 41 tohum kayda düşüp ÖSYM sınavlarını götürürdü.
+   */
+  kaynakSurum() {
+    return localStorage.getItem('sinifcepte_admin_exams_kaynak');
+  }
+
+  kaynakSurumYaz(surum) {
+    localStorage.setItem('sinifcepte_admin_exams_kaynak', String(surum));
+  }
+
+  /**
+   * Yerel listeyi canlıyla eşitler.
+   *
+   * Yerel liste aynı canlı sürümden türediyse dokunulmaz: içinde henüz
+   * yayınlanmamış düzenleme olabilir. Türemediyse canlı liste esas alınır.
+   *
+   * @returns {'ayni'|'yenilendi'|'canli-bos'}
+   */
+  canliylaEsitle(canliSurum, canliPayload) {
+    let liste;
+    try {
+      liste = JSON.parse(canliPayload || '[]');
+    } catch (_) {
+      return 'canli-bos';
+    }
+    if (!Array.isArray(liste) || liste.length === 0) return 'canli-bos';
+    if (this.kaynakSurum() === String(canliSurum)) return 'ayni';
+    this.exams = liste;
+    this.save();
+    this.kaynakSurumYaz(canliSurum);
+    return 'yenilendi';
   }
 
   getAllExams() {
